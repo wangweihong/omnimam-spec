@@ -145,16 +145,16 @@ RELEASE.md
 - confirmed_by: user
 - allowed_as_formal_implementation_basis: true
 - domains:
-  - ai-chat
+  - ai-chatting
 - S1:
-  - 00_product/domains/ai-chat/product-spec.md
+  - 00_product/domains/ai-chatting/product-spec.md
 - S2:
-  - 01_contracts/domains/ai-chat/openapi.yaml
-  - 01_contracts/domains/ai-chat/schema.sql
-  - 01_contracts/domains/ai-chat/errors.yaml
-  - 01_contracts/domains/ai-chat/permissions.yaml
-  - 01_contracts/domains/ai-chat/events.yaml
-  - 01_contracts/domains/ai-chat/module-contract.md
+  - 01_contracts/domains/ai-chatting/openapi.yaml
+  - 01_contracts/domains/ai-chatting/schema.sql
+  - 01_contracts/domains/ai-chatting/errors.yaml
+  - 01_contracts/domains/ai-chatting/permissions.yaml
+  - 01_contracts/domains/ai-chatting/events.yaml
+  - 01_contracts/domains/ai-chatting/module-contract.md
 
 CHANGELOG.md 记录所有变更，包括未发布草稿。
 RELEASE.md 只记录用户确认后的正式版本。
@@ -163,7 +163,7 @@ RELEASE.md 只记录用户确认后的正式版本。
 
 domain_id 用于目录名，使用小写短横线：
 
-ai-chat
+ai-chatting
 asset-library
 model-management
 workflow-canvas

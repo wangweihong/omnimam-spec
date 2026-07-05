@@ -293,7 +293,7 @@ stateDiagram-v2
 
 ### US-AICHAT-01 进入 AI 聊天工作区
 
-用户可以在登录态有效时从主导航进入 `/ai-chat`，看到自己的 AI 聊天工作区，并自动加载模型、助手、话题、消息和快捷短语。
+用户可以在登录态有效时从主导航进入 `/ai-chatting`，看到自己的 AI 聊天工作区，并自动加载模型、助手、话题、消息和快捷短语。
 
 #### 业务说明
 
@@ -305,7 +305,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-  nav[AI 聊天] --> page[/ai-chat/]
+  nav[AI 聊天] --> page[/ai-chatting/]
   page --> loadModels[加载当前用户模型列表]
   page --> loadAssistants[加载助手列表]
   page --> loadTopics[加载话题列表]
@@ -332,7 +332,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   actor User as 用户
-  participant UI as /ai-chat
+  participant UI as /ai-chatting
   participant API as AI Chat API
   participant SSE as SSE Stream
   participant LLM as Generation Runtime
@@ -528,11 +528,11 @@ flowchart TD
 
 ## 5. 功能适配矩阵
 
-> 当前 S1 特性主要定义 Web 端 `/ai-chat`。微信小程序、移动 App、浏览器插件暂不在当前特性交付，后续如需支持，应在各自特性切片中补充端策略。
+> 当前 S1 特性主要定义 Web 端 `/ai-chatting`。微信小程序、移动 App、浏览器插件暂不在当前特性交付，后续如需支持，应在各自特性切片中补充端策略。
 
 | 功能 | Web | 微信小程序 | 移动 App | 浏览器插件 |
 |------|-----|-----------|---------|------------|
-| `/ai-chat` 工作区 | ✅ | —（后续切片） | —（后续切片） | —（后续切片） |
+| `/ai-chatting` 工作区 | ✅ | —（后续切片） | —（后续切片） | —（后续切片） |
 | 助手选择 | ✅ | — | — | — |
 | 助手创建/编辑/删除 | ✅ | — | — | — |
 | 模型选择 | ✅ | — | — | — |
