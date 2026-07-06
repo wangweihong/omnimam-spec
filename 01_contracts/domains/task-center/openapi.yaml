@@ -25,13 +25,13 @@ paths:
         user_stories: [US-TASK-004, US-TASK-005, US-TASK-006]
         business_rules: [BR-TASK-001, BR-TASK-002, BR-TASK-003]
       parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
         - name: definition_type
           in: query
           schema:
-            $ref: '#/components/schemas/TaskDefinitionType'
+            $ref: "#/components/schemas/TaskDefinitionType"
         - name: project_id
           in: query
           schema:
@@ -41,12 +41,12 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: 任务定义列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskDefinitionListResponse'
+                $ref: "#/components/schemas/TaskDefinitionListResponse"
   /api/v1/atomic-tasks:
     post:
       tags: [task-definitions]
@@ -60,14 +60,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AtomicTaskCreateRequest'
+              $ref: "#/components/schemas/AtomicTaskCreateRequest"
       responses:
-        '200':
+        "200":
           description: AtomicTask 定义。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AtomicTask'
+                $ref: "#/components/schemas/AtomicTask"
   /api/v1/task-groups:
     post:
       tags: [task-definitions]
@@ -81,14 +81,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskGroupCreateRequest'
+              $ref: "#/components/schemas/TaskGroupCreateRequest"
       responses:
-        '200':
+        "200":
           description: TaskGroup 定义。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskGroup'
+                $ref: "#/components/schemas/TaskGroup"
   /api/v1/dag-flow-tasks:
     post:
       tags: [task-definitions]
@@ -102,14 +102,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DAGFlowTaskCreateRequest'
+              $ref: "#/components/schemas/DAGFlowTaskCreateRequest"
       responses:
-        '200':
+        "200":
           description: DAGFlowTask 定义。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DAGFlowTask'
+                $ref: "#/components/schemas/DAGFlowTask"
   /api/v1/task-runs:
     get:
       tags: [task-runs]
@@ -119,17 +119,17 @@ paths:
         user_stories: [US-TASK-001, US-TASK-003]
         business_rules: [BR-TASK-007, BR-TASK-011]
       parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/TaskRunStatus'
+            $ref: "#/components/schemas/TaskRunStatus"
         - name: definition_type
           in: query
           schema:
-            $ref: '#/components/schemas/TaskDefinitionType'
+            $ref: "#/components/schemas/TaskDefinitionType"
         - name: root_run_id
           in: query
           schema:
@@ -139,12 +139,12 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: TaskRun 列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRunListResponse'
+                $ref: "#/components/schemas/TaskRunListResponse"
     post:
       tags: [task-runs]
       summary: 创建 TaskRun
@@ -157,14 +157,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskRunCreateRequest'
+              $ref: "#/components/schemas/TaskRunCreateRequest"
       responses:
-        '200':
+        "200":
           description: TaskRun 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/task-runs/{run_id}:
     get:
       tags: [task-runs]
@@ -174,14 +174,14 @@ paths:
         user_stories: [US-TASK-001, US-TASK-003, US-TASK-006]
         business_rules: [BR-TASK-011, BR-TASK-012]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       responses:
-        '200':
+        "200":
           description: TaskRun 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
     delete:
       tags: [task-runs]
       summary: 软删除终态 TaskRun
@@ -190,14 +190,14 @@ paths:
         user_stories: [US-TASK-001]
         business_rules: [BR-TASK-041]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       responses:
-        '200':
+        "200":
           description: 删除结果。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: "#/components/schemas/SuccessResponse"
   /api/v1/task-runs/{run_id}/attempts:
     get:
       tags: [task-runs]
@@ -207,16 +207,16 @@ paths:
         user_stories: [US-TASK-003, US-TASK-007]
         business_rules: [BR-TASK-008, BR-TASK-010, BR-TASK-012]
       parameters:
-        - $ref: '#/components/parameters/run_id'
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/run_id"
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: TaskAttempt 列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskAttemptListResponse'
+                $ref: "#/components/schemas/TaskAttemptListResponse"
   /api/v1/task-runs/{run_id}/cancel:
     post:
       tags: [task-runs]
@@ -224,22 +224,23 @@ paths:
       operationId: cancel_task_run
       x-s1-refs:
         user_stories: [US-TASK-002]
-        business_rules: [BR-TASK-037, BR-TASK-038, BR-TASK-039, BR-TASK-040, BR-TASK-041]
+        business_rules:
+          [BR-TASK-037, BR-TASK-038, BR-TASK-039, BR-TASK-040, BR-TASK-041]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CancelTaskRunRequest'
+              $ref: "#/components/schemas/CancelTaskRunRequest"
       responses:
-        '200':
+        "200":
           description: 取消请求后的 TaskRun。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/task-runs/{run_id}/retry:
     post:
       tags: [task-runs]
@@ -249,20 +250,20 @@ paths:
         user_stories: [US-TASK-003, US-TASK-007]
         business_rules: [BR-TASK-009, BR-TASK-032, BR-TASK-033, BR-TASK-036]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RetryTaskRunRequest'
+              $ref: "#/components/schemas/RetryTaskRunRequest"
       responses:
-        '200':
+        "200":
           description: 重试请求后的 TaskRun。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/workers:
     post:
       tags: [worker-protocol]
@@ -276,14 +277,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkerRegisterRequest'
+              $ref: "#/components/schemas/WorkerRegisterRequest"
       responses:
-        '200':
+        "200":
           description: Worker 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Worker'
+                $ref: "#/components/schemas/Worker"
   /api/v1/workers/{worker_id}/heartbeat:
     post:
       tags: [worker-protocol]
@@ -293,20 +294,20 @@ paths:
         user_stories: [US-TASK-007]
         business_rules: [BR-TASK-013, BR-TASK-017, BR-TASK-042]
       parameters:
-        - $ref: '#/components/parameters/worker_id'
+        - $ref: "#/components/parameters/worker_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkerHeartbeatRequest'
+              $ref: "#/components/schemas/WorkerHeartbeatRequest"
       responses:
-        '200':
+        "200":
           description: Worker 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Worker'
+                $ref: "#/components/schemas/Worker"
   /api/v1/workers/{worker_id}/claim:
     post:
       tags: [worker-protocol]
@@ -316,20 +317,20 @@ paths:
         user_stories: [US-TASK-001, US-TASK-007]
         business_rules: [BR-TASK-014, BR-TASK-015, BR-TASK-027]
       parameters:
-        - $ref: '#/components/parameters/worker_id'
+        - $ref: "#/components/parameters/worker_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ClaimTaskRunRequest'
+              $ref: "#/components/schemas/ClaimTaskRunRequest"
       responses:
-        '200':
+        "200":
           description: 领取结果；无可领取任务时 `task_run` 为空。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClaimTaskRunResponse'
+                $ref: "#/components/schemas/ClaimTaskRunResponse"
   /api/v1/task-runs/{run_id}/progress:
     post:
       tags: [worker-protocol]
@@ -339,20 +340,20 @@ paths:
         user_stories: [US-TASK-001]
         business_rules: [BR-TASK-016, BR-TASK-019]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProgressUpdateRequest'
+              $ref: "#/components/schemas/ProgressUpdateRequest"
       responses:
-        '200':
+        "200":
           description: TaskRun 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/task-runs/{run_id}/complete:
     post:
       tags: [worker-protocol]
@@ -362,20 +363,20 @@ paths:
         user_stories: [US-TASK-001]
         business_rules: [BR-TASK-016, BR-TASK-025, BR-TASK-026, BR-TASK-028]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskRunCompleteRequest'
+              $ref: "#/components/schemas/TaskRunCompleteRequest"
       responses:
-        '200':
+        "200":
           description: TaskRun 详情。
           content:
-            application/json:269a8fb7-83f2-4fd9-970b-6d3e79748c5a.png
+            application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/task-runs/{run_id}/fail:
     post:
       tags: [worker-protocol]
@@ -385,20 +386,20 @@ paths:
         user_stories: [US-TASK-003, US-TASK-007]
         business_rules: [BR-TASK-010, BR-TASK-011, BR-TASK-012, BR-TASK-032]
       parameters:
-        - $ref: '#/components/parameters/run_id'
+        - $ref: "#/components/parameters/run_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskRunFailRequest'
+              $ref: "#/components/schemas/TaskRunFailRequest"
       responses:
-        '200':
+        "200":
           description: TaskRun 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskRun'
+                $ref: "#/components/schemas/TaskRun"
   /api/v1/leases/{lease_id}/renew:
     post:
       tags: [worker-protocol]
@@ -408,20 +409,20 @@ paths:
         user_stories: [US-TASK-007]
         business_rules: [BR-TASK-018, BR-TASK-029, BR-TASK-030]
       parameters:
-        - $ref: '#/components/parameters/lease_id'
+        - $ref: "#/components/parameters/lease_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LeaseRenewRequest'
+              $ref: "#/components/schemas/LeaseRenewRequest"
       responses:
-        '200':
+        "200":
           description: ExecutionLease 详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExecutionLease'
+                $ref: "#/components/schemas/ExecutionLease"
   /api/v1/task-center/health:
     get:
       tags: [operations]
@@ -431,12 +432,12 @@ paths:
         user_stories: [US-TASK-007]
         business_rules: [BR-TASK-042, BR-TASK-043, BR-TASK-044, BR-TASK-047]
       responses:
-        '200':
+        "200":
           description: 健康摘要。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskCenterHealth'
+                $ref: "#/components/schemas/TaskCenterHealth"
 
 components:
   parameters:
@@ -460,7 +461,7 @@ components:
       in: query
       schema:
         type: string
-        default: ''
+        default: ""
     run_id:
       name: run_id
       in: path
@@ -494,10 +495,35 @@ components:
       enum: [SERIAL, PARALLEL]
     TaskRunStatus:
       type: string
-      enum: [PENDING, READY, CLAIMED, RUNNING, RETRYING, CANCEL_REQUESTED, PAUSED, SUCCESS, FAILED, CANCELED, TIMEOUT, LOST]
+      enum:
+        [
+          PENDING,
+          READY,
+          CLAIMED,
+          RUNNING,
+          RETRYING,
+          CANCEL_REQUESTED,
+          PAUSED,
+          SUCCESS,
+          FAILED,
+          CANCELED,
+          TIMEOUT,
+          LOST,
+        ]
     TaskAttemptStatus:
       type: string
-      enum: [CLAIMED, RUNNING, SUCCESS, FAILED, TIMEOUT, CANCELED, WORKER_LOST, LEASE_EXPIRED, STALLED]
+      enum:
+        [
+          CLAIMED,
+          RUNNING,
+          SUCCESS,
+          FAILED,
+          TIMEOUT,
+          CANCELED,
+          WORKER_LOST,
+          LEASE_EXPIRED,
+          STALLED,
+        ]
     WorkerStatus:
       type: string
       enum: [ONLINE, BUSY, DRAINING, OFFLINE, LOST, DISABLED]
@@ -506,7 +532,17 @@ components:
       enum: [ACTIVE, RENEWED, EXPIRED, RELEASED, REVOKED]
     FailureType:
       type: string
-      enum: [FUNCTION_ERROR, TIMEOUT, CANCELED, WORKER_LOST, LEASE_EXPIRED, EXTERNAL_EXECUTOR_ERROR, SYSTEM_ERROR, STALLED]
+      enum:
+        [
+          FUNCTION_ERROR,
+          TIMEOUT,
+          CANCELED,
+          WORKER_LOST,
+          LEASE_EXPIRED,
+          EXTERNAL_EXECUTOR_ERROR,
+          SYSTEM_ERROR,
+          STALLED,
+        ]
     RetryPolicy:
       type: object
       properties:
@@ -547,43 +583,44 @@ components:
           enum: [FULL_RESTART, FAILED_ONLY, FROM_FAILED]
     AtomicTask:
       type: object
-      required: [id, name, definition_type, function_ref, created_at, updated_at]
+      required: [id, name, definition_type, function_ref, createdAt, updatedAt]
       properties:
         id: { type: string }
         name: { type: string }
         description: { type: string }
         definition_type:
-          $ref: '#/components/schemas/TaskDefinitionType'
+          $ref: "#/components/schemas/TaskDefinitionType"
         function_ref: { type: string }
         app_id: { type: string }
         engine_ref: { type: string }
         default_arguments: { type: object, additionalProperties: true }
         timeout_policy:
-          $ref: '#/components/schemas/TimeoutPolicy'
+          $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
-          $ref: '#/components/schemas/RetryPolicy'
+          $ref: "#/components/schemas/RetryPolicy"
         cancel_policy: { type: object, additionalProperties: true }
         required_capabilities: { type: string }
         tags: { type: string }
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     AtomicTaskCreateRequest:
       allOf:
-        - $ref: '#/components/schemas/AtomicTask'
+        - $ref: "#/components/schemas/AtomicTask"
     TaskGroup:
       type: object
-      required: [id, name, definition_type, group_type, children, created_at, updated_at]
+      required:
+        [id, name, definition_type, group_type, children, createdAt, updatedAt]
       properties:
         id: { type: string }
         name: { type: string }
         description: { type: string }
         definition_type:
-          $ref: '#/components/schemas/TaskDefinitionType'
+          $ref: "#/components/schemas/TaskDefinitionType"
         group_type:
-          $ref: '#/components/schemas/TaskGroupType'
+          $ref: "#/components/schemas/TaskGroupType"
         children:
           type: array
           items:
@@ -591,58 +628,58 @@ components:
             required: [definition_type, definition_id]
             properties:
               definition_type:
-                $ref: '#/components/schemas/TaskDefinitionType'
+                $ref: "#/components/schemas/TaskDefinitionType"
               definition_id: { type: string }
               sort_order: { type: integer }
         strategy_config:
-          $ref: '#/components/schemas/StrategyConfig'
+          $ref: "#/components/schemas/StrategyConfig"
         timeout_policy:
-          $ref: '#/components/schemas/TimeoutPolicy'
+          $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
-          $ref: '#/components/schemas/RetryPolicy'
+          $ref: "#/components/schemas/RetryPolicy"
         tags: { type: string }
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     TaskGroupCreateRequest:
       allOf:
-        - $ref: '#/components/schemas/TaskGroup'
+        - $ref: "#/components/schemas/TaskGroup"
     DAGFlowTask:
       type: object
-      required: [id, name, definition_type, nodes, edges, created_at, updated_at]
+      required: [id, name, definition_type, nodes, edges, createdAt, updatedAt]
       properties:
         id: { type: string }
         name: { type: string }
         description: { type: string }
         definition_type:
-          $ref: '#/components/schemas/TaskDefinitionType'
+          $ref: "#/components/schemas/TaskDefinitionType"
         nodes:
           type: array
           items:
-            $ref: '#/components/schemas/DAGNode'
+            $ref: "#/components/schemas/DAGNode"
         edges:
           type: array
           items:
-            $ref: '#/components/schemas/DAGEdge'
+            $ref: "#/components/schemas/DAGEdge"
         input_mapping: { type: object, additionalProperties: true }
         output_mapping: { type: object, additionalProperties: true }
         strategy_config:
-          $ref: '#/components/schemas/StrategyConfig'
+          $ref: "#/components/schemas/StrategyConfig"
         timeout_policy:
-          $ref: '#/components/schemas/TimeoutPolicy'
+          $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
-          $ref: '#/components/schemas/RetryPolicy'
+          $ref: "#/components/schemas/RetryPolicy"
         tags: { type: string }
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     DAGFlowTaskCreateRequest:
       allOf:
-        - $ref: '#/components/schemas/DAGFlowTask'
+        - $ref: "#/components/schemas/DAGFlowTask"
     DAGNode:
       type: object
       required: [node_id, name, task_ref]
@@ -654,14 +691,14 @@ components:
           required: [definition_type, definition_id]
           properties:
             definition_type:
-              $ref: '#/components/schemas/TaskDefinitionType'
+              $ref: "#/components/schemas/TaskDefinitionType"
             definition_id: { type: string }
         input_mapping: { type: object, additionalProperties: true }
         output_mapping: { type: object, additionalProperties: true }
         timeout_policy:
-          $ref: '#/components/schemas/TimeoutPolicy'
+          $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
-          $ref: '#/components/schemas/RetryPolicy'
+          $ref: "#/components/schemas/RetryPolicy"
     DAGEdge:
       type: object
       required: [from_node_id, to_node_id]
@@ -682,18 +719,28 @@ components:
             additionalProperties: true
     TaskRun:
       type: object
-      required: [id, definition_type, definition_id, status, current_attempt, max_attempts, progress, created_at]
+      required:
+        [
+          id,
+          definition_type,
+          definition_id,
+          status,
+          current_attempt,
+          max_attempts,
+          progress,
+          createdAt,
+        ]
       properties:
         id: { type: string }
         name: { type: string }
         description: { type: string }
         definition_type:
-          $ref: '#/components/schemas/TaskDefinitionType'
+          $ref: "#/components/schemas/TaskDefinitionType"
         definition_id: { type: string }
         parent_run_id: { type: string }
         root_run_id: { type: string }
         status:
-          $ref: '#/components/schemas/TaskRunStatus'
+          $ref: "#/components/schemas/TaskRunStatus"
         schedule_at: { type: string, format: date-time }
         timeout_at: { type: string, format: date-time }
         current_attempt: { type: integer }
@@ -702,8 +749,8 @@ components:
         input: { type: object, additionalProperties: true }
         output: { type: object, additionalProperties: true }
         last_error:
-          $ref: '#/components/schemas/TaskError'
-        created_at: { type: string, format: date-time }
+          $ref: "#/components/schemas/TaskError"
+        createdAt: { type: string, format: date-time }
         started_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time }
         canceled_at: { type: string, format: date-time }
@@ -716,16 +763,16 @@ components:
       required: [definition_type, definition_id]
       properties:
         definition_type:
-          $ref: '#/components/schemas/TaskDefinitionType'
+          $ref: "#/components/schemas/TaskDefinitionType"
         definition_id: { type: string }
         parent_run_id: { type: string }
         root_run_id: { type: string }
         schedule_at: { type: string, format: date-time }
         input: { type: object, additionalProperties: true }
         timeout_policy:
-          $ref: '#/components/schemas/TimeoutPolicy'
+          $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
-          $ref: '#/components/schemas/RetryPolicy'
+          $ref: "#/components/schemas/RetryPolicy"
         project_id: { type: string }
         namespace: { type: string }
         tags: { type: string }
@@ -737,7 +784,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/TaskRun'
+            $ref: "#/components/schemas/TaskRun"
     TaskAttempt:
       type: object
       required: [id, run_id, attempt_no, status, started_at]
@@ -748,11 +795,11 @@ components:
         worker_id: { type: string }
         lease_id: { type: string }
         status:
-          $ref: '#/components/schemas/TaskAttemptStatus'
+          $ref: "#/components/schemas/TaskAttemptStatus"
         input_snapshot: { type: object, additionalProperties: true }
         output_snapshot: { type: object, additionalProperties: true }
         error:
-          $ref: '#/components/schemas/TaskError'
+          $ref: "#/components/schemas/TaskError"
         started_at: { type: string, format: date-time }
         heartbeat_at: { type: string, format: date-time }
         progress_at: { type: string, format: date-time }
@@ -760,7 +807,7 @@ components:
         duration_ms: { type: integer }
         retryable: { type: boolean }
         failure_type:
-          $ref: '#/components/schemas/FailureType'
+          $ref: "#/components/schemas/FailureType"
         logs_ref: { type: string }
         external_job_id: { type: string }
     TaskAttemptListResponse:
@@ -771,14 +818,14 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/TaskAttempt'
+            $ref: "#/components/schemas/TaskAttempt"
     TaskError:
       type: object
       properties:
         code: { type: string }
         message: { type: string }
         failure_type:
-          $ref: '#/components/schemas/FailureType'
+          $ref: "#/components/schemas/FailureType"
         detail: { type: string }
         retryable: { type: boolean }
         occurred_at: { type: string, format: date-time }
@@ -803,17 +850,26 @@ components:
       type: object
       properties:
         status:
-          $ref: '#/components/schemas/WorkerStatus'
+          $ref: "#/components/schemas/WorkerStatus"
         running_count: { type: integer }
         observed_at: { type: string, format: date-time }
     Worker:
       type: object
-      required: [id, worker_type, status, capabilities, max_concurrency, running_count, heartbeat_at]
+      required:
+        [
+          id,
+          worker_type,
+          status,
+          capabilities,
+          max_concurrency,
+          running_count,
+          heartbeat_at,
+        ]
       properties:
         id: { type: string }
         worker_type: { type: string }
         status:
-          $ref: '#/components/schemas/WorkerStatus'
+          $ref: "#/components/schemas/WorkerStatus"
         capabilities: { type: string }
         labels: { type: string }
         max_concurrency: { type: integer }
@@ -832,11 +888,11 @@ components:
       type: object
       properties:
         task_run:
-          $ref: '#/components/schemas/TaskRun'
+          $ref: "#/components/schemas/TaskRun"
         attempt:
-          $ref: '#/components/schemas/TaskAttempt'
+          $ref: "#/components/schemas/TaskAttempt"
         lease:
-          $ref: '#/components/schemas/ExecutionLease'
+          $ref: "#/components/schemas/ExecutionLease"
     ProgressUpdateRequest:
       type: object
       required: [worker_id, attempt_id, lease_id, progress]
@@ -864,7 +920,7 @@ components:
         attempt_id: { type: string }
         lease_id: { type: string }
         error:
-          $ref: '#/components/schemas/TaskError'
+          $ref: "#/components/schemas/TaskError"
         logs_ref: { type: string }
         external_job_id: { type: string }
     LeaseRenewRequest:
@@ -876,7 +932,8 @@ components:
         run_id: { type: string }
     ExecutionLease:
       type: object
-      required: [id, run_id, attempt_id, worker_id, acquired_at, expire_at, status]
+      required:
+        [id, run_id, attempt_id, worker_id, acquired_at, expire_at, status]
       properties:
         id: { type: string }
         run_id: { type: string }
@@ -886,7 +943,7 @@ components:
         expire_at: { type: string, format: date-time }
         renewed_at: { type: string, format: date-time }
         status:
-          $ref: '#/components/schemas/LeaseStatus'
+          $ref: "#/components/schemas/LeaseStatus"
     TaskCenterHealth:
       type: object
       properties:

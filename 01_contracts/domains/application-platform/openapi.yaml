@@ -23,24 +23,24 @@ paths:
         user_stories: [US-AIAPP-003]
         business_rules: [BR-AIAPP-001, BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
         - name: kind
           in: query
           schema:
-            $ref: '#/components/schemas/TemplateKind'
+            $ref: "#/components/schemas/TemplateKind"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/TemplateStatus'
+            $ref: "#/components/schemas/TemplateStatus"
       responses:
-        '200':
+        "200":
           description: 应用模板列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AppTemplateListResponse'
+                $ref: "#/components/schemas/AppTemplateListResponse"
     post:
       tags: [templates]
       summary: 创建应用模板
@@ -53,14 +53,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AppTemplateCreateRequest'
+              $ref: "#/components/schemas/AppTemplateCreateRequest"
       responses:
-        '200':
+        "200":
           description: 应用模板详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AppTemplate'
+                $ref: "#/components/schemas/AppTemplate"
 
   /api/v1/app-templates/{template_id}:
     get:
@@ -71,14 +71,14 @@ paths:
         user_stories: [US-AIAPP-003, US-AIAPP-008]
         business_rules: [BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/template_id'
+        - $ref: "#/components/parameters/template_id"
       responses:
-        '200':
+        "200":
           description: 应用模板详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AppTemplate'
+                $ref: "#/components/schemas/AppTemplate"
     patch:
       tags: [templates]
       summary: 更新应用模板
@@ -87,20 +87,20 @@ paths:
         user_stories: [US-AIAPP-003, US-AIAPP-010]
         business_rules: [BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/template_id'
+        - $ref: "#/components/parameters/template_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AppTemplateUpdateRequest'
+              $ref: "#/components/schemas/AppTemplateUpdateRequest"
       responses:
-        '200':
+        "200":
           description: 应用模板详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AppTemplate'
+                $ref: "#/components/schemas/AppTemplate"
     delete:
       tags: [templates]
       summary: 删除应用模板
@@ -109,14 +109,14 @@ paths:
         user_stories: [US-AIAPP-009]
         business_rules: [BR-AIAPP-005, BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/template_id'
+        - $ref: "#/components/parameters/template_id"
       responses:
-        '200':
+        "200":
           description: 删除成功。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: "#/components/schemas/SuccessResponse"
 
   /api/v1/app-templates/{template_id}/references:
     get:
@@ -127,16 +127,16 @@ paths:
         user_stories: [US-AIAPP-008, US-AIAPP-009]
         business_rules: [BR-AIAPP-005, BR-AIAPP-017]
       parameters:
-        - $ref: '#/components/parameters/template_id'
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/template_id"
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: 引用该模板的应用列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationListResponse'
+                $ref: "#/components/schemas/ApplicationListResponse"
 
   /api/v1/applications:
     get:
@@ -147,24 +147,24 @@ paths:
         user_stories: [US-AIAPP-003]
         business_rules: [BR-AIAPP-018, BR-AIAPP-019, BR-AIAPP-020]
       parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
         - name: kind
           in: query
           schema:
-            $ref: '#/components/schemas/TemplateKind'
+            $ref: "#/components/schemas/TemplateKind"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/ApplicationStatus'
+            $ref: "#/components/schemas/ApplicationStatus"
       responses:
-        '200':
+        "200":
           description: 应用列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationListResponse'
+                $ref: "#/components/schemas/ApplicationListResponse"
     post:
       tags: [applications]
       summary: 基于模板创建应用草稿
@@ -177,14 +177,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationCreateRequest'
+              $ref: "#/components/schemas/ApplicationCreateRequest"
       responses:
-        '200':
+        "200":
           description: 应用详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Application'
+                $ref: "#/components/schemas/Application"
 
   /api/v1/applications/{application_id}:
     get:
@@ -195,14 +195,14 @@ paths:
         user_stories: [US-AIAPP-003, US-AIAPP-008]
         business_rules: [BR-AIAPP-018, BR-AIAPP-019, BR-AIAPP-020]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       responses:
-        '200':
+        "200":
           description: 应用详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Application'
+                $ref: "#/components/schemas/Application"
     patch:
       tags: [applications]
       summary: 更新应用
@@ -211,20 +211,20 @@ paths:
         user_stories: [US-AIAPP-003, US-AIAPP-007]
         business_rules: [BR-AIAPP-012, BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationUpdateRequest'
+              $ref: "#/components/schemas/ApplicationUpdateRequest"
       responses:
-        '200':
+        "200":
           description: 应用详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Application'
+                $ref: "#/components/schemas/Application"
     delete:
       tags: [applications]
       summary: 删除应用
@@ -233,14 +233,14 @@ paths:
         user_stories: [US-AIAPP-007]
         business_rules: [BR-AIAPP-018, BR-AIAPP-019]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       responses:
-        '200':
+        "200":
           description: 删除成功。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: "#/components/schemas/SuccessResponse"
 
   /api/v1/applications/{application_id}/activate:
     post:
@@ -251,14 +251,14 @@ paths:
         user_stories: [US-AIAPP-006]
         business_rules: [BR-AIAPP-009, BR-AIAPP-010, BR-AIAPP-011, BR-AIAPP-013]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       responses:
-        '200':
+        "200":
           description: 应用详情。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Application'
+                $ref: "#/components/schemas/Application"
 
   /api/v1/applications/{application_id}/field-mappings:
     get:
@@ -269,14 +269,14 @@ paths:
         user_stories: [US-AIAPP-005]
         business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       responses:
-        '200':
+        "200":
           description: 字段映射列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FieldMappingListResponse'
+                $ref: "#/components/schemas/FieldMappingListResponse"
     put:
       tags: [field-mappings]
       summary: 整体保存应用字段映射
@@ -285,20 +285,20 @@ paths:
         user_stories: [US-AIAPP-005]
         business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015]
       parameters:
-        - $ref: '#/components/parameters/application_id'
+        - $ref: "#/components/parameters/application_id"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FieldMappingSaveRequest'
+              $ref: "#/components/schemas/FieldMappingSaveRequest"
       responses:
-        '200':
+        "200":
           description: 字段映射列表。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FieldMappingListResponse'
+                $ref: "#/components/schemas/FieldMappingListResponse"
 
 components:
   parameters:
@@ -322,7 +322,7 @@ components:
       in: query
       schema:
         type: string
-        default: ''
+        default: ""
     template_id:
       name: template_id
       in: path
@@ -360,7 +360,19 @@ components:
           type: string
     AppTemplate:
       type: object
-      required: [id, owner_user_id, name, kind, config, parsed_fields, reference_application_count, status, created_at, updated_at]
+      required:
+        [
+          id,
+          owner_user_id,
+          name,
+          kind,
+          config,
+          parsed_fields,
+          reference_application_count,
+          status,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -371,23 +383,23 @@ components:
         description:
           type: string
         kind:
-          $ref: '#/components/schemas/TemplateKind'
+          $ref: "#/components/schemas/TemplateKind"
         config:
           type: object
           additionalProperties: true
         parsed_fields:
           type: array
           items:
-            $ref: '#/components/schemas/ParsedField'
+            $ref: "#/components/schemas/ParsedField"
         reference_application_count:
           type: integer
           minimum: 0
         status:
-          $ref: '#/components/schemas/TemplateStatus'
-        created_at:
+          $ref: "#/components/schemas/TemplateStatus"
+        createdAt:
           type: string
           format: date-time
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
     AppTemplateCreateRequest:
@@ -401,7 +413,7 @@ components:
           type: string
           maxLength: 500
         kind:
-          $ref: '#/components/schemas/TemplateKind'
+          $ref: "#/components/schemas/TemplateKind"
         config:
           type: object
           additionalProperties: true
@@ -418,10 +430,21 @@ components:
           type: object
           additionalProperties: true
         status:
-          $ref: '#/components/schemas/TemplateStatus'
+          $ref: "#/components/schemas/TemplateStatus"
     FieldMapping:
       type: object
-      required: [id, application_id, template_id, field_key, field_label, field_type, source_path, required, sort_order]
+      required:
+        [
+          id,
+          application_id,
+          template_id,
+          field_key,
+          field_label,
+          field_type,
+          source_path,
+          required,
+          sort_order,
+        ]
       properties:
         id:
           type: string
@@ -444,7 +467,18 @@ components:
           type: integer
     Application:
       type: object
-      required: [id, owner_user_id, template_id, name, kind, status, field_mappings, created_at, updated_at]
+      required:
+        [
+          id,
+          owner_user_id,
+          template_id,
+          name,
+          kind,
+          status,
+          field_mappings,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -457,17 +491,17 @@ components:
         description:
           type: string
         kind:
-          $ref: '#/components/schemas/TemplateKind'
+          $ref: "#/components/schemas/TemplateKind"
         status:
-          $ref: '#/components/schemas/ApplicationStatus'
+          $ref: "#/components/schemas/ApplicationStatus"
         field_mappings:
           type: array
           items:
-            $ref: '#/components/schemas/FieldMapping'
-        created_at:
+            $ref: "#/components/schemas/FieldMapping"
+        createdAt:
           type: string
           format: date-time
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
     ApplicationCreateRequest:
@@ -492,7 +526,7 @@ components:
           type: string
           maxLength: 500
         status:
-          $ref: '#/components/schemas/ApplicationStatus'
+          $ref: "#/components/schemas/ApplicationStatus"
     FieldMappingSaveRequest:
       type: object
       required: [items]
@@ -501,7 +535,15 @@ components:
           type: array
           items:
             type: object
-            required: [field_key, field_label, field_type, source_path, required, sort_order]
+            required:
+              [
+                field_key,
+                field_label,
+                field_type,
+                source_path,
+                required,
+                sort_order,
+              ]
             properties:
               field_key:
                 type: string
@@ -525,7 +567,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/AppTemplate'
+            $ref: "#/components/schemas/AppTemplate"
     ApplicationListResponse:
       type: object
       required: [total, items]
@@ -535,7 +577,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/Application'
+            $ref: "#/components/schemas/Application"
     FieldMappingListResponse:
       type: object
       required: [items]
@@ -543,7 +585,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/FieldMapping'
+            $ref: "#/components/schemas/FieldMapping"
     SuccessResponse:
       type: object
       required: [success]
