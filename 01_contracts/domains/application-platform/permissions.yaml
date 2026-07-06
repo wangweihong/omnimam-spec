@@ -1,0 +1,59 @@
+aiapp.template.manage_own:
+  domain: application-platform
+  module: template
+  resource: app_template
+  action: create, read_own, update_own, archive_own, delete_own
+  subject: ordinary_user
+  description: 普通用户管理自己的应用模板。
+  frontend_usage: 控制模板列表、创建、编辑、归档、删除预检和引用关系入口。
+  backend_enforcement: 必须校验模板 owner_user_id 为当前普通用户；存在引用时禁止删除。
+  related_user_stories:
+    - US-AIAPP-001
+    - US-AIAPP-002
+    - US-AIAPP-003
+    - US-AIAPP-008
+    - US-AIAPP-009
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-001
+    - BR-AIAPP-005
+    - BR-AIAPP-018
+
+aiapp.application.manage_own:
+  domain: application-platform
+  module: application
+  resource: application, field_mapping
+  action: create, read_own, update_own, activate_own, archive_own, delete_own
+  subject: ordinary_user
+  description: 普通用户管理自己的应用和字段映射。
+  frontend_usage: 控制应用列表、应用详情、字段映射配置、启用和归档入口。
+  backend_enforcement: 必须校验应用 owner_user_id 为当前普通用户；归档应用禁止继续编辑字段映射。
+  related_user_stories:
+    - US-AIAPP-004
+    - US-AIAPP-005
+    - US-AIAPP-006
+    - US-AIAPP-007
+  related_rules:
+    - BR-AIAPP-007
+    - BR-AIAPP-012
+    - BR-AIAPP-013
+    - BR-AIAPP-018
+
+aiapp.admin.manage_all:
+  domain: application-platform
+  module: application-platform
+  resource: app_template, application, field_mapping
+  action: create, read_all, update_all, activate_all, archive_all, delete_all
+  subject: system_admin
+  description: 系统管理员管理全部模板、应用和字段映射。
+  frontend_usage: 控制系统管理员查看和维护全部应用平台配置。
+  backend_enforcement: 必须校验系统管理员身份；模板删除仍需遵守引用保护。
+  related_user_stories:
+    - US-AIAPP-003
+    - US-AIAPP-008
+    - US-AIAPP-009
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-005
+    - BR-AIAPP-019
+    - BR-AIAPP-020

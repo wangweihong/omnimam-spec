@@ -1,0 +1,552 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM AI Application Platform API
+  version: 0.2.0-draft
+  description: AI 应用平台第一阶段 S2 API 契约，仅覆盖模板管理、应用管理和字段映射。
+servers:
+  - url: /api/v1
+tags:
+  - name: templates
+    description: 应用模板管理。
+  - name: applications
+    description: 应用管理。
+  - name: field-mappings
+    description: 字段映射管理。
+
+paths:
+  /api/v1/app-templates:
+    get:
+      tags: [templates]
+      summary: 查询应用模板列表
+      operationId: list_app_templates
+      x-s1-refs:
+        user_stories: [US-AIAPP-003]
+        business_rules: [BR-AIAPP-001, BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/TemplateKind'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TemplateStatus'
+      responses:
+        '200':
+          description: 应用模板列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTemplateListResponse'
+    post:
+      tags: [templates]
+      summary: 创建应用模板
+      operationId: create_app_template
+      x-s1-refs:
+        user_stories: [US-AIAPP-001, US-AIAPP-002]
+        business_rules: [BR-AIAPP-001, BR-AIAPP-002, BR-AIAPP-003, BR-AIAPP-004]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppTemplateCreateRequest'
+      responses:
+        '200':
+          description: 应用模板详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTemplate'
+
+  /api/v1/app-templates/{template_id}:
+    get:
+      tags: [templates]
+      summary: 获取应用模板详情
+      operationId: get_app_template
+      x-s1-refs:
+        user_stories: [US-AIAPP-003, US-AIAPP-008]
+        business_rules: [BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/template_id'
+      responses:
+        '200':
+          description: 应用模板详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTemplate'
+    patch:
+      tags: [templates]
+      summary: 更新应用模板
+      operationId: update_app_template
+      x-s1-refs:
+        user_stories: [US-AIAPP-003, US-AIAPP-010]
+        business_rules: [BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/template_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppTemplateUpdateRequest'
+      responses:
+        '200':
+          description: 应用模板详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppTemplate'
+    delete:
+      tags: [templates]
+      summary: 删除应用模板
+      operationId: delete_app_template
+      x-s1-refs:
+        user_stories: [US-AIAPP-009]
+        business_rules: [BR-AIAPP-005, BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/template_id'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/v1/app-templates/{template_id}/references:
+    get:
+      tags: [templates]
+      summary: 查询模板引用关系
+      operationId: list_app_template_references
+      x-s1-refs:
+        user_stories: [US-AIAPP-008, US-AIAPP-009]
+        business_rules: [BR-AIAPP-005, BR-AIAPP-017]
+      parameters:
+        - $ref: '#/components/parameters/template_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+      responses:
+        '200':
+          description: 引用该模板的应用列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationListResponse'
+
+  /api/v1/applications:
+    get:
+      tags: [applications]
+      summary: 查询应用列表
+      operationId: list_applications
+      x-s1-refs:
+        user_stories: [US-AIAPP-003]
+        business_rules: [BR-AIAPP-018, BR-AIAPP-019, BR-AIAPP-020]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/TemplateKind'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApplicationStatus'
+      responses:
+        '200':
+          description: 应用列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationListResponse'
+    post:
+      tags: [applications]
+      summary: 基于模板创建应用草稿
+      operationId: create_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-004]
+        business_rules: [BR-AIAPP-007, BR-AIAPP-008, BR-AIAPP-009]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreateRequest'
+      responses:
+        '200':
+          description: 应用详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+
+  /api/v1/applications/{application_id}:
+    get:
+      tags: [applications]
+      summary: 获取应用详情
+      operationId: get_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-003, US-AIAPP-008]
+        business_rules: [BR-AIAPP-018, BR-AIAPP-019, BR-AIAPP-020]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      responses:
+        '200':
+          description: 应用详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+    patch:
+      tags: [applications]
+      summary: 更新应用
+      operationId: update_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-003, US-AIAPP-007]
+        business_rules: [BR-AIAPP-012, BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdateRequest'
+      responses:
+        '200':
+          description: 应用详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+    delete:
+      tags: [applications]
+      summary: 删除应用
+      operationId: delete_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-007]
+        business_rules: [BR-AIAPP-018, BR-AIAPP-019]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/v1/applications/{application_id}/activate:
+    post:
+      tags: [applications]
+      summary: 启用应用
+      operationId: activate_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-009, BR-AIAPP-010, BR-AIAPP-011, BR-AIAPP-013]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      responses:
+        '200':
+          description: 应用详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+
+  /api/v1/applications/{application_id}/field-mappings:
+    get:
+      tags: [field-mappings]
+      summary: 查询应用字段映射
+      operationId: list_field_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      responses:
+        '200':
+          description: 字段映射列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldMappingListResponse'
+    put:
+      tags: [field-mappings]
+      summary: 整体保存应用字段映射
+      operationId: save_field_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldMappingSaveRequest'
+      responses:
+        '200':
+          description: 字段映射列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldMappingListResponse'
+
+components:
+  parameters:
+    page_num:
+      name: page_num
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    page_size:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    keyword:
+      name: keyword
+      in: query
+      schema:
+        type: string
+        default: ''
+    template_id:
+      name: template_id
+      in: path
+      required: true
+      schema:
+        type: string
+    application_id:
+      name: application_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    TemplateKind:
+      type: string
+      enum: [comfyui, saas_api]
+    TemplateStatus:
+      type: string
+      enum: [active, archived]
+    ApplicationStatus:
+      type: string
+      enum: [draft, active, archived]
+    ParsedField:
+      type: object
+      required: [source_path, field_type, required]
+      properties:
+        source_path:
+          type: string
+        field_type:
+          type: string
+        required:
+          type: boolean
+        label_hint:
+          type: string
+    AppTemplate:
+      type: object
+      required: [id, owner_user_id, name, kind, config, parsed_fields, reference_application_count, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        owner_user_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        kind:
+          $ref: '#/components/schemas/TemplateKind'
+        config:
+          type: object
+          additionalProperties: true
+        parsed_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParsedField'
+        reference_application_count:
+          type: integer
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/TemplateStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AppTemplateCreateRequest:
+      type: object
+      required: [name, kind, config]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        kind:
+          $ref: '#/components/schemas/TemplateKind'
+        config:
+          type: object
+          additionalProperties: true
+    AppTemplateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        config:
+          type: object
+          additionalProperties: true
+        status:
+          $ref: '#/components/schemas/TemplateStatus'
+    FieldMapping:
+      type: object
+      required: [id, application_id, template_id, field_key, field_label, field_type, source_path, required, sort_order]
+      properties:
+        id:
+          type: string
+        application_id:
+          type: string
+        template_id:
+          type: string
+        field_key:
+          type: string
+        field_label:
+          type: string
+        field_type:
+          type: string
+        source_path:
+          type: string
+        default_value: {}
+        required:
+          type: boolean
+        sort_order:
+          type: integer
+    Application:
+      type: object
+      required: [id, owner_user_id, template_id, name, kind, status, field_mappings, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        owner_user_id:
+          type: string
+        template_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        kind:
+          $ref: '#/components/schemas/TemplateKind'
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        field_mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldMapping'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ApplicationCreateRequest:
+      type: object
+      required: [template_id, name]
+      properties:
+        template_id:
+          type: string
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+    ApplicationUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+    FieldMappingSaveRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [field_key, field_label, field_type, source_path, required, sort_order]
+            properties:
+              field_key:
+                type: string
+              field_label:
+                type: string
+              field_type:
+                type: string
+              source_path:
+                type: string
+              default_value: {}
+              required:
+                type: boolean
+              sort_order:
+                type: integer
+    AppTemplateListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppTemplate'
+    ApplicationListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+    FieldMappingListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldMapping'
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
