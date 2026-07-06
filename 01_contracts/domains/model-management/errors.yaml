@@ -1,0 +1,140 @@
+provider_not_found:
+  code: ERR_MODEL_PROVIDER_NOT_FOUND
+  value: 120200
+  http: 200
+  http_status: 200
+  cn: 模型提供商不存在或当前用户不可见。
+  en: Model provider does not exist or is not visible to current user.
+  owning_domain: model-management
+  owning_module: provider
+  range: 120200-120399
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-01, US-USER-MODEL-03, US-USER-MODEL-04]
+  related_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
+provider_name_duplicated:
+  code: ERR_MODEL_PROVIDER_NAME_DUPLICATED
+  value: 120201
+  http: 200
+  http_status: 200
+  cn: 当前用户范围内提供商名称重复。
+  en: Provider name is duplicated in current user scope.
+  owning_domain: model-management
+  owning_module: provider
+  range: 120200-120399
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-02, US-USER-MODEL-03]
+  related_rules: [BR-USER-MODEL-05]
+provider_test_failed:
+  code: ERR_MODEL_PROVIDER_TEST_FAILED
+  value: 120202
+  http: 200
+  http_status: 200
+  cn: 模型提供商连接检测失败。
+  en: Model provider connection test failed.
+  owning_domain: model-management
+  owning_module: provider
+  range: 120200-120399
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-05]
+  related_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
+model_not_found:
+  code: ERR_PROVIDER_MODEL_NOT_FOUND
+  value: 120400
+  http: 200
+  http_status: 200
+  cn: 模型不存在或当前用户不可见。
+  en: Provider model does not exist or is not visible to current user.
+  owning_domain: model-management
+  owning_module: model
+  range: 120400-120599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-08, US-USER-MODEL-11]
+  related_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
+model_identifier_invalid:
+  code: ERR_PROVIDER_MODEL_IDENTIFIER_INVALID
+  value: 120401
+  http: 200
+  http_status: 200
+  cn: 模型标识不能为空或不合法。
+  en: Model identifier is empty or invalid.
+  owning_domain: model-management
+  owning_module: model
+  range: 120400-120599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-07]
+  related_rules: [BR-USER-MODEL-11]
+model_duplicated:
+  code: ERR_PROVIDER_MODEL_DUPLICATED
+  value: 120402
+  http: 200
+  http_status: 200
+  cn: 同一提供商下模型标识或显示名重复。
+  en: Model identifier or display name is duplicated under the same provider.
+  owning_domain: model-management
+  owning_module: model
+  range: 120400-120599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-07, US-USER-MODEL-08]
+  related_rules: [BR-USER-MODEL-12]
+default_model_missing:
+  code: ERR_DEFAULT_MODEL_MISSING
+  value: 120600
+  http: 200
+  http_status: 200
+  cn: 当前用户未配置指定用途的默认模型。
+  en: Current user has not configured a default model for the requested usage.
+  owning_domain: model-management
+  owning_module: default-model
+  range: 120600-120799
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
+  related_rules: [BR-USER-MODEL-23, BR-USER-MODEL-28]
+default_model_invalid:
+  code: ERR_DEFAULT_MODEL_INVALID
+  value: 120601
+  http: 200
+  http_status: 200
+  cn: 默认模型候选不可用。
+  en: Default model candidate is not available.
+  owning_domain: model-management
+  owning_module: default-model
+  range: 120600-120799
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
+  related_rules: [BR-USER-MODEL-24, BR-USER-MODEL-27, BR-USER-MODEL-29]
+health_check_failed:
+  code: ERR_MODEL_HEALTH_CHECK_FAILED
+  value: 120800
+  http: 200
+  http_status: 200
+  cn: 模型健康检测失败。
+  en: Model health check failed.
+  owning_domain: model-management
+  owning_module: health
+  range: 120800-120999
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-10]
+  related_rules: [BR-USER-MODEL-16, BR-USER-MODEL-18, BR-USER-MODEL-19]
+model_access_denied:
+  code: ERR_MODEL_ACCESS_DENIED
+  value: 121000
+  http: 200
+  http_status: 200
+  cn: 当前用户无权访问该模型配置。
+  en: Current user is not allowed to access this model configuration.
+  owning_domain: model-management
+  owning_module: access
+  range: 121000-121199
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-MODEL-01, US-USER-MODEL-14]
+  related_rules: [BR-USER-MODEL-03, BR-USER-MODEL-04, BR-USER-MODEL-30]

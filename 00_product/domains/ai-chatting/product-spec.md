@@ -9,7 +9,7 @@
 
 在 OmniMAM 系统内提供一个面向工作流的 AI 聊天页面，让用户能够围绕资产、任务、代码说明、翻译和日常问答创建连续会话，并在同一界面中切换助手、模型、快捷短语和历史上下文。
 
-本特性的核心价值是把用户个人模型、助手预设、对话历史、消息生成、分支续聊、快捷输入、图片附件和翻译辅助收敛到一个可追溯、可持久化、可接入后端契约的产品入口。
+本特性的核心价值是把模型设置中的用户模型、助手预设、对话历史、消息生成、分支续聊、快捷输入、图片附件和翻译辅助收敛到一个可追溯、可持久化、可接入后端契约的产品入口。
 
 
 ## 2. 核心数据模型
@@ -20,10 +20,11 @@
 
 ```mermaid
 classDiagram
-  class AIModel {
+  class ModelSettingsModelRef {
+    <<external>>
     id
-    name
-    provider
+    display_name
+    provider_id
     capabilities
     enabled
     health_status
@@ -99,9 +100,9 @@ classDiagram
     model_snapshot
   }
 
-  Assistant --> AIModel : suggested model
+  Assistant ..> ModelSettingsModelRef : suggested model ref
   Topic --> Assistant : current assistant
-  Topic --> AIModel : current model
+  Topic ..> ModelSettingsModelRef : current model ref
   Topic "1" --> "*" Message : contains
   Message --> Message : parent/version
   Message "1" --> "*" ImageAttachmentInput : optional icons
@@ -110,18 +111,22 @@ classDiagram
   MessageTranslation --> Message : optional translation display
 ```
 
-### 2.2 AIModel（用户可用模型摘要）
+### 2.2 ModelSettingsModelRef（模型设置模型只读投影）
+
+`ModelSettingsModelRef` 不是 AI 聊天领域自有模型配置，也不由 AI 聊天创建、同步、保存或删除。
+它是 `model-management.UserProviderModel` 在聊天场景中的只读引用/投影，用于展示、选择、健康状态判断、capability 判断和生成时快照记录。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| id | string | 是 | 模型唯一标识 |
-| name | string | 是 | 模型显示名称 |
-| provider | string | 是 | 模型服务商 |
-| capabilities | array of string | 是 | 能力标签，例如 `text`、`vision`、`image`、`translation` |
-| enabled | boolean | 是 | 当前用户是否启用该模型 |
-| healthStatus | enum: healthy, unhealthy | 是 | 模型健康状态 |
-| unhealthyReason | string | 否 | unhealthy 时展示给用户的异常原因 |
-| ownerUserId | string | 是 | 模型配置所属用户 |
+| id | string | 是 | `model-management.UserProviderModel.id` |
+| displayName | string | 是 | 模型设置中的模型显示名称 |
+| providerId | string | 是 | 模型设置中的提供商 ID |
+| providerName | string | 是 | 模型设置中的提供商显示名称 |
+| capabilities | array of string | 是 | 模型设置中的能力标签，例如 `text`、`vision`、`image`、`translation` |
+| enabled | boolean | 是 | 模型设置中当前用户是否启用该模型 |
+| healthStatus | enum: healthy, unhealthy | 是 | 模型设置中的模型健康状态 |
+| unhealthyReason | string | 否 | unhealthy 时展示给用户的异常原因，来源于模型设置 |
+| ownerUserId | string | 是 | 模型配置所属用户，来源于模型设置 |
 
 ### 2.3 Assistant（助手）
 
@@ -132,7 +137,7 @@ classDiagram
 | name | string | 是 | 助手名称，同一用户下唯一 |
 | systemPrompt | string | 否 | 系统提示词 |
 | isSystem | boolean | 是 | 是否为系统助手 |
-| suggestedModelId | string | 否 | 助手建议模型 ID |
+| suggestedModelId | string | 否 | 助手建议模型 ID，引用 `model-management.UserProviderModel.id` |
 | useSuggestedModel | boolean | 是 | 是否默认使用建议模型 |
 | contextMessageCount | integer | 否 | 参与上下文的历史消息数量 |
 | streamEnabled | boolean | 是 | 是否建议流式输出 |
@@ -152,7 +157,7 @@ classDiagram
 | title | string | 是 | 话题标题 |
 | pinned | boolean | 是 | 是否置顶 |
 | assistantId | string | 是 | 当前话题使用的助手 ID |
-| modelId | string | 是 | 当前话题使用的模型 ID |
+| modelId | string | 是 | 当前话题使用的模型 ID，引用 `model-management.UserProviderModel.id` |
 | branchSource | object | 否 | 分支来源，包含来源话题和来源消息 |
 | lastActiveAt | string(date-time) | 是 | 最近活跃时间 |
 | createdAt | string(date-time) | 是 | 创建时间 |
@@ -169,7 +174,7 @@ classDiagram
 | status | enum: queued, generating, done, interrupted, failed | 是 | 消息状态 |
 | version | integer | 是 | 消息版本 |
 | parentMessageId | string | 否 | 父消息 ID，用于版本、重生成或分支追溯 |
-| modelSnapshot | object | 条件必填 | assistant message 必须记录当次模型快照 |
+| modelSnapshot | object | 条件必填 | assistant message 必须记录当次模型快照；快照来源是模型设置中的用户模型 |
 | assistantSnapshot | object | 条件必填 | assistant message 必须记录当次助手快照 |
 | attachmentIcons | array | 否 | 附件图标展示语义，不展示媒体具体内容 |
 | createdAt | string(date-time) | 是 | 创建时间 |
@@ -218,7 +223,7 @@ classDiagram
 | messageId | string | 是 | 被翻译的消息 ID |
 | targetLanguage | string | 是 | 目标语言 |
 | translatedContent | string | 是 | 翻译结果 |
-| modelSnapshot | object | 是 | 翻译使用的模型快照 |
+| modelSnapshot | object | 是 | 翻译使用的模型快照；快照来源是模型设置中的默认翻译模型 |
 | createdAt | string(date-time) | 是 | 创建时间 |
 
 ---
@@ -228,7 +233,7 @@ classDiagram
 ### 3.1 规则列表
 
 - **BR-AICHAT-01** `Topic` 是消息会话的组织单位，包含标题、置顶状态、当前助手、当前模型、分支来源和最近活跃时间。
-- **BR-AICHAT-02** `Topic`、`Assistant`、`QuickPhrase` 和模型配置默认归属于当前用户个人数据边界，不在当前特性内共享给其他用户。
+- **BR-AICHAT-02** `Topic`、`Assistant` 和 `QuickPhrase` 默认归属于当前用户个人数据边界；模型配置归属于 `model-management`，AI 聊天只读取当前用户自己的模型设置引用，不维护独立模型配置。
 - **BR-AICHAT-03** `Message` 必须属于一个 `Topic`，角色至少包含 `user`、`assistant`、`system`。
 - **BR-AICHAT-04** `Message.status` 至少覆盖 `queued`、`generating`、`done`、`interrupted`、`failed`。
 - **BR-AICHAT-05** 每次 assistant response 必须保留 `model_snapshot` 与 `assistant_snapshot`。
@@ -238,11 +243,11 @@ classDiagram
 - **BR-AICHAT-09** 系统助手不可删除；系统助手名称不可由普通编辑修改。
 - **BR-AICHAT-10** 助手名称需要在当前用户下保持唯一。
 - **BR-AICHAT-11** 快捷短语作用域为 `global` 或 `assistant`；助手级短语只能在对应助手上下文中显示或筛选。
-- **BR-AICHAT-12** 翻译能力依赖当前用户已启用的默认翻译模型；没有翻译模型时不得静默 fallback 到任意聊天模型。
+- **BR-AICHAT-12** 翻译能力依赖 `model-management` 中当前用户已启用的默认翻译模型；没有翻译模型时不得静默 fallback 到任意聊天模型。
 - **BR-AICHAT-13** 默认翻译模型健康状态为 `unhealthy` 时，翻译入口需要提示模型异常并阻止翻译请求。
 - **BR-AICHAT-14** 翻译和普通聊天复用同一 AI 对话能力，但用 `operation` 或等价参数区分；`operation=translate` 不使用 stream，`operation=chat` 必须支持 SSE stream。
-- **BR-AICHAT-15** 图片附件能力依赖模型 capability：只有声明 `vision` 或 `image` 的模型才可支持图片附件。
-- **BR-AICHAT-16** 当前选中模型健康状态为 `unhealthy` 时，发送、重新生成、编辑后重生成和图片附件发送均不得继续调用该模型。
+- **BR-AICHAT-15** 图片附件能力依赖 `model-management` 中当前用户模型的 capability：只有声明 `vision` 或 `image` 的模型才可支持图片附件。
+- **BR-AICHAT-16** 当前选中模型在 `model-management` 中健康状态为 `unhealthy` 时，发送、重新生成、编辑后重生成和图片附件发送均不得继续调用该模型。
 - **BR-AICHAT-17** 图片附件当前只支持 base64 请求数据，不后端持久化、不做安全扫描、不展示媒体具体内容；消息列表仅显示附件图标。
 - **BR-AICHAT-18** 图片附件仅支持 `jpg`、`jpeg`、`png`、`webp`、`bmp`，单张图片不得超过 5MB。
 - **BR-AICHAT-19** 导出能力由前端组装，不创建后端导出任务，不产生导出审计要求。
@@ -250,6 +255,7 @@ classDiagram
 - **BR-AICHAT-21** 同一话题同一时间只允许一个 active generation，避免竞态写入消息流。
 - **BR-AICHAT-22** 输入为空且没有图片附件时，不允许发送。
 - **BR-AICHAT-23** 当前特性暂不引入 `ai_chat.read`、`ai_chat.write`、`ai_chat.manage` 等独立业务权限；访问依赖系统基础登录态和当前用户个人数据隔离。
+- **BR-AICHAT-24** 新话题或无当前模型上下文需要默认聊天模型时，必须读取 `model-management` 中当前用户的 `assistant.default` 默认模型配置。
 
 ### 3.2 状态与异常
 
@@ -293,20 +299,22 @@ stateDiagram-v2
 
 ### US-AICHAT-01 进入 AI 聊天工作区
 
-用户可以在登录态有效时从主导航进入 `/ai-chatting`，看到自己的 AI 聊天工作区，并自动加载模型、助手、话题、消息和快捷短语。
+用户可以在登录态有效时从主导航进入 `/ai-chatting`，看到自己的 AI 聊天工作区，并自动加载模型设置中的当前用户模型、助手、话题、消息和快捷短语。
 
 #### 业务说明
 
 - 页面默认选中最近或置顶优先的话题，并加载对应消息。
 - 如果加载失败，需要有错误提示和可恢复入口。
 - 当前特性不引入独立业务权限，访问依赖系统基础登录态和当前用户个人数据隔离。
+- 模型列表只读取 `model-management` 中当前用户自己的模型设置，AI 聊天不创建、同步、保存或删除模型。
+- 新话题没有当前模型上下文时，默认模型来自 `model-management` 中当前用户的 `assistant.default` 配置。
 
 #### 可视化补充
 
 ```mermaid
 flowchart TD
   nav[AI 聊天] --> page[/ai-chatting/]
-  page --> loadModels[加载当前用户模型列表]
+  page --> loadModels[加载模型设置中的当前用户模型]
   page --> loadAssistants[加载助手列表]
   page --> loadTopics[加载话题列表]
   page --> loadQuickPhrases[加载快捷短语]
@@ -322,7 +330,7 @@ flowchart TD
 #### 业务说明
 
 - 输入为空且没有图片附件时，不允许发送。
-- 发送时使用当前助手、当前模型和可选 slash command。
+- 发送时使用当前助手、当前从模型设置中选中的模型和可选 slash command。
 - assistant message 必须记录当前模型和助手快照。
 - 普通聊天生成必须使用 SSE 传输增量内容。
 - 发送成功后清空输入区，并刷新话题最近活动时间。
@@ -425,15 +433,16 @@ flowchart TD
 
 ### US-AICHAT-06 助手、模型与快捷短语
 
-用户可以搜索、选择和管理助手，选择当前用户已启用且 healthy 的模型，并使用全局或助手级快捷短语插入输入区。
+用户可以搜索、选择和管理助手，选择模型设置中当前用户已启用且 healthy 的模型，并使用全局或助手级快捷短语插入输入区。
 
 #### 业务说明
 
 - 助手列表支持搜索和创建新助手。
 - 系统助手受保护，不允许删除；非系统助手可以编辑和删除。
 - 模型列表来自 `设置/模型管理` 中当前用户自己的已启用模型，支持按名称、服务商和 capability 过滤。
+- AI 聊天不提供模型创建、同步、保存、删除能力；这些能力只属于 `model-management`。
 - 已启用但健康状态为 `unhealthy` 的模型仍可在列表中展示，但必须显示异常原因并禁止选中。
-- 助手可以配置建议模型；用户切换助手时保留当前模型选择，并提示可一键切换到助手建议模型，用户手动选择优先。
+- 助手可以配置建议模型；建议模型必须引用 `model-management.UserProviderModel.id`。用户切换助手时保留当前模型选择，并提示可一键切换到助手建议模型，用户手动选择优先。
 - 快捷短语分为全局和助手级两类，可插入输入区。
 - 快捷短语可以是普通短语或 prompt 类型。
 
@@ -494,7 +503,7 @@ flowchart TD
 
 #### 业务说明
 
-- 输入区翻译使用当前用户默认翻译模型，把输入内容切换为目标语言译文，并允许恢复原文。
+- 输入区翻译使用 `model-management` 中当前用户默认翻译模型，把输入内容切换为目标语言译文，并允许恢复原文。
 - 消息翻译在消息旁显示译文结果和翻译元信息；再次触发可取消译文显示。
 - 未配置默认翻译模型时，翻译入口给出明确提示，不触发生成。
 - 默认翻译模型 unhealthy 时，翻译入口需要提示模型异常并阻止翻译请求。
@@ -565,7 +574,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   nav[主导航 / AI 聊天] --> page[/ai-chat]
-  page --> topbar[Topbar: 助手、模型、话题标题、历史]
+  page --> topbar["Topbar: 助手、模型、话题标题、历史"]
   page --> flow[Message Flow]
   page --> composer[Composer]
 
@@ -596,7 +605,7 @@ flowchart TD
 
 - 展示当前助手、当前模型、话题标题和历史入口。
 - 助手选择使用 Dialog。
-- 模型选择使用 Dialog，并展示模型名称、服务商、capability、健康状态。
+- 模型选择使用 Dialog，并作为 `设置/模型管理` 中当前用户模型的只读选择入口，展示模型名称、服务商、capability、健康状态。
 - unhealthy 模型可以展示，但必须禁用选中，并展示异常原因。
 - 话题标题可编辑。
 
@@ -641,4 +650,3 @@ flowchart TD
 ### 6.4 浏览器插件
 
 当前特性不定义浏览器插件端呈现策略。
-

@@ -1,0 +1,36 @@
+MODEL_CONFIG_READ:
+  module: model-management
+  resource: model-config
+  action: read
+  description: 查看当前用户自己的模型提供商、模型清单和默认模型配置。
+  frontend_usage: 控制模型设置页、模型选择器和下游只读模型选项。
+  backend_enforcement: 必须限制 ownerUserId 为当前用户，不得读取其他用户配置。
+  related_user_stories: [US-USER-MODEL-01, US-USER-MODEL-09, US-USER-MODEL-13, US-USER-MODEL-14]
+  related_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
+MODEL_CONFIG_WRITE:
+  module: model-management
+  resource: model-config
+  action: write
+  description: 新增、编辑、删除当前用户自己的模型提供商和模型清单。
+  frontend_usage: 控制新增、编辑、删除、同步模型等写操作入口。
+  backend_enforcement: canWrite=false 时必须拒绝写操作；所有写入必须限定当前用户范围。
+  related_user_stories: [US-USER-MODEL-02, US-USER-MODEL-03, US-USER-MODEL-04, US-USER-MODEL-06, US-USER-MODEL-07, US-USER-MODEL-08, US-USER-MODEL-11, US-USER-MODEL-14]
+  related_rules: [BR-USER-MODEL-03, BR-USER-MODEL-05, BR-USER-MODEL-07, BR-USER-MODEL-10, BR-USER-MODEL-30]
+MODEL_HEALTH_TEST:
+  module: model-management
+  resource: model-health
+  action: test
+  description: 对当前用户自己的提供商或模型发起连接检测。
+  frontend_usage: 控制提供商检测和单模型检测按钮。
+  backend_enforcement: 检测目标必须属于当前用户；单模型检测不得触发真实生成。
+  related_user_stories: [US-USER-MODEL-05, US-USER-MODEL-10]
+  related_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09, BR-USER-MODEL-19]
+MODEL_DEFAULT_WRITE:
+  module: model-management
+  resource: default-model
+  action: write
+  description: 保存当前用户不同用途的默认模型配置。
+  frontend_usage: 控制 assistant.default、quick、translation 默认模型保存入口。
+  backend_enforcement: 默认模型候选必须来自当前用户已启用提供商下的可用模型。
+  related_user_stories: [US-USER-MODEL-12]
+  related_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-25]

@@ -1,0 +1,67 @@
+model_provider_changed:
+  producer: model-management.provider
+  consumers:
+    - model-management.model
+    - ai-chatting
+  trigger_condition: 当前用户模型提供商创建、更新、启用状态变化或删除。
+  payload:
+    ownerUserId: string
+    providerId: string
+    changeType: string
+    occurredAt: string
+  idempotency_key: ownerUserId:providerId:changeType:occurredAt
+  retry_policy: 事件可从 user_model_providers 重新构建，失败后按内部事件重试策略处理。
+  failure_policy: 事件失败不得回滚提供商事实，消费者可通过查询接口恢复。
+  related_user_stories: [US-USER-MODEL-02, US-USER-MODEL-03, US-USER-MODEL-04]
+  related_rules: [BR-USER-MODEL-06, BR-USER-MODEL-07]
+provider_model_changed:
+  producer: model-management.model
+  consumers:
+    - ai-chatting
+    - model-management.default-model
+  trigger_condition: 当前用户模型创建、同步、更新、删除、启用状态或能力标签变化。
+  payload:
+    ownerUserId: string
+    providerId: string
+    modelId: string
+    changeType: string
+    occurredAt: string
+  idempotency_key: ownerUserId:modelId:changeType:occurredAt
+  retry_policy: 事件可从 user_provider_models 重新构建，失败后按内部事件重试策略处理。
+  failure_policy: 事件失败不得回滚模型事实，默认模型和下游可通过查询接口恢复。
+  related_user_stories: [US-USER-MODEL-06, US-USER-MODEL-07, US-USER-MODEL-08, US-USER-MODEL-11, US-USER-MODEL-13]
+  related_rules: [BR-USER-MODEL-10, BR-USER-MODEL-12, BR-USER-MODEL-13, BR-USER-MODEL-22, BR-USER-MODEL-26]
+model_health_status_changed:
+  producer: model-management.health
+  consumers:
+    - ai-chatting
+  trigger_condition: 模型健康检测结果导致 healthStatus 或 unhealthyReason 变化。
+  payload:
+    ownerUserId: string
+    providerId: string
+    modelId: string
+    fromStatus: string
+    toStatus: string
+    unhealthyReason: string
+    occurredAt: string
+  idempotency_key: ownerUserId:modelId:fromStatus:toStatus:occurredAt
+  retry_policy: 事件可从 model_health_checks 和 user_provider_models 重新构建。
+  failure_policy: 事件失败不得回滚健康状态事实，下游必须以查询结果为准。
+  related_user_stories: [US-USER-MODEL-09, US-USER-MODEL-10, US-USER-MODEL-13]
+  related_rules: [BR-USER-MODEL-15, BR-USER-MODEL-16, BR-USER-MODEL-18, BR-USER-MODEL-27, BR-USER-MODEL-29]
+default_model_changed:
+  producer: model-management.default-model
+  consumers:
+    - ai-chatting
+  trigger_condition: 当前用户保存或替换某个 usage 的默认模型配置。
+  payload:
+    ownerUserId: string
+    usage: string
+    providerId: string
+    modelId: string
+    occurredAt: string
+  idempotency_key: ownerUserId:usage:modelId:occurredAt
+  retry_policy: 事件可从 user_default_model_configs 重新构建。
+  failure_policy: 事件失败不得回滚默认模型配置，下游必须以查询结果为准。
+  related_user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
+  related_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-25, BR-USER-MODEL-26]

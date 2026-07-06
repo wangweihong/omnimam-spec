@@ -1,0 +1,66 @@
+generation_started:
+  producer: ai-chatting.generation
+  consumers:
+    - ai-chatting.ui
+  trigger_condition: 用户发送消息、重新生成或编辑后重生成并创建 GenerationRun。
+  payload:
+    ownerUserId: string
+    topicId: string
+    generationId: string
+    assistantMessageId: string
+    operation: string
+    occurredAt: string
+  idempotency_key: generationId:started
+  retry_policy: 可从 ai_chat_generation_runs 重建，失败后按内部事件重试策略处理。
+  failure_policy: 事件失败不得回滚消息或 generation 事实。
+  related_user_stories: [US-AICHAT-02, US-AICHAT-03]
+  related_rules: [BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-21]
+generation_completed:
+  producer: ai-chatting.generation
+  consumers:
+    - ai-chatting.ui
+  trigger_condition: GenerationRun 进入 done，并且 assistant message 已完成。
+  payload:
+    ownerUserId: string
+    topicId: string
+    generationId: string
+    assistantMessageId: string
+    occurredAt: string
+  idempotency_key: generationId:done
+  retry_policy: 可从 ai_chat_generation_runs 和 ai_chat_messages 重建。
+  failure_policy: 事件失败不得回滚生成结果；后台完成提醒可以通过查询状态恢复。
+  related_user_stories: [US-AICHAT-02, US-AICHAT-04]
+  related_rules: [BR-AICHAT-04, BR-AICHAT-20]
+generation_failed:
+  producer: ai-chatting.generation
+  consumers:
+    - ai-chatting.ui
+  trigger_condition: GenerationRun 进入 failed。
+  payload:
+    ownerUserId: string
+    topicId: string
+    generationId: string
+    assistantMessageId: string
+    errorCode: string
+    occurredAt: string
+  idempotency_key: generationId:failed
+  retry_policy: 可从 ai_chat_generation_runs 和错误摘要重建。
+  failure_policy: 事件失败不得回滚失败状态。
+  related_user_stories: [US-AICHAT-02, US-AICHAT-03]
+  related_rules: [BR-AICHAT-04, BR-AICHAT-21]
+topic_branched:
+  producer: ai-chatting.topic
+  consumers:
+    - ai-chatting.ui
+  trigger_condition: 用户选择非最后 assistant message 继续并创建分支话题。
+  payload:
+    ownerUserId: string
+    sourceTopicId: string
+    sourceMessageId: string
+    newTopicId: string
+    occurredAt: string
+  idempotency_key: sourceTopicId:sourceMessageId:newTopicId
+  retry_policy: 可从 ai_chat_topics.branch_source_json 重建。
+  failure_policy: 事件失败不得回滚分支话题事实。
+  related_user_stories: [US-AICHAT-05]
+  related_rules: [BR-AICHAT-08]

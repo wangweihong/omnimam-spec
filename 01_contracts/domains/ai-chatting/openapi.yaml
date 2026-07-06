@@ -1,0 +1,598 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM AI Chatting API
+  version: 0.1.0
+  description: AI 聊天 S2 API 契约，覆盖话题、消息、generation、SSE、助手、快捷短语和翻译。
+servers:
+  - url: /api/v1
+tags:
+  - name: topics
+  - name: messages
+  - name: generations
+  - name: assistants
+  - name: quick-phrases
+  - name: translations
+paths:
+  /api/v1/ai-chat/topics:
+    get:
+      tags: [topics]
+      operationId: listChatTopics
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-05]
+        business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-23]
+      parameters:
+        - $ref: "#/components/parameters/pageNum"
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/keyword"
+      responses:
+        "200":
+          description: 当前用户话题列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicListResponse"
+    post:
+      tags: [topics]
+      operationId: createChatTopic
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-02]
+        business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-24]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopicCreateRequest"
+      responses:
+        "200":
+          description: 已创建的话题。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+  /api/v1/ai-chat/topics/{topicId}:
+    get:
+      tags: [topics]
+      operationId: getChatTopic
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-05]
+        business_rules: [BR-AICHAT-01, BR-AICHAT-02]
+      parameters:
+        - $ref: "#/components/parameters/topicId"
+      responses:
+        "200":
+          description: 话题详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+    patch:
+      tags: [topics]
+      operationId: updateChatTopic
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-06]
+        business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-24]
+      parameters:
+        - $ref: "#/components/parameters/topicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopicUpdateRequest"
+      responses:
+        "200":
+          description: 已更新的话题。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+    delete:
+      tags: [topics]
+      operationId: deleteChatTopic
+      x-s1-refs:
+        user_stories: [US-AICHAT-01]
+        business_rules: [BR-AICHAT-02]
+      parameters:
+        - $ref: "#/components/parameters/topicId"
+      responses:
+        "200":
+          description: 删除结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /api/v1/ai-chat/topics/{topicId}/messages:
+    get:
+      tags: [messages]
+      operationId: listChatMessages
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-05]
+        business_rules: [BR-AICHAT-03]
+      parameters:
+        - $ref: "#/components/parameters/topicId"
+      responses:
+        "200":
+          description: 话题消息列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+    post:
+      tags: [messages]
+      operationId: sendChatMessage
+      x-s1-refs:
+        user_stories: [US-AICHAT-02, US-AICHAT-08]
+        business_rules: [BR-AICHAT-03, BR-AICHAT-04, BR-AICHAT-05, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-21, BR-AICHAT-22]
+      parameters:
+        - $ref: "#/components/parameters/topicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: 已创建的 user message、assistant message 和 generation。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+  /api/v1/ai-chat/messages/{messageId}/regenerate:
+    post:
+      tags: [generations]
+      operationId: regenerateAssistantMessage
+      x-s1-refs:
+        user_stories: [US-AICHAT-03]
+        business_rules: [BR-AICHAT-06, BR-AICHAT-21]
+      parameters:
+        - $ref: "#/components/parameters/messageId"
+      responses:
+        "200":
+          description: 重生成 generation。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationRun"
+  /api/v1/ai-chat/messages/{messageId}/edit-regenerate:
+    post:
+      tags: [generations]
+      operationId: editAndRegenerateMessage
+      x-s1-refs:
+        user_stories: [US-AICHAT-03]
+        business_rules: [BR-AICHAT-07, BR-AICHAT-21]
+      parameters:
+        - $ref: "#/components/parameters/messageId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditRegenerateRequest"
+      responses:
+        "200":
+          description: 编辑后新 generation。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+  /api/v1/ai-chat/generations/{generationId}/events:
+    get:
+      tags: [generations]
+      operationId: streamGenerationEvents
+      x-s1-refs:
+        user_stories: [US-AICHAT-02, US-AICHAT-04]
+        business_rules: [BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-20]
+      parameters:
+        - $ref: "#/components/parameters/generationId"
+      responses:
+        "200":
+          description: SSE 增量事件，包含 delta、done、failed、interrupted。
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/v1/ai-chat/generations/{generationId}/stop:
+    post:
+      tags: [generations]
+      operationId: stopGeneration
+      x-s1-refs:
+        user_stories: [US-AICHAT-03]
+        business_rules: [BR-AICHAT-04, BR-AICHAT-21]
+      parameters:
+        - $ref: "#/components/parameters/generationId"
+      responses:
+        "200":
+          description: 停止后的 generation。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationRun"
+  /api/v1/ai-chat/assistants:
+    get:
+      tags: [assistants]
+      operationId: listAssistants
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-06]
+        business_rules: [BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10]
+      parameters:
+        - $ref: "#/components/parameters/keyword"
+      responses:
+        "200":
+          description: 助手列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantListResponse"
+    post:
+      tags: [assistants]
+      operationId: createAssistant
+      x-s1-refs:
+        user_stories: [US-AICHAT-06]
+        business_rules: [BR-AICHAT-02, BR-AICHAT-10]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantCreateRequest"
+      responses:
+        "200":
+          description: 已创建的助手。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assistant"
+  /api/v1/ai-chat/assistants/{assistantId}:
+    patch:
+      tags: [assistants]
+      operationId: updateAssistant
+      x-s1-refs:
+        user_stories: [US-AICHAT-06]
+        business_rules: [BR-AICHAT-09, BR-AICHAT-10]
+      parameters:
+        - $ref: "#/components/parameters/assistantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantUpdateRequest"
+      responses:
+        "200":
+          description: 已更新的助手。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assistant"
+    delete:
+      tags: [assistants]
+      operationId: deleteAssistant
+      x-s1-refs:
+        user_stories: [US-AICHAT-06]
+        business_rules: [BR-AICHAT-09]
+      parameters:
+        - $ref: "#/components/parameters/assistantId"
+      responses:
+        "200":
+          description: 删除结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /api/v1/ai-chat/quick-phrases:
+    get:
+      tags: [quick-phrases]
+      operationId: listQuickPhrases
+      x-s1-refs:
+        user_stories: [US-AICHAT-01, US-AICHAT-06]
+        business_rules: [BR-AICHAT-02, BR-AICHAT-11]
+      responses:
+        "200":
+          description: 快捷短语列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuickPhraseListResponse"
+    post:
+      tags: [quick-phrases]
+      operationId: createQuickPhrase
+      x-s1-refs:
+        user_stories: [US-AICHAT-06]
+        business_rules: [BR-AICHAT-02, BR-AICHAT-11]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuickPhraseCreateRequest"
+      responses:
+        "200":
+          description: 已创建的快捷短语。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuickPhrase"
+  /api/v1/ai-chat/translations:
+    post:
+      tags: [translations]
+      operationId: translateChatContent
+      x-s1-refs:
+        user_stories: [US-AICHAT-09]
+        business_rules: [BR-AICHAT-12, BR-AICHAT-13, BR-AICHAT-14]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationRequest"
+      responses:
+        "200":
+          description: 翻译结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageTranslation"
+components:
+  parameters:
+    pageNum:
+      name: pageNum
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    pageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+    keyword:
+      name: keyword
+      in: query
+      schema: { type: string, default: "" }
+    topicId:
+      name: topicId
+      in: path
+      required: true
+      schema: { type: string }
+    messageId:
+      name: messageId
+      in: path
+      required: true
+      schema: { type: string }
+    generationId:
+      name: generationId
+      in: path
+      required: true
+      schema: { type: string }
+    assistantId:
+      name: assistantId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    MessageStatus:
+      type: string
+      enum: [queued, generating, done, interrupted, failed]
+    GenerationStatus:
+      type: string
+      enum: [queued, generating, done, interrupted, failed]
+    Operation:
+      type: string
+      enum: [chat, translate]
+    Topic:
+      type: object
+      required: [id, ownerUserId, title, pinned, assistantId, modelId, lastActiveAt, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        title: { type: string }
+        pinned: { type: boolean }
+        assistantId: { type: string }
+        modelId:
+          type: string
+          description: 引用 model-management.UserProviderModel.id。
+        branchSource: { type: object, additionalProperties: true }
+        lastActiveAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    TopicCreateRequest:
+      type: object
+      properties:
+        title: { type: string }
+        assistantId: { type: string }
+        modelId: { type: string }
+    TopicUpdateRequest:
+      type: object
+      properties:
+        title: { type: string }
+        pinned: { type: boolean }
+        assistantId: { type: string }
+        modelId: { type: string }
+    Assistant:
+      type: object
+      required: [id, ownerUserId, name, isSystem, useSuggestedModel, streamEnabled, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        name: { type: string }
+        systemPrompt: { type: string }
+        isSystem: { type: boolean }
+        suggestedModelId:
+          type: string
+          description: 引用 model-management.UserProviderModel.id。
+        useSuggestedModel: { type: boolean }
+        contextMessageCount: { type: integer }
+        streamEnabled: { type: boolean }
+        toolCallMode: { type: string, enum: [none, manual, auto] }
+        maxToolCallCount: { type: integer }
+        temperature: { type: number }
+        topP: { type: number }
+        maxTokens: { type: integer }
+        customParams: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    AssistantCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        systemPrompt: { type: string }
+        suggestedModelId: { type: string }
+        useSuggestedModel: { type: boolean }
+        runtimeConfig: { type: object, additionalProperties: true }
+    AssistantUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/AssistantCreateRequest"
+    Message:
+      type: object
+      required: [id, topicId, role, content, status, version, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        topicId: { type: string }
+        role: { type: string, enum: [user, assistant, system] }
+        content: { type: string }
+        status:
+          $ref: "#/components/schemas/MessageStatus"
+        version: { type: integer }
+        parentMessageId: { type: string }
+        modelSnapshot:
+          type: object
+          additionalProperties: true
+          description: 生成时来自 model-management 的模型快照。
+        assistantSnapshot:
+          type: object
+          additionalProperties: true
+        attachmentIcons:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    ImageAttachmentInput:
+      type: object
+      required: [id, mimeType, sizeBytes, base64Data, notPersisted]
+      properties:
+        id: { type: string }
+        messageId: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        base64Data: { type: string }
+        notPersisted: { type: boolean }
+    GenerationRun:
+      type: object
+      required: [id, topicId, assistantMessageId, operation, status]
+      properties:
+        id: { type: string }
+        topicId: { type: string }
+        assistantMessageId: { type: string }
+        operation:
+          $ref: "#/components/schemas/Operation"
+        status:
+          $ref: "#/components/schemas/GenerationStatus"
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+        modelId: { type: string }
+        assistantId: { type: string }
+        slashCommand: { type: string }
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageAttachmentInput"
+    SendMessageResponse:
+      type: object
+      required: [userMessage, assistantMessage, generation]
+      properties:
+        userMessage:
+          $ref: "#/components/schemas/Message"
+        assistantMessage:
+          $ref: "#/components/schemas/Message"
+        generation:
+          $ref: "#/components/schemas/GenerationRun"
+    EditRegenerateRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+    QuickPhrase:
+      type: object
+      required: [id, ownerUserId, title, content, scope, phraseType]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        title: { type: string }
+        content: { type: string }
+        scope: { type: string, enum: [global, assistant] }
+        assistantId: { type: string }
+        phraseType: { type: string, enum: [plain, prompt] }
+    QuickPhraseCreateRequest:
+      type: object
+      required: [title, content, scope, phraseType]
+      properties:
+        title: { type: string }
+        content: { type: string }
+        scope: { type: string, enum: [global, assistant] }
+        assistantId: { type: string }
+        phraseType: { type: string, enum: [plain, prompt] }
+    TranslationRequest:
+      type: object
+      required: [content, targetLanguage]
+      properties:
+        messageId: { type: string }
+        content: { type: string }
+        targetLanguage: { type: string }
+    MessageTranslation:
+      type: object
+      required: [id, targetLanguage, translatedContent, modelSnapshot, createdAt]
+      properties:
+        id: { type: string }
+        messageId: { type: string }
+        targetLanguage: { type: string }
+        translatedContent: { type: string }
+        modelSnapshot:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+    TopicListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Topic"
+    MessageListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+    AssistantListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Assistant"
+    QuickPhraseListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuickPhrase"

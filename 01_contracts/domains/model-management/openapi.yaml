@@ -1,0 +1,505 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Model Management API
+  version: 0.1.0
+  description: 用户模型管理 S2 API 契约，覆盖个人模型提供商、模型清单、连接检测、默认模型和下游模型选项。
+servers:
+  - url: /api/v1
+tags:
+  - name: model-providers
+  - name: provider-models
+  - name: default-models
+  - name: model-options
+paths:
+  /api/v1/model-providers:
+    get:
+      tags: [model-providers]
+      operationId: listModelProviders
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-01]
+        business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
+      parameters:
+        - $ref: "#/components/parameters/pageNum"
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/keyword"
+      responses:
+        "200":
+          description: 当前用户模型提供商列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelProviderListResponse"
+    post:
+      tags: [model-providers]
+      operationId: createModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-02]
+        business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-05]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelProviderCreateRequest"
+      responses:
+        "200":
+          description: 已创建的模型提供商。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelProvider"
+  /api/v1/model-providers/test:
+    post:
+      tags: [model-providers]
+      operationId: testUnsavedModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-05]
+        business_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelProviderTestRequest"
+      responses:
+        "200":
+          description: 未保存表单连接检测结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResult"
+  /api/v1/model-providers/{providerId}:
+    get:
+      tags: [model-providers]
+      operationId: getModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-01]
+        business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-04]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "200":
+          description: 模型提供商详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelProvider"
+    patch:
+      tags: [model-providers]
+      operationId: updateModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-03]
+        business_rules: [BR-USER-MODEL-03, BR-USER-MODEL-05, BR-USER-MODEL-06]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelProviderUpdateRequest"
+      responses:
+        "200":
+          description: 已更新的模型提供商。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelProvider"
+    delete:
+      tags: [model-providers]
+      operationId: deleteModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-04]
+        business_rules: [BR-USER-MODEL-07]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "200":
+          description: 删除结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /api/v1/model-providers/{providerId}/test:
+    post:
+      tags: [model-providers]
+      operationId: testModelProvider
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-05]
+        business_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "200":
+          description: 已保存提供商连接检测结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResult"
+  /api/v1/model-providers/{providerId}/models:
+    get:
+      tags: [provider-models]
+      operationId: listProviderModels
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-09]
+        business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-12, BR-USER-MODEL-15]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/pageNum"
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/keyword"
+      responses:
+        "200":
+          description: 提供商模型列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderModelListResponse"
+    post:
+      tags: [provider-models]
+      operationId: createProviderModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-07]
+        business_rules: [BR-USER-MODEL-11, BR-USER-MODEL-12]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderModelCreateRequest"
+      responses:
+        "200":
+          description: 已创建的模型。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderModel"
+  /api/v1/model-providers/{providerId}/models/sync:
+    post:
+      tags: [provider-models]
+      operationId: syncProviderModels
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-06]
+        business_rules: [BR-USER-MODEL-10, BR-USER-MODEL-12]
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "200":
+          description: 同步结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelSyncResult"
+  /api/v1/provider-models/{modelId}:
+    patch:
+      tags: [provider-models]
+      operationId: updateProviderModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-08]
+        business_rules: [BR-USER-MODEL-12, BR-USER-MODEL-13, BR-USER-MODEL-14]
+      parameters:
+        - $ref: "#/components/parameters/modelId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderModelUpdateRequest"
+      responses:
+        "200":
+          description: 已更新的模型。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderModel"
+    delete:
+      tags: [provider-models]
+      operationId: deleteProviderModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-11]
+        business_rules: [BR-USER-MODEL-22]
+      parameters:
+        - $ref: "#/components/parameters/modelId"
+      responses:
+        "200":
+          description: 删除结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /api/v1/provider-models/{modelId}/test:
+    post:
+      tags: [provider-models]
+      operationId: testProviderModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-10]
+        business_rules: [BR-USER-MODEL-19]
+      parameters:
+        - $ref: "#/components/parameters/modelId"
+      responses:
+        "200":
+          description: 单模型连接检测结果。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResult"
+  /api/v1/default-models/{usage}:
+    get:
+      tags: [default-models]
+      operationId: getDefaultModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
+        business_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-26]
+      parameters:
+        - $ref: "#/components/parameters/usage"
+      responses:
+        "200":
+          description: 当前用户默认模型配置。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultModelConfig"
+    put:
+      tags: [default-models]
+      operationId: saveDefaultModel
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-12]
+        business_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-25]
+      parameters:
+        - $ref: "#/components/parameters/usage"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultModelSaveRequest"
+      responses:
+        "200":
+          description: 已保存的默认模型配置。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultModelConfig"
+  /api/v1/model-options:
+    get:
+      tags: [model-options]
+      operationId: listModelOptions
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-13]
+        business_rules: [BR-USER-MODEL-24, BR-USER-MODEL-26, BR-USER-MODEL-27]
+      parameters:
+        - name: usage
+          in: query
+          schema:
+            $ref: "#/components/schemas/DefaultUsage"
+        - name: capability
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 下游功能可选择的当前用户模型。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelOptionListResponse"
+components:
+  parameters:
+    pageNum:
+      name: pageNum
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    pageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+    keyword:
+      name: keyword
+      in: query
+      schema: { type: string, default: "" }
+    providerId:
+      name: providerId
+      in: path
+      required: true
+      schema: { type: string }
+    modelId:
+      name: modelId
+      in: path
+      required: true
+      schema: { type: string }
+    usage:
+      name: usage
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/DefaultUsage"
+  schemas:
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    DefaultUsage:
+      type: string
+      enum: [assistant.default, quick, translation]
+    HealthStatus:
+      type: string
+      enum: [unknown, healthy, unhealthy]
+    ModelProvider:
+      type: object
+      required: [id, ownerUserId, name, providerType, apiBaseUrl, authType, enabled, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        name: { type: string }
+        providerType: { type: string }
+        apiBaseUrl: { type: string, format: uri }
+        authType: { type: string }
+        apiKeyRef: { type: string }
+        enabled: { type: boolean }
+        description: { type: string }
+        extraConfig: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    ModelProviderCreateRequest:
+      type: object
+      required: [name, providerType, apiBaseUrl, authType, enabled]
+      properties:
+        name: { type: string }
+        providerType: { type: string }
+        apiBaseUrl: { type: string, format: uri }
+        authType: { type: string }
+        apiKeyRef: { type: string }
+        enabled: { type: boolean }
+        description: { type: string }
+        extraConfig: { type: object, additionalProperties: true }
+    ModelProviderUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        providerType: { type: string }
+        apiBaseUrl: { type: string, format: uri }
+        authType: { type: string }
+        apiKeyRef: { type: string }
+        enabled: { type: boolean }
+        description: { type: string }
+        extraConfig: { type: object, additionalProperties: true }
+    ModelProviderTestRequest:
+      allOf:
+        - $ref: "#/components/schemas/ModelProviderCreateRequest"
+    ProviderModel:
+      type: object
+      required: [id, ownerUserId, providerId, model, displayName, capabilities, streamSupported, healthStatus, enabled, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        providerId: { type: string }
+        providerName: { type: string }
+        model: { type: string }
+        displayName: { type: string }
+        group: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        streamSupported: { type: boolean }
+        healthStatus:
+          $ref: "#/components/schemas/HealthStatus"
+        unhealthyReason: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    ProviderModelCreateRequest:
+      type: object
+      required: [model, displayName]
+      properties:
+        model: { type: string }
+        displayName: { type: string }
+        group: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        streamSupported: { type: boolean, default: true }
+        enabled: { type: boolean, default: true }
+    ProviderModelUpdateRequest:
+      type: object
+      properties:
+        displayName: { type: string }
+        group: { type: string }
+        capabilities:
+          type: array
+          items: { type: string }
+        streamSupported: { type: boolean }
+        enabled: { type: boolean }
+    DefaultModelConfig:
+      type: object
+      required: [id, ownerUserId, usage, providerId, modelId, createdAt, updateAt]
+      properties:
+        id: { type: string }
+        ownerUserId: { type: string }
+        usage:
+          $ref: "#/components/schemas/DefaultUsage"
+        providerId: { type: string }
+        modelId: { type: string }
+        model:
+          $ref: "#/components/schemas/ProviderModel"
+        createdAt: { type: string, format: date-time }
+        updateAt: { type: string, format: date-time }
+    DefaultModelSaveRequest:
+      type: object
+      required: [providerId, modelId]
+      properties:
+        providerId: { type: string }
+        modelId: { type: string }
+    HealthCheckResult:
+      type: object
+      required: [targetType, providerId, success, healthStatus, checkedAt]
+      properties:
+        targetType: { type: string, enum: [provider, model] }
+        providerId: { type: string }
+        modelId: { type: string }
+        success: { type: boolean }
+        healthStatus:
+          $ref: "#/components/schemas/HealthStatus"
+        message: { type: string }
+        checkedAt: { type: string, format: date-time }
+    ModelSyncResult:
+      type: object
+      required: [total, created, updated, skipped]
+      properties:
+        total: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderModel"
+    ModelProviderListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelProvider"
+    ProviderModelListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderModel"
+    ModelOptionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderModel"

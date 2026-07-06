@@ -1,0 +1,8 @@
+permissions: []
+notes:
+  module: ai-chatting
+  description: 当前 S1/S2 不引入 ai_chat.read、ai_chat.write、ai_chat.manage 等独立业务权限。
+  frontend_usage: 页面入口、按钮和资源显示依赖系统基础登录态以及当前用户个人数据隔离。
+  backend_enforcement: 后端必须校验 ownerUserId；不得跨用户读取或修改 Topic、Assistant、Message、QuickPhrase、GenerationRun、MessageTranslation。
+  related_user_stories: [US-AICHAT-01]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-23]

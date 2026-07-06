@@ -1,0 +1,154 @@
+topic_not_found:
+  code: ERR_AI_CHAT_TOPIC_NOT_FOUND
+  value: 110200
+  http: 200
+  http_status: 200
+  cn: 话题不存在或当前用户不可见。
+  en: Topic does not exist or is not visible to current user.
+  owning_domain: ai-chatting
+  owning_module: topic
+  range: 110200-110399
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-01, US-AICHAT-05]
+  related_rules: [BR-AICHAT-01, BR-AICHAT-02]
+message_not_found:
+  code: ERR_AI_CHAT_MESSAGE_NOT_FOUND
+  value: 110400
+  http: 200
+  http_status: 200
+  cn: 消息不存在或当前用户不可见。
+  en: Message does not exist or is not visible to current user.
+  owning_domain: ai-chatting
+  owning_module: message
+  range: 110400-110599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-03, US-AICHAT-05]
+  related_rules: [BR-AICHAT-03, BR-AICHAT-06, BR-AICHAT-07]
+message_empty:
+  code: ERR_AI_CHAT_MESSAGE_EMPTY
+  value: 110401
+  http: 200
+  http_status: 200
+  cn: 输入为空且没有图片附件。
+  en: Message input is empty and has no image attachment.
+  owning_domain: ai-chatting
+  owning_module: message
+  range: 110400-110599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-02]
+  related_rules: [BR-AICHAT-22]
+assistant_not_found:
+  code: ERR_AI_CHAT_ASSISTANT_NOT_FOUND
+  value: 110600
+  http: 200
+  http_status: 200
+  cn: 助手不存在或当前用户不可见。
+  en: Assistant does not exist or is not visible to current user.
+  owning_domain: ai-chatting
+  owning_module: assistant
+  range: 110600-110799
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-06]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10]
+assistant_system_protected:
+  code: ERR_AI_CHAT_ASSISTANT_SYSTEM_PROTECTED
+  value: 110601
+  http: 200
+  http_status: 200
+  cn: 系统助手不可删除或修改受保护字段。
+  en: System assistant cannot be deleted or protected fields cannot be changed.
+  owning_domain: ai-chatting
+  owning_module: assistant
+  range: 110600-110799
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-06]
+  related_rules: [BR-AICHAT-09]
+quick_phrase_invalid:
+  code: ERR_AI_CHAT_QUICK_PHRASE_INVALID
+  value: 110800
+  http: 200
+  http_status: 200
+  cn: 快捷短语不合法或助手级短语缺少助手。
+  en: Quick phrase is invalid or assistant-scoped phrase misses assistant.
+  owning_domain: ai-chatting
+  owning_module: quick-phrase
+  range: 110800-110999
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-06, US-AICHAT-07]
+  related_rules: [BR-AICHAT-11]
+generation_concurrent:
+  code: ERR_AI_CHAT_CONCURRENT_GENERATION
+  value: 111000
+  http: 200
+  http_status: 200
+  cn: 同一话题已有运行中的生成。
+  en: The topic already has an active generation.
+  owning_domain: ai-chatting
+  owning_module: generation
+  range: 111000-111199
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-02, US-AICHAT-03]
+  related_rules: [BR-AICHAT-21]
+generation_not_found:
+  code: ERR_AI_CHAT_GENERATION_NOT_FOUND
+  value: 111001
+  http: 200
+  http_status: 200
+  cn: 生成运行不存在或当前用户不可见。
+  en: Generation run does not exist or is not visible to current user.
+  owning_domain: ai-chatting
+  owning_module: generation
+  range: 111000-111199
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-03, US-AICHAT-04]
+  related_rules: [BR-AICHAT-04, BR-AICHAT-21]
+translation_model_missing:
+  code: ERR_AI_CHAT_TRANSLATION_MODEL_MISSING
+  value: 111200
+  http: 200
+  http_status: 200
+  cn: 当前用户未配置默认翻译模型。
+  en: Current user has not configured a default translation model.
+  owning_domain: ai-chatting
+  owning_module: translation
+  range: 111200-111399
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-09]
+  related_rules: [BR-AICHAT-12]
+translation_model_unhealthy:
+  code: ERR_AI_CHAT_TRANSLATION_MODEL_UNHEALTHY
+  value: 111201
+  http: 200
+  http_status: 200
+  cn: 默认翻译模型不可用。
+  en: Default translation model is unavailable.
+  owning_domain: ai-chatting
+  owning_module: translation
+  range: 111200-111399
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-09]
+  related_rules: [BR-AICHAT-13]
+ai_chat_access_denied:
+  code: ERR_AI_CHAT_ACCESS_DENIED
+  value: 111400
+  http: 200
+  http_status: 200
+  cn: 当前用户不能访问该聊天资源。
+  en: Current user cannot access this chat resource.
+  owning_domain: ai-chatting
+  owning_module: access
+  range: 111400-111599
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-AICHAT-01]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-23]
