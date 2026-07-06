@@ -5,7 +5,7 @@ template_parse_failed:
   owning_domain: application-platform
   owning_module: template
   severity: error
-  http_status: 400
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-001
@@ -20,7 +20,7 @@ template_reference_blocked:
   owning_domain: application-platform
   owning_module: template
   severity: error
-  http_status: 409
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-009
@@ -34,7 +34,7 @@ template_archived:
   owning_domain: application-platform
   owning_module: template
   severity: error
-  http_status: 409
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-004
@@ -48,7 +48,7 @@ mapping_path_invalid:
   owning_domain: application-platform
   owning_module: field-mapping
   severity: error
-  http_status: 400
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-005
@@ -65,7 +65,7 @@ field_key_duplicated:
   owning_domain: application-platform
   owning_module: field-mapping
   severity: error
-  http_status: 400
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-005
@@ -79,7 +79,7 @@ application_state_blocked:
   owning_domain: application-platform
   owning_module: application
   severity: error
-  http_status: 409
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-006
@@ -95,7 +95,7 @@ application_mapping_incomplete:
   owning_domain: application-platform
   owning_module: application
   severity: error
-  http_status: 400
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-006
@@ -110,7 +110,7 @@ permission_denied:
   owning_domain: application-platform
   owning_module: access
   severity: error
-  http_status: 403
+  http_status: 200
   retryable: false
   related_user_stories:
     - US-AIAPP-003

@@ -7,8 +7,8 @@ task_definition_invalid:
   owning_module: definition
   range: 140200-140399
   severity: error
-  http: 400
-  http_status: 400
+  http: 200
+  http_status: 200
   retryable: false
   deprecated: false
   related_user_stories:
@@ -30,8 +30,8 @@ task_dag_cycle_detected:
   owning_module: definition
   range: 140200-140399
   severity: error
-  http: 400
-  http_status: 400
+  http: 200
+  http_status: 200
   retryable: false
   deprecated: false
   related_user_stories:
@@ -67,8 +67,8 @@ task_run_state_blocked:
   owning_module: run
   range: 140400-140599
   severity: error
-  http: 409
-  http_status: 409
+  http: 200
+  http_status: 200
   retryable: false
   deprecated: false
   related_user_stories:
@@ -87,8 +87,8 @@ task_retry_policy_invalid:
   owning_module: run
   range: 140400-140599
   severity: error
-  http: 400
-  http_status: 400
+  http: 200
+  http_status: 200
   retryable: false
   deprecated: false
   related_user_stories:
@@ -108,8 +108,8 @@ worker_not_available:
   owning_module: worker
   range: 140600-140799
   severity: error
-  http: 409
-  http_status: 409
+  http: 200
+  http_status: 200
   retryable: true
   deprecated: false
   related_user_stories:
@@ -128,8 +128,8 @@ lease_invalid:
   owning_module: lease
   range: 140800-140999
   severity: error
-  http: 409
-  http_status: 409
+  http: 200
+  http_status: 200
   retryable: true
   deprecated: false
   related_user_stories:
@@ -150,8 +150,8 @@ attempt_update_rejected:
   owning_module: attempt
   range: 141000-141199
   severity: error
-  http: 409
-  http_status: 409
+  http: 200
+  http_status: 200
   retryable: true
   deprecated: false
   related_user_stories:
@@ -172,8 +172,8 @@ permission_denied:
   owning_module: access
   range: 141200-141399
   severity: error
-  http: 403
-  http_status: 403
+  http: 200
+  http_status: 200
   retryable: false
   deprecated: false
   related_user_stories:
