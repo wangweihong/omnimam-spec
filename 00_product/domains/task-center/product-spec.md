@@ -319,7 +319,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ## 6. 用户故事
 
-### 6.1 用户故事：运行一个应用
+### 6.1 用户故事：运行一个应用（US-TASK-001）
 
 作为业务用户，我希望在应用中心填写表单并提交运行请求，系统可以异步执行任务，并允许我查看运行进度和最终结果。
 
@@ -334,7 +334,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.2 用户故事：取消一个运行中的任务
+### 6.2 用户故事：取消一个运行中的任务（US-TASK-002）
 
 作为用户，我希望可以取消一个长时间运行的任务，避免继续消耗资源。
 
@@ -349,7 +349,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.3 用户故事：查看失败排查信息
+### 6.3 用户故事：查看失败排查信息（US-TASK-003）
 
 作为开发者或运维人员，我希望查看一个任务每次失败的详细记录，方便排查问题。
 
@@ -363,7 +363,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.4 用户故事：串行执行多个任务
+### 6.4 用户故事：串行执行多个任务（US-TASK-004）
 
 作为业务开发者，我希望将多个任务按顺序执行，例如先分析图片，再生成提示词，再调用生图应用。
 
@@ -377,7 +377,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.5 用户故事：并行执行多个任务
+### 6.5 用户故事：并行执行多个任务（US-TASK-005）
 
 作为业务开发者，我希望并行处理多个素材，提高处理效率。
 
@@ -391,7 +391,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.6 用户故事：执行 DAG 编排
+### 6.6 用户故事：执行 DAG 编排（US-TASK-006）
 
 作为无限画布用户，我希望将多个节点按依赖关系连接起来执行，而不是只能串行或并行。
 
@@ -406,7 +406,7 @@ AppRun → TaskRun → Worker → AppEngine → Result
 
 ---
 
-### 6.7 用户故事：Worker 故障恢复
+### 6.7 用户故事：Worker 故障恢复（US-TASK-007）
 
 作为系统运维人员，我希望 Worker 异常退出后，任务中心能识别故障并自动恢复或失败。
 
@@ -1376,88 +1376,88 @@ Webhook 订阅
 
 ### 19.1 任务定义规则
 
-1. AtomicTask 只描述任务定义，不代表实际运行。
-2. TaskGroup 只支持 SERIAL 和 PARALLEL。
-3. DAGFlowTask 用于表达复杂 DAG 编排。
-4. TaskGroup 可以嵌套 TaskGroup。
-5. DAGFlowTask 的节点可以引用 AtomicTask 或 TaskGroup。
-6. DAGFlowTask 必须保证无环。
+1. BR-TASK-001：AtomicTask 只描述任务定义，不代表实际运行。
+2. BR-TASK-002：TaskGroup 只支持 SERIAL 和 PARALLEL。
+3. BR-TASK-003：DAGFlowTask 用于表达复杂 DAG 编排。
+4. BR-TASK-004：TaskGroup 可以嵌套 TaskGroup。
+5. BR-TASK-005：DAGFlowTask 的节点可以引用 AtomicTask 或 TaskGroup。
+6. BR-TASK-006：DAGFlowTask 必须保证无环。
 
 ---
 
 ### 19.2 运行实例规则
 
-1. 每次执行必须创建 TaskRun。
-2. 每次 Worker 领取并执行必须创建 TaskAttempt。
-3. 重试必须创建新的 TaskAttempt。
-4. TaskAttempt 历史不得被覆盖。
-5. TaskRun 只保存最近一次错误摘要。
-6. 完整错误排查以 TaskAttempt 为准。
+1. BR-TASK-007：每次执行必须创建 TaskRun。
+2. BR-TASK-008：每次 Worker 领取并执行必须创建 TaskAttempt。
+3. BR-TASK-009：重试必须创建新的 TaskAttempt。
+4. BR-TASK-010：TaskAttempt 历史不得被覆盖。
+5. BR-TASK-011：TaskRun 只保存最近一次错误摘要。
+6. BR-TASK-012：完整错误排查以 TaskAttempt 为准。
 
 ---
 
 ### 19.3 Worker 规则
 
-1. Worker 必须先注册或心跳后才能领取任务。
-2. Worker 只能领取与自身 capabilities 匹配的任务。
-3. Worker 领取任务后必须获得 ExecutionLease。
-4. 只有持有有效 lease 的 Worker 可以更新任务状态。
-5. Worker 必须周期性 heartbeat。
-6. Worker 执行任务时必须周期性续约 lease。
-7. Worker 应周期性上报任务 progress。
-8. Worker 不决定具体业务执行逻辑，具体执行由 AppEngine 负责。
+1. BR-TASK-013：Worker 必须先注册或心跳后才能领取任务。
+2. BR-TASK-014：Worker 只能领取与自身 capabilities 匹配的任务。
+3. BR-TASK-015：Worker 领取任务后必须获得 ExecutionLease。
+4. BR-TASK-016：只有持有有效 lease 的 Worker 可以更新任务状态。
+5. BR-TASK-017：Worker 必须周期性 heartbeat。
+6. BR-TASK-018：Worker 执行任务时必须周期性续约 lease。
+7. BR-TASK-019：Worker 应周期性上报任务 progress。
+8. BR-TASK-020：Worker 不决定具体业务执行逻辑，具体执行由 AppEngine 负责。
 
 ---
 
 ### 19.4 AppEngine 协作规则
 
-1. AppEngine 负责具体业务能力执行。
-2. Worker 负责调用 AppEngine 并同步状态。
-3. AppEngine 应尽量提供进度查询能力。
-4. AppEngine 如果支持取消，应向 Worker 暴露取消能力。
-5. AppEngine 返回的大型结果应写入素材库或对象存储。
-6. Worker 将结果引用写回 TaskRun。
+1. BR-TASK-021：AppEngine 负责具体业务能力执行。
+2. BR-TASK-022：Worker 负责调用 AppEngine 并同步状态。
+3. BR-TASK-023：AppEngine 应尽量提供进度查询能力。
+4. BR-TASK-024：AppEngine 如果支持取消，应向 Worker 暴露取消能力。
+5. BR-TASK-025：AppEngine 返回的大型结果应写入素材库或对象存储。
+6. BR-TASK-026：Worker 将结果引用写回 TaskRun。
 
 ---
 
 ### 19.5 Lease 规则
 
-1. 同一个 TaskRun 同一时间只能有一个有效 lease。
-2. Lease 过期后，原 Worker 不允许继续提交成功结果。
-3. Lease 续约必须携带 workerId、attemptId 和 leaseId。
-4. Lease 过期后由 watchdog 回收。
-5. Lease 回收后是否重试由 RetryPolicy 决定。
+1. BR-TASK-027：同一个 TaskRun 同一时间只能有一个有效 lease。
+2. BR-TASK-028：Lease 过期后，原 Worker 不允许继续提交成功结果。
+3. BR-TASK-029：Lease 续约必须携带 workerId、attemptId 和 leaseId。
+4. BR-TASK-030：Lease 过期后由 watchdog 回收。
+5. BR-TASK-031：Lease 回收后是否重试由 RetryPolicy 决定。
 
 ---
 
 ### 19.6 重试规则
 
-1. 单次失败是否可重试由 RetryPolicy 判断。
-2. `perAttemptTimeout` 触发后，如果可重试，TaskRun 进入 RETRYING。
-3. `overallTimeout` 触发后，TaskRun 直接进入 TIMEOUT。
-4. 无限重试必须设置退出保护条件。
-5. 重试不得覆盖旧 Attempt。
+1. BR-TASK-032：单次失败是否可重试由 RetryPolicy 判断。
+2. BR-TASK-033：`perAttemptTimeout` 触发后，如果可重试，TaskRun 进入 RETRYING。
+3. BR-TASK-034：`overallTimeout` 触发后，TaskRun 直接进入 TIMEOUT。
+4. BR-TASK-035：无限重试必须设置退出保护条件。
+5. BR-TASK-036：重试不得覆盖旧 Attempt。
 
 ---
 
 ### 19.7 取消规则
 
-1. 取消运行中任务时，TaskRun 先进入 CANCEL_REQUESTED。
-2. Worker 收到取消请求后，应调用 AppEngine 的取消能力。
-3. 取消请求发出后，最终状态可能是 CANCELED、SUCCESS、FAILED 或 TIMEOUT。
-4. 取消 TaskGroup 或 DAGFlowTask 时，应级联取消未完成子任务。
-5. 已经进入终态的任务不可取消。
+1. BR-TASK-037：取消运行中任务时，TaskRun 先进入 CANCEL_REQUESTED。
+2. BR-TASK-038：Worker 收到取消请求后，应调用 AppEngine 的取消能力。
+3. BR-TASK-039：取消请求发出后，最终状态可能是 CANCELED、SUCCESS、FAILED 或 TIMEOUT。
+4. BR-TASK-040：取消 TaskGroup 或 DAGFlowTask 时，应级联取消未完成子任务。
+5. BR-TASK-041：已经进入终态的任务不可取消。
 
 ---
 
 ### 19.8 故障恢复规则
 
-1. Worker 心跳超时后标记为 LOST。
-2. Worker LOST 后，其持有的 lease 应标记为 EXPIRED。
-3. 对应 TaskAttempt 应标记为 WORKER_LOST。
-4. 如果 TaskRun 可重试，则进入 RETRYING。
-5. 如果 TaskRun 不可重试，则进入 FAILED。
-6. Worker 正常但任务长时间无 progress，应标记为 STALLED 或触发告警。
+1. BR-TASK-042：Worker 心跳超时后标记为 LOST。
+2. BR-TASK-043：Worker LOST 后，其持有的 lease 应标记为 EXPIRED。
+3. BR-TASK-044：对应 TaskAttempt 应标记为 WORKER_LOST。
+4. BR-TASK-045：如果 TaskRun 可重试，则进入 RETRYING。
+5. BR-TASK-046：如果 TaskRun 不可重试，则进入 FAILED。
+6. BR-TASK-047：Worker 正常但任务长时间无 progress，应标记为 STALLED 或触发告警。
 7. STALLED 不等于 FAILED，应根据策略处理。
 
 ---

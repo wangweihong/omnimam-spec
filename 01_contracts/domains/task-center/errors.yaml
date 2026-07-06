@@ -1,0 +1,186 @@
+task_definition_invalid:
+  code: ERR_TASK_DEFINITION_INVALID
+  value: 140200
+  cn: 任务定义不合法。
+  en: Task definition is invalid.
+  owning_domain: task-center
+  owning_module: definition
+  range: 140200-140399
+  severity: error
+  http: 400
+  http_status: 400
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-004
+    - US-TASK-005
+    - US-TASK-006
+  related_rules:
+    - BR-TASK-001
+    - BR-TASK-002
+    - BR-TASK-003
+    - BR-TASK-006
+
+task_dag_cycle_detected:
+  code: ERR_TASK_DAG_CYCLE_DETECTED
+  value: 140201
+  cn: DAGFlowTask 存在环形依赖。
+  en: DAGFlowTask contains a cyclic dependency.
+  owning_domain: task-center
+  owning_module: definition
+  range: 140200-140399
+  severity: error
+  http: 400
+  http_status: 400
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-006
+  related_rules:
+    - BR-TASK-006
+
+task_run_not_found:
+  code: ERR_TASK_RUN_NOT_FOUND
+  value: 140400
+  cn: 任务运行不存在或当前用户不可见。
+  en: Task run does not exist or is not visible to the current user.
+  owning_domain: task-center
+  owning_module: run
+  range: 140400-140599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-001
+    - US-TASK-003
+  related_rules:
+    - BR-TASK-007
+
+task_run_state_blocked:
+  code: ERR_TASK_RUN_STATE_BLOCKED
+  value: 140401
+  cn: 任务当前状态不允许执行该操作。
+  en: Current task run status does not allow this operation.
+  owning_domain: task-center
+  owning_module: run
+  range: 140400-140599
+  severity: error
+  http: 409
+  http_status: 409
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-002
+  related_rules:
+    - BR-TASK-037
+    - BR-TASK-039
+    - BR-TASK-041
+
+task_retry_policy_invalid:
+  code: ERR_TASK_RETRY_POLICY_INVALID
+  value: 140402
+  cn: 任务重试策略不合法。
+  en: Task retry policy is invalid.
+  owning_domain: task-center
+  owning_module: run
+  range: 140400-140599
+  severity: error
+  http: 400
+  http_status: 400
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-003
+    - US-TASK-007
+  related_rules:
+    - BR-TASK-032
+    - BR-TASK-035
+    - BR-TASK-036
+
+worker_not_available:
+  code: ERR_TASK_WORKER_NOT_AVAILABLE
+  value: 140600
+  cn: Worker 不存在、不可用或能力不匹配。
+  en: Worker does not exist, is unavailable, or capability does not match.
+  owning_domain: task-center
+  owning_module: worker
+  range: 140600-140799
+  severity: error
+  http: 409
+  http_status: 409
+  retryable: true
+  deprecated: false
+  related_user_stories:
+    - US-TASK-007
+  related_rules:
+    - BR-TASK-013
+    - BR-TASK-014
+    - BR-TASK-017
+
+lease_invalid:
+  code: ERR_TASK_LEASE_INVALID
+  value: 140800
+  cn: ExecutionLease 无效、已过期或不属于当前 Worker。
+  en: ExecutionLease is invalid, expired, or does not belong to current worker.
+  owning_domain: task-center
+  owning_module: lease
+  range: 140800-140999
+  severity: error
+  http: 409
+  http_status: 409
+  retryable: true
+  deprecated: false
+  related_user_stories:
+    - US-TASK-007
+  related_rules:
+    - BR-TASK-016
+    - BR-TASK-027
+    - BR-TASK-028
+    - BR-TASK-029
+    - BR-TASK-030
+
+attempt_update_rejected:
+  code: ERR_TASK_ATTEMPT_UPDATE_REJECTED
+  value: 141000
+  cn: 当前执行尝试不允许更新任务结果。
+  en: Current task attempt is not allowed to update task result.
+  owning_domain: task-center
+  owning_module: attempt
+  range: 141000-141199
+  severity: error
+  http: 409
+  http_status: 409
+  retryable: true
+  deprecated: false
+  related_user_stories:
+    - US-TASK-003
+    - US-TASK-007
+  related_rules:
+    - BR-TASK-008
+    - BR-TASK-010
+    - BR-TASK-016
+    - BR-TASK-028
+
+permission_denied:
+  code: ERR_TASK_PERMISSION_DENIED
+  value: 141200
+  cn: 当前用户缺少任务中心操作权限。
+  en: Current user does not have task center permission.
+  owning_domain: task-center
+  owning_module: access
+  range: 141200-141399
+  severity: error
+  http: 403
+  http_status: 403
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-001
+    - US-TASK-002
+    - US-TASK-003
+    - US-TASK-007
+  related_rules:
+    - BR-TASK-007
+    - BR-TASK-013
