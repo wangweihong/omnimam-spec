@@ -6,8 +6,8 @@
 CREATE TABLE user_model_providers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   owner_user_id TEXT NOT NULL,
@@ -30,8 +30,8 @@ CREATE INDEX idx_user_model_providers_type ON user_model_providers(provider_type
 CREATE TABLE user_provider_models (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   owner_user_id TEXT NOT NULL,
@@ -61,8 +61,8 @@ CREATE INDEX idx_user_provider_models_health ON user_provider_models(health_stat
 CREATE TABLE user_default_model_configs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   owner_user_id TEXT NOT NULL,
@@ -79,8 +79,8 @@ CREATE INDEX idx_user_default_model_configs_model ON user_default_model_configs(
 CREATE TABLE model_health_checks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   owner_user_id TEXT NOT NULL,

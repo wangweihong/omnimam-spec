@@ -11,8 +11,8 @@ CREATE TABLE aiapp_app_templates (
   parsed_fields_json TEXT NOT NULL DEFAULT '[]',
   reference_application_count INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('active', 'archived')),
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 -- S1 refs: US-AIAPP-001, US-AIAPP-002, US-AIAPP-003; BR-AIAPP-001..BR-AIAPP-006.
@@ -28,8 +28,8 @@ CREATE TABLE aiapp_applications (
   description TEXT DEFAULT '',
   kind TEXT NOT NULL CHECK (kind IN ('comfyui', 'saas_api')),
   status TEXT NOT NULL CHECK (status IN ('draft', 'active', 'archived')),
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 -- S1 refs: US-AIAPP-004, US-AIAPP-006, US-AIAPP-007, US-AIAPP-008; BR-AIAPP-007..BR-AIAPP-012.
@@ -49,8 +49,8 @@ CREATE TABLE aiapp_field_mappings (
   default_value_json TEXT DEFAULT '',
   required BOOLEAN NOT NULL DEFAULT FALSE,
   sort_order INTEGER NOT NULL DEFAULT 0,
-  "createdAt" TEXT NOT NULL,
-  "updatedAt" TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 -- S1 refs: US-AIAPP-005, US-AIAPP-010; BR-AIAPP-013..BR-AIAPP-017.
