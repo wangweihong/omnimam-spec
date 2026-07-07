@@ -1,5 +1,5 @@
 # 统一身份认证与访问控制产品规格
-> 本文档是 S1 产品事实源，用于定义 AI 聊天特性的产品语义、领域模型、业务规则、用户故事和端呈现策略。
+> 本文档是 S1 产品事实源，用于定义统一身份认证与访问控制的产品语义、领域模型、业务规则、用户故事和端呈现策略。
 >
 > 本文档中的 Mermaid 图用于辅助理解复杂流程、状态变化、角色可见性和交互时序。图与文字描述应被视为同一事实集合；若存在不一致，应修正文档后再进入实现。
 
@@ -55,7 +55,7 @@ SSO 全局会话
 | 字段             | 类型                | 必填 | 说明                                     |
 | -------------- | ----------------- | -- | -------------------------------------- |
 | id             | string            | 是  | 用户全局唯一标识                               |
-| username       | string            | 是  | 登录用户名；本地用户范围内唯一                        |
+| username       | string            | 是  | 登录用户名；全局唯一且不可修改                         |
 | displayName    | string            | 是  | 显示名称                                   |
 | alias          | string            | 否  | 用户别名或个性化昵称，不作为登录凭证                     |
 | email          | string            | 否  | 邮箱；需要全局唯一，可作为登录凭证                      |
@@ -64,6 +64,9 @@ SSO 全局会话
 | status         | enum              | 是  | 用户状态：ACTIVE、DISABLED、LOCKED、UNVERIFIED |
 | lockoutEnd     | string(date-time) | 否  | 锁定截止时间                                 |
 | failedCount    | integer           | 是  | 连续登录失败次数                               |
+| passwordChangedAt | string(date-time) | 否  | 最后一次密码修改时间                             |
+| lastLoginAt    | string(date-time) | 否  | 最后一次登录成功时间                              |
+| isFirstLogin   | boolean           | 是  | 是否首次登录；为 true 时必须先完成密码和邮箱修改             |
 | mfaEnabled     | boolean           | 是  | 是否启用多因子认证                              |
 | mfaMethods     | array of string   | 否  | 允许的 MFA 方式：TOTP、SMS、EMAIL              |
 | oauthProviders | array of object   | 否  | 绑定的第三方账号                               |
@@ -245,8 +248,8 @@ SSO 全局会话
 
 * **BR-IAM-USER-01** 用户是 IAM 的身份主体，所有登录、授权、审计和资源访问都必须关联到用户。
 * **BR-IAM-USER-02** 用户来源包括 LOCAL、LDAP、OAUTH。
-* **BR-IAM-USER-03** LOCAL 用户必须拥有本地唯一的 username。
-* **BR-IAM-USER-04** LDAP / OAUTH 用户的 username 可以与 LOCAL 用户重复，但系统必须通过用户来源和身份绑定区分。
+* **BR-IAM-USER-03** 用户必须拥有全局唯一的 username，适用于 LOCAL、LDAP、OAUTH 所有来源。
+* **BR-IAM-USER-04** username 创建后不可修改。
 * **BR-IAM-USER-05** email 需要全局唯一。
 * **BR-IAM-USER-06** phone 需要全局唯一。
 * **BR-IAM-USER-07** LOCAL 用户必须具备密码哈希。
@@ -255,6 +258,9 @@ SSO 全局会话
 * **BR-IAM-USER-10** 用户状态为 UNVERIFIED 时禁止登录。
 * **BR-IAM-USER-11** 用户状态为 DISABLED 或 LOCKED 时禁止登录。
 * **BR-IAM-USER-12** alias 是用户个性化别名，不作为登录凭证。
+* **BR-IAM-USER-13** 系统需要记录用户最后一次密码修改时间和最后一次登录成功时间。
+* **BR-IAM-USER-14** 用户存在 isFirstLogin 标志；当 isFirstLogin 为 true 时，系统应视为首次登录并要求用户先修改密码和邮箱。
+* **BR-IAM-USER-15** 首次登录引导完成后，isFirstLogin 应变为 false。
 
 ### 4.2 用户注册
 
@@ -279,6 +285,12 @@ SSO 全局会话
 * **BR-IAM-AUTH-07** 用户启用 MFA 时，密码验证通过后不得直接签发正式登录态，需要进入 MFA 验证。
 * **BR-IAM-AUTH-08** 用户未启用 MFA 时，凭证验证通过后可以签发登录 Token。
 * **BR-IAM-AUTH-09** 登录、登录失败、MFA 验证、Token 刷新、登出都需要记录审计日志。
+* **BR-IAM-AUTH-10** 已登录 LOCAL 用户可以修改自己的密码，必须同时输入原密码和新密码。
+* **BR-IAM-AUTH-11** 修改密码时必须先校验原密码；原密码错误时不得修改密码。
+* **BR-IAM-AUTH-12** 新密码必须满足密码复杂度规则，并应遵守历史密码策略；修改密码页面必须向用户展示具体、可执行的复杂度策略提示。
+* **BR-IAM-AUTH-13** LDAP / OAUTH 用户没有本地密码时，不适用本地修改密码流程。
+* **BR-IAM-AUTH-14** 用户修改密码成功后，系统必须撤销该用户有效 Refresh Token，退出当前会话，并强制跳回登录页要求重新登录。
+* **BR-IAM-AUTH-15** isFirstLogin 为 true 的用户通过认证后不得进入系统正常功能，必须先完成密码和邮箱修改。
 
 ### 4.4 MFA 多因子认证
 
@@ -332,8 +344,8 @@ SSO 全局会话
 * **BR-IAM-RBAC-03** 所有受控资源都必须使用唯一权限码标识。
 * **BR-IAM-RBAC-04** 前端只通过权限码和菜单树控制界面展示。
 * **BR-IAM-RBAC-05** 后端通过权限码保护 API。
-* **BR-IAM-RBAC-06** 前端不得写死角色判断。
-* **BR-IAM-RBAC-07** 后端业务代码不得写死用户角色判断。
+* **BR-IAM-RBAC-06** 前端不得写死角色判断；通用授权仍基于权限码。
+* **BR-IAM-RBAC-07** 后端业务代码不得写死用户角色判断；内置角色层级删除是 IAM 领域内置策略，由统一授权或用户删除策略层判断，不允许业务系统散落硬编码。
 * **BR-IAM-RBAC-08** 角色可以继承其他角色权限。
 * **BR-IAM-RBAC-09** 角色可以设置互斥关系。
 * **BR-IAM-RBAC-10** 互斥角色不得同时分配给同一用户。
@@ -345,12 +357,20 @@ SSO 全局会话
 * **BR-IAM-RBAC-16** 用户组层级禁止循环引用。
 * **BR-IAM-RBAC-17** 动态组成员由系统根据规则自动计算。
 * **BR-IAM-RBAC-18** 权限变更、用户角色变化、用户组关系变化后，需要刷新受影响用户的权限缓存。
-* **BR-IAM-RBAC-19** SUPER_ADMIN 是内置系统管理员角色。
+* **BR-IAM-RBAC-19** SUPER_ADMIN 是内置超级管理员角色。
 * **BR-IAM-RBAC-20** REGULAR_USER 是内置普通用户角色。
 * **BR-IAM-RBAC-21** SUPER_ADMIN 用户拥有全量权限。
 * **BR-IAM-RBAC-22** SUPER_ADMIN 不依赖普通角色权限绑定表判断权限。
 * **BR-IAM-RBAC-23** 内置角色不可删除。
 * **BR-IAM-RBAC-24** 内置角色 code 不可修改。
+* **BR-IAM-RBAC-25** ADMIN 是内置管理员角色，权限低于 SUPER_ADMIN，高于 REGULAR_USER。
+* **BR-IAM-RBAC-26** 内置角色删除权限优先级为 `SUPER_ADMIN > ADMIN > REGULAR_USER`；用户拥有多个内置角色时，按最高内置角色判断删除权限。
+* **BR-IAM-RBAC-27** 初始用户名为 `admin` 的内置账号可以删除任何其他用户，包括其他 SUPER_ADMIN。
+* **BR-IAM-RBAC-28** 非初始 `admin` 的 SUPER_ADMIN 可以删除 ADMIN 和 REGULAR_USER，但不能删除其他 SUPER_ADMIN。
+* **BR-IAM-RBAC-29** ADMIN 只能删除 REGULAR_USER。
+* **BR-IAM-RBAC-30** 同一最高内置角色的用户不能互相删除。
+* **BR-IAM-RBAC-31** 任意用户不得删除自己。
+* **BR-IAM-RBAC-32** REGULAR_USER 不具备删除用户能力。
 
 ### 4.9 前后端权限解耦
 
@@ -384,15 +404,18 @@ SSO 全局会话
 * **BR-IAM-SEC-08** 登录、登出、Token 刷新、权限变更、管理员操作需要记录审计日志。
 * **BR-IAM-SEC-09** 权限授予应遵循最小权限原则。
 * **BR-IAM-SEC-10** 系统应支持定期权限审查。
+* **BR-IAM-SEC-11** 修改密码成功、原密码校验失败和密码策略校验失败都需要记录审计日志。
 
 ### 4.12 系统初始化
 
 * **BR-IAM-INIT-01** 系统首次启动时自动创建 SUPER_ADMIN 角色。
-* **BR-IAM-INIT-02** 系统首次启动时自动创建 REGULAR_USER 角色。
+* **BR-IAM-INIT-02** 系统首次启动时自动创建 ADMIN 和 REGULAR_USER 角色。
 * **BR-IAM-INIT-03** 内置角色不可删除。
-* **BR-IAM-INIT-04** 系统首次启动时自动创建初始管理员账户。
+* **BR-IAM-INIT-04** 系统首次启动时自动创建初始管理员账户，用户名固定为 `admin`。
 * **BR-IAM-INIT-05** 初始管理员账户直接绑定 SUPER_ADMIN 角色。
 * **BR-IAM-INIT-06** 初始管理员首次登录后需要强制修改密码和邮箱。
+* **BR-IAM-INIT-07** 初始管理员初始密码固定为 `admin`，仅作为首次启动引导凭据，是启动引导例外，不代表正常密码策略通过，不允许作为长期安全配置。
+* **BR-IAM-INIT-08** 初始管理员创建时 isFirstLogin 为 true，首次登录必须完成密码和邮箱修改后才能进入系统。
 
 ---
 
@@ -490,6 +513,8 @@ Refresh Token 需要可撤销，并与设备信息绑定。
 
 系统管理员可以创建、查看、编辑、禁用、锁定或删除用户。
 
+删除用户时必须遵守内置角色层级规则。初始 `admin` 账号可以删除任何其他用户；非初始 `admin` 的 SUPER_ADMIN 不能删除其他 SUPER_ADMIN；ADMIN 只能删除 REGULAR_USER；REGULAR_USER 不具备删除用户能力；任意用户不得删除自己。
+
 用户管理操作需要记录审计日志。
 
 ### US-IAM-17 分配用户角色
@@ -538,7 +563,7 @@ Refresh Token 需要可撤销，并与设备信息绑定。
 
 系统管理员可以为普通角色分配权限码。
 
-系统管理员角色 SUPER_ADMIN 拥有全量权限，不依赖普通角色权限绑定。
+超级管理员角色 SUPER_ADMIN 拥有全量权限，不依赖普通角色权限绑定。
 
 ### US-IAM-25 LDAP 配置管理
 
@@ -570,9 +595,17 @@ Refresh Token 需要可撤销，并与设备信息绑定。
 
 ### US-IAM-30 系统初始化
 
-系统首次启动时自动创建内置角色和初始管理员账户。
+系统首次启动时自动创建 SUPER_ADMIN、ADMIN、REGULAR_USER 三个内置角色和初始管理员账户。
 
-初始管理员首次登录后需要修改密码和邮箱。
+初始管理员账户用户名为 `admin`，初始密码为 `admin`。初始密码 `admin` 仅作为启动引导例外，不代表正常密码策略通过。初始管理员直接绑定 SUPER_ADMIN 角色，并拥有删除任何其他用户的最高删除豁免。初始管理员 isFirstLogin 初始为 true，首次登录后必须修改密码和邮箱，完成后才能进入系统。
+
+### US-IAM-31 修改当前用户密码
+
+已登录 LOCAL 用户可以在个人设置或认证中心入口修改自己的密码。
+
+用户必须输入原密码和新密码。系统需要向用户展示具体密码复杂度策略提示，并在原密码正确且新密码符合密码策略后才允许修改密码。
+
+修改密码成功后，系统必须撤销 Refresh Token、退出当前会话，并强制跳回登录页要求用户重新登录。LDAP / OAUTH 用户没有本地密码时，不进入本地修改密码流程。
 
 ---
 
@@ -790,6 +823,7 @@ classDiagram
 | 局部登出             | ✅    | ❌        | 触发登出     | 可吊销      |
 | 全局单点注销           | ✅    | 可查看      | 清除本地状态   | 可接收吊销结果  |
 | 当前用户信息           | ✅    | ✅        | ✅        | ✅        |
+| 修改当前用户密码         | ✅    | ✅        | 可跳转      | 执行安全校验   |
 | 当前用户权限码          | ✅    | ✅        | ✅        | ✅        |
 | 当前用户菜单树          | ✅    | ✅        | ✅        | ❌        |
 | 用户管理             | ❌    | ✅        | ❌        | 执行权限校验   |
@@ -819,6 +853,8 @@ MFA 验证页
 OAuth 登录跳转页
 登出结果页
 SSO 自动授权过渡页
+修改密码页
+首次登录引导页
 ```
 
 登录表单支持：
@@ -838,7 +874,23 @@ SSO 自动授权过渡页
 账号已锁定
 密码错误
 需要 MFA 验证
+需要完成首次登录引导
 ```
+
+修改密码页需要支持：
+
+```text
+原密码
+新密码
+确认新密码
+密码策略提示
+原密码错误提示
+修改成功后跳回登录页提示
+```
+
+密码策略提示必须展示具体、可执行的复杂度要求，不能只展示“密码不符合要求”之类的泛化提示。
+
+首次登录引导页需要要求用户修改初始密码和邮箱。用户完成首次登录引导前，不应进入系统正常功能。
 
 ### 8.2 IAM 管理后台
 
@@ -860,6 +912,8 @@ OAuth Provider 配置
 
 内置角色需要在界面中明确标识，并禁用删除和 code 修改。
 
+用户管理中的删除入口必须根据当前操作者和目标用户的最高内置角色动态控制展示；后端仍必须由统一授权或用户删除策略层执行相同角色层级校验。初始 `admin` 账号可删除任何其他用户，普通 SUPER_ADMIN 不能删除其他 SUPER_ADMIN，ADMIN 只能删除 REGULAR_USER，REGULAR_USER 不具备删除用户能力，同角色用户不能互相删除。
+
 ### 8.3 业务系统前端
 
 业务系统前端只消费 IAM 提供的身份和权限结果。
@@ -871,6 +925,7 @@ OAuth Provider 配置
 在 Token 过期时触发刷新
 登录态失效时跳转认证中心
 获取当前用户信息
+跳转或打开修改密码入口
 获取当前用户权限码集合
 获取当前用户菜单和按钮树
 根据菜单树动态注册路由
@@ -928,9 +983,13 @@ OAuth Provider 配置
 | token_expired               | Access Token 已过期           |
 | token_revoked               | Token 已被撤销                 |
 | refresh_token_invalid       | Refresh Token 无效、过期或与设备不匹配 |
+| first_login_required        | 用户首次登录，需要先修改密码和邮箱         |
+| password_changed_relogin_required | 密码修改成功后必须重新登录       |
 | permission_denied           | 当前用户缺少所需权限                 |
 | resource_permission_missing | 请求资源未配置权限码或权限资源不可用         |
 | role_builtin_protected      | 内置角色禁止删除或修改 code           |
+| user_delete_forbidden_by_role | 当前操作者角色层级不允许删除目标用户       |
+| self_delete_forbidden       | 用户不能删除自己                   |
 | role_mutex_conflict         | 用户被分配了互斥角色                 |
 | role_inheritance_cycle      | 角色继承关系存在循环                 |
 | group_cycle_detected        | 用户组层级存在循环                  |
@@ -940,8 +999,47 @@ OAuth Provider 配置
 | ldap_connection_failed      | LDAP 连接失败                  |
 | ldap_auth_failed            | LDAP 认证失败                  |
 | email_already_exists        | 邮箱已被使用                     |
-| username_already_exists     | 本地用户名已被使用                  |
+| username_already_exists     | 用户名已被使用                    |
 | phone_already_exists        | 手机号已被使用                    |
+| old_password_invalid        | 修改密码时原密码错误                 |
 | password_policy_failed      | 密码不符合安全策略                  |
 | audit_write_failed          | 审计日志写入失败                   |
 
+---
+
+## 10. 验收标准
+
+### US-IAM-16 用户管理
+
+* **AC-IAM-016-01** 给定操作者为初始 `admin` 账号，当删除任意其他用户时，系统允许删除并记录审计日志。
+* **AC-IAM-016-02** 给定操作者为非初始 `admin` 的 SUPER_ADMIN，当目标用户最高内置角色为 SUPER_ADMIN 时，系统拒绝删除并返回角色层级禁止原因。
+* **AC-IAM-016-03** 给定操作者为 ADMIN，当目标用户最高内置角色为 REGULAR_USER 时，系统允许删除；当目标用户最高内置角色为 ADMIN 或 SUPER_ADMIN 时，系统拒绝删除。
+* **AC-IAM-016-04** 给定操作者为 REGULAR_USER 或操作者尝试删除自己时，系统拒绝删除。
+* **AC-IAM-016-05** 用户删除能力必须由 IAM 统一授权或用户删除策略层判断，普通业务系统不得自行维护角色层级删除逻辑。
+
+### US-IAM-30 系统初始化
+
+* **AC-IAM-030-01** 系统首次启动后，存在 SUPER_ADMIN、ADMIN、REGULAR_USER 三个内置角色，且内置角色不可删除、code 不可修改。
+* **AC-IAM-030-02** 系统首次启动后，存在用户名为 `admin`、初始密码为 `admin` 的初始管理员账号，并直接绑定 SUPER_ADMIN 角色。
+* **AC-IAM-030-03** 初始管理员首次登录时，isFirstLogin 为 true，系统要求其先修改密码和邮箱；完成前不得进入系统正常功能。
+* **AC-IAM-030-04** 初始密码 `admin` 仅作为启动引导例外，不应被视为通过正常密码复杂度策略的长期密码。
+
+### US-IAM-31 修改当前用户密码
+
+* **AC-IAM-031-01** 已登录 LOCAL 用户输入正确原密码和符合策略的新密码后，系统允许修改密码并记录最后一次密码修改时间。
+* **AC-IAM-031-02** 修改密码页面展示具体、可执行的密码复杂度策略提示。
+* **AC-IAM-031-03** 原密码错误或新密码不符合策略时，系统不得修改密码，并记录审计日志。
+* **AC-IAM-031-04** 密码修改成功后，系统撤销 Refresh Token、退出当前会话，并强制跳回登录页要求重新登录。
+* **AC-IAM-031-05** LDAP / OAUTH 用户没有本地密码时，不进入本地修改密码流程。
+
+---
+
+## 11. 非目标范围
+
+本阶段不包含：
+
+```text
+忘记密码或邮箱找回流程
+管理员重置他人密码
+普通业务系统自行维护角色层级删除逻辑
+```
