@@ -1,0 +1,3 @@
+-- workflow-canvas S2 design schema.
+-- 当前仓库尚无 00_product/domains/workflow-canvas/product-spec.md 作为 S1 产品事实源。
+-- 按 S2 规则，暂不凭空定义业务表；待 S1 确认后再生成设计态 schema。
