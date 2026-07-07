@@ -349,7 +349,7 @@ components:
       enum: [unknown, healthy, unhealthy]
     ModelProvider:
       type: object
-      required: [id, ownerUserId, name, providerType, apiBaseUrl, authType, enabled, createdAt, updateAt]
+      required: [id, ownerUserId, name, providerType, apiBaseUrl, authType, enabled, createdAt, updatedAt]
       properties:
         id: { type: string }
         ownerUserId: { type: string }
@@ -362,7 +362,7 @@ components:
         description: { type: string }
         extraConfig: { type: object, additionalProperties: true }
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     ModelProviderCreateRequest:
       type: object
       required: [name, providerType, apiBaseUrl, authType, enabled]
@@ -391,7 +391,7 @@ components:
         - $ref: "#/components/schemas/ModelProviderCreateRequest"
     ProviderModel:
       type: object
-      required: [id, ownerUserId, providerId, model, displayName, capabilities, streamSupported, healthStatus, enabled, createdAt, updateAt]
+      required: [id, ownerUserId, providerId, model, displayName, capabilities, streamSupported, healthStatus, enabled, createdAt, updatedAt]
       properties:
         id: { type: string }
         ownerUserId: { type: string }
@@ -409,7 +409,7 @@ components:
         unhealthyReason: { type: string }
         enabled: { type: boolean }
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     ProviderModelCreateRequest:
       type: object
       required: [model, displayName]
@@ -434,7 +434,7 @@ components:
         enabled: { type: boolean }
     DefaultModelConfig:
       type: object
-      required: [id, ownerUserId, usage, providerId, modelId, createdAt, updateAt]
+      required: [id, ownerUserId, usage, providerId, modelId, createdAt, updatedAt]
       properties:
         id: { type: string }
         ownerUserId: { type: string }
@@ -445,7 +445,7 @@ components:
         model:
           $ref: "#/components/schemas/ProviderModel"
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     DefaultModelSaveRequest:
       type: object
       required: [providerId, modelId]

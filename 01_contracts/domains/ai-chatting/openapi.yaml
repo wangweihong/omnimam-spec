@@ -385,7 +385,7 @@ components:
       enum: [chat, translate]
     Topic:
       type: object
-      required: [id, ownerUserId, title, pinned, assistantId, modelId, lastActiveAt, createdAt, updateAt]
+      required: [id, ownerUserId, title, pinned, assistantId, modelId, lastActiveAt, createdAt, updatedAt]
       properties:
         id: { type: string }
         ownerUserId: { type: string }
@@ -398,7 +398,7 @@ components:
         branchSource: { type: object, additionalProperties: true }
         lastActiveAt: { type: string, format: date-time }
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     TopicCreateRequest:
       type: object
       properties:
@@ -414,7 +414,7 @@ components:
         modelId: { type: string }
     Assistant:
       type: object
-      required: [id, ownerUserId, name, isSystem, useSuggestedModel, streamEnabled, createdAt, updateAt]
+      required: [id, ownerUserId, name, isSystem, useSuggestedModel, streamEnabled, createdAt, updatedAt]
       properties:
         id: { type: string }
         ownerUserId: { type: string }
@@ -434,7 +434,7 @@ components:
         maxTokens: { type: integer }
         customParams: { type: object, additionalProperties: true }
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     AssistantCreateRequest:
       type: object
       required: [name]
@@ -449,7 +449,7 @@ components:
         - $ref: "#/components/schemas/AssistantCreateRequest"
     Message:
       type: object
-      required: [id, topicId, role, content, status, version, createdAt, updateAt]
+      required: [id, topicId, role, content, status, version, createdAt, updatedAt]
       properties:
         id: { type: string }
         topicId: { type: string }
@@ -470,7 +470,7 @@ components:
           type: array
           items: { type: string }
         createdAt: { type: string, format: date-time }
-        updateAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     ImageAttachmentInput:
       type: object
       required: [id, mimeType, sizeBytes, base64Data, notPersisted]
