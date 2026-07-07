@@ -583,7 +583,7 @@ components:
           enum: [FULL_RESTART, FAILED_ONLY, FROM_FAILED]
     AtomicTask:
       type: object
-      required: [id, name, definition_type, function_ref, createdAt, updatedAt]
+      required: [id, name, definition_type, function_ref, created_at, updated_at]
       properties:
         id: { type: string }
         name: { type: string }
@@ -604,15 +604,15 @@ components:
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     AtomicTaskCreateRequest:
       allOf:
         - $ref: "#/components/schemas/AtomicTask"
     TaskGroup:
       type: object
       required:
-        [id, name, definition_type, group_type, children, createdAt, updatedAt]
+        [id, name, definition_type, group_type, children, created_at, updated_at]
       properties:
         id: { type: string }
         name: { type: string }
@@ -641,14 +641,14 @@ components:
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     TaskGroupCreateRequest:
       allOf:
         - $ref: "#/components/schemas/TaskGroup"
     DAGFlowTask:
       type: object
-      required: [id, name, definition_type, nodes, edges, createdAt, updatedAt]
+      required: [id, name, definition_type, nodes, edges, created_at, updated_at]
       properties:
         id: { type: string }
         name: { type: string }
@@ -675,8 +675,8 @@ components:
         project_id: { type: string }
         namespace: { type: string }
         created_by: { type: string }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     DAGFlowTaskCreateRequest:
       allOf:
         - $ref: "#/components/schemas/DAGFlowTask"
@@ -728,7 +728,7 @@ components:
           current_attempt,
           max_attempts,
           progress,
-          createdAt,
+          created_at,
         ]
       properties:
         id: { type: string }
@@ -750,7 +750,7 @@ components:
         output: { type: object, additionalProperties: true }
         last_error:
           $ref: "#/components/schemas/TaskError"
-        createdAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
         started_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time }
         canceled_at: { type: string, format: date-time }

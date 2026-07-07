@@ -21,8 +21,8 @@ paths:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-23]
       parameters:
-        - $ref: "#/components/parameters/pageNum"
-        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
         - $ref: "#/components/parameters/keyword"
       responses:
         "200":
@@ -50,7 +50,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
-  /api/v1/ai-chat/topics/{topicId}:
+  /api/v1/ai-chat/topics/{topic_id}:
     get:
       tags: [topics]
       operationId: getChatTopic
@@ -58,7 +58,7 @@ paths:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02]
       parameters:
-        - $ref: "#/components/parameters/topicId"
+        - $ref: "#/components/parameters/topic_id"
       responses:
         "200":
           description: 话题详情。
@@ -73,7 +73,7 @@ paths:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-24]
       parameters:
-        - $ref: "#/components/parameters/topicId"
+        - $ref: "#/components/parameters/topic_id"
       requestBody:
         required: true
         content:
@@ -94,7 +94,7 @@ paths:
         user_stories: [US-AICHAT-01]
         business_rules: [BR-AICHAT-02]
       parameters:
-        - $ref: "#/components/parameters/topicId"
+        - $ref: "#/components/parameters/topic_id"
       responses:
         "200":
           description: 删除结果。
@@ -102,7 +102,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/ai-chat/topics/{topicId}/messages:
+  /api/v1/ai-chat/topics/{topic_id}/messages:
     get:
       tags: [messages]
       operationId: listChatMessages
@@ -110,7 +110,7 @@ paths:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-03]
       parameters:
-        - $ref: "#/components/parameters/topicId"
+        - $ref: "#/components/parameters/topic_id"
       responses:
         "200":
           description: 话题消息列表。
@@ -125,7 +125,7 @@ paths:
         user_stories: [US-AICHAT-02, US-AICHAT-08]
         business_rules: [BR-AICHAT-03, BR-AICHAT-04, BR-AICHAT-05, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-21, BR-AICHAT-22]
       parameters:
-        - $ref: "#/components/parameters/topicId"
+        - $ref: "#/components/parameters/topic_id"
       requestBody:
         required: true
         content:
@@ -139,7 +139,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SendMessageResponse"
-  /api/v1/ai-chat/messages/{messageId}/regenerate:
+  /api/v1/ai-chat/messages/{message_id}/regenerate:
     post:
       tags: [generations]
       operationId: regenerateAssistantMessage
@@ -147,7 +147,7 @@ paths:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-06, BR-AICHAT-21]
       parameters:
-        - $ref: "#/components/parameters/messageId"
+        - $ref: "#/components/parameters/message_id"
       responses:
         "200":
           description: 重生成 generation。
@@ -155,7 +155,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationRun"
-  /api/v1/ai-chat/messages/{messageId}/edit-regenerate:
+  /api/v1/ai-chat/messages/{message_id}/edit-regenerate:
     post:
       tags: [generations]
       operationId: editAndRegenerateMessage
@@ -163,7 +163,7 @@ paths:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-07, BR-AICHAT-21]
       parameters:
-        - $ref: "#/components/parameters/messageId"
+        - $ref: "#/components/parameters/message_id"
       requestBody:
         required: true
         content:
@@ -177,7 +177,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SendMessageResponse"
-  /api/v1/ai-chat/generations/{generationId}/events:
+  /api/v1/ai-chat/generations/{generation_id}/events:
     get:
       tags: [generations]
       operationId: streamGenerationEvents
@@ -185,7 +185,7 @@ paths:
         user_stories: [US-AICHAT-02, US-AICHAT-04]
         business_rules: [BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-20]
       parameters:
-        - $ref: "#/components/parameters/generationId"
+        - $ref: "#/components/parameters/generation_id"
       responses:
         "200":
           description: SSE 增量事件，包含 delta、done、failed、interrupted。
@@ -193,7 +193,7 @@ paths:
             text/event-stream:
               schema:
                 type: string
-  /api/v1/ai-chat/generations/{generationId}/stop:
+  /api/v1/ai-chat/generations/{generation_id}/stop:
     post:
       tags: [generations]
       operationId: stopGeneration
@@ -201,7 +201,7 @@ paths:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-04, BR-AICHAT-21]
       parameters:
-        - $ref: "#/components/parameters/generationId"
+        - $ref: "#/components/parameters/generation_id"
       responses:
         "200":
           description: 停止后的 generation。
@@ -244,7 +244,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Assistant"
-  /api/v1/ai-chat/assistants/{assistantId}:
+  /api/v1/ai-chat/assistants/{assistant_id}:
     patch:
       tags: [assistants]
       operationId: updateAssistant
@@ -252,7 +252,7 @@ paths:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-09, BR-AICHAT-10]
       parameters:
-        - $ref: "#/components/parameters/assistantId"
+        - $ref: "#/components/parameters/assistant_id"
       requestBody:
         required: true
         content:
@@ -273,7 +273,7 @@ paths:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-09]
       parameters:
-        - $ref: "#/components/parameters/assistantId"
+        - $ref: "#/components/parameters/assistant_id"
       responses:
         "200":
           description: 删除结果。
@@ -336,35 +336,35 @@ paths:
                 $ref: "#/components/schemas/MessageTranslation"
 components:
   parameters:
-    pageNum:
-      name: pageNum
+    page_num:
+      name: page_num
       in: query
       schema: { type: integer, default: 0, minimum: 0 }
-    pageSize:
-      name: pageSize
+    page_size:
+      name: page_size
       in: query
       schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
     keyword:
       name: keyword
       in: query
       schema: { type: string, default: "" }
-    topicId:
-      name: topicId
+    topic_id:
+      name: topic_id
       in: path
       required: true
       schema: { type: string }
-    messageId:
-      name: messageId
+    message_id:
+      name: message_id
       in: path
       required: true
       schema: { type: string }
-    generationId:
-      name: generationId
+    generation_id:
+      name: generation_id
       in: path
       required: true
       schema: { type: string }
-    assistantId:
-      name: assistantId
+    assistant_id:
+      name: assistant_id
       in: path
       required: true
       schema: { type: string }
@@ -385,134 +385,134 @@ components:
       enum: [chat, translate]
     Topic:
       type: object
-      required: [id, ownerUserId, title, pinned, assistantId, modelId, lastActiveAt, createdAt, updatedAt]
+      required: [id, owner_user_id, title, pinned, assistant_id, model_id, last_active_at, created_at, updated_at]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
+        owner_user_id: { type: string }
         title: { type: string }
         pinned: { type: boolean }
-        assistantId: { type: string }
-        modelId:
+        assistant_id: { type: string }
+        model_id:
           type: string
           description: 引用 model-management.UserProviderModel.id。
-        branchSource: { type: object, additionalProperties: true }
-        lastActiveAt: { type: string, format: date-time }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        branch_source: { type: object, additionalProperties: true }
+        last_active_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     TopicCreateRequest:
       type: object
       properties:
         title: { type: string }
-        assistantId: { type: string }
-        modelId: { type: string }
+        assistant_id: { type: string }
+        model_id: { type: string }
     TopicUpdateRequest:
       type: object
       properties:
         title: { type: string }
         pinned: { type: boolean }
-        assistantId: { type: string }
-        modelId: { type: string }
+        assistant_id: { type: string }
+        model_id: { type: string }
     Assistant:
       type: object
-      required: [id, ownerUserId, name, isSystem, useSuggestedModel, streamEnabled, createdAt, updatedAt]
+      required: [id, owner_user_id, name, is_system, use_suggested_model, stream_enabled, created_at, updated_at]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
+        owner_user_id: { type: string }
         name: { type: string }
-        systemPrompt: { type: string }
-        isSystem: { type: boolean }
-        suggestedModelId:
+        system_prompt: { type: string }
+        is_system: { type: boolean }
+        suggested_model_id:
           type: string
           description: 引用 model-management.UserProviderModel.id。
-        useSuggestedModel: { type: boolean }
-        contextMessageCount: { type: integer }
-        streamEnabled: { type: boolean }
-        toolCallMode: { type: string, enum: [none, manual, auto] }
-        maxToolCallCount: { type: integer }
+        use_suggested_model: { type: boolean }
+        context_message_count: { type: integer }
+        stream_enabled: { type: boolean }
+        tool_call_mode: { type: string, enum: [none, manual, auto] }
+        max_tool_call_count: { type: integer }
         temperature: { type: number }
-        topP: { type: number }
-        maxTokens: { type: integer }
-        customParams: { type: object, additionalProperties: true }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        top_p: { type: number }
+        max_tokens: { type: integer }
+        custom_params: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     AssistantCreateRequest:
       type: object
       required: [name]
       properties:
         name: { type: string }
-        systemPrompt: { type: string }
-        suggestedModelId: { type: string }
-        useSuggestedModel: { type: boolean }
-        runtimeConfig: { type: object, additionalProperties: true }
+        system_prompt: { type: string }
+        suggested_model_id: { type: string }
+        use_suggested_model: { type: boolean }
+        runtime_config: { type: object, additionalProperties: true }
     AssistantUpdateRequest:
       allOf:
         - $ref: "#/components/schemas/AssistantCreateRequest"
     Message:
       type: object
-      required: [id, topicId, role, content, status, version, createdAt, updatedAt]
+      required: [id, topic_id, role, content, status, version, created_at, updated_at]
       properties:
         id: { type: string }
-        topicId: { type: string }
+        topic_id: { type: string }
         role: { type: string, enum: [user, assistant, system] }
         content: { type: string }
         status:
           $ref: "#/components/schemas/MessageStatus"
         version: { type: integer }
-        parentMessageId: { type: string }
-        modelSnapshot:
+        parent_message_id: { type: string }
+        model_snapshot:
           type: object
           additionalProperties: true
           description: 生成时来自 model-management 的模型快照。
-        assistantSnapshot:
+        assistant_snapshot:
           type: object
           additionalProperties: true
-        attachmentIcons:
+        attachment_icons:
           type: array
           items: { type: string }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     ImageAttachmentInput:
       type: object
-      required: [id, mimeType, sizeBytes, base64Data, notPersisted]
+      required: [id, mime_type, size_bytes, base64_data, not_persisted]
       properties:
         id: { type: string }
-        messageId: { type: string }
-        mimeType: { type: string }
-        sizeBytes: { type: integer }
-        base64Data: { type: string }
-        notPersisted: { type: boolean }
+        message_id: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer }
+        base64_data: { type: string }
+        not_persisted: { type: boolean }
     GenerationRun:
       type: object
-      required: [id, topicId, assistantMessageId, operation, status]
+      required: [id, topic_id, assistant_message_id, operation, status]
       properties:
         id: { type: string }
-        topicId: { type: string }
-        assistantMessageId: { type: string }
+        topic_id: { type: string }
+        assistant_message_id: { type: string }
         operation:
           $ref: "#/components/schemas/Operation"
         status:
           $ref: "#/components/schemas/GenerationStatus"
-        startedAt: { type: string, format: date-time }
-        finishedAt: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
     SendMessageRequest:
       type: object
       required: [content]
       properties:
         content: { type: string }
-        modelId: { type: string }
-        assistantId: { type: string }
-        slashCommand: { type: string }
+        model_id: { type: string }
+        assistant_id: { type: string }
+        slash_command: { type: string }
         attachments:
           type: array
           items:
             $ref: "#/components/schemas/ImageAttachmentInput"
     SendMessageResponse:
       type: object
-      required: [userMessage, assistantMessage, generation]
+      required: [user_message, assistant_message, generation]
       properties:
-        userMessage:
+        user_message:
           $ref: "#/components/schemas/Message"
-        assistantMessage:
+        assistant_message:
           $ref: "#/components/schemas/Message"
         generation:
           $ref: "#/components/schemas/GenerationRun"
@@ -523,43 +523,43 @@ components:
         content: { type: string }
     QuickPhrase:
       type: object
-      required: [id, ownerUserId, title, content, scope, phraseType]
+      required: [id, owner_user_id, title, content, scope, phrase_type]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
+        owner_user_id: { type: string }
         title: { type: string }
         content: { type: string }
         scope: { type: string, enum: [global, assistant] }
-        assistantId: { type: string }
-        phraseType: { type: string, enum: [plain, prompt] }
+        assistant_id: { type: string }
+        phrase_type: { type: string, enum: [plain, prompt] }
     QuickPhraseCreateRequest:
       type: object
-      required: [title, content, scope, phraseType]
+      required: [title, content, scope, phrase_type]
       properties:
         title: { type: string }
         content: { type: string }
         scope: { type: string, enum: [global, assistant] }
-        assistantId: { type: string }
-        phraseType: { type: string, enum: [plain, prompt] }
+        assistant_id: { type: string }
+        phrase_type: { type: string, enum: [plain, prompt] }
     TranslationRequest:
       type: object
-      required: [content, targetLanguage]
+      required: [content, target_language]
       properties:
-        messageId: { type: string }
+        message_id: { type: string }
         content: { type: string }
-        targetLanguage: { type: string }
+        target_language: { type: string }
     MessageTranslation:
       type: object
-      required: [id, targetLanguage, translatedContent, modelSnapshot, createdAt]
+      required: [id, target_language, translated_content, model_snapshot, created_at]
       properties:
         id: { type: string }
-        messageId: { type: string }
-        targetLanguage: { type: string }
-        translatedContent: { type: string }
-        modelSnapshot:
+        message_id: { type: string }
+        target_language: { type: string }
+        translated_content: { type: string }
+        model_snapshot:
           type: object
           additionalProperties: true
-        createdAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
     TopicListResponse:
       type: object
       required: [total, items]

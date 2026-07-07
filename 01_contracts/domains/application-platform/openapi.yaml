@@ -370,8 +370,8 @@ components:
           parsed_fields,
           reference_application_count,
           status,
-          createdAt,
-          updatedAt,
+          created_at,
+          updated_at,
         ]
       properties:
         id:
@@ -396,10 +396,10 @@ components:
           minimum: 0
         status:
           $ref: "#/components/schemas/TemplateStatus"
-        createdAt:
+        created_at:
           type: string
           format: date-time
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
     AppTemplateCreateRequest:
@@ -476,8 +476,8 @@ components:
           kind,
           status,
           field_mappings,
-          createdAt,
-          updatedAt,
+          created_at,
+          updated_at,
         ]
       properties:
         id:
@@ -498,10 +498,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldMapping"
-        createdAt:
+        created_at:
           type: string
           format: date-time
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
     ApplicationCreateRequest:

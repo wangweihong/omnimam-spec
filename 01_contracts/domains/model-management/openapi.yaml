@@ -19,8 +19,8 @@ paths:
         user_stories: [US-USER-MODEL-01]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
       parameters:
-        - $ref: "#/components/parameters/pageNum"
-        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
         - $ref: "#/components/parameters/keyword"
       responses:
         "200":
@@ -68,7 +68,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResult"
-  /api/v1/model-providers/{providerId}:
+  /api/v1/model-providers/{provider_id}:
     get:
       tags: [model-providers]
       operationId: getModelProvider
@@ -76,7 +76,7 @@ paths:
         user_stories: [US-USER-MODEL-01]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-04]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       responses:
         "200":
           description: 模型提供商详情。
@@ -91,7 +91,7 @@ paths:
         user_stories: [US-USER-MODEL-03]
         business_rules: [BR-USER-MODEL-03, BR-USER-MODEL-05, BR-USER-MODEL-06]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       requestBody:
         required: true
         content:
@@ -112,7 +112,7 @@ paths:
         user_stories: [US-USER-MODEL-04]
         business_rules: [BR-USER-MODEL-07]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       responses:
         "200":
           description: 删除结果。
@@ -120,7 +120,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/model-providers/{providerId}/test:
+  /api/v1/model-providers/{provider_id}/test:
     post:
       tags: [model-providers]
       operationId: testModelProvider
@@ -128,7 +128,7 @@ paths:
         user_stories: [US-USER-MODEL-05]
         business_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       responses:
         "200":
           description: 已保存提供商连接检测结果。
@@ -136,7 +136,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResult"
-  /api/v1/model-providers/{providerId}/models:
+  /api/v1/model-providers/{provider_id}/models:
     get:
       tags: [provider-models]
       operationId: listProviderModels
@@ -144,9 +144,9 @@ paths:
         user_stories: [US-USER-MODEL-09]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-12, BR-USER-MODEL-15]
       parameters:
-        - $ref: "#/components/parameters/providerId"
-        - $ref: "#/components/parameters/pageNum"
-        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/provider_id"
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
         - $ref: "#/components/parameters/keyword"
       responses:
         "200":
@@ -162,7 +162,7 @@ paths:
         user_stories: [US-USER-MODEL-07]
         business_rules: [BR-USER-MODEL-11, BR-USER-MODEL-12]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       requestBody:
         required: true
         content:
@@ -176,7 +176,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProviderModel"
-  /api/v1/model-providers/{providerId}/models/sync:
+  /api/v1/model-providers/{provider_id}/models/sync:
     post:
       tags: [provider-models]
       operationId: syncProviderModels
@@ -184,7 +184,7 @@ paths:
         user_stories: [US-USER-MODEL-06]
         business_rules: [BR-USER-MODEL-10, BR-USER-MODEL-12]
       parameters:
-        - $ref: "#/components/parameters/providerId"
+        - $ref: "#/components/parameters/provider_id"
       responses:
         "200":
           description: 同步结果。
@@ -192,7 +192,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ModelSyncResult"
-  /api/v1/provider-models/{modelId}:
+  /api/v1/provider-models/{model_id}:
     patch:
       tags: [provider-models]
       operationId: updateProviderModel
@@ -200,7 +200,7 @@ paths:
         user_stories: [US-USER-MODEL-08]
         business_rules: [BR-USER-MODEL-12, BR-USER-MODEL-13, BR-USER-MODEL-14]
       parameters:
-        - $ref: "#/components/parameters/modelId"
+        - $ref: "#/components/parameters/model_id"
       requestBody:
         required: true
         content:
@@ -221,7 +221,7 @@ paths:
         user_stories: [US-USER-MODEL-11]
         business_rules: [BR-USER-MODEL-22]
       parameters:
-        - $ref: "#/components/parameters/modelId"
+        - $ref: "#/components/parameters/model_id"
       responses:
         "200":
           description: 删除结果。
@@ -229,7 +229,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/provider-models/{modelId}/test:
+  /api/v1/provider-models/{model_id}/test:
     post:
       tags: [provider-models]
       operationId: testProviderModel
@@ -237,7 +237,7 @@ paths:
         user_stories: [US-USER-MODEL-10]
         business_rules: [BR-USER-MODEL-19]
       parameters:
-        - $ref: "#/components/parameters/modelId"
+        - $ref: "#/components/parameters/model_id"
       responses:
         "200":
           description: 单模型连接检测结果。
@@ -307,25 +307,25 @@ paths:
                 $ref: "#/components/schemas/ModelOptionListResponse"
 components:
   parameters:
-    pageNum:
-      name: pageNum
+    page_num:
+      name: page_num
       in: query
       schema: { type: integer, default: 0, minimum: 0 }
-    pageSize:
-      name: pageSize
+    page_size:
+      name: page_size
       in: query
       schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
     keyword:
       name: keyword
       in: query
       schema: { type: string, default: "" }
-    providerId:
-      name: providerId
+    provider_id:
+      name: provider_id
       in: path
       required: true
       schema: { type: string }
-    modelId:
-      name: modelId
+    model_id:
+      name: model_id
       in: path
       required: true
       schema: { type: string }
@@ -349,121 +349,121 @@ components:
       enum: [unknown, healthy, unhealthy]
     ModelProvider:
       type: object
-      required: [id, ownerUserId, name, providerType, apiBaseUrl, authType, enabled, createdAt, updatedAt]
+      required: [id, owner_user_id, name, provider_type, api_base_url, auth_type, enabled, created_at, updated_at]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
+        owner_user_id: { type: string }
         name: { type: string }
-        providerType: { type: string }
-        apiBaseUrl: { type: string, format: uri }
-        authType: { type: string }
-        apiKeyRef: { type: string }
+        provider_type: { type: string }
+        api_base_url: { type: string, format: uri }
+        auth_type: { type: string }
+        api_key_ref: { type: string }
         enabled: { type: boolean }
         description: { type: string }
-        extraConfig: { type: object, additionalProperties: true }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        extra_config: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     ModelProviderCreateRequest:
       type: object
-      required: [name, providerType, apiBaseUrl, authType, enabled]
+      required: [name, provider_type, api_base_url, auth_type, enabled]
       properties:
         name: { type: string }
-        providerType: { type: string }
-        apiBaseUrl: { type: string, format: uri }
-        authType: { type: string }
-        apiKeyRef: { type: string }
+        provider_type: { type: string }
+        api_base_url: { type: string, format: uri }
+        auth_type: { type: string }
+        api_key_ref: { type: string }
         enabled: { type: boolean }
         description: { type: string }
-        extraConfig: { type: object, additionalProperties: true }
+        extra_config: { type: object, additionalProperties: true }
     ModelProviderUpdateRequest:
       type: object
       properties:
         name: { type: string }
-        providerType: { type: string }
-        apiBaseUrl: { type: string, format: uri }
-        authType: { type: string }
-        apiKeyRef: { type: string }
+        provider_type: { type: string }
+        api_base_url: { type: string, format: uri }
+        auth_type: { type: string }
+        api_key_ref: { type: string }
         enabled: { type: boolean }
         description: { type: string }
-        extraConfig: { type: object, additionalProperties: true }
+        extra_config: { type: object, additionalProperties: true }
     ModelProviderTestRequest:
       allOf:
         - $ref: "#/components/schemas/ModelProviderCreateRequest"
     ProviderModel:
       type: object
-      required: [id, ownerUserId, providerId, model, displayName, capabilities, streamSupported, healthStatus, enabled, createdAt, updatedAt]
+      required: [id, owner_user_id, provider_id, model, display_name, capabilities, stream_supported, health_status, enabled, created_at, updated_at]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
-        providerId: { type: string }
-        providerName: { type: string }
+        owner_user_id: { type: string }
+        provider_id: { type: string }
+        provider_name: { type: string }
         model: { type: string }
-        displayName: { type: string }
+        display_name: { type: string }
         group: { type: string }
         capabilities:
           type: array
           items: { type: string }
-        streamSupported: { type: boolean }
-        healthStatus:
+        stream_supported: { type: boolean }
+        health_status:
           $ref: "#/components/schemas/HealthStatus"
-        unhealthyReason: { type: string }
+        unhealthy_reason: { type: string }
         enabled: { type: boolean }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     ProviderModelCreateRequest:
       type: object
-      required: [model, displayName]
+      required: [model, display_name]
       properties:
         model: { type: string }
-        displayName: { type: string }
+        display_name: { type: string }
         group: { type: string }
         capabilities:
           type: array
           items: { type: string }
-        streamSupported: { type: boolean, default: true }
+        stream_supported: { type: boolean, default: true }
         enabled: { type: boolean, default: true }
     ProviderModelUpdateRequest:
       type: object
       properties:
-        displayName: { type: string }
+        display_name: { type: string }
         group: { type: string }
         capabilities:
           type: array
           items: { type: string }
-        streamSupported: { type: boolean }
+        stream_supported: { type: boolean }
         enabled: { type: boolean }
     DefaultModelConfig:
       type: object
-      required: [id, ownerUserId, usage, providerId, modelId, createdAt, updatedAt]
+      required: [id, owner_user_id, usage, provider_id, model_id, created_at, updated_at]
       properties:
         id: { type: string }
-        ownerUserId: { type: string }
+        owner_user_id: { type: string }
         usage:
           $ref: "#/components/schemas/DefaultUsage"
-        providerId: { type: string }
-        modelId: { type: string }
+        provider_id: { type: string }
+        model_id: { type: string }
         model:
           $ref: "#/components/schemas/ProviderModel"
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     DefaultModelSaveRequest:
       type: object
-      required: [providerId, modelId]
+      required: [provider_id, model_id]
       properties:
-        providerId: { type: string }
-        modelId: { type: string }
+        provider_id: { type: string }
+        model_id: { type: string }
     HealthCheckResult:
       type: object
-      required: [targetType, providerId, success, healthStatus, checkedAt]
+      required: [target_type, provider_id, success, health_status, checked_at]
       properties:
-        targetType: { type: string, enum: [provider, model] }
-        providerId: { type: string }
-        modelId: { type: string }
+        target_type: { type: string, enum: [provider, model] }
+        provider_id: { type: string }
+        model_id: { type: string }
         success: { type: boolean }
-        healthStatus:
+        health_status:
           $ref: "#/components/schemas/HealthStatus"
         message: { type: string }
-        checkedAt: { type: string, format: date-time }
+        checked_at: { type: string, format: date-time }
     ModelSyncResult:
       type: object
       required: [total, created, updated, skipped]
