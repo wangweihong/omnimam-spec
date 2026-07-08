@@ -32,7 +32,9 @@
 
 - 负责为系统内部维护任务周期性创建计划执行的 TaskRun。
 - 负责使用 `schedule_at` 表达计划开始时间，并沿用 TaskRun 生命周期、重试和失败处理规则。
+- 可周期性创建 `application-platform.app-engine-health-check` TaskRun，用于触发应用平台监听未停用 AppEngine 健康状态。
 - 不解释业务任务执行语义；例如 `asset.sha256_backfill` 的扫描、读取、计算和写回由素材库负责。
+- 不解释 AppEngine 认证方式、明文凭证、平台连接和健康判断语义；这些由 application-platform 负责。
 
 ### access
 
@@ -57,6 +59,7 @@
 - `worker-protocol` 依赖 AppEngine 执行具体业务能力，但 AppEngine 不属于任务中心。
 - `watchdog` 依赖 `worker-protocol` 写入的 Worker、Attempt 和 Lease 状态。
 - `scheduler` 依赖 `definition` 和 `run` 创建计划执行的 TaskRun。
+- `application-platform` 可依赖 `scheduler` 周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 健康检测语义由 `application-platform` 自身解释。
 - `asset-library` 可依赖 `scheduler` 周期性触发 `asset.sha256_backfill`，但业务执行语义由 `asset-library` 自身解释。
 - `access` 被 `definition`、`run`、`worker-protocol`、`watchdog` 和 `scheduler` 调用。
 

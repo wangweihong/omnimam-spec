@@ -68,3 +68,50 @@ field_mapping_changed:
     - BR-AIAPP-017
     - BR-AIAPP-018
     - BR-AIAPP-019
+
+app_engine_changed:
+  producer: app-engine-service
+  consumers:
+    - task-center-scheduler
+  trigger_condition: 应用引擎创建、基础信息更新、明文认证配置更新或停用状态变化。
+  payload:
+    app_engine_id: string
+    owner_user_id: string
+    engine_type: string
+    status: string
+    changed_action: string
+    occurred_at: string(date-time)
+  idempotency_key: app_engine_id:changed_action:occurred_at
+  retry_policy: 失败后按固定间隔重试，直到消费者接收。
+  failure_policy: 应用引擎事实以 S2 schema 中应用引擎记录为准。
+  related_user_stories:
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-028
+    - BR-AIAPP-029
+    - BR-AIAPP-030
+    - BR-AIAPP-031
+    - BR-AIAPP-032
+
+app_engine_health_changed:
+  producer: app-engine-service
+  consumers:
+    - application-service
+    - task-center-scheduler
+  trigger_condition: task-center 周期性健康检测任务或手动健康检测导致应用引擎健康状态变化。
+  payload:
+    app_engine_id: string
+    owner_user_id: string
+    health_status: string
+    last_health_check_at: string(date-time)
+    unhealthy_reason: string
+    occurred_at: string(date-time)
+  idempotency_key: app_engine_id:health_status:last_health_check_at
+  retry_policy: 失败后按固定间隔重试，直到消费者接收。
+  failure_policy: 最新健康状态以 S2 schema 中应用引擎记录为准。
+  related_user_stories:
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-033
+    - BR-AIAPP-034
+    - BR-AIAPP-035

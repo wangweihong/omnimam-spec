@@ -119,6 +119,82 @@ field_type_invalid:
   related_rules:
     - BR-AIAPP-019
 
+app_engine_not_visible:
+  value: 130600
+  cn: 应用引擎不存在或当前用户不可见。
+  en: AppEngine does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-029
+    - BR-AIAPP-030
+
+app_engine_name_duplicated:
+  value: 130601
+  cn: 同一用户下应用引擎名称重复。
+  en: AppEngine name is duplicated for the same owner.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-029
+
+app_engine_auth_config_invalid:
+  value: 130602
+  cn: 应用引擎认证配置不完整或与认证方式不匹配。
+  en: AppEngine auth config is incomplete or does not match auth type.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-031
+    - BR-AIAPP-034
+
+app_engine_unhealthy:
+  value: 130603
+  cn: 应用引擎健康检测失败或不可用。
+  en: AppEngine health check failed or the engine is unavailable.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: true
+  related_user_stories:
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-033
+    - BR-AIAPP-034
+    - BR-AIAPP-035
+
+app_engine_type_mismatched:
+  value: 130604
+  cn: 应用运行时选择的应用引擎类型与应用类型不一致。
+  en: Selected AppEngine type does not match application kind at runtime.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-037
+
 permission_denied:
   value: 130500
   cn: 当前用户缺少操作权限。
@@ -134,9 +210,13 @@ permission_denied:
     - US-AIAPP-007
     - US-AIAPP-008
     - US-AIAPP-009
+    - US-AIAPP-010
+    - US-AIAPP-011
   related_rules:
     - BR-AIAPP-021
     - BR-AIAPP-022
     - BR-AIAPP-023
     - BR-AIAPP-024
     - BR-AIAPP-026
+    - BR-AIAPP-029
+    - BR-AIAPP-030

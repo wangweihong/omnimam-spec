@@ -39,6 +39,33 @@ CREATE INDEX idx_aiapp_applications_owner ON aiapp_applications(owner_user_id);
 CREATE INDEX idx_aiapp_applications_template ON aiapp_applications(template_id);
 CREATE INDEX idx_aiapp_applications_kind ON aiapp_applications(kind);
 
+CREATE TABLE aiapp_app_engines (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  engine_type TEXT NOT NULL CHECK (engine_type IN ('comfyui', 'saas_api')),
+  endpoint TEXT NOT NULL,
+  auth_type TEXT NOT NULL CHECK (auth_type IN ('bearer_token', 'api_key', 'ak_sk', 'none')),
+  auth_config_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+  health_status TEXT NOT NULL CHECK (health_status IN ('unknown', 'healthy', 'unhealthy')),
+  capability_tags_json TEXT NOT NULL DEFAULT '[]',
+  last_health_check_at TIMESTAMPTZ,
+  unhealthy_reason TEXT DEFAULT ''
+);
+
+-- S1 refs: US-AIAPP-010, US-AIAPP-011; BR-AIAPP-028..BR-AIAPP-035.
+CREATE UNIQUE INDEX idx_aiapp_app_engines_owner_name ON aiapp_app_engines(owner_user_id, name);
+CREATE INDEX idx_aiapp_app_engines_owner ON aiapp_app_engines(owner_user_id);
+CREATE INDEX idx_aiapp_app_engines_type ON aiapp_app_engines(engine_type);
+CREATE INDEX idx_aiapp_app_engines_status ON aiapp_app_engines(status);
+CREATE INDEX idx_aiapp_app_engines_health ON aiapp_app_engines(health_status);
+
 CREATE TABLE aiapp_field_mappings (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

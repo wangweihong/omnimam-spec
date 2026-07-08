@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: OmniMAM AI Application Platform API
   version: 0.3.0-draft
-  description: AI 应用平台第一阶段 S2 API 契约，仅覆盖模板管理、应用管理和字段映射。
+  description: AI 应用平台第一阶段 S2 API 契约，覆盖模板管理、应用管理、字段映射和用户级应用引擎。
 servers:
   - url: /api/v1
 tags:
@@ -12,6 +12,8 @@ tags:
     description: 应用管理。
   - name: field-mappings
     description: 字段映射管理。
+  - name: app-engines
+    description: 用户应用引擎管理与健康检测。
 
 paths:
   /api/v1/app-templates:
@@ -326,6 +328,129 @@ paths:
               schema:
                 $ref: "#/components/schemas/FieldMappingListResponse"
 
+  /api/v1/app-engines:
+    get:
+      tags: [app-engines]
+      summary: 查询应用引擎列表
+      operationId: list_app_engines
+      x-s1-refs:
+        user_stories: [US-AIAPP-010, US-AIAPP-011]
+        business_rules: [BR-AIAPP-028, BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032, BR-AIAPP-035]
+      parameters:
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
+        - name: engine_type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppEngineType"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppEngineStatus"
+        - name: health_status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppEngineHealthStatus"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, engine_type, status, health_status, last_health_check_at]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        "200":
+          description: 应用引擎列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngineListResponse"
+    post:
+      tags: [app-engines]
+      summary: 创建应用引擎
+      operationId: create_app_engine
+      x-s1-refs:
+        user_stories: [US-AIAPP-010]
+        business_rules: [BR-AIAPP-028, BR-AIAPP-029, BR-AIAPP-031, BR-AIAPP-032]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppEngineCreateRequest"
+      responses:
+        "200":
+          description: 应用引擎详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngine"
+
+  /api/v1/app-engines/{app_engine_id}:
+    get:
+      tags: [app-engines]
+      summary: 获取应用引擎详情
+      operationId: get_app_engine
+      x-s1-refs:
+        user_stories: [US-AIAPP-010, US-AIAPP-011]
+        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-032]
+      parameters:
+        - $ref: "#/components/parameters/app_engine_id"
+      responses:
+        "200":
+          description: 应用引擎详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngine"
+    patch:
+      tags: [app-engines]
+      summary: 更新应用引擎
+      operationId: update_app_engine
+      x-s1-refs:
+        user_stories: [US-AIAPP-010]
+        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032]
+      parameters:
+        - $ref: "#/components/parameters/app_engine_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppEngineUpdateRequest"
+      responses:
+        "200":
+          description: 应用引擎详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngine"
+
+  /api/v1/app-engines/{app_engine_id}/health-check:
+    post:
+      tags: [app-engines]
+      summary: 触发应用引擎健康检测
+      operationId: check_app_engine_health
+      x-s1-refs:
+        user_stories: [US-AIAPP-011]
+        business_rules: [BR-AIAPP-033, BR-AIAPP-034, BR-AIAPP-035]
+      parameters:
+        - $ref: "#/components/parameters/app_engine_id"
+      responses:
+        "200":
+          description: 健康检测后的应用引擎详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngine"
+
 components:
   parameters:
     page_num:
@@ -361,11 +486,140 @@ components:
       required: true
       schema:
         type: string
+    app_engine_id:
+      name: app_engine_id
+      in: path
+      required: true
+      schema:
+        type: string
 
   schemas:
     TemplateKind:
       type: string
       enum: [comfyui, saas_api]
+    AppEngineType:
+      type: string
+      enum: [comfyui, saas_api]
+    AppEngineStatus:
+      type: string
+      enum: [active, disabled]
+    AppEngineHealthStatus:
+      type: string
+      enum: [unknown, healthy, unhealthy]
+    AppEngineAuthType:
+      type: string
+      enum: [bearer_token, api_key, ak_sk, none]
+    AppEngineAuthConfig:
+      type: object
+      description: 明文认证配置；前端仅做可见/不可见展示控制。
+      properties:
+        token:
+          type: string
+          description: bearer_token 认证方式使用的明文 token。
+        api_key:
+          type: string
+          description: api_key 认证方式使用的明文 API Key。
+        access_key:
+          type: string
+          description: ak_sk 认证方式使用的明文 Access Key。
+        secret_key:
+          type: string
+          description: ak_sk 认证方式使用的明文 Secret Key。
+    AppEngine:
+      type: object
+      required:
+        [
+          id,
+          owner_user_id,
+          name,
+          engine_type,
+          endpoint,
+          auth_type,
+          auth_config,
+          status,
+          health_status,
+          created_at,
+          updated_at,
+        ]
+      properties:
+        id:
+          type: string
+        owner_user_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        engine_type:
+          $ref: "#/components/schemas/AppEngineType"
+        endpoint:
+          type: string
+        auth_type:
+          $ref: "#/components/schemas/AppEngineAuthType"
+        auth_config:
+          $ref: "#/components/schemas/AppEngineAuthConfig"
+        status:
+          $ref: "#/components/schemas/AppEngineStatus"
+        health_status:
+          $ref: "#/components/schemas/AppEngineHealthStatus"
+        capability_tags:
+          type: array
+          items:
+            type: string
+        last_health_check_at:
+          type: string
+          format: date-time
+        unhealthy_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AppEngineCreateRequest:
+      type: object
+      required: [name, engine_type, endpoint, auth_type]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        engine_type:
+          $ref: "#/components/schemas/AppEngineType"
+        endpoint:
+          type: string
+        auth_type:
+          $ref: "#/components/schemas/AppEngineAuthType"
+        auth_config:
+          $ref: "#/components/schemas/AppEngineAuthConfig"
+        capability_tags:
+          type: array
+          items:
+            type: string
+    AppEngineUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        endpoint:
+          type: string
+        auth_type:
+          $ref: "#/components/schemas/AppEngineAuthType"
+        auth_config:
+          $ref: "#/components/schemas/AppEngineAuthConfig"
+        status:
+          $ref: "#/components/schemas/AppEngineStatus"
+        capability_tags:
+          type: array
+          items:
+            type: string
     ParsedField:
       type: object
       required: [source_path, field_type, required]
@@ -578,6 +832,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldMapping"
+    AppEngineListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppEngine"
     SuccessResponse:
       type: object
       required: [success]

@@ -16,7 +16,7 @@
 | `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
 | `asset-library` | 用户素材、上传会话、预览、处理任务、画布输出资产 | 已有 S1，S2 已有 schema，其他契约待补 |
-| `application-platform` | 应用模板、应用草稿/启用/归档、字段映射 | 已有 S1/S2 |
+| `application-platform` | 应用模板、正式应用、字段映射、用户级 AppEngine | 已有 S1/S2 |
 | `task-center` | 任务定义、运行实例、Worker 协议、Lease、Watchdog | 已有 S1/S2 |
 | `workflow-canvas` | 工作流画布能力预留 | 缺少 S1，S2 暂未定义业务表 |
 
@@ -28,7 +28,7 @@ graph TD
   Model["model-management<br/>用户模型能力"]
   Chat["ai-chatting<br/>对话与生成"]
   Asset["asset-library<br/>素材与预览"]
-  App["application-platform<br/>模板与应用"]
+  App["application-platform<br/>模板、应用与 AppEngine"]
   Task["task-center<br/>任务调度与执行状态"]
   Canvas["workflow-canvas<br/>画布能力预留"]
 
@@ -50,7 +50,7 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义应用与字段映射，不直接承担任务运行；运行链路交给 `task-center` 与后续 AppEngine。
+- `application-platform` 定义应用、字段映射和用户级 AppEngine；不直接承担应用运行，运行链路交给 `task-center`，AppEngine 只表达用户维护的运行平台与健康状态。
 - `task-center` 只管理任务定义、运行状态、Worker 协议与故障恢复，不理解具体业务执行逻辑。
 - `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
 
@@ -83,7 +83,7 @@ sequenceDiagram
   participant Worker as Worker
   participant Engine as AppEngine
 
-  User->>App: 选择已启用应用与输入参数
+  User->>App: 选择正式应用与输入参数
   App->>Task: 创建 TaskRun
   Worker->>Task: 注册、心跳、领取任务
   Worker->>Engine: 调用应用执行能力

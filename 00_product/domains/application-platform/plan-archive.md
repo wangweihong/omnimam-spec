@@ -74,12 +74,20 @@ Webhook 签名密钥
 
 ### 2.4 引擎与基础设施编排
 
-后续阶段可重新评估：
+用户级基础 `AppEngine` 管理、明文认证配置和健康查看已于 `2026-07-08` 重新进入 `00_product/domains/application-platform/product-spec.md` 的 S1 事实源。
+
+当前 S1 已覆盖：
 
 ```text
 执行引擎管理
 ComfyUI 引擎健康检查
 SaaS API 引擎健康检查
+Bearer Token / API Key / AK-SK / None 认证配置
+```
+
+后续阶段继续评估：
+
+```text
 资源请求
 推荐资源规格
 EngineClass
@@ -92,12 +100,14 @@ Worker 绑定
 预算确认
 ```
 
-### 2.5 SaaS API 凭证与调度
+本归档小节中除用户级基础 `AppEngine` 管理、明文认证配置和健康查看外，其余能力仍不作为当前阶段实现、验收或 S2 契约来源。
+
+### 2.5 模板外 SaaS API 凭证托管与调度
 
 后续阶段可重新评估：
 
 ```text
-SaaS API 凭证管理
+模板外 SaaS API 凭证管理
 凭证加密存储
 余额检测
 QPS 限制

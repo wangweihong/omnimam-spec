@@ -38,21 +38,44 @@ aiapp.application.manage_own:
     - BR-AIAPP-015
     - BR-AIAPP-021
 
+aiapp.app_engine.manage_own:
+  domain: application-platform
+  module: app-engine
+  resource: app_engine
+  action: create, read_own, update_own, health_check_own
+  subject: regular_user
+  description: 普通用户管理自己的应用引擎并查看健康状态。
+  frontend_usage: 控制普通用户自己的应用引擎列表、创建、编辑、停用、凭证可见控制和健康状态查看。
+  backend_enforcement: 必须校验 AppEngine owner_user_id 为当前普通用户；明文凭证按请求保存和返回；健康检测只作用于未停用引擎。
+  related_user_stories:
+    - US-AIAPP-010
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-028
+    - BR-AIAPP-029
+    - BR-AIAPP-031
+    - BR-AIAPP-032
+    - BR-AIAPP-033
+    - BR-AIAPP-034
+    - BR-AIAPP-035
+
 aiapp.admin.manage_all:
   domain: application-platform
   module: application-platform
-  resource: app_template, application, field_mapping
+  resource: app_template, application, field_mapping, app_engine
   action: create, read_all, update_all, delete_all
   subject: admin
-  description: 管理员管理全部用户的模板、应用和字段映射。
-  frontend_usage: 控制管理员查看和维护全部应用平台配置；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用不得改变 owner_user_id；模板删除仍需遵守引用保护。
+  description: 管理员管理全部用户的模板、应用、字段映射和应用引擎。
+  frontend_usage: 控制管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
+  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；模板删除仍需遵守引用保护。
   related_user_stories:
     - US-AIAPP-003
     - US-AIAPP-006
     - US-AIAPP-007
     - US-AIAPP-008
     - US-AIAPP-009
+    - US-AIAPP-010
+    - US-AIAPP-011
   related_rules:
     - BR-AIAPP-008
     - BR-AIAPP-022
@@ -60,22 +83,25 @@ aiapp.admin.manage_all:
     - BR-AIAPP-025
     - BR-AIAPP-026
     - BR-AIAPP-027
+    - BR-AIAPP-030
 
 aiapp.super_admin.manage_all:
   domain: application-platform
   module: application-platform
-  resource: app_template, application, field_mapping
+  resource: app_template, application, field_mapping, app_engine
   action: create, read_all, update_all, delete_all
   subject: super_admin
-  description: 超级管理员管理全部用户的模板、应用和字段映射。
-  frontend_usage: 控制超级管理员查看和维护全部应用平台配置；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用不得改变 owner_user_id；模板删除仍需遵守引用保护。
+  description: 超级管理员管理全部用户的模板、应用、字段映射和应用引擎。
+  frontend_usage: 控制超级管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
+  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；模板删除仍需遵守引用保护。
   related_user_stories:
     - US-AIAPP-003
     - US-AIAPP-006
     - US-AIAPP-007
     - US-AIAPP-008
     - US-AIAPP-009
+    - US-AIAPP-010
+    - US-AIAPP-011
   related_rules:
     - BR-AIAPP-008
     - BR-AIAPP-023
@@ -83,3 +109,4 @@ aiapp.super_admin.manage_all:
     - BR-AIAPP-025
     - BR-AIAPP-026
     - BR-AIAPP-027
+    - BR-AIAPP-030
