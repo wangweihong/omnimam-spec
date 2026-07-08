@@ -27,9 +27,9 @@
 | 120600-120799 | model-management | default-model | 默认模型缺失、候选不可用和用途错误 |
 | 120800-120999 | model-management | health | 模型健康检测错误 |
 | 121000-121199 | model-management | access | 用户模型配置访问控制错误 |
-| 130200-130299 | application-platform | template | 应用模板解析、状态与引用保护错误 |
+| 130200-130299 | application-platform | template | 应用模板解析、唯一性、不可变与引用保护错误 |
 | 130300-130399 | application-platform | field-mapping | 字段映射路径、唯一性和完整性错误 |
-| 130400-130499 | application-platform | application | 应用状态、启用和归档错误 |
+| 130400-130499 | application-platform | application | 应用创建、更新和删除错误 |
 | 130500-130599 | application-platform | access | 权限、可见性与所有权错误 |
 | 140200-140399 | task-center | definition | 任务定义、TaskGroup 和 DAGFlowTask 校验错误 |
 | 140400-140599 | task-center | run | TaskRun 状态、取消、重试和可见性错误 |

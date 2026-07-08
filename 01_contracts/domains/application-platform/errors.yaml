@@ -1,7 +1,7 @@
 template_parse_failed:
   value: 130200
-  cn: 模板解析失败。
-  en: Template parsing failed.
+  cn: 模板解析失败，无法创建模板。
+  en: Template parsing failed and the template cannot be created.
   owning_domain: application-platform
   owning_module: template
   severity: error
@@ -23,40 +23,55 @@ template_reference_blocked:
   http_status: 200
   retryable: false
   related_user_stories:
-    - US-AIAPP-009
+    - US-AIAPP-008
   related_rules:
-    - BR-AIAPP-005
+    - BR-AIAPP-008
 
-template_archived:
-  value: 130202
-  cn: 模板已归档，不可用于创建新应用。
-  en: Template is archived and cannot be used to create applications.
+template_name_duplicated:
+  value: 130203
+  cn: 同一用户下模板名称重复。
+  en: Template name is duplicated for the same owner.
   owning_domain: application-platform
   owning_module: template
   severity: error
   http_status: 200
   retryable: false
   related_user_stories:
-    - US-AIAPP-004
+    - US-AIAPP-001
+    - US-AIAPP-002
+    - US-AIAPP-003
+  related_rules:
+    - BR-AIAPP-005
+
+template_content_immutable:
+  value: 130204
+  cn: 模板类型、内容或解析变量创建后不可修改。
+  en: Template kind, content, and parsed fields are immutable after creation.
+  owning_domain: application-platform
+  owning_module: template
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-003
   related_rules:
     - BR-AIAPP-006
+    - BR-AIAPP-007
 
 mapping_path_invalid:
   value: 130300
-  cn: 字段映射路径失效。
-  en: Field mapping source path is invalid.
+  cn: 字段映射路径不在模板解析变量中。
+  en: Field mapping source path is not present in parsed template fields.
   owning_domain: application-platform
   owning_module: field-mapping
   severity: error
   http_status: 200
   retryable: false
   related_user_stories:
+    - US-AIAPP-004
     - US-AIAPP-005
-    - US-AIAPP-010
   related_rules:
-    - BR-AIAPP-013
     - BR-AIAPP-016
-    - BR-AIAPP-017
 
 field_key_duplicated:
   value: 130301
@@ -68,40 +83,41 @@ field_key_duplicated:
   http_status: 200
   retryable: false
   related_user_stories:
+    - US-AIAPP-004
     - US-AIAPP-005
   related_rules:
-    - BR-AIAPP-014
+    - BR-AIAPP-017
 
-application_state_blocked:
-  value: 130400
-  cn: 应用当前状态不允许进行该操作。
-  en: Current application state does not allow this operation.
+field_mapping_incomplete:
+  value: 130302
+  cn: 应用字段映射不完整。
+  en: Application field mappings are incomplete.
   owning_domain: application-platform
-  owning_module: application
+  owning_module: field-mapping
   severity: error
   http_status: 200
   retryable: false
   related_user_stories:
-    - US-AIAPP-006
-    - US-AIAPP-007
+    - US-AIAPP-004
+    - US-AIAPP-005
   related_rules:
-    - BR-AIAPP-009
-    - BR-AIAPP-012
-
-application_mapping_incomplete:
-  value: 130401
-  cn: 应用字段映射不完整，不能启用。
-  en: Application field mappings are incomplete and cannot be activated.
-  owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-006
-  related_rules:
-    - BR-AIAPP-011
     - BR-AIAPP-013
+    - BR-AIAPP-018
+
+field_type_invalid:
+  value: 130303
+  cn: 字段类型不来自模板解析变量。
+  en: Field type is not derived from parsed template fields.
+  owning_domain: application-platform
+  owning_module: field-mapping
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-004
+    - US-AIAPP-005
+  related_rules:
+    - BR-AIAPP-019
 
 permission_denied:
   value: 130500
@@ -114,8 +130,13 @@ permission_denied:
   retryable: false
   related_user_stories:
     - US-AIAPP-003
+    - US-AIAPP-006
+    - US-AIAPP-007
     - US-AIAPP-008
+    - US-AIAPP-009
   related_rules:
-    - BR-AIAPP-018
-    - BR-AIAPP-019
-    - BR-AIAPP-020
+    - BR-AIAPP-021
+    - BR-AIAPP-022
+    - BR-AIAPP-023
+    - BR-AIAPP-024
+    - BR-AIAPP-026

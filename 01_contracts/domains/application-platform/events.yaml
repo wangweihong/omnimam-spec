@@ -2,12 +2,11 @@ app_template_changed:
   producer: template-service
   consumers:
     - application-service
-  trigger_condition: 应用模板创建、更新、归档或删除预检状态变化。
+  trigger_condition: 应用模板创建、名称或描述更新、删除成功。
   payload:
     template_id: string
     owner_user_id: string
     kind: string
-    status: string
     changed_action: string
     occurred_at: string(date-time)
   idempotency_key: template_id:changed_action:occurred_at
@@ -20,17 +19,17 @@ app_template_changed:
   related_rules:
     - BR-AIAPP-001
     - BR-AIAPP-006
+    - BR-AIAPP-007
 
 application_changed:
   producer: application-service
   consumers:
     - template-service
-  trigger_condition: 应用创建、启用、归档或删除导致模板引用关系变化。
+  trigger_condition: 应用创建、应用元数据更新、字段映射更新或删除导致模板引用关系变化。
   payload:
     application_id: string
     template_id: string
     owner_user_id: string
-    status: string
     changed_action: string
     occurred_at: string(date-time)
   idempotency_key: application_id:changed_action:occurred_at
@@ -38,19 +37,19 @@ application_changed:
   failure_policy: 引用计数更新失败时必须保留可修复记录，禁止继续物理删除关联模板。
   related_user_stories:
     - US-AIAPP-004
+    - US-AIAPP-005
     - US-AIAPP-006
     - US-AIAPP-007
-    - US-AIAPP-008
   related_rules:
-    - BR-AIAPP-005
-    - BR-AIAPP-007
-    - BR-AIAPP-009
+    - BR-AIAPP-008
+    - BR-AIAPP-010
+    - BR-AIAPP-015
 
 field_mapping_changed:
   producer: application-service
   consumers:
     - template-service
-  trigger_condition: 应用字段映射被整体保存，或模板变更后映射有效性需要重新检查。
+  trigger_condition: 应用字段映射在创建应用或整体保存字段映射时发生变化。
   payload:
     application_id: string
     template_id: string
@@ -60,11 +59,12 @@ field_mapping_changed:
     occurred_at: string(date-time)
   idempotency_key: application_id:changed_action:occurred_at
   retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 映射检查失败时保留应用当前状态，并在应用详情提示需要重新检查。
+  failure_policy: 映射检查失败时保留应用当前字段映射，并在应用详情提示需要重新检查。
   related_user_stories:
+    - US-AIAPP-004
     - US-AIAPP-005
-    - US-AIAPP-010
   related_rules:
-    - BR-AIAPP-013
     - BR-AIAPP-016
     - BR-AIAPP-017
+    - BR-AIAPP-018
+    - BR-AIAPP-019

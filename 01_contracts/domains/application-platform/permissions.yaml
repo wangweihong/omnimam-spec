@@ -2,58 +2,84 @@ aiapp.template.manage_own:
   domain: application-platform
   module: template
   resource: app_template
-  action: create, read_own, update_own, archive_own, delete_own
-  subject: ordinary_user
+  action: create, read_own, update_own, delete_own
+  subject: regular_user
   description: 普通用户管理自己的应用模板。
-  frontend_usage: 控制模板列表、创建、编辑、归档、删除预检和引用关系入口。
-  backend_enforcement: 必须校验模板 owner_user_id 为当前普通用户；存在引用时禁止删除。
+  frontend_usage: 控制普通用户自己的模板列表、创建、编辑、删除预检和引用关系入口。
+  backend_enforcement: 必须校验模板 owner_user_id 为当前普通用户；存在引用时禁止删除；模板内容不可修改。
   related_user_stories:
     - US-AIAPP-001
     - US-AIAPP-002
     - US-AIAPP-003
+    - US-AIAPP-007
     - US-AIAPP-008
-    - US-AIAPP-009
-    - US-AIAPP-010
   related_rules:
     - BR-AIAPP-001
     - BR-AIAPP-005
-    - BR-AIAPP-018
+    - BR-AIAPP-006
+    - BR-AIAPP-021
 
 aiapp.application.manage_own:
   domain: application-platform
   module: application
   resource: application, field_mapping
-  action: create, read_own, update_own, activate_own, archive_own, delete_own
-  subject: ordinary_user
+  action: create, read_own, update_own, delete_own
+  subject: regular_user
   description: 普通用户管理自己的应用和字段映射。
-  frontend_usage: 控制应用列表、应用详情、字段映射配置、启用和归档入口。
-  backend_enforcement: 必须校验应用 owner_user_id 为当前普通用户；归档应用禁止继续编辑字段映射。
+  frontend_usage: 控制普通用户自己的应用列表、应用详情、字段映射配置和删除入口。
+  backend_enforcement: 必须校验应用 owner_user_id 为当前普通用户；创建和更新字段映射时必须校验模板解析变量。
   related_user_stories:
     - US-AIAPP-004
     - US-AIAPP-005
     - US-AIAPP-006
-    - US-AIAPP-007
   related_rules:
-    - BR-AIAPP-007
-    - BR-AIAPP-012
+    - BR-AIAPP-010
     - BR-AIAPP-013
-    - BR-AIAPP-018
+    - BR-AIAPP-015
+    - BR-AIAPP-021
 
 aiapp.admin.manage_all:
   domain: application-platform
   module: application-platform
   resource: app_template, application, field_mapping
-  action: create, read_all, update_all, activate_all, archive_all, delete_all
-  subject: system_admin
-  description: 系统管理员管理全部模板、应用和字段映射。
-  frontend_usage: 控制系统管理员查看和维护全部应用平台配置。
-  backend_enforcement: 必须校验系统管理员身份；模板删除仍需遵守引用保护。
+  action: create, read_all, update_all, delete_all
+  subject: admin
+  description: 管理员管理全部用户的模板、应用和字段映射。
+  frontend_usage: 控制管理员查看和维护全部应用平台配置；公共应用仅作为权限范围说明，不展示业务入口。
+  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用不得改变 owner_user_id；模板删除仍需遵守引用保护。
   related_user_stories:
     - US-AIAPP-003
+    - US-AIAPP-006
+    - US-AIAPP-007
     - US-AIAPP-008
     - US-AIAPP-009
-    - US-AIAPP-010
   related_rules:
-    - BR-AIAPP-005
-    - BR-AIAPP-019
-    - BR-AIAPP-020
+    - BR-AIAPP-008
+    - BR-AIAPP-022
+    - BR-AIAPP-024
+    - BR-AIAPP-025
+    - BR-AIAPP-026
+    - BR-AIAPP-027
+
+aiapp.super_admin.manage_all:
+  domain: application-platform
+  module: application-platform
+  resource: app_template, application, field_mapping
+  action: create, read_all, update_all, delete_all
+  subject: super_admin
+  description: 超级管理员管理全部用户的模板、应用和字段映射。
+  frontend_usage: 控制超级管理员查看和维护全部应用平台配置；公共应用仅作为权限范围说明，不展示业务入口。
+  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用不得改变 owner_user_id；模板删除仍需遵守引用保护。
+  related_user_stories:
+    - US-AIAPP-003
+    - US-AIAPP-006
+    - US-AIAPP-007
+    - US-AIAPP-008
+    - US-AIAPP-009
+  related_rules:
+    - BR-AIAPP-008
+    - BR-AIAPP-023
+    - BR-AIAPP-024
+    - BR-AIAPP-025
+    - BR-AIAPP-026
+    - BR-AIAPP-027
