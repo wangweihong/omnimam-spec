@@ -52,6 +52,8 @@ Mermaid 图是对对应文字描述的可视化补充。
 | thumbnailStatus | enum              | 是  | 缩略图状态：none、pending、ready、failed          |
 | previewStatus   | enum              | 否  | 派生预览状态：none、pending、ready、failed         |
 | sha256          | string            | 否  | 原始内容 SHA256 checksum                     |
+| referenceCount  | integer           | 否  | 轻量引用计数，用于提示当前素材被多少外部对象引用             |
+| referenceSources | array of object  | 否  | 轻量引用来源摘要，例如来自 canvas 的引用统计             |
 | labels          | map[string]string | 否  | 结构化键值对属性标签，如 `media=image`、`style=anime`、`project=mybot` |
 | tags            | array of string   | 否  | 自由分类标签，如 `人物`、`汽车`、`双人`，去重且无序 |
 | createdAt       | string(date-time) | 是  | 创建时间                                     |
@@ -73,6 +75,32 @@ Mermaid 图是对对应文字描述的可视化补充。
 | tags           | array of string   | 否  | 上传时设置的自由分类标签，去重且无序                                    |
 | createdAt      | string(date-time) | 是  | 创建时间                                                  |
 | updatedAt      | string(date-time) | 是  | 更新时间                                                  |
+
+### AssetGroup（素材分组）
+
+| 字段          | 类型                | 必填 | 说明                         |
+| ----------- | ----------------- | -- | -------------------------- |
+| id          | string            | 是  | 当前用户范围内的分组唯一标识            |
+| ownerUserId | string            | 是  | 分组所属用户 ID                  |
+| name        | string            | 是  | 分组名称，同一用户范围内 trim 后唯一     |
+| color       | string            | 否  | 分组颜色标记，用于与标签颜色体系区分       |
+| sortOrder   | integer           | 否  | 分组在侧边栏中的排序值               |
+| assetCount  | integer           | 否  | 当前分组关联素材数量，用于列表展示         |
+| createdAt   | string(date-time) | 是  | 创建时间                       |
+| updatedAt   | string(date-time) | 是  | 更新时间                       |
+
+### AssetGroupMembership（素材分组关联）
+
+| 字段          | 类型                | 必填 | 说明                         |
+| ----------- | ----------------- | -- | -------------------------- |
+| id          | string            | 是  | 分组关联唯一标识                   |
+| ownerUserId | string            | 是  | 所属用户 ID                    |
+| groupId     | string            | 是  | 关联分组 ID                    |
+| assetId     | string            | 是  | 关联素材 ID                    |
+| joinedAt    | string(date-time) | 是  | 素材加入该分组的时间                 |
+| sortOrder   | integer           | 否  | 素材在该分组内的手动排序值              |
+| createdAt   | string(date-time) | 是  | 创建时间                       |
+| updatedAt   | string(date-time) | 是  | 更新时间                       |
 
 ### UserAssetPreview（用户素材预览）
 
@@ -152,7 +180,7 @@ Tags 用于大量描述性分类，例如：
 | id          | string            | 是  | 任务唯一标识                                   |
 | ownerUserId | string            | 是  | 所属用户 ID                                  |
 | assetId     | string            | 是  | 关联素材 ID                                  |
-| taskType    | enum              | 是  | 任务类型，例如 thumbnail、preview_derivative     |
+| taskType    | enum              | 是  | 任务类型，例如 thumbnail、preview_derivative、sha256_backfill |
 | status      | enum              | 是  | 任务状态：pending、processing、completed、failed |
 | reason      | string            | 否  | 失败原因                                     |
 | createdAt   | string(date-time) | 是  | 创建时间                                     |
@@ -209,10 +237,28 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-34** 禁用菜单项，例如素材分享、复制文件、移动文件、全选，不应作为正式可用能力展示给用户。
 * **BR-USER-ASSET-35** Labels 与 Tags 是两类独立标签。Labels 以 `key=value` 键值对形式存储，键名长度 1-63，值长度 0-63，每个素材最多 20 个 Labels；Tags 以字符串数组形式存储，每个 Tag 长度 1-64，每个素材最多 30 个 Tags，自动 trim、自动去重且无序。
 * **BR-USER-ASSET-36** 用户可添加、修改或删除 Labels，也可添加或删除 Tags。自动生成或自动建议的 Labels/Tags 在产品语义上标记为 `source: auto`，用户手动添加的标记为 `source: manual`；用户删除自动内容时需要提示删除可能影响过滤准确性。
-* **BR-USER-ASSET-37** 素材列表支持统一选择器查询。Labels 支持 `key=value`、`key!=value`、`key`、`!key`、`key in (v1, v2)`、`key notin (v1, v2)`；Tags 支持 `#tag` 表示拥有指定 Tag，`#-tag` 表示不拥有指定 Tag；Labels 条件与 Tags 条件同级，`,` 表示 AND，`;` 表示 OR，AND 与 OR 可用括号组合。
+* **BR-USER-ASSET-37** 素材列表支持统一选择器查询。Labels 支持 `key=value`、`key!=value`、`key`、`!key`、`key in (v1, v2)`、`key notin (v1, v2)`；Tags 支持 `#tag` 表示拥有指定 Tag，`#-tag` 表示不拥有指定 Tag；分组支持 `group=<分组名>`；Labels、Tags 和分组条件同级，`,` 表示 AND，`;` 表示 OR，AND 与 OR 可用括号组合。
 * **BR-USER-ASSET-38** Labels 输入时提示当前用户已使用的键、系统推荐键、当前键下已使用的值和系统推荐值；Tags 输入时提示当前用户已使用的 Tags 和系统推荐 Tags。用户可直接输入任意新 Labels 或 Tags。
 * **BR-USER-ASSET-39** 过滤 UI 提供可视化控件快速构建统一选择器，并允许直接输入表达式。过滤面板区分“属性 Labels”和“分类 Tags”两个子面板，视觉上明确区分，但可以混合构建查询表达式。
 * **BR-USER-ASSET-40** 用户可选中多个素材批量添加或覆盖 Labels，也可批量添加或删除 Tags。批量操作仍必须限制在当前用户自己的素材范围内。
+* **BR-USER-ASSET-41** 素材上传前需要计算原始内容 SHA256 checksum。本仓库内提到的 shasum 均按现有 `sha256` 语义表达，不新增独立 shasum 字段。
+* **BR-USER-ASSET-42** 上传前如果命中可返回的已存在素材且 `sha256` 相同，系统跳过二进制上传并返回该已存在素材；`sha256` 为空的素材不参与重复命中判断。
+* **BR-USER-ASSET-43** 系统需要通过 `sha256_backfill` 内部处理任务，为历史或异常情况下缺失 `sha256` 的素材补算 SHA256 checksum 并更新素材 metadata。补算失败不影响素材继续可见，但需要记录失败原因或处理状态。
+* **BR-USER-ASSET-44** 用户可在素材列表页切换三种视图：列表视图、小图标视图、大图标视图。视图偏好仅在本地记忆，不同设备独立，不跨端同步。
+* **BR-USER-ASSET-45** 列表视图以表格形式展示素材，每行展示缩略图、名称、大小、类型、日期、标签摘要等信息，并支持列排序，适合快速浏览 metadata 和批量操作。
+* **BR-USER-ASSET-46** 小图标视图以固定尺寸方形缩略图网格展示素材，下方展示名称和少量标签，适合快速视觉扫描。
+* **BR-USER-ASSET-47** 大图标视图以较大缩略图卡片展示素材，卡片内可展示更多信息，例如完整标签列表、尺寸、时长等，适合仔细查看图片、视频等视觉内容。
+* **BR-USER-ASSET-48** 三种视图下，过滤、搜索、排序、多选、拖拽上传等操作能力保持一致，仅呈现形式不同。
+* **BR-USER-ASSET-49** 素材分组完全属于当前用户，不可被其他用户访问或共享。
+* **BR-USER-ASSET-50** 用户可以创建、重命名、删除分组，也可以调整分组排序。删除分组时，系统提示“仅删除分组，素材不会被删除”，确认后仅删除分组及关联关系，素材保留。
+* **BR-USER-ASSET-51** 素材可以关联到任意多个分组。从某个分组中移除素材时，仅删除关联记录，素材本身不受影响。
+* **BR-USER-ASSET-52** 素材列表页支持按分组筛选。用户选择一个分组后，列表仅展示该分组下的素材；统一选择器支持 `group=<分组名>`，并可与 Labels/Tags 混合查询，例如 `group=项目A, #人物`。
+* **BR-USER-ASSET-53** 分组内素材默认按加入时间倒序展示；用户可手动拖拽调整排序，手动排序写入分组关联关系的排序字段。
+* **BR-USER-ASSET-54** 将素材添加到分组时，如果该素材已在该分组中，则忽略重复添加。
+* **BR-USER-ASSET-55** 分组名称支持自动补全；创建新分组即时生效。同一用户范围内分组名称按 trim 后唯一。
+* **BR-USER-ASSET-56** 素材详情页展示当前素材已关联的所有分组，并允许在详情页快速添加或移除分组关联。
+* **BR-USER-ASSET-57** 素材可以维护轻量引用摘要，包括 `referenceCount` 和 `referenceSources`。该摘要用于列表、卡片和详情的引用提示，不作为强一致权限判断或完整依赖图事实源。
+* **BR-USER-ASSET-58** 画布等外部模块可以通过回调或等价协作方式维护素材引用摘要。引用摘要允许最终一致；当引用数量大于 0 时，前端可在素材卡片上展示角标，例如“被 2 个画布引用”。
 
 ---
 
@@ -252,7 +298,7 @@ Tags 用于大量描述性分类，例如：
 
 ### US-USER-ASSET-06 普通上传
 
-小文件使用普通上传。上传成功后素材进入当前用户素材集合，并刷新素材列表。
+小文件使用普通上传。上传前系统先计算 SHA256 checksum；上传成功后素材进入当前用户素材集合，并刷新素材列表。
 
 ### US-USER-ASSET-07 分片上传
 
@@ -372,6 +418,46 @@ Tags 用于大量描述性分类，例如：
 
 上传图片后，系统基于内容识别自动建议 Tags，例如 `建筑`、`夜晚`。用户可一键采纳建议，也可忽略建议。
 
+### US-USER-ASSET-31 重复素材上传返回已有素材
+
+用户选择上传素材后，系统先计算 SHA256 checksum。如果命中可返回的已存在素材且 `sha256` 相同，系统不再上传二进制内容，而是直接返回已存在素材并刷新列表。
+
+### US-USER-ASSET-32 补算缺失 SHA256
+
+系统周期性触发 `sha256_backfill` 内部处理任务，扫描缺失 `sha256` 的素材，读取素材内容并计算 SHA256 checksum，成功后更新素材 metadata。
+
+### US-USER-ASSET-33 视图模式切换
+
+用户可以在素材列表页顶部工具栏点击视图切换按钮，在列表视图、小图标视图和大图标视图之间实时切换。用户偏好会在本地记住，下次访问同一设备时保持。
+
+### US-USER-ASSET-34 创建与管理分组
+
+用户点击侧边栏“分组”区域的新建分组入口，输入名称并可选颜色后，分组出现在列表中。分组支持重命名、删除和排序；删除时需要确认“素材不会被删除”。
+
+### US-USER-ASSET-35 将素材加入分组
+
+用户在素材列表或详情中选择一个或多个素材，点击“添加到分组”，在已有分组列表中搜索、选择或新建分组，确认后素材与分组建立关联。同一个素材可以同时加入多个分组。
+
+### US-USER-ASSET-36 按分组浏览素材
+
+用户点击侧边栏某个分组名称后，主视图区仅显示属于该分组的素材。分组名称高亮；用户再次点击“所有素材”可返回总览。
+
+### US-USER-ASSET-37 从分组中移除素材
+
+用户在分组视图中选中素材并点击“从分组移除”，确认后仅删除该素材与当前分组的关联，素材仍存在于“所有素材”中。
+
+### US-USER-ASSET-38 分组与标签组合筛选
+
+用户在分组 A 下继续使用搜索栏输入 `#人物`，列表显示分组 A 中同时包含 `人物` Tag 的素材。用户也可以直接输入 `group=项目A, #人物` 获得相同筛选语义。
+
+### US-USER-ASSET-39 素材详情中的分组管理
+
+用户打开素材详情弹窗，底部展示“所属分组”区块，以分组标记形式列出当前素材已关联的所有分组，并提供添加到分组和移除分组入口。
+
+### US-USER-ASSET-40 素材引用角标提示
+
+用户浏览素材卡片时，如果某个素材被画布引用，卡片上展示轻量角标，例如“被 2 个画布引用”。用户打开详情时，可以看到引用来源摘要。
+
 ---
 
 ## 6. 页面结构
@@ -379,29 +465,43 @@ Tags 用于大量描述性分类，例如：
 ```mermaid
 flowchart TD
   entry["/assets 素材"] --> toolbar["过滤与自然语言搜索"]
+  entry --> sidebar["分组侧边栏"]
   entry --> upload["上传入口"]
   entry --> list["个人素材列表"]
 
+  toolbar --> viewMode["视图切换器：列表 / 小图标 / 大图标"]
   toolbar --> selector["统一选择器表达式"]
-  toolbar --> filters["media_type、format、source_type、width、height、labels、tags"]
+  toolbar --> filters["media_type、format、source_type、width、height、labels、tags、group"]
   toolbar --> builder["高级过滤构造器"]
   toolbar --> parse["自然语言优先解析为结构化查询"]
 
+  sidebar --> allAssets["所有素材"]
+  sidebar --> groups["用户自定义分组"]
+  groups --> groupFilter["按分组筛选"]
+  groups --> groupManage["新建 / 重命名 / 删除 / 排序"]
+
   upload --> simple["普通上传"]
   upload --> chunk["分片上传"]
+  upload --> shaCheck["上传前计算 SHA256"]
+  shaCheck --> duplicate["重复命中返回已有素材"]
   chunk --> stop["停止上传"]
   upload --> labelTagInput["上传 labels / tags"]
   upload --> tasks["异步处理任务提示"]
+  tasks --> shaBackfill["sha256_backfill 补算任务"]
 
   list --> thumb["thumbnail / fallback icon"]
   list --> labelView["Labels 属性展示"]
   list --> tagView["Tags 分类展示"]
+  list --> groupView["所属分组展示"]
+  list --> referenceBadge["引用角标提示"]
   list --> hover["悬停预览"]
   list --> context["右键菜单"]
   context --> info["详情"]
   context --> download["下载"]
   context --> rename["重命名"]
   context --> delete["删除"]
+  context --> addGroup["添加到分组"]
+  context --> removeGroup["从分组移除"]
   list --> preview["双击预览 content"]
 
   preview --> image["图片"]
@@ -426,21 +526,48 @@ sequenceDiagram
 
   U->>UI: 选择大文件
   UI->>UI: 计算 SHA256 checksum
-  UI->>API: 初始化上传会话
-  API-->>UI: 返回上传会话
-  loop 逐片上传
-    UI->>API: 上传分片
-    API->>Store: 写入当前用户上传分片
-    Store-->>API: 写入结果
-    API-->>UI: 返回分片上传状态
+  UI->>API: 查询是否存在相同 SHA256 的可返回素材
+  alt 命中已存在素材
+    API-->>UI: 返回已存在素材
+    UI-->>U: 刷新当前用户素材列表
+  else 未命中
+    UI->>API: 初始化上传会话
+    API-->>UI: 返回上传会话
+    loop 逐片上传
+      UI->>API: 上传分片
+      API->>Store: 写入当前用户上传分片
+      Store-->>API: 写入结果
+      API-->>UI: 返回分片上传状态
+    end
+    UI->>API: 完成上传
+    API->>Store: 合并或登记当前用户素材
+    API-->>UI: 返回素材信息
+    UI-->>U: 刷新当前用户素材列表
   end
-  UI->>API: 完成上传
-  API->>Store: 合并或登记当前用户素材
-  API-->>UI: 返回素材信息
-  UI-->>U: 刷新当前用户素材列表
 ```
 
-### 7.2 停止分片上传
+### 7.2 SHA256 补算任务
+
+> ⚠️ 本图是对 US-USER-ASSET-32 和 BR-USER-ASSET-43 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
+
+```mermaid
+sequenceDiagram
+  participant Task as 任务中心
+  participant Asset as 素材库
+  participant Store as 用户素材存储
+
+  Task->>Asset: 触发 asset.sha256_backfill
+  Asset->>Asset: 查询缺失 sha256 的素材
+  loop 每个待补算素材
+    Asset->>Store: 读取素材原始内容
+    Store-->>Asset: 返回内容流或存储引用
+    Asset->>Asset: 计算 SHA256 checksum
+    Asset->>Asset: 更新素材 sha256
+  end
+  Asset-->>Task: 返回补算数量与失败摘要
+```
+
+### 7.3 停止分片上传
 
 ```mermaid
 flowchart TD
@@ -451,7 +578,7 @@ flowchart TD
   E --> F["展示 asset_upload_stopped"]
 ```
 
-### 7.3 自然语言搜索
+### 7.4 自然语言搜索
 
 ```mermaid
 flowchart TD
@@ -465,7 +592,7 @@ flowchart TD
   F -->|是| H["展示当前用户匹配素材"]
 ```
 
-### 7.4 统一选择器搜索与过滤构造器
+### 7.5 统一选择器搜索与过滤构造器
 
 > ⚠️ 本图是对 US-USER-ASSET-20、US-USER-ASSET-22 和 BR-USER-ASSET-37、BR-USER-ASSET-39 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
 
@@ -475,22 +602,22 @@ sequenceDiagram
     participant UI as 前端
     participant BE as 后端
 
-    U->>UI: 在搜索框输入 "media=image, #人物, #-汽车"
-    UI->>UI: 解析为 Labels 与 Tags 混合 AND 条件并校验语法
+    U->>UI: 在搜索框输入 "group=项目A, #人物"
+    UI->>UI: 解析为分组与 Tags 混合 AND 条件并校验语法
     UI->>BE: 按统一选择器查询当前用户素材
     BE-->>UI: 返回匹配的素材列表
     UI->>U: 渲染结果
 
     U->>UI: 点击高级过滤
     UI->>U: 展示可视化构造器
-    U->>UI: 选择 media=video；选择 Tags 中的 #人物
-    UI->>UI: 自动生成 "media=video, #人物"
+    U->>UI: 选择分组 项目A；选择 Tags 中的 #人物
+    UI->>UI: 自动生成 "group=项目A, #人物"
     UI->>BE: 重新查询当前用户素材
     BE-->>UI: 返回新结果
     UI->>U: 渲染结果
 ```
 
-### 7.5 素材预览
+### 7.6 素材预览
 
 ```mermaid
 flowchart TD
@@ -503,7 +630,7 @@ flowchart TD
   F -->|否| H["展示 fallback icon"]
 ```
 
-### 7.6 画布输出登记
+### 7.7 画布输出登记
 
 ```mermaid
 flowchart TD
@@ -511,6 +638,27 @@ flowchart TD
   B --> C["写入当前用户素材集合"]
   C --> D["可在 /assets 中浏览"]
   C --> E["可用于当前用户画布资产包下载"]
+```
+
+### 7.8 分组管理与关联
+
+> ⚠️ 本图是对 US-USER-ASSET-34、US-USER-ASSET-35、US-USER-ASSET-37 和 BR-USER-ASSET-50、BR-USER-ASSET-51 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
+
+```mermaid
+flowchart TD
+  A["用户创建分组"] --> B["分组出现在侧边栏"]
+  B --> C["用户将素材添加到分组"]
+  C --> D{"素材是否已在该分组"}
+  D -->|是| E["忽略重复添加"]
+  D -->|否| F["创建分组关联"]
+  F --> G["分组视图可展示该素材"]
+  G --> H["用户从分组移除素材"]
+  H --> I["删除关联记录"]
+  I --> J["素材仍存在于所有素材"]
+  B --> K["用户删除分组"]
+  K --> L["提示素材不会被删除"]
+  L --> M["删除分组及关联关系"]
+  M --> J
 ```
 
 ---
@@ -521,17 +669,26 @@ flowchart TD
 | ------------------- | --- |
 | 查看个人素材列表            | ✅   |
 | 空列表提示               | ✅   |
+| 三视图切换               | ✅   |
 | 按 metadata 精确过滤     | ✅   |
 | 统一选择器搜索             | ✅   |
+| 按分组筛选               | ✅   |
+| 分组与标签组合筛选           | ✅   |
 | 标签智能补全              | ✅   |
 | 可视化过滤构造器            | ✅   |
 | 标签批量应用              | ✅   |
+| 创建与管理分组             | ✅   |
+| 素材加入多个分组            | ✅   |
+| 从分组移除素材             | ✅   |
+| 素材引用角标提示            | ✅   |
 | Tags 自由分类             | ✅   |
 | 系统自动建议 Tags          | ✅   |
 | 自然语言搜索素材            | ✅   |
 | 多文件上传               | ✅   |
+| SHA256 重复上传返回已有素材  | ✅   |
 | 普通上传                | ✅   |
 | 分片上传                | ✅   |
+| 缺失 SHA256 后台补算       | ✅   |
 | 停止分片上传              | ✅   |
 | 上传后刷新列表             | ✅   |
 | 上传后异步处理提示           | ✅   |
@@ -559,6 +716,8 @@ flowchart TD
 过滤与自然语言搜索
 统一选择器搜索栏
 高级过滤面板
+视图切换器
+分组侧边栏
 上传入口
 个人素材列表
 素材详情弹窗
@@ -569,6 +728,16 @@ flowchart TD
 ### 9.2 素材列表
 
 素材列表只展示当前用户自己的素材。
+
+素材列表支持三种视图模式：
+
+```text
+列表视图：表格形式，每行展示缩略图、名称、大小、类型、日期、标签摘要等，支持列排序
+小图标视图：固定尺寸方形缩略图网格，下方显示名称和少量标签
+大图标视图：较大缩略图卡片，可展示完整标签列表、尺寸、时长等更多信息
+```
+
+视图切换器位于素材列表上方工具栏右侧，使用列表、小网格、大网格图标表达三种模式，当前选中态高亮。视图偏好只在本地记忆，不跨设备同步。
 
 每个素材条目展示：
 
@@ -583,6 +752,8 @@ flowchart TD
 来源
 labels
 tags
+所属分组摘要
+引用角标
 thumbnail 状态
 thumbnail 或默认文件图标
 ```
@@ -609,6 +780,7 @@ width
 height
 labels
 tags
+group
 ```
 
 统一选择器搜索栏支持用户直接输入表达式，例如：
@@ -623,6 +795,8 @@ format notin (jpg, png)
 #-汽车
 media=image, #人物, #-汽车
 #人物; #动物
+group=项目A
+group=项目A, #人物
 ```
 
 搜索栏需要对表达式错误进行高亮或提示，并提供语法帮助入口。
@@ -639,11 +813,45 @@ media=image, #人物, #-汽车
 简易模式与表达式模式需要保持表达式同步
 属性子面板展示 Labels 条件，例如 media、style、dimension
 分类子面板展示 Tags 条件，例如 #人物、#汽车、#提示词
+分组子面板展示用户分组条件，例如 group=项目A
 当前选中 media=image 时，优先展示 style、dimension 等图片相关 Labels 和图像类 Tags
 当前选中 media=text 时，优先展示 format 等文本相关 Labels 和文本类 Tags
 ```
 
-### 9.5 标签展示与编辑
+当选中某个分组时，页面显示面包屑：
+
+```text
+所有素材 > 分组名称
+```
+
+用户点击“所有素材”可返回总览。
+
+### 9.5 分组侧边栏
+
+页面左侧提供可折叠分组侧边栏。
+
+侧边栏包含：
+
+```text
+所有素材
+用户自定义分组列表
+新建分组入口
+分组素材数量
+分组颜色标记
+```
+
+分组支持拖拽排序。分组颜色使用名称前的颜色圆点展示，并与 Labels/Tags 的颜色体系区分。
+
+用户可以通过以下方式将素材加入分组：
+
+```text
+拖拽素材卡片到侧边栏分组条目
+右键菜单选择添加到分组
+多选后使用工具栏添加到分组
+素材详情中添加到分组
+```
+
+### 9.6 标签展示与编辑
 
 素材卡片和素材详情区分展示 Labels 与 Tags。
 
@@ -680,11 +888,13 @@ Tags 以前面带 `#` 的彩色圆角块展示，例如：
 
 用户可以直接输入任意新 Labels 或 Tags，新建标签无需管理员预先定义。
 
-### 9.6 上传入口
+### 9.7 上传入口
 
 用户可以一次选择多个文件上传。
 
 上传时可以设置 labels 键值对和 tags 自由分类。
+
+上传前需要计算 SHA256 checksum。若命中可返回的已存在素材且 `sha256` 相同，页面不再继续上传二进制内容，直接使用返回的已存在素材刷新列表。
 
 小文件使用普通上传。
 
@@ -692,20 +902,21 @@ Tags 以前面带 `#` 的彩色圆角块展示，例如：
 
 停止上传后需要清理当前用户自己的上传会话和前端上传状态。
 
-### 9.7 上传后处理提示
+### 9.8 上传后处理提示
 
 上传完成后可以创建异步处理任务，例如：
 
 ```text
 缩略图生成
 派生预览生成
+缺失 SHA256 补算
 ```
 
 异步处理任务不阻塞用户浏览素材列表。
 
 页面可以展示处理状态或提示用户稍后刷新预览。
 
-### 9.8 素材详情
+### 9.9 素材详情
 
 用户可以通过右键菜单或详情入口查看素材详情。
 
@@ -723,9 +934,15 @@ preview 状态
 SHA256 checksum
 labels
 tags
+所属分组
+引用来源摘要
 ```
 
-### 9.9 素材预览
+详情中的“所属分组”区块以分组标记形式列出当前素材已关联分组，每个分组可移除，并提供添加到分组入口。
+
+详情中的引用来源摘要用于展示当前素材被哪些来源引用，例如被几个画布引用。该摘要只做提示，不替代引用方自己的事实源。
+
+### 9.10 素材预览
 
 用户可以预览自己的图片、视频、音频、文本、PDF 或其他可嵌入内容。
 
@@ -739,7 +956,7 @@ thumbnail 或前端抽帧失败时使用占位图标
 
 视频和 GIF 可在前端抽帧生成悬停预览。已有服务端 thumbnail 时优先使用服务端 thumbnail。
 
-### 9.10 右键菜单
+### 9.11 右键菜单
 
 素材右键菜单包含：
 
@@ -748,6 +965,8 @@ thumbnail 或前端抽帧失败时使用占位图标
 下载
 重命名
 删除
+添加到分组
+从分组移除
 ```
 
 不应展示或启用以下正式能力：
@@ -760,25 +979,37 @@ thumbnail 或前端抽帧失败时使用占位图标
 跨用户复用
 ```
 
-### 9.11 标签批量应用
+### 9.12 标签批量应用
 
 用户可以在素材列表中选择多个素材，为选中素材批量添加或覆盖 Labels，也可以批量添加或删除 Tags。
 
 批量标签操作必须遵守当前用户素材范围；不属于当前用户或当前用户不可写的素材不得被修改。
 
-### 9.12 下载
+### 9.13 分组管理
+
+用户可以创建、重命名、删除和排序自己的分组。
+
+删除分组前必须展示确认提示：
+
+```text
+仅删除分组，素材不会被删除
+```
+
+确认后仅删除分组及分组关联关系，素材仍保留在“所有素材”中。
+
+### 9.14 下载
 
 用户可以下载自己的素材原始内容。
 
 下载只能下载当前用户自己的素材，不得绕过所有权校验。
 
-### 9.13 重命名与删除
+### 9.15 重命名与删除
 
 重命名只修改当前用户自己的素材显示名。
 
 删除必须经过确认，只删除当前用户自己的素材。删除后刷新当前用户素材列表。
 
-### 9.14 画布输出资产
+### 9.16 画布输出资产
 
 画布节点输出可以登记为当前用户素材。
 
@@ -791,7 +1022,7 @@ thumbnail 或前端抽帧失败时使用占位图标
 不进入平台共享素材库
 ```
 
-### 9.15 只读状态
+### 9.17 只读状态
 
 当 canWrite=false 时，页面可以展示当前用户已有素材，但以下操作需要禁用：
 
@@ -802,6 +1033,7 @@ thumbnail 或前端抽帧失败时使用占位图标
 删除
 登记画布输出资产
 标签新增、修改、删除和批量应用
+分组创建、重命名、删除、排序和分组关联变更
 ```
 
 下载是否可用取决于当前用户是否仍具备读取当前素材内容的能力。
@@ -817,6 +1049,8 @@ thumbnail 或前端抽帧失败时使用占位图标
 | asset_selector_invalid | 统一选择器表达式语法错误时展示错误高亮或提示 |
 | asset_upload_failed       | 普通上传或分片上传失败时展示错误                 |
 | asset_upload_stopped      | 用户停止上传时清理上传状态，并取消当前用户上传会话        |
+| asset_upload_duplicate    | 上传前 SHA256 命中已存在素材，跳过上传并返回已有素材   |
+| asset_sha256_backfill_failed | 缺失 SHA256 补算失败，记录失败原因但不影响素材可见性 |
 | asset_not_found           | 素材不存在或不属于当前用户时给出业务错误             |
 | asset_content_forbidden   | 当前用户无权访问 content 或 thumbnail 时拒绝 |
 | asset_preview_unavailable | thumbnail 或前端抽帧失败时使用占位图标，不阻塞列表浏览 |

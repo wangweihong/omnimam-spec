@@ -28,6 +28,12 @@
 - 负责将 Worker LOST、Lease EXPIRED、Attempt WORKER_LOST/TIMEOUT/STALLED 等异常写入任务事实。
 - 不将所有异常直接标记为业务失败，必须按 RetryPolicy 和 TimeoutPolicy 判断。
 
+### scheduler
+
+- 负责为系统内部维护任务周期性创建计划执行的 TaskRun。
+- 负责使用 `schedule_at` 表达计划开始时间，并沿用 TaskRun 生命周期、重试和失败处理规则。
+- 不解释业务任务执行语义；例如 `asset.sha256_backfill` 的扫描、读取、计算和写回由素材库负责。
+
 ### access
 
 - 负责项目、命名空间、创建人、Worker 协议调用方和运维角色的访问控制。
@@ -41,6 +47,7 @@
 | run | 定义引用、运行输入、取消/重试请求 | TaskRun、运行树、状态、进度、结果引用 |
 | worker-protocol | Worker 能力、领取请求、lease、进度、执行结果 | TaskAttempt、ExecutionLease、TaskRun 状态更新 |
 | watchdog | Worker 心跳、lease 过期时间、任务超时策略 | 异常状态、watchdog 记录、恢复调度事件 |
+| scheduler | 系统维护任务定义、固定周期、下一次计划时间 | 计划执行的 TaskRun |
 | access | 当前用户、项目、命名空间、调用主体 | 可访问资源范围、权限拒绝 |
 
 ## 3. 依赖关系
@@ -49,7 +56,9 @@
 - `worker-protocol` 依赖 `run` 获取 READY TaskRun 并推进状态。
 - `worker-protocol` 依赖 AppEngine 执行具体业务能力，但 AppEngine 不属于任务中心。
 - `watchdog` 依赖 `worker-protocol` 写入的 Worker、Attempt 和 Lease 状态。
-- `access` 被 `definition`、`run`、`worker-protocol` 和 `watchdog` 调用。
+- `scheduler` 依赖 `definition` 和 `run` 创建计划执行的 TaskRun。
+- `asset-library` 可依赖 `scheduler` 周期性触发 `asset.sha256_backfill`，但业务执行语义由 `asset-library` 自身解释。
+- `access` 被 `definition`、`run`、`worker-protocol`、`watchdog` 和 `scheduler` 调用。
 
 ## 4. 一致性要求
 
@@ -59,6 +68,7 @@
 - TaskAttempt 历史不得被覆盖；TaskRun 只保存最近一次错误摘要。
 - 取消请求发出后，最终状态允许为 `CANCELED`、`SUCCESS`、`FAILED` 或 `TIMEOUT`。
 - `overallTimeout` 优先级高于重试策略；无限重试必须设置退出保护条件。
+- 系统周期性调度创建的 TaskRun 必须遵循普通 TaskRun 生命周期，不绕过 Worker 领取、lease、进度和结果回写规则。
 - 软删除只允许作用于终态 TaskRun，且不得物理删除 TaskAttempt、状态历史和审计记录。
 
 ## 5. 权限边界
