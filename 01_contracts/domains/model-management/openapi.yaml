@@ -22,6 +22,19 @@ paths:
         - $ref: "#/components/parameters/page_num"
         - $ref: "#/components/parameters/page_size"
         - $ref: "#/components/parameters/keyword"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, provider_type, enabled]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 当前用户模型提供商列表。
@@ -148,6 +161,19 @@ paths:
         - $ref: "#/components/parameters/page_num"
         - $ref: "#/components/parameters/page_size"
         - $ref: "#/components/parameters/keyword"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [model, display_name, group, health_status, enabled, created_at, updated_at]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 提供商模型列表。
@@ -298,6 +324,19 @@ paths:
           in: query
           schema:
             type: string
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 display_name 排序。
+          schema:
+            type: string
+            enum: [provider_name, display_name, model, health_status, enabled, created_at, updated_at]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 下游功能可选择的当前用户模型。

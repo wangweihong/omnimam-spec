@@ -30,6 +30,19 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/TemplateKind"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, kind]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 应用模板列表。
@@ -126,6 +139,19 @@ paths:
         - $ref: "#/components/parameters/template_id"
         - $ref: "#/components/parameters/page_num"
         - $ref: "#/components/parameters/page_size"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, kind]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 引用该模板的应用列表。
@@ -150,6 +176,19 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/TemplateKind"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, kind]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 应用列表。
@@ -244,6 +283,19 @@ paths:
         business_rules: [BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018, BR-AIAPP-019]
       parameters:
         - $ref: "#/components/parameters/application_id"
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 sort_order 排序。
+          schema:
+            type: string
+            enum: [sort_order, field_key, field_label, field_type, source_path]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: 字段映射列表。

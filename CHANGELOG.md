@@ -9,6 +9,7 @@
 - 收敛 `application-platform` 模板语义，要求创建时解析模板，解析失败不创建模板，模板内容和解析变量创建后不可修改，模板名称在同一用户下唯一。
 - 同步更新 `application-platform` OpenAPI、设计态 SQL schema、错误码、权限码、事件、模块契约、错误码索引和架构参考，要求创建应用时提交完整字段映射，并移除应用状态与启用接口。
 - 进一步收敛 `application-platform`，移除模板归档状态和模板状态契约，明确资源创建后归属创建者本人，字段映射请求不再提交 `required`，公共应用仅作为权限范围说明且不展示业务入口。
+- 为 `application-platform`、`model-management`、`task-center` 的核心列表接口补充 `sort_field` 与 `sort_order` 查询参数，覆盖名称、创建时间、更新时间、类型、状态及业务时间字段排序。
 
 ## 2026-07-06
 
