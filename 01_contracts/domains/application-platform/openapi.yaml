@@ -12,6 +12,8 @@ tags:
     description: 应用管理。
   - name: field-mappings
     description: 字段映射管理。
+  - name: saas-platforms
+    description: SaaS 平台元数据只读查询。
   - name: app-engines
     description: 用户应用引擎管理与健康检测。
   - name: application-runs
@@ -163,6 +165,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApplicationListResponse"
+
+  /api/v1/app-templates/{template_id}/convert-to-application:
+    post:
+      tags: [templates]
+      summary: 将应用模板转换成正式应用
+      operationId: convert_app_template_to_application
+      x-s1-refs:
+        user_stories: [US-AIAPP-004]
+        business_rules: [BR-AIAPP-010, BR-AIAPP-013, BR-AIAPP-016, BR-AIAPP-019, BR-AIAPP-065]
+      parameters:
+        - $ref: "#/components/parameters/template_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppTemplateConvertToApplicationRequest"
+      responses:
+        "200":
+          description: 应用详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
 
   /api/v1/applications:
     get:
@@ -412,6 +438,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/FieldMappingListResponse"
 
+  /api/v1/saas-platforms:
+    get:
+      tags: [saas-platforms]
+      summary: 查询 SaaS 平台元数据
+      operationId: list_saas_platforms
+      x-s1-refs:
+        user_stories: [US-AIAPP-010, US-AIAPP-012]
+        business_rules: [BR-AIAPP-042, BR-AIAPP-047, BR-AIAPP-063, BR-AIAPP-064]
+      parameters:
+        - name: saas_platform_type
+          in: query
+          schema:
+            $ref: "#/components/schemas/SaaSPlatformType"
+        - name: capability_type
+          in: query
+          schema:
+            $ref: "#/components/schemas/CapabilityType"
+      responses:
+        "200":
+          description: 系统预置 SaaS 平台元数据。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaaSPlatformMetadataListResponse"
+
   /api/v1/app-engines:
     get:
       tags: [app-engines]
@@ -639,42 +690,67 @@ components:
     ApplicationRunStatus:
       type: string
       enum: [pending, running, success, failed, canceled, timeout]
-    OperationContract:
+    SaaSPlatformCapability:
       type: object
-      description: SaaS API 操作契约，表达第三方接口调用、请求映射、结果映射、取消和进度支持。
+      required: [capability_type]
       properties:
-        method:
+        capability_type:
+          $ref: "#/components/schemas/CapabilityType"
+        display_name:
           type: string
-        path:
+    SaaSPlatformMetadata:
+      type: object
+      required:
+        [
+          saas_platform_type,
+          default_endpoint,
+          allow_endpoint_override,
+          requires_custom_http_config,
+          capabilities,
+        ]
+      properties:
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        display_name:
           type: string
-        request_mapping:
-          type: object
-          additionalProperties: true
-        result_mapping:
-          type: object
-          additionalProperties: true
-        cancel_supported:
+        default_endpoint:
+          type: string
+        allow_endpoint_override:
+          type: boolean
+          default: true
+        requires_custom_http_config:
           type: boolean
           default: false
-        progress_supported:
-          type: boolean
-          default: false
-    HealthCheckConfig:
+        capabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaaSPlatformCapability"
+    SaaSPlatformMetadataListResponse:
       type: object
-      description: 应用引擎健康检测配置；不同 SaaS 平台和能力可以使用不同检测方式。
+      required: [total, items]
       properties:
-        mode:
-          type: string
-          enum: [http_ping, api_call, none]
-        path:
-          type: string
-        method:
-          type: string
-        expected_status:
+        total:
           type: integer
-        payload:
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaaSPlatformMetadata"
+    CustomHttpConfig:
+      type: object
+      description: 自定义 HTTP 平台配置；仅 saas_platform_type=custom_http 时使用，认证凭证仍放在 auth_config。
+      required: [api_path]
+      properties:
+        api_path:
+          type: string
+        method:
+          type: string
+        headers:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: string
+        health_check_path:
+          type: string
     AppEngineStatus:
       type: string
       enum: [active, disabled]
@@ -714,8 +790,8 @@ components:
           $ref: "#/components/schemas/AppEngineAuthType"
         auth_config:
           $ref: "#/components/schemas/AppEngineAuthConfig"
-        health_check_config:
-          $ref: "#/components/schemas/HealthCheckConfig"
+        custom_http_config:
+          $ref: "#/components/schemas/CustomHttpConfig"
     AppEngineHealthCheckResult:
       type: object
       required: [health_status, checked_at]
@@ -769,20 +845,12 @@ components:
           $ref: "#/components/schemas/AppEngineAuthType"
         auth_config:
           $ref: "#/components/schemas/AppEngineAuthConfig"
+        custom_http_config:
+          $ref: "#/components/schemas/CustomHttpConfig"
         status:
           $ref: "#/components/schemas/AppEngineStatus"
         health_status:
           $ref: "#/components/schemas/AppEngineHealthStatus"
-        supported_capability_types:
-          type: array
-          items:
-            $ref: "#/components/schemas/CapabilityType"
-        health_check_config:
-          $ref: "#/components/schemas/HealthCheckConfig"
-        capability_tags:
-          type: array
-          items:
-            type: string
         reference_run_count:
           type: integer
           minimum: 0
@@ -817,16 +885,8 @@ components:
           $ref: "#/components/schemas/AppEngineAuthType"
         auth_config:
           $ref: "#/components/schemas/AppEngineAuthConfig"
-        capability_tags:
-          type: array
-          items:
-            type: string
-        supported_capability_types:
-          type: array
-          items:
-            $ref: "#/components/schemas/CapabilityType"
-        health_check_config:
-          $ref: "#/components/schemas/HealthCheckConfig"
+        custom_http_config:
+          $ref: "#/components/schemas/CustomHttpConfig"
     AppEngineUpdateRequest:
       type: object
       properties:
@@ -844,18 +904,10 @@ components:
           $ref: "#/components/schemas/AppEngineAuthType"
         auth_config:
           $ref: "#/components/schemas/AppEngineAuthConfig"
+        custom_http_config:
+          $ref: "#/components/schemas/CustomHttpConfig"
         status:
           $ref: "#/components/schemas/AppEngineStatus"
-        capability_tags:
-          type: array
-          items:
-            type: string
-        supported_capability_types:
-          type: array
-          items:
-            $ref: "#/components/schemas/CapabilityType"
-        health_check_config:
-          $ref: "#/components/schemas/HealthCheckConfig"
     ParsedField:
       type: object
       required: [source_path, field_type, required]
@@ -897,10 +949,6 @@ components:
           $ref: "#/components/schemas/SaaSPlatformType"
         capability_type:
           $ref: "#/components/schemas/CapabilityType"
-        operation_key:
-          type: string
-        operation_contract:
-          $ref: "#/components/schemas/OperationContract"
         config:
           type: object
           additionalProperties: true
@@ -933,13 +981,24 @@ components:
           $ref: "#/components/schemas/SaaSPlatformType"
         capability_type:
           $ref: "#/components/schemas/CapabilityType"
-        operation_key:
-          type: string
-        operation_contract:
-          $ref: "#/components/schemas/OperationContract"
         config:
           type: object
           additionalProperties: true
+    AppTemplateConvertToApplicationRequest:
+      type: object
+      required: [name, field_mappings]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        fixed_parameters:
+          type: object
+          additionalProperties: true
+        field_mappings:
+          $ref: "#/components/schemas/FieldMappingSaveRequest"
     AppTemplateUpdateRequest:
       type: object
       description: 模板内容创建后不可修改；本请求仅允许修改名称和描述。
@@ -1028,8 +1087,6 @@ components:
           $ref: "#/components/schemas/SaaSPlatformType"
         capability_type:
           $ref: "#/components/schemas/CapabilityType"
-        operation_key:
-          type: string
         fixed_parameters:
           type: object
           additionalProperties: true
@@ -1123,8 +1180,6 @@ components:
           $ref: "#/components/schemas/SaaSPlatformType"
         capability_type:
           $ref: "#/components/schemas/CapabilityType"
-        operation_key:
-          type: string
         input_snapshot:
           type: object
           additionalProperties: true

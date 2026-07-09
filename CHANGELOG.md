@@ -2,13 +2,17 @@
 
 ## 2026-07-09
 
-- 补全 `application-platform` S1/S2 设计，保留 `kind=comfyui|saas_api`，并在 `kind=saas_api` 分支新增 SaaS 平台类型、能力类型和操作契约。
+- 补全 `application-platform` S1/S2 设计，保留 `kind=comfyui|saas_api`，并在 `kind=saas_api` 分支新增 SaaS 平台类型和能力类型。
 - 明确 AppTemplate 可表示第三方平台某个接口参数总和，Application 从 AppTemplate 中抽取并固化特定参数，ModelScope z-image / klein 作为 SaaS 生图模板派生应用示例。
-- 补充 AppEngine SaaS 平台类型、支持能力类型和健康检测配置，运行 Application 时要求 AppEngine 与 Application 的 `kind` 匹配，SaaS 分支还需平台类型和能力类型匹配。
+- 收敛 AppEngine SaaS 平台配置，移除用户维护的支持能力类型、能力标签和通用健康检测配置；非 `custom_http` 平台的健康检测方式、能力矩阵、官方 endpoint 和具体接口调用规则由系统预置。
+- 新增只读 SaaS 平台元数据契约，用于返回官方默认 endpoint、预置能力矩阵、是否允许 endpoint 覆盖以及是否需要 `custom_http_config`。
+- 为 `custom_http` 增加独立 `custom_http_config`，至少包含 `api_path`；运行 Application 时要求 AppEngine 与 Application 的 `kind` 匹配，SaaS 分支还需平台类型匹配，并由平台预置能力矩阵支持能力类型。
+- 移除 AppTemplate、Application、AppRun 和 TaskRun.input 中的操作契约/操作标识语义，模板不再承担平台 API 路径、调用方法或底层接口选择职责。
+- 新增模板详情页转换成应用能力和 `POST /api/v1/app-templates/{template_id}/convert-to-application` 契约，转换结果与基于模板创建正式应用一致。
 - 新增 AppRun S1/S2 契约和应用运行 API，application-platform 创建 AppRun 并通过 task-center 创建 TaskRun，TaskRun 生命周期仍归 task-center 管理。
 - 增加 AppEngine 删除功能，明确未被 AppRun 引用的引擎可删除，已存在运行引用的引擎只能停用以保留历史链路。
-- 扩展 AppEngine 健康检测契约，支持通过 `app_engine_id` 检测并写回已保存引擎，也支持直接传递 endpoint、认证方式和健康检测配置执行不持久化临时检测。
-- 补齐 Application 与 AppRun 历史引用保护，已产生 AppRun 的 Application 禁止物理删除，并补充 HealthCheckConfig / HealthCheckResult 的 S1 模型说明。
+- 扩展 AppEngine 健康检测契约，支持通过 `app_engine_id` 检测并写回已保存引擎，也支持直接传递 endpoint、认证方式和 `custom_http_config` 执行不持久化临时检测。
+- 补齐 Application 与 AppRun 历史引用保护，已产生 AppRun 的 Application 禁止物理删除，并补充 CustomHttpConfig / HealthCheckResult 的 S1 模型说明。
 - 同步更新 `application-platform` OpenAPI、设计态 SQL schema、错误码、权限码、事件、模块契约、错误码索引和架构参考。
 
 ## 2026-07-08

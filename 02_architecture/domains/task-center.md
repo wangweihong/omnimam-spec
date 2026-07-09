@@ -23,7 +23,7 @@
 - 依赖 `identity` 提供调用主体、当前用户和权限边界。
 - 被 `application-platform` 或后续业务模块调用，用于创建和追踪应用运行。
 - 与 AppEngine 协作时，任务中心只表达运行状态和调度协议，AppEngine 负责业务执行解释。
-- 与 `application-platform` 协作时，任务中心可周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 平台连接、明文凭证携带、健康判断和状态写回由应用平台负责。
+- 与 `application-platform` 协作时，任务中心可周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 平台连接、明文凭证携带、custom_http 配置解释、平台预置健康检测策略、健康判断和状态写回由应用平台负责。
 - 与 `asset-library` 协作时，任务中心可周期性触发 `asset.sha256_backfill`，但素材库负责具体扫描、读取素材、计算 SHA256 和写回。
 
 ## 4. 核心链路

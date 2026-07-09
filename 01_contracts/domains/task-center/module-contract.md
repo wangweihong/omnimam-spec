@@ -34,7 +34,7 @@
 - 负责使用 `schedule_at` 表达计划开始时间，并沿用 TaskRun 生命周期、重试和失败处理规则。
 - 可周期性创建 `application-platform.app-engine-health-check` TaskRun，用于触发应用平台监听未停用 AppEngine 健康状态。
 - 不解释业务任务执行语义；例如 `asset.sha256_backfill` 的扫描、读取、计算和写回由素材库负责。
-- 不解释 AppEngine 认证方式、明文凭证、平台连接和健康判断语义；这些由 application-platform 负责。
+- 不解释 AppEngine 认证方式、明文凭证、custom_http 配置、SaaS 平台能力矩阵、平台连接和健康判断语义；这些由 application-platform 负责。
 
 ### access
 

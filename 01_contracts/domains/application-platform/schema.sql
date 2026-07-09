@@ -13,8 +13,6 @@ CREATE TABLE aiapp_app_templates (
   kind TEXT NOT NULL CHECK (kind IN ('comfyui', 'saas_api')),
   saas_platform_type TEXT DEFAULT '',
   capability_type TEXT DEFAULT '',
-  operation_key TEXT DEFAULT '',
-  operation_contract_json TEXT NOT NULL DEFAULT '{}',
   config_json TEXT NOT NULL,
   parsed_fields_json TEXT NOT NULL DEFAULT '[]',
   reference_application_count INTEGER NOT NULL DEFAULT 0
@@ -40,7 +38,6 @@ CREATE TABLE aiapp_applications (
   kind TEXT NOT NULL CHECK (kind IN ('comfyui', 'saas_api')),
   saas_platform_type TEXT DEFAULT '',
   capability_type TEXT DEFAULT '',
-  operation_key TEXT DEFAULT '',
   fixed_parameters_json TEXT NOT NULL DEFAULT '{}',
   reference_run_count INTEGER NOT NULL DEFAULT 0
 );
@@ -67,11 +64,9 @@ CREATE TABLE aiapp_app_engines (
   endpoint TEXT NOT NULL,
   auth_type TEXT NOT NULL CHECK (auth_type IN ('bearer_token', 'api_key', 'ak_sk', 'none')),
   auth_config_json TEXT NOT NULL DEFAULT '{}',
+  custom_http_config_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
   health_status TEXT NOT NULL CHECK (health_status IN ('unknown', 'healthy', 'unhealthy')),
-  supported_capability_types_json TEXT NOT NULL DEFAULT '[]',
-  health_check_config_json TEXT NOT NULL DEFAULT '{}',
-  capability_tags_json TEXT NOT NULL DEFAULT '[]',
   reference_run_count INTEGER NOT NULL DEFAULT 0,
   last_health_check_at TIMESTAMPTZ,
   unhealthy_reason TEXT DEFAULT ''
@@ -125,7 +120,6 @@ CREATE TABLE aiapp_application_runs (
   kind TEXT NOT NULL CHECK (kind IN ('comfyui', 'saas_api')),
   saas_platform_type TEXT DEFAULT '',
   capability_type TEXT DEFAULT '',
-  operation_key TEXT DEFAULT '',
   input_snapshot_json TEXT NOT NULL DEFAULT '{}',
   rendered_payload_snapshot_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'success', 'failed', 'canceled', 'timeout')),

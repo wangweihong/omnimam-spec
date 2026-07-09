@@ -74,7 +74,7 @@ app_engine_changed:
   producer: app-engine-service
   consumers:
     - task-center-scheduler
-  trigger_condition: 应用引擎创建、基础信息更新、明文认证配置更新、停用状态变化或删除成功。
+  trigger_condition: 应用引擎创建、基础信息更新、endpoint 更新、明文认证配置更新、custom_http_config 更新、停用状态变化或删除成功。
   payload:
     app_engine_id: string
     owner_user_id: string
@@ -135,7 +135,6 @@ application_run_created:
     kind: string
     saas_platform_type: string
     capability_type: string
-    operation_key: string
     occurred_at: string(date-time)
   idempotency_key: application_run_id:task_run_id
   retry_policy: 失败后按固定间隔重试，直到消费者接收。

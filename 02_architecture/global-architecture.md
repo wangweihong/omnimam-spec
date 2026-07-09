@@ -50,7 +50,7 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义应用、字段映射和用户级 AppEngine；不直接承担应用运行，运行链路交给 `task-center`，AppEngine 只表达用户维护的运行平台与健康状态。
+- `application-platform` 定义应用、字段映射、SaaS 平台元数据和用户级 AppEngine；不直接承担应用运行，运行链路交给 `task-center`，AppEngine 只表达用户维护的运行平台、明文凭证、custom_http 配置与健康状态。
 - `task-center` 只管理任务定义、运行状态、Worker 协议与故障恢复，不理解具体业务执行逻辑。
 - `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
 

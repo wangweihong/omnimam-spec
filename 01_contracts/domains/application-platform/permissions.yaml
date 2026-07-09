@@ -2,7 +2,7 @@ aiapp.template.manage_own:
   domain: application-platform
   module: template
   resource: app_template
-  action: create, read_own, update_own, delete_own
+  action: create, read_own, update_own, delete_own, convert_to_application_own
   subject: regular_user
   description: 普通用户管理自己的应用模板。
   frontend_usage: 控制普通用户自己的模板列表、创建、编辑、删除预检和引用关系入口。
@@ -13,11 +13,13 @@ aiapp.template.manage_own:
     - US-AIAPP-003
     - US-AIAPP-007
     - US-AIAPP-008
+    - US-AIAPP-004
   related_rules:
     - BR-AIAPP-001
     - BR-AIAPP-005
     - BR-AIAPP-006
     - BR-AIAPP-021
+    - BR-AIAPP-065
 
 aiapp.application.manage_own:
   domain: application-platform
@@ -42,12 +44,12 @@ aiapp.application.manage_own:
 aiapp.app_engine.manage_own:
   domain: application-platform
   module: app-engine
-  resource: app_engine
+  resource: app_engine, saas_platform_metadata
   action: create, read_own, update_own, delete_own, health_check_own, health_check_temp
   subject: regular_user
   description: 普通用户管理自己的应用引擎并查看健康状态，可删除未被 AppRun 引用的应用引擎，也可执行不持久化的临时健康检测。
   frontend_usage: 控制普通用户自己的应用引擎列表、创建、编辑、停用、删除、凭证可见控制、健康状态查看和临时连接检测。
-  backend_enforcement: 必须校验 AppEngine owner_user_id 为当前普通用户；明文凭证按请求保存和返回；已保存引擎健康检测只作用于未停用引擎并写回状态；临时健康检测不得创建或更新 AppEngine；删除前必须确认不存在 AppRun 引用。
+  backend_enforcement: 必须校验 AppEngine owner_user_id 为当前普通用户；明文凭证按请求保存和返回；SaaS 平台元数据只读；非 custom_http 平台使用预置健康检测方式；custom_http 必须校验 custom_http_config；临时健康检测不得创建或更新 AppEngine；删除前必须确认不存在 AppRun 引用。
   related_user_stories:
     - US-AIAPP-010
     - US-AIAPP-011
@@ -74,7 +76,7 @@ aiapp.application.run_own:
   subject: regular_user
   description: 普通用户运行自己可访问的应用，并查看自己的应用运行记录。
   frontend_usage: 控制应用详情中的运行入口、可选 AppEngine 列表和自己的运行记录列表。
-  backend_enforcement: 必须校验 Application 和 AppEngine 对当前用户可见；运行时校验 kind、SaaS 平台类型、能力类型、引擎状态和健康状态；AppRun owner_user_id 为运行发起用户。
+  backend_enforcement: 必须校验 Application 和 AppEngine 对当前用户可见；运行时校验 kind、SaaS 平台类型、平台预置能力矩阵、引擎状态和健康状态；AppRun owner_user_id 为运行发起用户。
   related_user_stories:
     - US-AIAPP-013
   related_rules:
@@ -88,12 +90,12 @@ aiapp.application.run_own:
 aiapp.admin.manage_all:
   domain: application-platform
   module: application-platform
-  resource: app_template, application, field_mapping, app_engine, application_run
-  action: create, read_all, update_all, delete_all, read_run_all, health_check_temp
+  resource: app_template, application, field_mapping, app_engine, saas_platform_metadata, application_run
+  action: create, read_all, update_all, delete_all, convert_to_application_all, read_run_all, health_check_temp
   subject: admin
   description: 管理员管理全部用户的模板、应用、字段映射和应用引擎。
   frontend_usage: 控制管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；模板删除仍需遵守引用保护。
+  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；SaaS 平台元数据只读；模板删除仍需遵守引用保护。
   related_user_stories:
     - US-AIAPP-003
     - US-AIAPP-006
@@ -119,16 +121,17 @@ aiapp.admin.manage_all:
     - BR-AIAPP-059
     - BR-AIAPP-060
     - BR-AIAPP-061
+    - BR-AIAPP-065
 
 aiapp.super_admin.manage_all:
   domain: application-platform
   module: application-platform
-  resource: app_template, application, field_mapping, app_engine, application_run
-  action: create, read_all, update_all, delete_all, read_run_all, health_check_temp
+  resource: app_template, application, field_mapping, app_engine, saas_platform_metadata, application_run
+  action: create, read_all, update_all, delete_all, convert_to_application_all, read_run_all, health_check_temp
   subject: super_admin
   description: 超级管理员管理全部用户的模板、应用、字段映射和应用引擎。
   frontend_usage: 控制超级管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；模板删除仍需遵守引用保护。
+  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；SaaS 平台元数据只读；模板删除仍需遵守引用保护。
   related_user_stories:
     - US-AIAPP-003
     - US-AIAPP-006
@@ -154,3 +157,4 @@ aiapp.super_admin.manage_all:
     - BR-AIAPP-059
     - BR-AIAPP-060
     - BR-AIAPP-061
+    - BR-AIAPP-065

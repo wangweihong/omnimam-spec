@@ -211,8 +211,8 @@ saas_platform_mismatched:
 
 app_engine_capability_unsupported:
   value: 130606
-  cn: AppEngine 不支持 Application 所需能力类型。
-  en: AppEngine does not support the capability type required by the Application.
+  cn: SaaS 平台预置能力矩阵不支持 Application 所需能力。
+  en: SaaS platform capability matrix does not support the capability required by the Application.
   owning_domain: application-platform
   owning_module: app-engine
   severity: error
@@ -238,10 +238,10 @@ app_engine_reference_blocked:
     - BR-AIAPP-055
     - BR-AIAPP-056
 
-app_engine_health_check_config_invalid:
+custom_http_config_invalid:
   value: 130608
-  cn: 应用引擎健康检测配置缺失或非法。
-  en: AppEngine health check configuration is missing or invalid.
+  cn: 自定义 HTTP 配置缺失或非法。
+  en: Custom HTTP configuration is missing or invalid.
   owning_domain: application-platform
   owning_module: app-engine
   severity: error
@@ -252,6 +252,24 @@ app_engine_health_check_config_invalid:
   related_rules:
     - BR-AIAPP-058
     - BR-AIAPP-059
+
+saas_platform_metadata_unsupported:
+  value: 130609
+  cn: SaaS 平台元数据不存在或不支持所选能力。
+  en: SaaS platform metadata does not exist or does not support the selected capability.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+    - US-AIAPP-012
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-047
+    - BR-AIAPP-063
+    - BR-AIAPP-064
 
 application_run_create_failed:
   value: 130400
