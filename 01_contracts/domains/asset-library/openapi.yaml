@@ -1,0 +1,343 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Asset Library Label Query API
+  version: 0.1.0-draft
+  description: 素材库标签选择器查询、自然语言搜索降级与批量打标的最小 S2 API 契约。
+servers:
+  - url: /api/v1
+security:
+  - bearer_auth: []
+tags:
+  - name: assets
+    description: 当前用户素材查询与标签操作。
+
+paths:
+  /api/v1/assets:
+    get:
+      tags: [assets]
+      summary: 查询当前用户素材列表
+      operationId: list_assets
+      description: |
+        所有条件均在当前 Bearer Token 对应的用户范围内执行。`selector` 与
+        `natural_language_query` 互斥；`keyword` 可以与 selector 和精确过滤条件组合，
+        条件之间按 AND 执行。`natural_language_query` 可与普通精确过滤条件组合，
+        但不得与 `selector` 或 `keyword` 同时提交。
+
+        selector 文法：Label 支持 `key=value`、`key!=value`、`key`、`!key`、
+        `key in (v1,v2)`、`key notin (v1,v2)`；Tag 支持 `#tag`、`#-tag`；
+        分组支持 `@group=value`。`,` 为 AND，`;` 为 OR，AND 优先于 OR，括号可覆盖优先级。
+        空 Label value 仅写作 `key=""`。含空白或保留字符的 value、Tag、分组名使用
+        JSON 风格双引号及转义，例如 `#"人物,汽车"`。最大嵌套深度 8、谓词数 100，
+        单个 `in/notin` 最多 100 个非空值。Label、Tag 匹配区分大小写。
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-01, US-USER-ASSET-03, US-USER-ASSET-04, US-USER-ASSET-20, US-USER-ASSET-22, US-USER-ASSET-24, US-USER-ASSET-27, US-USER-ASSET-28, US-USER-ASSET-38]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-05, BR-USER-ASSET-08, BR-USER-ASSET-09, BR-USER-ASSET-10, BR-USER-ASSET-35, BR-USER-ASSET-37, BR-USER-ASSET-39, BR-USER-ASSET-52]
+      parameters:
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - $ref: "#/components/parameters/keyword"
+        - $ref: "#/components/parameters/search_fields"
+        - $ref: "#/components/parameters/selector"
+        - $ref: "#/components/parameters/natural_language_query"
+        - $ref: "#/components/parameters/created_after"
+        - $ref: "#/components/parameters/created_before"
+        - name: media_type
+          in: query
+          schema:
+            $ref: "#/components/schemas/MediaType"
+        - name: format
+          in: query
+          schema:
+            type: string
+            maxLength: 64
+        - name: source_type
+          in: query
+          schema:
+            $ref: "#/components/schemas/SourceType"
+        - name: width
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: height
+          in: query
+          schema: { type: integer, minimum: 0 }
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [display_name, size_bytes, media_type, format, created_at, updated_at]
+            default: created_at
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        "200":
+          description: 素材列表或业务错误；业务结果通过响应体结构与 code/value 判断。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AssetListResponse"
+                  - $ref: "#/components/schemas/BusinessError"
+
+  /api/v1/assets/batch-labels:
+    post:
+      tags: [assets]
+      summary: 批量应用 Labels 与 Tags
+      operationId: batch_apply_asset_labels
+      description: |
+        每个素材独立校验并提交，单项失败不回滚其他合法项。请求中的 Label upsert、
+        Tag 添加和 Tag 删除均按 trim 后的区分大小写原文处理；写入来源统一为 manual。
+        Label 同 key 覆盖，Tag 添加与删除为幂等操作。不提供批量删除 Label 能力。
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-23]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-32, BR-USER-ASSET-35, BR-USER-ASSET-36, BR-USER-ASSET-40]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchLabelRequest"
+      responses:
+        "200":
+          description: 逐项批量结果或请求级业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BatchLabelResponse"
+                  - $ref: "#/components/schemas/BusinessError"
+
+components:
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    page_num:
+      name: page_num
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    page_size:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    keyword:
+      name: keyword
+      in: query
+      description: 对 search_fields 指定字段执行模糊搜索；可与 selector 和精确过滤条件按 AND 组合。
+      schema: { type: string, maxLength: 256, default: "" }
+    search_fields:
+      name: search_fields
+      in: query
+      description: 逗号分隔且不得重复；仅允许 display_name、original_name、description。
+      schema:
+        type: string
+        pattern: '^(display_name|original_name|description)(,(display_name|original_name|description))*$'
+        default: display_name,original_name,description
+    selector:
+      name: selector
+      in: query
+      description: 统一 Label/Tag/分组选择器；与 natural_language_query 互斥。
+      schema: { type: string, maxLength: 4096 }
+    natural_language_query:
+      name: natural_language_query
+      in: query
+      description: 自然语言查询；与 selector、keyword 互斥，允许和普通精确过滤条件按 AND 组合。
+      schema: { type: string, minLength: 1, maxLength: 1000 }
+    created_after:
+      name: created_after
+      in: query
+      schema: { type: string, format: date-time }
+    created_before:
+      name: created_before
+      in: query
+      schema: { type: string, format: date-time }
+
+  schemas:
+    MediaType:
+      type: string
+      enum: [image, video, audio, text, pdf, other]
+    SourceType:
+      type: string
+      enum: [upload, canvas_output]
+    LabelSource:
+      type: string
+      enum: [manual, auto]
+    QueryRequestedMode:
+      type: string
+      enum: [filters_only, selector, keyword, combined, natural_language]
+    QueryAppliedMode:
+      type: string
+      enum: [filters_only, selector, keyword, combined, keyword_fallback]
+    QueryResolution:
+      type: object
+      required: [requested_mode, applied_mode]
+      properties:
+        requested_mode:
+          $ref: "#/components/schemas/QueryRequestedMode"
+        applied_mode:
+          $ref: "#/components/schemas/QueryAppliedMode"
+        resolved_selector:
+          type: string
+          maxLength: 4096
+          nullable: true
+          description: 自然语言成功解析后的规范化 selector；其他模式省略或返回 null。
+    UserAsset:
+      type: object
+      required: [id, owner_user_id, display_name, media_type, size_bytes, source_type, thumbnail_status, labels, tags, label_sources, tag_sources, resource_version, created_at, updated_at]
+      properties:
+        id: { type: string }
+        owner_user_id: { type: string }
+        display_name: { type: string }
+        original_name: { type: string }
+        description: { type: string }
+        media_type:
+          $ref: "#/components/schemas/MediaType"
+        format: { type: string }
+        size_bytes: { type: integer, format: int64, minimum: 0 }
+        width: { type: integer, minimum: 0 }
+        height: { type: integer, minimum: 0 }
+        duration_seconds: { type: number, minimum: 0 }
+        source_type:
+          $ref: "#/components/schemas/SourceType"
+        thumbnail_status:
+          type: string
+          enum: [none, pending, ready, failed]
+        preview_status:
+          type: string
+          enum: [none, pending, ready, failed]
+        labels:
+          $ref: "#/components/schemas/Labels"
+        tags:
+          $ref: "#/components/schemas/Tags"
+        label_sources:
+          $ref: "#/components/schemas/LabelSources"
+        tag_sources:
+          $ref: "#/components/schemas/TagSources"
+        resource_version: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Labels:
+      type: object
+      description: |
+        trim 后最多 20 项。key 为 1-63 个 Unicode code point，禁止空白、控制字符和
+        `,;()=!"#@`；value 为 0-63 个 Unicode code point。key/value 区分大小写。
+      maxProperties: 20
+      additionalProperties:
+        type: string
+        maxLength: 63
+    Tags:
+      type: array
+      description: trim 后区分大小写去重且无序，最多 30 项，每项 1-64 个 Unicode code point。
+      maxItems: 30
+      uniqueItems: true
+      items: { type: string, minLength: 1, maxLength: 64 }
+    LabelSources:
+      type: object
+      description: key 必须与 labels 中的 key 完全一致。
+      maxProperties: 20
+      additionalProperties:
+        $ref: "#/components/schemas/LabelSource"
+    TagSources:
+      type: object
+      description: key 必须与 tags 中的值完全一致。
+      maxProperties: 30
+      additionalProperties:
+        $ref: "#/components/schemas/LabelSource"
+    AssetListResponse:
+      type: object
+      required: [total, items, query_resolution]
+      properties:
+        total: { type: integer, minimum: 0 }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAsset"
+        query_resolution:
+          $ref: "#/components/schemas/QueryResolution"
+    BatchAssetItem:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: { type: string, minLength: 1 }
+    BatchLabelRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      description: |
+        items 中 id 必须唯一且至少提供一项实际标签变更。tags_to_add 与 tags_to_remove
+        trim、去重后不得有交集。请求字段上限先做整体校验；每个素材变更后的 20/30 上限逐项校验。
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/BatchAssetItem"
+        labels_to_upsert:
+          $ref: "#/components/schemas/Labels"
+        tags_to_add:
+          $ref: "#/components/schemas/Tags"
+        tags_to_remove:
+          $ref: "#/components/schemas/Tags"
+    BatchLabelData:
+      type: object
+      required: [id, labels, tags, label_sources, tag_sources, resource_version]
+      properties:
+        id: { type: string }
+        labels:
+          $ref: "#/components/schemas/Labels"
+        tags:
+          $ref: "#/components/schemas/Tags"
+        label_sources:
+          $ref: "#/components/schemas/LabelSources"
+        tag_sources:
+          $ref: "#/components/schemas/TagSources"
+        resource_version: { type: integer, minimum: 0 }
+    BusinessError:
+      type: object
+      required: [code, value, message, messages, retryable]
+      properties:
+        code: { type: string }
+        value: { type: integer }
+        message: { type: string }
+        messages:
+          type: object
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: { type: string }
+            en-US: { type: string }
+        detail: { type: string }
+        retryable: { type: boolean }
+        data:
+          type: object
+          additionalProperties: true
+          description: selector 错误时至少包含 position、actual_token、expected_tokens；其他错误按错误码提供上下文。
+    BatchLabelResult:
+      type: object
+      required: [id, success]
+      properties:
+        id: { type: string }
+        success: { type: boolean }
+        data:
+          $ref: "#/components/schemas/BatchLabelData"
+        error:
+          $ref: "#/components/schemas/BusinessError"
+    BatchLabelResponse:
+      type: object
+      required: [total, success, fail, results]
+      properties:
+        total: { type: integer, minimum: 0 }
+        success: { type: integer, minimum: 0 }
+        fail: { type: integer, minimum: 0 }
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchLabelResult"

@@ -56,6 +56,8 @@ Mermaid 图是对对应文字描述的可视化补充。
 | referenceSources | array of object  | 否  | 轻量引用来源摘要，例如来自 canvas 的引用统计             |
 | labels          | map[string]string | 否  | 结构化键值对属性标签，如 `media=image`、`style=anime`、`project=mybot` |
 | tags            | array of string   | 否  | 自由分类标签，如 `人物`、`汽车`、`双人`，去重且无序 |
+| labelSources    | map[string, enum] | 否  | 与 labels key 对应的来源：manual、auto |
+| tagSources      | map[string, enum] | 否  | 与 tags 值对应的来源：manual、auto |
 | createdAt       | string(date-time) | 是  | 创建时间                                     |
 | updatedAt       | string(date-time) | 是  | 更新时间                                     |
 
@@ -210,7 +212,7 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-07** 列表不直接渲染原始 heavy asset；图片、视频、音频、PDF、文本等预览需要通过 thumbnail、派生预览或显式 content 读取。
 * **BR-USER-ASSET-08** 精确过滤支持 media_type、format、source_type、width、height、labels 和 tags；标签过滤使用统一选择器表达式。
 * **BR-USER-ASSET-09** 自然语言搜索需要优先解析为统一选择器或其他结构化查询，再按当前用户范围查询素材。
-* **BR-USER-ASSET-10** 自然语言无法解析为结构化查询时，可以降级为关键词模糊搜索；无法降级或查询失败时展示错误，不能返回其他用户素材作为 fallback。
+* **BR-USER-ASSET-10** 自然语言被明确判定为无结构化意图时，可以降级为对素材显示名、原始文件名和描述的关键词模糊搜索；解析服务超时或异常、解析结果生成非法选择器、无法降级或查询执行失败时展示错误，不执行不受控查询，也不能返回其他用户素材作为 fallback。
 * **BR-USER-ASSET-11** 用户可以一次选择多个文件上传。
 * **BR-USER-ASSET-12** 上传时可设置 labels 键值对和 tags 自由分类，并写入当前用户上传的素材。
 * **BR-USER-ASSET-13** 小文件使用普通上传。
@@ -235,12 +237,12 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-32** canWrite=false 时，页面可展示当前用户已有素材，但禁用上传、重命名、删除等写操作。
 * **BR-USER-ASSET-33** 用户级素材管理不引入 platform.manage 或平台管理员共享素材语义。
 * **BR-USER-ASSET-34** 禁用菜单项，例如素材分享、复制文件、移动文件、全选，不应作为正式可用能力展示给用户。
-* **BR-USER-ASSET-35** Labels 与 Tags 是两类独立标签。Labels 以 `key=value` 键值对形式存储，键名长度 1-63，值长度 0-63，每个素材最多 20 个 Labels；Tags 以字符串数组形式存储，每个 Tag 长度 1-64，每个素材最多 30 个 Tags，自动 trim、自动去重且无序。
-* **BR-USER-ASSET-36** 用户可添加、修改或删除 Labels，也可添加或删除 Tags。自动生成或自动建议的 Labels/Tags 在产品语义上标记为 `source: auto`，用户手动添加的标记为 `source: manual`；用户删除自动内容时需要提示删除可能影响过滤准确性。
-* **BR-USER-ASSET-37** 素材列表支持统一选择器查询。Labels 支持 `key=value`、`key!=value`、`key`、`!key`、`key in (v1, v2)`、`key notin (v1, v2)`；Tags 支持 `#tag` 表示拥有指定 Tag，`#-tag` 表示不拥有指定 Tag；分组支持 `group=<分组名>`；Labels、Tags 和分组条件同级，`,` 表示 AND，`;` 表示 OR，AND 与 OR 可用括号组合。
+* **BR-USER-ASSET-35** Labels 与 Tags 是两类独立标签。Labels 以 `key=value` 键值对形式存储，键名和值 trim 后分别限制为 1-63 和 0-63 个 Unicode code point；键名不得包含空白、控制字符或选择器保留字符 `,;()=!"#@`。Tags trim 后限制为 1-64 个 Unicode code point。Label key/value 与 Tag 均区分大小写，不做大小写折叠；同一 Label key 后写覆盖前写，Tags 按 trim 后原文去重且无序。每个素材最多 20 个 Labels 和 30 个 Tags。
+* **BR-USER-ASSET-36** 用户可添加、修改或删除 Labels，也可添加或删除 Tags。自动生成或自动建议的 Labels/Tags 在产品语义上标记为 `source: auto`，用户手动添加或覆盖的标记为 `source: manual`；用户删除自动内容时需要提示删除可能影响过滤准确性。
+* **BR-USER-ASSET-37** 素材列表支持统一选择器查询。Labels 支持 `key=value`、`key!=value`、`key`、`!key`、`key in (v1, v2)`、`key notin (v1, v2)`；Tags 支持 `#tag` 表示拥有指定 Tag，`#-tag` 表示不拥有指定 Tag；分组使用保留谓词 `@group=<分组名>`，因此 `group` 仍可作为普通 Label key。Labels、Tags 和分组条件同级，`,` 表示 AND，`;` 表示 OR，AND 优先于 OR，括号可以覆盖优先级。空 Label value 只使用 `key=""`；包含空白或保留字符的 value、Tag 和分组名使用 JSON 风格双引号及转义。选择器最多嵌套 8 层、包含 100 个谓词，单个 `in/notin` 最多包含 100 个非空值。
 * **BR-USER-ASSET-38** Labels 输入时提示当前用户已使用的键、系统推荐键、当前键下已使用的值和系统推荐值；Tags 输入时提示当前用户已使用的 Tags 和系统推荐 Tags。用户可直接输入任意新 Labels 或 Tags。
 * **BR-USER-ASSET-39** 过滤 UI 提供可视化控件快速构建统一选择器，并允许直接输入表达式。过滤面板区分“属性 Labels”和“分类 Tags”两个子面板，视觉上明确区分，但可以混合构建查询表达式。
-* **BR-USER-ASSET-40** 用户可选中多个素材批量添加或覆盖 Labels，也可批量添加或删除 Tags。批量操作仍必须限制在当前用户自己的素材范围内。
+* **BR-USER-ASSET-40** 用户可选中多个素材批量添加或覆盖 Labels，也可批量添加或删除 Tags。批量写入的 Labels/Tags 标记为 `source: manual`，Label 同 key 覆盖、Tag 添加和删除均为幂等操作。批量操作仍必须限制在当前用户自己的素材范围内，并逐项返回成功或失败；单个素材失败不影响其他合法素材提交。
 * **BR-USER-ASSET-41** 素材上传前需要计算原始内容 SHA256 checksum。本仓库内提到的 shasum 均按现有 `sha256` 语义表达，不新增独立 shasum 字段。
 * **BR-USER-ASSET-42** 上传前如果命中可返回的已存在素材且 `sha256` 相同，系统跳过二进制上传并返回该已存在素材；`sha256` 为空的素材不参与重复命中判断。
 * **BR-USER-ASSET-43** 系统需要通过 `sha256_backfill` 内部处理任务，为历史或异常情况下缺失 `sha256` 的素材补算 SHA256 checksum 并更新素材 metadata。补算失败不影响素材继续可见，但需要记录失败原因或处理状态。
@@ -252,7 +254,7 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-49** 素材分组完全属于当前用户，不可被其他用户访问或共享。
 * **BR-USER-ASSET-50** 用户可以创建、重命名、删除分组，也可以调整分组排序。删除分组时，系统提示“仅删除分组，素材不会被删除”，确认后仅删除分组及关联关系，素材保留。
 * **BR-USER-ASSET-51** 素材可以关联到任意多个分组。从某个分组中移除素材时，仅删除关联记录，素材本身不受影响。
-* **BR-USER-ASSET-52** 素材列表页支持按分组筛选。用户选择一个分组后，列表仅展示该分组下的素材；统一选择器支持 `group=<分组名>`，并可与 Labels/Tags 混合查询，例如 `group=项目A, #人物`。
+* **BR-USER-ASSET-52** 素材列表页支持按分组筛选。用户选择一个分组后，列表仅展示该分组下的素材；统一选择器支持 `@group=<分组名>`，并可与 Labels/Tags 混合查询，例如 `@group=项目A, #人物`。
 * **BR-USER-ASSET-53** 分组内素材默认按加入时间倒序展示；用户可手动拖拽调整排序，手动排序写入分组关联关系的排序字段。
 * **BR-USER-ASSET-54** 将素材添加到分组时，如果该素材已在该分组中，则忽略重复添加。
 * **BR-USER-ASSET-55** 分组名称支持自动补全；创建新分组即时生效。同一用户范围内分组名称按 trim 后唯一。
@@ -286,9 +288,9 @@ Tags 用于大量描述性分类，例如：
 
 用户可以输入自然语言搜索文本，由系统优先解析为统一选择器或其他结构化素材查询条件后返回当前用户自己的匹配素材。
 
-如果自然语言无法解析为结构化查询，可以降级为关键词模糊搜索，但仍必须限制在当前用户自己的素材范围内。
+如果自然语言被明确判定为无结构化意图，可以降级为对素材显示名、原始文件名和描述的关键词模糊搜索，但仍必须限制在当前用户自己的素材范围内。
 
-如果解析失败或查询失败，需要展示错误，不允许返回其他用户素材作为 fallback。
+如果解析服务超时或异常、生成非法选择器或查询失败，需要展示错误，不允许执行不受控查询，也不允许返回其他用户素材作为 fallback。
 
 ### US-USER-ASSET-05 多文件上传
 
@@ -378,6 +380,8 @@ Tags 用于大量描述性分类，例如：
 
 用户在搜索框输入 `media=image, style!=anime` 后，列表实时过滤出当前用户自己的非动漫风格图片；输入 `#人物` 后，列表实时过滤出拥有“人物”Tag 的素材。
 
+用户输入 `@group=项目A` 时按分组筛选；输入 `group=项目A` 时查询名为 `group` 的普通 Label，不产生歧义。
+
 ### US-USER-ASSET-21 智能补全创建
 
 用户准备添加 Label 时输入 `fram`，系统提示当前用户已使用的键和系统推荐键，例如 `format`、`frame_count`。用户选择 `frame_count` 后可手动输入值 `high`。用户准备添加 Tag 时输入 `人`，系统提示当前用户已使用的 Tags 和系统推荐 Tags。
@@ -388,7 +392,7 @@ Tags 用于大量描述性分类，例如：
 
 ### US-USER-ASSET-23 批量打标
 
-用户勾选多个提示词素材，选择批量打标，输入 Label `usage=prompt` 或 Tag `提示词` 后，所有选中且属于当前用户的素材增加或覆盖对应标签。
+用户勾选多个提示词素材，选择批量打标，输入 Label `usage=prompt` 或 Tag `提示词` 后，所有选中且属于当前用户的素材增加或覆盖对应标签。若部分素材不存在或不可写，其他合法素材仍然提交，页面逐项展示成功或失败结果。
 
 ### US-USER-ASSET-24 OR 组合查询
 
@@ -448,7 +452,7 @@ Tags 用于大量描述性分类，例如：
 
 ### US-USER-ASSET-38 分组与标签组合筛选
 
-用户在分组 A 下继续使用搜索栏输入 `#人物`，列表显示分组 A 中同时包含 `人物` Tag 的素材。用户也可以直接输入 `group=项目A, #人物` 获得相同筛选语义。
+用户在分组 A 下继续使用搜索栏输入 `#人物`，列表显示分组 A 中同时包含 `人物` Tag 的素材。用户也可以直接输入 `@group=项目A, #人物` 获得相同筛选语义。
 
 ### US-USER-ASSET-39 素材详情中的分组管理
 
@@ -584,7 +588,8 @@ flowchart TD
 flowchart TD
   A["用户输入自然语言搜索"] --> B["优先解析为统一选择器或结构化查询条件"]
   B --> C{"解析是否成功"}
-  C -->|否| D["降级为关键词模糊搜索"]
+  C -->|无结构化意图| D["按显示名、原始文件名和描述降级为关键词模糊搜索"]
+  C -->|解析异常或非法结果| G["展示 asset_search_parse_failed"]
   C -->|是| E["按当前用户范围查询素材"]
   D --> E
   E --> F{"查询是否成功"}
@@ -602,7 +607,7 @@ sequenceDiagram
     participant UI as 前端
     participant BE as 后端
 
-    U->>UI: 在搜索框输入 "group=项目A, #人物"
+    U->>UI: 在搜索框输入 "@group=项目A, #人物"
     UI->>UI: 解析为分组与 Tags 混合 AND 条件并校验语法
     UI->>BE: 按统一选择器查询当前用户素材
     BE-->>UI: 返回匹配的素材列表
@@ -611,7 +616,7 @@ sequenceDiagram
     U->>UI: 点击高级过滤
     UI->>U: 展示可视化构造器
     U->>UI: 选择分组 项目A；选择 Tags 中的 #人物
-    UI->>UI: 自动生成 "group=项目A, #人物"
+    UI->>UI: 自动生成 "@group=项目A, #人物"
     UI->>BE: 重新查询当前用户素材
     BE-->>UI: 返回新结果
     UI->>U: 渲染结果
@@ -795,15 +800,16 @@ format notin (jpg, png)
 #-汽车
 media=image, #人物, #-汽车
 #人物; #动物
+@group=项目A
+@group=项目A, #人物
 group=项目A
-group=项目A, #人物
 ```
 
 搜索栏需要对表达式错误进行高亮或提示，并提供语法帮助入口。
 
-自然语言搜索需要优先解析为统一选择器或其他结构化查询条件，再按当前用户范围查询素材。无法解析为结构化查询时，可以降级为关键词模糊搜索。例如“包含人物的动漫图片”可解析为 `#人物, style=anime`。
+自然语言搜索需要优先解析为统一选择器或其他结构化查询条件，再按当前用户范围查询素材。明确判定为无结构化意图时，可以降级为对显示名、原始文件名和描述的关键词模糊搜索。例如“包含人物的动漫图片”可解析为 `#人物, style=anime`。
 
-解析失败或查询失败时展示错误，不执行不受控查询，不返回其他用户素材作为 fallback。
+解析服务超时或异常、生成非法选择器或查询执行失败时展示错误，不执行不受控查询，不返回其他用户素材作为 fallback。
 
 高级过滤面板提供简易模式和表达式模式：
 
@@ -813,7 +819,7 @@ group=项目A, #人物
 简易模式与表达式模式需要保持表达式同步
 属性子面板展示 Labels 条件，例如 media、style、dimension
 分类子面板展示 Tags 条件，例如 #人物、#汽车、#提示词
-分组子面板展示用户分组条件，例如 group=项目A
+分组子面板展示用户分组条件，例如 @group=项目A
 当前选中 media=image 时，优先展示 style、dimension 等图片相关 Labels 和图像类 Tags
 当前选中 media=text 时，优先展示 format 等文本相关 Labels 和文本类 Tags
 ```
@@ -983,7 +989,7 @@ thumbnail 或前端抽帧失败时使用占位图标
 
 用户可以在素材列表中选择多个素材，为选中素材批量添加或覆盖 Labels，也可以批量添加或删除 Tags。
 
-批量标签操作必须遵守当前用户素材范围；不属于当前用户或当前用户不可写的素材不得被修改。
+批量标签操作必须遵守当前用户素材范围；不属于当前用户或当前用户不可写的素材不得被修改。批量操作逐项返回成功或失败，单项失败不回滚其他合法素材的标签变更。
 
 ### 9.13 分组管理
 
@@ -1045,8 +1051,16 @@ thumbnail 或前端抽帧失败时使用占位图标
 | 状态/异常                     | 说明                               |
 | ------------------------- | -------------------------------- |
 | asset_list_failed         | 列表或过滤查询失败时展示错误                   |
-| asset_search_parse_failed | 自然语言无法解析且无法降级为关键词模糊搜索时展示错误，不执行不受控查询 |
+| asset_search_parse_failed | 自然语言无法形成合法结构化条件或生成非法选择器时展示错误，不执行关键词降级或不受控查询 |
+| asset_search_dependency_failed | 自然语言解析依赖超时、异常或不可用时展示错误，不执行关键词降级或不受控查询 |
 | asset_selector_invalid | 统一选择器表达式语法错误时展示错误高亮或提示 |
+| asset_selector_too_complex | 统一选择器超过嵌套、谓词或集合值限制时提示用户简化条件 |
+| asset_label_invalid | Label key/value 不满足 trim、长度或字符约束时拒绝写入 |
+| asset_tag_invalid | Tag 不满足 trim、长度或去重约束时拒绝写入 |
+| asset_label_limit_exceeded | 标签变更后 Labels 超过 20 个时拒绝该素材的变更 |
+| asset_tag_limit_exceeded | 标签变更后 Tags 超过 30 个时拒绝该素材的变更 |
+| asset_batch_label_request_invalid | 批量请求为空、素材 ID 重复或 Tag 添加/删除集合冲突时拒绝整个请求 |
+| asset_not_found_or_not_writable | 批量项对应素材不存在、不属于当前用户、已删除或不可写时仅标记该项失败 |
 | asset_upload_failed       | 普通上传或分片上传失败时展示错误                 |
 | asset_upload_stopped      | 用户停止上传时清理上传状态，并取消当前用户上传会话        |
 | asset_upload_duplicate    | 上传前 SHA256 命中已存在素材，跳过上传并返回已有素材   |

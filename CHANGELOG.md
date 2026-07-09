@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-10
+
+- 收敛 `asset-library` 双层标签 S1 语义：Labels/Tags trim 后区分大小写，明确字段长度、Label key 保留字符、来源、数量上限和批量部分成功规则。
+- 将统一选择器的分组谓词从 `group=<分组名>` 调整为 `@group=<分组名>`，保留 `group` 作为合法自定义 Label key，并固化 AND/OR 优先级、引号转义、空值与复杂度限制。
+- 新增素材列表标签查询与 `POST /api/v1/assets/batch-labels` OpenAPI 契约，返回自然语言解析模式及逐素材批量结果。
+- 明确自然语言仅在“无结构化意图”时降级搜索显示名、原始文件名和描述；解析异常、非法 selector 或查询失败不执行降级查询。
+- 新增素材查询、标签写入和访问边界错误码及全局区间登记；补充规范化 `user_asset_labels`、`user_asset_tags` 设计态 schema 和索引建议。
+- 同步更新素材库模块契约与架构参考，明确 selector AST、参数化查询、当前用户范围、标签事实源、批量事务和旧标签 JSON 回填边界。
+
 ## 2026-07-09
 
 - 补全 `application-platform` S1/S2 设计，保留 `kind=comfyui|saas_api`，并在 `kind=saas_api` 分支新增 SaaS 平台类型和能力类型。

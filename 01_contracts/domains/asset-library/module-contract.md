@@ -5,6 +5,9 @@
 | 模块 | 职责 | S1 来源 |
 | --- | --- | --- |
 | `asset` | 维护用户素材 metadata、`sha256`、上传去重命中、轻量引用摘要和素材返回 | `US-USER-ASSET-31`、`US-USER-ASSET-40`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42`、`BR-USER-ASSET-57`、`BR-USER-ASSET-58` |
+| `labeling` | 维护素材 Labels/Tags、来源、字段约束、数量上限和逐项批量写入 | `US-USER-ASSET-19`..`US-USER-ASSET-30`、`BR-USER-ASSET-35`、`BR-USER-ASSET-36`、`BR-USER-ASSET-40` |
+| `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
+| `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
 | `group` | 维护素材分组、分组排序、素材与分组的多对多关联 | `US-USER-ASSET-34`..`US-USER-ASSET-39`、`BR-USER-ASSET-49`..`BR-USER-ASSET-56` |
 | `processing-task` | 维护缩略图、派生预览和 `sha256_backfill` 等内部处理任务 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`BR-USER-ASSET-19`、`BR-USER-ASSET-43` |
 
@@ -34,6 +37,45 @@
 - 画布等外部模块可以通过回调或等价协作方式维护引用摘要。
 - 引用摘要用于前端提示和详情展示，不作为强一致权限判断、删除保护或完整依赖图事实源。
 
-## 6. S2 最小契约说明
+## 6. 标签数据归属与约束
 
-本文件只补充 SHA256 去重、backfill、素材分组和轻量引用摘要有关的最小契约，不新增 OpenAPI、错误码、权限码或事件定义。
+- `user_asset_labels` 和 `user_asset_tags` 是素材标签事实源；`user_assets` 不保存重复的标签 JSON 快照。
+- 标签表通过 `(owner_user_id, asset_id)` 复合外键绑定同一用户素材；通用资源字段 `name` 只镜像 `label_key` 或 `tag` 并由 SQL CHECK 保持一致，不是独立标签值。
+- Label key/value 和 Tag 写入前均 trim，按 Unicode code point 校验长度并区分大小写；实现不得使用 `lower()` 或等价大小写折叠参与匹配和去重。
+- Label 同一素材同 key 只保留一条有效记录；Tag 同一素材同值只保留一条有效记录。有效记录数量上限分别为 20 和 30，由 `labeling` 在同一素材事务中校验。
+- 自动生成或建议采纳写入 `source=auto`；任何用户手动添加或覆盖写入 `source=manual`。
+- 上传会话的 `pending_labels_payload`、`pending_tags_payload` 仅保存尚未完成上传的临时输入；完成登记时必须交由 `labeling` 规范化写入标签事实表，不得成为第二事实源。
+
+## 7. Selector Parser 契约
+
+- parser 输入最大 4096 字符，输出受类型约束的 AST；最大嵌套深度 8、谓词总数 100，单个 `in/notin` 最多 100 个非空值。
+- AST 节点只允许 Label、Tag、`@group`、AND、OR；AND 优先于 OR，括号覆盖优先级。`group` 不是保留 Label key，只有 `@group` 表示分组。
+- 空 Label value 只接受 `key=""`。含空白或保留字符的 value、Tag、分组名使用 JSON 风格双引号和转义。
+- parser 返回规范化 selector 或带位置、实际 token、预期 token 的 `asset_selector_invalid`；超出复杂度限制返回 `asset_selector_too_complex`。
+- parser 不接收 owner_user_id，不查询数据库，不拼接 SQL。查询模块只把 AST 编译为参数化查询条件。
+
+## 8. 查询与自然语言降级
+
+- 查询模块必须先从已校验的 Bearer Token 注入 `owner_user_id` 和 `deleted_at IS NULL` 基础范围，再组合 selector、keyword、精确过滤和排序条件；任何分支不得移除该基础范围。
+- `selector` 与 `natural_language_query` 互斥；`natural_language_query` 还与 `keyword` 互斥。keyword、selector、精确过滤之间按 AND 组合。
+- natural-language-resolver 只允许返回：合法候选结构化条件、明确的“无结构化意图”，或解析失败。
+- 候选结构化条件必须再次经过 selector-parser 校验后才能查询。明确“无结构化意图”时，才可降级模糊匹配 `display_name`、`original_name`、`description`。
+- resolver 无法形成合法结构化条件或候选 selector 非法时返回 `asset_search_parse_failed`；resolver 超时、异常或不可用时返回 `asset_search_dependency_failed`；查询执行失败时返回 `asset_list_failed`。这些场景均不得关键词降级。
+- 列表响应通过 `query_resolution` 披露请求模式、实际模式和可选规范化 selector；不得暴露解析器内部提示词、模型响应或 SQL。
+
+## 9. 批量打标事务边界
+
+- `POST /api/v1/assets/batch-labels` 先进行请求级校验：1-100 个不重复的 `{id}`、至少一项标签变更、Tag 添加与删除集合无交集。
+- 通过请求级校验后，每个素材使用独立事务校验存在性、当前用户所有权、软删除状态、可写状态和变更后数量上限。
+- Label upsert、Tag add/remove 均为幂等写入；单项提交后递增该素材 `resource_version`，返回完整标签结果。
+- 单项失败仅回滚该素材事务并写入对应 result.error，不影响其他素材；不得通过错误差异泄露其他用户素材是否存在。
+
+## 10. 兼容与迁移边界
+
+- `schema.sql` 只表达目标设计，不是实际 migration。实现从旧标签 JSON 切换时，必须先 trim、校验并回填到规范化表，再切换读写，最后停止读取旧字段。
+- 回填遇到大小写不同的 Label key 或 Tag 时必须保留为不同值；超出数量上限或字段约束的数据进入迁移异常报告，不得静默丢弃或折叠。
+- `permissions.yaml` 和 `events.yaml` 本次保持为空；读取沿用当前登录用户，写入沿用所有权和 `canWrite` 语义。
+
+## 11. S2 最小契约说明
+
+本次 OpenAPI 只覆盖素材列表查询和批量打标；上传、预览、下载、重命名、删除及完整分组管理 API 仍是后续 S2 缺口。

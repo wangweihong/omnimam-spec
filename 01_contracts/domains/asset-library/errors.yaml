@@ -1,0 +1,179 @@
+asset_selector_invalid:
+  code: asset_selector_invalid
+  value: 150200
+  cn: 统一选择器表达式语法错误。
+  en: The unified selector expression is invalid.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-03, US-USER-ASSET-20, US-USER-ASSET-22, US-USER-ASSET-24, US-USER-ASSET-28, US-USER-ASSET-38]
+  related_rules: [BR-USER-ASSET-37, BR-USER-ASSET-39, BR-USER-ASSET-52]
+
+asset_selector_too_complex:
+  code: asset_selector_too_complex
+  value: 150201
+  cn: 统一选择器超过嵌套、谓词或集合值数量限制。
+  en: The unified selector exceeds nesting, predicate, or set-value limits.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-03, US-USER-ASSET-20, US-USER-ASSET-22]
+  related_rules: [BR-USER-ASSET-37]
+
+asset_search_parse_failed:
+  code: asset_search_parse_failed
+  value: 150202
+  cn: 自然语言无法形成合法结构化条件或生成了非法选择器，未执行降级查询。
+  en: Natural-language parsing did not produce valid structured conditions or produced an invalid selector; no fallback query was executed.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-04]
+  related_rules: [BR-USER-ASSET-09, BR-USER-ASSET-10]
+
+asset_search_dependency_failed:
+  code: asset_search_dependency_failed
+  value: 150203
+  cn: 自然语言解析依赖超时、异常或不可用，未执行关键词降级查询。
+  en: The natural-language parsing dependency timed out, failed, or is unavailable; no keyword fallback query was executed.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-04]
+  related_rules: [BR-USER-ASSET-09, BR-USER-ASSET-10]
+
+asset_list_failed:
+  code: asset_list_failed
+  value: 150204
+  cn: 素材列表或过滤查询执行失败。
+  en: Asset listing or filter query execution failed.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-01, US-USER-ASSET-03, US-USER-ASSET-04]
+  related_rules: [BR-USER-ASSET-05, BR-USER-ASSET-08, BR-USER-ASSET-10]
+
+asset_query_parameters_invalid:
+  code: asset_query_parameters_invalid
+  value: 150205
+  cn: 查询参数组合或字段取值无效。
+  en: The query parameter combination or field value is invalid.
+  owning_domain: asset-library
+  owning_module: query
+  range: 150200-150399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-03, US-USER-ASSET-04]
+  related_rules: [BR-USER-ASSET-08, BR-USER-ASSET-09, BR-USER-ASSET-10]
+
+asset_label_invalid:
+  code: asset_label_invalid
+  value: 150400
+  cn: Label key 或 value 不满足 trim、长度或字符约束。
+  en: A Label key or value violates trimming, length, or character constraints.
+  owning_domain: asset-library
+  owning_module: labeling
+  range: 150400-150599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-19, US-USER-ASSET-23]
+  related_rules: [BR-USER-ASSET-35, BR-USER-ASSET-36, BR-USER-ASSET-40]
+
+asset_tag_invalid:
+  code: asset_tag_invalid
+  value: 150401
+  cn: Tag 不满足 trim、长度或去重约束。
+  en: A Tag violates trimming, length, or uniqueness constraints.
+  owning_domain: asset-library
+  owning_module: labeling
+  range: 150400-150599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-23, US-USER-ASSET-26, US-USER-ASSET-29]
+  related_rules: [BR-USER-ASSET-35, BR-USER-ASSET-36, BR-USER-ASSET-40]
+
+asset_label_limit_exceeded:
+  code: asset_label_limit_exceeded
+  value: 150402
+  cn: 标签变更后素材的 Labels 数量超过 20 个。
+  en: The asset would exceed the limit of 20 Labels after the change.
+  owning_domain: asset-library
+  owning_module: labeling
+  range: 150400-150599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-19, US-USER-ASSET-23]
+  related_rules: [BR-USER-ASSET-35, BR-USER-ASSET-40]
+
+asset_tag_limit_exceeded:
+  code: asset_tag_limit_exceeded
+  value: 150403
+  cn: 标签变更后素材的 Tags 数量超过 30 个。
+  en: The asset would exceed the limit of 30 Tags after the change.
+  owning_domain: asset-library
+  owning_module: labeling
+  range: 150400-150599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-23, US-USER-ASSET-29]
+  related_rules: [BR-USER-ASSET-35, BR-USER-ASSET-40]
+
+asset_batch_label_request_invalid:
+  code: asset_batch_label_request_invalid
+  value: 150404
+  cn: 批量打标请求为空、素材 ID 重复或 Tag 添加与删除集合冲突。
+  en: The batch-label request is empty, contains duplicate asset IDs, or has overlapping Tag add/remove sets.
+  owning_domain: asset-library
+  owning_module: labeling
+  range: 150400-150599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-23]
+  related_rules: [BR-USER-ASSET-35, BR-USER-ASSET-40]
+
+asset_not_found_or_not_writable:
+  code: asset_not_found_or_not_writable
+  value: 150600
+  cn: 素材不存在、不属于当前用户、已删除或当前用户不可写。
+  en: The asset does not exist, is not owned by the current user, is deleted, or is not writable.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-18, US-USER-ASSET-23]
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-32, BR-USER-ASSET-40]

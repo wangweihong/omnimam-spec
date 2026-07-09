@@ -28,7 +28,6 @@ CREATE TABLE user_assets (
   sha256 TEXT DEFAULT '',
   reference_count INTEGER NOT NULL DEFAULT 0,
   reference_sources_json TEXT NOT NULL DEFAULT '[]',
-  tags_json TEXT NOT NULL DEFAULT '[]',
   deleted_at TIMESTAMPTZ
 );
 
@@ -40,6 +39,72 @@ CREATE INDEX idx_user_assets_source_type ON user_assets(owner_user_id, source_ty
 CREATE INDEX idx_user_assets_thumbnail_status ON user_assets(owner_user_id, thumbnail_status);
 CREATE INDEX idx_user_assets_sha256 ON user_assets(owner_user_id, sha256);
 CREATE INDEX idx_user_assets_reference_count ON user_assets(owner_user_id, reference_count);
+CREATE INDEX idx_user_assets_display_name ON user_assets(owner_user_id, display_name);
+CREATE INDEX idx_user_assets_original_name ON user_assets(owner_user_id, original_name);
+CREATE UNIQUE INDEX idx_user_assets_owner_id_unique ON user_assets(owner_user_id, id);
+
+-- 模糊搜索索引建议：生产部署可在启用 PostgreSQL pg_trgm 后，为 display_name、original_name、
+-- description 分别建立包含 owner_user_id 过滤条件的 GIN trigram 索引。扩展安装与实际 migration
+-- 不属于本设计态 schema。
+
+-- S1 refs: US-USER-ASSET-19, US-USER-ASSET-20, US-USER-ASSET-21, US-USER-ASSET-23,
+-- US-USER-ASSET-25, US-USER-ASSET-28; BR-USER-ASSET-35..BR-USER-ASSET-40.
+CREATE TABLE user_asset_labels (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  asset_id TEXT NOT NULL,
+  label_key TEXT NOT NULL,
+  label_value TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL CHECK (source IN ('manual', 'auto')),
+  deleted_at TIMESTAMPTZ,
+  FOREIGN KEY (owner_user_id, asset_id) REFERENCES user_assets(owner_user_id, id),
+  CHECK (name = label_key),
+  CHECK (label_key = btrim(label_key)),
+  CHECK (char_length(label_key) BETWEEN 1 AND 63),
+  CHECK (label_key !~ '[[:space:][:cntrl:],;()=!"#@]'),
+  CHECK (label_value = btrim(label_value)),
+  CHECK (char_length(label_value) BETWEEN 0 AND 63)
+);
+
+CREATE INDEX idx_user_asset_labels_asset ON user_asset_labels(owner_user_id, asset_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_user_asset_labels_query ON user_asset_labels(owner_user_id, label_key, label_value) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_user_asset_labels_key_unique ON user_asset_labels(asset_id, label_key) WHERE deleted_at IS NULL;
+
+-- S1 refs: US-USER-ASSET-20, US-USER-ASSET-21, US-USER-ASSET-23, US-USER-ASSET-26..US-USER-ASSET-30;
+-- BR-USER-ASSET-35..BR-USER-ASSET-40.
+CREATE TABLE user_asset_tags (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  asset_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('manual', 'auto')),
+  deleted_at TIMESTAMPTZ,
+  FOREIGN KEY (owner_user_id, asset_id) REFERENCES user_assets(owner_user_id, id),
+  CHECK (name = tag),
+  CHECK (tag = btrim(tag)),
+  CHECK (char_length(tag) BETWEEN 1 AND 64)
+);
+
+CREATE INDEX idx_user_asset_tags_asset ON user_asset_tags(owner_user_id, asset_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_user_asset_tags_query ON user_asset_tags(owner_user_id, tag) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_user_asset_tags_value_unique ON user_asset_tags(asset_id, tag) WHERE deleted_at IS NULL;
+
+-- 每个素材最多 20 个有效 Labels 和 30 个有效 Tags，由 labeling 模块在同一素材事务内计数校验；
+-- 普通 CHECK 无法跨行表达该约束。Label/Tag 精确匹配沿用 PostgreSQL 默认区分大小写比较，
+-- 实现不得对查询或唯一性判断使用 lower() 大小写折叠。通用资源字段 name 分别镜像
+-- label_key 和 tag，并由 CHECK 保证一致，不构成第二个业务事实源。
 
 -- S1 refs: US-USER-ASSET-05..US-USER-ASSET-08; BR-USER-ASSET-11..BR-USER-ASSET-18.
 CREATE TABLE user_asset_upload_sessions (
@@ -57,7 +122,8 @@ CREATE TABLE user_asset_upload_sessions (
   chunk_size_bytes BIGINT DEFAULT 0,
   uploaded_parts_json TEXT NOT NULL DEFAULT '[]',
   status TEXT NOT NULL CHECK (status IN ('initialized', 'uploading', 'completed', 'cancelled', 'failed')),
-  tags_json TEXT NOT NULL DEFAULT '[]'
+  pending_labels_payload TEXT NOT NULL DEFAULT '{}',
+  pending_tags_payload TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE INDEX idx_user_asset_upload_sessions_owner ON user_asset_upload_sessions(owner_user_id);
