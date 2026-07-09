@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: OmniMAM AI Application Platform API
-  version: 0.3.0-draft
-  description: AI 应用平台第一阶段 S2 API 契约，覆盖模板管理、应用管理、字段映射和用户级应用引擎。
+  version: 0.4.0-draft
+  description: AI 应用平台第一阶段 S2 API 契约，覆盖模板管理、应用管理、字段映射、用户级应用引擎和应用运行。
 servers:
   - url: /api/v1
 tags:
@@ -14,6 +14,8 @@ tags:
     description: 字段映射管理。
   - name: app-engines
     description: 用户应用引擎管理与健康检测。
+  - name: application-runs
+    description: 应用运行与 task-center TaskRun 协作。
 
 paths:
   /api/v1/app-templates:
@@ -264,7 +266,7 @@ paths:
       operationId: delete_application
       x-s1-refs:
         user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023]
+        business_rules: [BR-AIAPP-015, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023, BR-AIAPP-061]
       parameters:
         - $ref: "#/components/parameters/application_id"
       responses:
@@ -274,6 +276,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+
+  /api/v1/applications/{application_id}/runs:
+    post:
+      tags: [application-runs]
+      summary: 运行应用
+      operationId: create_application_run
+      x-s1-refs:
+        user_stories: [US-AIAPP-013]
+        business_rules: [BR-AIAPP-037, BR-AIAPP-047, BR-AIAPP-049, BR-AIAPP-050, BR-AIAPP-051, BR-AIAPP-052, BR-AIAPP-054]
+      parameters:
+        - $ref: "#/components/parameters/application_id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationRunCreateRequest"
+      responses:
+        "200":
+          description: 应用运行详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationRun"
+
+  /api/v1/application-runs:
+    get:
+      tags: [application-runs]
+      summary: 查询应用运行列表
+      operationId: list_application_runs
+      x-s1-refs:
+        user_stories: [US-AIAPP-013]
+        business_rules: [BR-AIAPP-050, BR-AIAPP-053, BR-AIAPP-054]
+      parameters:
+        - $ref: "#/components/parameters/page_num"
+        - $ref: "#/components/parameters/page_size"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ApplicationRunStatus"
+        - name: application_id
+          in: query
+          schema:
+            type: string
+        - name: sort_field
+          in: query
+          description: 排序字段；默认按 created_at 排序。
+          schema:
+            type: string
+            enum: [created_at, updated_at, status, kind]
+        - name: sort_order
+          in: query
+          description: 排序方向。
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        "200":
+          description: 应用运行列表。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationRunListResponse"
+
+  /api/v1/application-runs/{run_id}:
+    get:
+      tags: [application-runs]
+      summary: 获取应用运行详情
+      operationId: get_application_run
+      x-s1-refs:
+        user_stories: [US-AIAPP-013]
+        business_rules: [BR-AIAPP-050, BR-AIAPP-053, BR-AIAPP-054]
+      parameters:
+        - $ref: "#/components/parameters/run_id"
+      responses:
+        "200":
+          description: 应用运行详情。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationRun"
 
   /api/v1/applications/{application_id}/field-mappings:
     get:
@@ -393,6 +477,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppEngine"
 
+  /api/v1/app-engines/health-check:
+    post:
+      tags: [app-engines]
+      summary: 使用临时连接参数检测应用引擎健康状态
+      operationId: check_app_engine_health_by_config
+      x-s1-refs:
+        user_stories: [US-AIAPP-011]
+        business_rules: [BR-AIAPP-034, BR-AIAPP-058, BR-AIAPP-059, BR-AIAPP-060]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppEngineHealthCheckRequest"
+      responses:
+        "200":
+          description: 临时健康检测结果；不创建或更新 AppEngine。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppEngineHealthCheckResult"
+
   /api/v1/app-engines/{app_engine_id}:
     get:
       tags: [app-engines]
@@ -432,6 +538,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppEngine"
+    delete:
+      tags: [app-engines]
+      summary: 删除应用引擎
+      operationId: delete_app_engine
+      x-s1-refs:
+        user_stories: [US-AIAPP-010]
+        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-055, BR-AIAPP-056]
+      parameters:
+        - $ref: "#/components/parameters/app_engine_id"
+      responses:
+        "200":
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
   /api/v1/app-engines/{app_engine_id}/health-check:
     post:
@@ -440,7 +562,7 @@ paths:
       operationId: check_app_engine_health
       x-s1-refs:
         user_stories: [US-AIAPP-011]
-        business_rules: [BR-AIAPP-033, BR-AIAPP-034, BR-AIAPP-035]
+        business_rules: [BR-AIAPP-033, BR-AIAPP-034, BR-AIAPP-035, BR-AIAPP-057, BR-AIAPP-060]
       parameters:
         - $ref: "#/components/parameters/app_engine_id"
       responses:
@@ -492,6 +614,12 @@ components:
       required: true
       schema:
         type: string
+    run_id:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
 
   schemas:
     TemplateKind:
@@ -500,6 +628,53 @@ components:
     AppEngineType:
       type: string
       enum: [comfyui, saas_api]
+    SaaSPlatformType:
+      type: string
+      description: 仅 kind=saas_api 或 engine_type=saas_api 时生效。
+      enum: [modelscope, custom_http]
+    CapabilityType:
+      type: string
+      description: SaaS API 能力类型。
+      enum: [image_generation, image_editing, video_generation]
+    ApplicationRunStatus:
+      type: string
+      enum: [pending, running, success, failed, canceled, timeout]
+    OperationContract:
+      type: object
+      description: SaaS API 操作契约，表达第三方接口调用、请求映射、结果映射、取消和进度支持。
+      properties:
+        method:
+          type: string
+        path:
+          type: string
+        request_mapping:
+          type: object
+          additionalProperties: true
+        result_mapping:
+          type: object
+          additionalProperties: true
+        cancel_supported:
+          type: boolean
+          default: false
+        progress_supported:
+          type: boolean
+          default: false
+    HealthCheckConfig:
+      type: object
+      description: 应用引擎健康检测配置；不同 SaaS 平台和能力可以使用不同检测方式。
+      properties:
+        mode:
+          type: string
+          enum: [http_ping, api_call, none]
+        path:
+          type: string
+        method:
+          type: string
+        expected_status:
+          type: integer
+        payload:
+          type: object
+          additionalProperties: true
     AppEngineStatus:
       type: string
       enum: [active, disabled]
@@ -525,6 +700,39 @@ components:
         secret_key:
           type: string
           description: ak_sk 认证方式使用的明文 Secret Key。
+    AppEngineHealthCheckRequest:
+      type: object
+      required: [engine_type, endpoint, auth_type]
+      properties:
+        engine_type:
+          $ref: "#/components/schemas/AppEngineType"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        endpoint:
+          type: string
+        auth_type:
+          $ref: "#/components/schemas/AppEngineAuthType"
+        auth_config:
+          $ref: "#/components/schemas/AppEngineAuthConfig"
+        health_check_config:
+          $ref: "#/components/schemas/HealthCheckConfig"
+    AppEngineHealthCheckResult:
+      type: object
+      required: [health_status, checked_at]
+      properties:
+        health_status:
+          $ref: "#/components/schemas/AppEngineHealthStatus"
+        checked_at:
+          type: string
+          format: date-time
+        unhealthy_reason:
+          type: string
+        latency_ms:
+          type: integer
+          minimum: 0
+        raw_summary:
+          type: object
+          additionalProperties: true
     AppEngine:
       type: object
       required:
@@ -538,6 +746,7 @@ components:
           auth_config,
           status,
           health_status,
+          reference_run_count,
           created_at,
           updated_at,
         ]
@@ -552,6 +761,8 @@ components:
           type: string
         engine_type:
           $ref: "#/components/schemas/AppEngineType"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
         endpoint:
           type: string
         auth_type:
@@ -562,10 +773,19 @@ components:
           $ref: "#/components/schemas/AppEngineStatus"
         health_status:
           $ref: "#/components/schemas/AppEngineHealthStatus"
+        supported_capability_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityType"
+        health_check_config:
+          $ref: "#/components/schemas/HealthCheckConfig"
         capability_tags:
           type: array
           items:
             type: string
+        reference_run_count:
+          type: integer
+          minimum: 0
         last_health_check_at:
           type: string
           format: date-time
@@ -589,6 +809,8 @@ components:
           maxLength: 500
         engine_type:
           $ref: "#/components/schemas/AppEngineType"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
         endpoint:
           type: string
         auth_type:
@@ -599,6 +821,12 @@ components:
           type: array
           items:
             type: string
+        supported_capability_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityType"
+        health_check_config:
+          $ref: "#/components/schemas/HealthCheckConfig"
     AppEngineUpdateRequest:
       type: object
       properties:
@@ -610,6 +838,8 @@ components:
           maxLength: 500
         endpoint:
           type: string
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
         auth_type:
           $ref: "#/components/schemas/AppEngineAuthType"
         auth_config:
@@ -620,6 +850,12 @@ components:
           type: array
           items:
             type: string
+        supported_capability_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityType"
+        health_check_config:
+          $ref: "#/components/schemas/HealthCheckConfig"
     ParsedField:
       type: object
       required: [source_path, field_type, required]
@@ -657,6 +893,14 @@ components:
           type: string
         kind:
           $ref: "#/components/schemas/TemplateKind"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        capability_type:
+          $ref: "#/components/schemas/CapabilityType"
+        operation_key:
+          type: string
+        operation_contract:
+          $ref: "#/components/schemas/OperationContract"
         config:
           type: object
           additionalProperties: true
@@ -685,6 +929,14 @@ components:
           maxLength: 500
         kind:
           $ref: "#/components/schemas/TemplateKind"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        capability_type:
+          $ref: "#/components/schemas/CapabilityType"
+        operation_key:
+          type: string
+        operation_contract:
+          $ref: "#/components/schemas/OperationContract"
         config:
           type: object
           additionalProperties: true
@@ -755,6 +1007,7 @@ components:
           name,
           kind,
           field_mappings,
+          reference_run_count,
           created_at,
           updated_at,
         ]
@@ -771,6 +1024,18 @@ components:
           type: string
         kind:
           $ref: "#/components/schemas/TemplateKind"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        capability_type:
+          $ref: "#/components/schemas/CapabilityType"
+        operation_key:
+          type: string
+        fixed_parameters:
+          type: object
+          additionalProperties: true
+        reference_run_count:
+          type: integer
+          minimum: 0
         field_mappings:
           type: array
           items:
@@ -793,6 +1058,9 @@ components:
         description:
           type: string
           maxLength: 500
+        fixed_parameters:
+          type: object
+          additionalProperties: true
         field_mappings:
           $ref: "#/components/schemas/FieldMappingSaveRequest"
     ApplicationUpdateRequest:
@@ -804,6 +1072,78 @@ components:
         description:
           type: string
           maxLength: 500
+        fixed_parameters:
+          type: object
+          additionalProperties: true
+    ApplicationRunCreateRequest:
+      type: object
+      required: [app_engine_id, input]
+      properties:
+        app_engine_id:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+        schedule_at:
+          type: string
+          format: date-time
+    ApplicationRun:
+      type: object
+      required:
+        [
+          id,
+          owner_user_id,
+          application_id,
+          app_template_id,
+          app_engine_id,
+          task_run_id,
+          kind,
+          input_snapshot,
+          rendered_payload_snapshot,
+          status,
+          created_at,
+          updated_at,
+        ]
+      properties:
+        id:
+          type: string
+        owner_user_id:
+          type: string
+        application_id:
+          type: string
+        app_template_id:
+          type: string
+        app_engine_id:
+          type: string
+        task_run_id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/TemplateKind"
+        saas_platform_type:
+          $ref: "#/components/schemas/SaaSPlatformType"
+        capability_type:
+          $ref: "#/components/schemas/CapabilityType"
+        operation_key:
+          type: string
+        input_snapshot:
+          type: object
+          additionalProperties: true
+        rendered_payload_snapshot:
+          type: object
+          additionalProperties: true
+        status:
+          $ref: "#/components/schemas/ApplicationRunStatus"
+        output_summary:
+          type: object
+          additionalProperties: true
+        failure_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     AppTemplateListResponse:
       type: object
       required: [total, items]
@@ -842,6 +1182,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AppEngine"
+    ApplicationRunListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationRun"
     SuccessResponse:
       type: object
       required: [success]

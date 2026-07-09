@@ -191,9 +191,111 @@ app_engine_type_mismatched:
   http_status: 200
   retryable: false
   related_user_stories:
-    - US-AIAPP-010
+    - US-AIAPP-013
   related_rules:
     - BR-AIAPP-037
+
+saas_platform_mismatched:
+  value: 130605
+  cn: SaaS Application 与 AppEngine 的第三方平台类型不一致。
+  en: SaaS platform type of the Application and AppEngine does not match.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-047
+
+app_engine_capability_unsupported:
+  value: 130606
+  cn: AppEngine 不支持 Application 所需能力类型。
+  en: AppEngine does not support the capability type required by the Application.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-047
+
+app_engine_reference_blocked:
+  value: 130607
+  cn: 应用引擎存在运行引用，禁止物理删除。
+  en: AppEngine has application run references and cannot be physically deleted.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-010
+  related_rules:
+    - BR-AIAPP-055
+    - BR-AIAPP-056
+
+app_engine_health_check_config_invalid:
+  value: 130608
+  cn: 应用引擎健康检测配置缺失或非法。
+  en: AppEngine health check configuration is missing or invalid.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-011
+  related_rules:
+    - BR-AIAPP-058
+    - BR-AIAPP-059
+
+application_run_create_failed:
+  value: 130400
+  cn: 应用运行创建失败。
+  en: Application run creation failed.
+  owning_domain: application-platform
+  owning_module: application
+  severity: error
+  http_status: 200
+  retryable: true
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-050
+    - BR-AIAPP-052
+
+application_run_not_visible:
+  value: 130401
+  cn: 应用运行不存在或当前用户不可见。
+  en: Application run does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: application
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-054
+
+application_reference_blocked:
+  value: 130402
+  cn: 应用存在运行引用，禁止物理删除。
+  en: Application has application run references and cannot be physically deleted.
+  owning_domain: application-platform
+  owning_module: application
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories:
+    - US-AIAPP-006
+  related_rules:
+    - BR-AIAPP-015
+    - BR-AIAPP-061
 
 permission_denied:
   value: 130500

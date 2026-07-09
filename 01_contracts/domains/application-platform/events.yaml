@@ -44,6 +44,7 @@ application_changed:
     - BR-AIAPP-008
     - BR-AIAPP-010
     - BR-AIAPP-015
+    - BR-AIAPP-061
 
 field_mapping_changed:
   producer: application-service
@@ -73,7 +74,7 @@ app_engine_changed:
   producer: app-engine-service
   consumers:
     - task-center-scheduler
-  trigger_condition: 应用引擎创建、基础信息更新、明文认证配置更新或停用状态变化。
+  trigger_condition: 应用引擎创建、基础信息更新、明文认证配置更新、停用状态变化或删除成功。
   payload:
     app_engine_id: string
     owner_user_id: string
@@ -92,13 +93,14 @@ app_engine_changed:
     - BR-AIAPP-030
     - BR-AIAPP-031
     - BR-AIAPP-032
+    - BR-AIAPP-055
 
 app_engine_health_changed:
   producer: app-engine-service
   consumers:
     - application-service
     - task-center-scheduler
-  trigger_condition: task-center 周期性健康检测任务或手动健康检测导致应用引擎健康状态变化。
+  trigger_condition: task-center 周期性健康检测任务或使用 app_engine_id 的手动健康检测导致已保存应用引擎健康状态变化；临时健康检测不触发本事件。
   payload:
     app_engine_id: string
     owner_user_id: string
@@ -115,3 +117,53 @@ app_engine_health_changed:
     - BR-AIAPP-033
     - BR-AIAPP-034
     - BR-AIAPP-035
+    - BR-AIAPP-057
+    - BR-AIAPP-060
+
+application_run_created:
+  producer: application-service
+  consumers:
+    - task-center
+  trigger_condition: Application 运行请求校验通过并创建 AppRun。
+  payload:
+    application_run_id: string
+    application_id: string
+    app_template_id: string
+    app_engine_id: string
+    task_run_id: string
+    owner_user_id: string
+    kind: string
+    saas_platform_type: string
+    capability_type: string
+    operation_key: string
+    occurred_at: string(date-time)
+  idempotency_key: application_run_id:task_run_id
+  retry_policy: 失败后按固定间隔重试，直到消费者接收。
+  failure_policy: AppRun 与 TaskRun 创建事实以 S2 schema 和 task-center TaskRun 记录为准，事件失败必须保留可重放记录。
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-050
+    - BR-AIAPP-052
+
+application_run_status_changed:
+  producer: application-service
+  consumers:
+    - application-run-view
+  trigger_condition: TaskRun 状态变化同步到 AppRun，或 AppRun 写入输出摘要、失败原因。
+  payload:
+    application_run_id: string
+    task_run_id: string
+    owner_user_id: string
+    status: string
+    output_summary: object
+    failure_reason: string
+    occurred_at: string(date-time)
+  idempotency_key: application_run_id:status:occurred_at
+  retry_policy: 失败后按固定间隔重试，直到消费者接收。
+  failure_policy: AppRun 最新状态以 S2 schema 中应用运行记录为准。
+  related_user_stories:
+    - US-AIAPP-013
+  related_rules:
+    - BR-AIAPP-053
+    - BR-AIAPP-054

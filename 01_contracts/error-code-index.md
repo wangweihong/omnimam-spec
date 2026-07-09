@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
-| application-platform | `01_contracts/domains/application-platform/errors.yaml` | AI 应用平台第一阶段模板、应用、字段映射和应用引擎相关错误码 |
+| application-platform | `01_contracts/domains/application-platform/errors.yaml` | AI 应用平台第一阶段模板、应用、字段映射、应用运行和应用引擎相关错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | 任务中心任务定义、运行、Worker、Lease、Attempt 与权限相关错误码 |
 
 ## 2. 错误码区间分配
