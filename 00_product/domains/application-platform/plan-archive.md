@@ -2,128 +2,82 @@
 
 ## 文档信息
 
-- 最后更新：2026-07-06
+- 最后更新：2026-07-10
 - domain_id：application-platform
-- 归档来源：`00_product/domains/application-platform/product-spec.md` v0.1 草稿
+- 当前事实源：`00_product/domains/application-platform/product-spec.md` v0.5.0-draft
 
-## 1. 定位
+## 1. 当前第一阶段范围
 
-本文档保存从第一阶段事实源中移出的后续计划能力。归档内容仅用于后续规划讨论，不作为当前 S1/S2 实现、验收、发布或合并依据。
-
-第一阶段事实源只保留：
+以下能力已进入第一阶段事实源，不再作为归档能力：
 
 ```text
-模板管理
-应用管理
-参数/字段映射
+ProviderAdapter / ProviderOperation 只读目录
+ComfyUI 与 SaaS 工作流模板
+统一能力图、输入端口和输出端口
+InputMapping / OutputMapping
+direct SaaS Operation 创建应用
+AppEngine 基础管理、健康和并发能力
+匹配引擎查询、用户指定和自动路由
+应用真实测试
+AppRun 与 TaskRun 异步运行协作
+标准化输出与结果引用
+Seedance 2.0 视频生成
+GPT Image 2 图像生成和编辑
 ```
 
-## 2. 已移出第一阶段的能力
+## 2. 后续计划能力
 
-### 2.1 应用审核、上架与公共应用
-
-后续阶段可重新评估：
+### 2.1 应用发布与公共市场
 
 ```text
-应用审核
-申请上架
-撤回申请
-系统管理员审核
-系统管理员直接上架
-公共应用
-应用市场
-公共应用筛选
-公共应用下架
-标签治理
-质量等级标签
-审核操作日志
+应用审核、申请上架、撤回和下架
+公共应用与应用市场
+发布版本和发布快照
+标签治理、质量等级和审核日志
 ```
 
-### 2.2 应用执行与任务体系
-
-后续阶段可重新评估：
+### 2.2 外部通知
 
 ```text
-沙箱测试
-正式执行
-同步任务
-异步任务
-任务中心
-声明式订单
-命令式调用
-结果资产
-执行失败日志
-任务取消
-结果持久化
-素材库登记
+Webhook 配置、签名和投递记录
+Webhook 重试和失败状态
+任务或结果完成通知
 ```
 
-### 2.3 Webhook 与结果通知
-
-后续阶段可重新评估：
+### 2.3 引擎基础设施供给
 
 ```text
-Webhook 配置
-Webhook 投递记录
-Webhook 重试
-Webhook 签名密钥
-任务完成通知
-订单完成通知
-通知失败状态
-```
-
-### 2.4 引擎与基础设施编排
-
-用户级基础 `AppEngine` 管理、明文认证配置和健康查看已于 `2026-07-08` 重新进入 `00_product/domains/application-platform/product-spec.md` 的 S1 事实源。
-
-当前 S1 已覆盖：
-
-```text
-执行引擎管理
-ComfyUI 引擎健康检查
-SaaS API 引擎健康检查
-Bearer Token / API Key / AK-SK / None 认证配置
-```
-
-后续阶段继续评估：
-
-```text
-资源请求
-推荐资源规格
 EngineClass
 EngineClaim
 EngineProvision
 云主机创建或发现
-Worker 绑定
-资源调度
-基础设施配额
-预算确认
+Worker 绑定和自动拉起
+GPU 资源、配额和预算确认
 ```
 
-本归档小节中除用户级基础 `AppEngine` 管理、明文认证配置和健康查看外，其余能力仍不作为当前阶段实现、验收或 S2 契约来源。
-
-### 2.5 模板外 SaaS API 凭证托管与调度
-
-后续阶段可重新评估：
+### 2.4 高级调度与治理
 
 ```text
-模板外 SaaS API 凭证管理
-凭证加密存储
-余额检测
-QPS 限制
-费用估算
-凭证失效调度屏蔽
+跨区域和成本感知路由
+余额、QPS、日配额和费用估算
+复杂故障转移和批量容量预留
+公共共享引擎池
 ```
+
+### 2.5 Credential Management / Secret Vault
+
+后续阶段评估建立独立 `credential-management` 领域，负责：
+
+```text
+API Key、密码、Bearer Token 和 AK/SK 托管
+密钥加密存储和仅写不回显
+密钥引用、授权范围和租户隔离
+轮换、失效、审计和泄漏响应
+Provider 账户余额与凭证可用性
+```
+
+当前阶段继续沿用 AppEngine 明文认证配置和回显契约。该行为是已知且已接受的安全风险，不代表后续密钥模块的目标设计。
 
 ## 3. 重新进入事实源的条件
 
-归档能力重新进入 S1/S2 前，必须满足：
-
-```text
-明确阶段目标
-补充 S1 产品语义
-确认用户故事和验收标准
-再由 S1 推导 S2 契约
-同步更新 CHANGELOG.md
-由用户确认后再记录 RELEASE.md
-```
+归档能力进入 S1/S2 前必须明确阶段目标，补充产品规则、用户故事和验收标准，再推导 API、schema、错误、权限、事件和模块边界；未经用户确认不得记录为 release。
