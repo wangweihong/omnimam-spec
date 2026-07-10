@@ -55,6 +55,11 @@ CREATE TABLE task_runs (
   current_attempt INTEGER NOT NULL DEFAULT 0,
   max_attempts INTEGER NOT NULL DEFAULT 1,
   progress REAL NOT NULL DEFAULT 0,
+  adapter_key TEXT DEFAULT '',
+  operation_key TEXT DEFAULT '',
+  operation_version TEXT DEFAULT '',
+  requested_engine_id TEXT DEFAULT '',
+  resolved_engine_id TEXT DEFAULT '',
   input_json TEXT NOT NULL DEFAULT '{}',
   output_json TEXT NOT NULL DEFAULT '{}',
   last_error_json TEXT NOT NULL DEFAULT '{}',
@@ -74,6 +79,8 @@ CREATE INDEX idx_task_runs_definition ON task_runs(definition_type, definition_i
 CREATE INDEX idx_task_runs_parent ON task_runs(parent_run_id);
 CREATE INDEX idx_task_runs_root ON task_runs(root_run_id);
 CREATE INDEX idx_task_runs_schedule ON task_runs(schedule_at);
+CREATE INDEX idx_task_runs_adapter_operation ON task_runs(adapter_key, operation_key, operation_version);
+CREATE INDEX idx_task_runs_resolved_engine ON task_runs(resolved_engine_id);
 
 -- S1 refs: US-TASK-003, US-TASK-007; BR-TASK-008..BR-TASK-012, BR-TASK-032, BR-TASK-033, BR-TASK-042..BR-TASK-047.
 CREATE TABLE task_attempts (

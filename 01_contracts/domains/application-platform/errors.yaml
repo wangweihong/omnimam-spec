@@ -1,342 +1,227 @@
-template_parse_failed:
+adapter_disabled:
   value: 130200
-  cn: 模板解析失败，无法创建模板。
-  en: Template parsing failed and the template cannot be created.
+  cn: 平台适配器或操作已禁用。
+  en: Provider adapter or operation is disabled.
+  owning_domain: application-platform
+  owning_module: adapter-catalog
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-001]
+  related_rules: [BR-AIAPP-004]
+
+operation_version_incompatible:
+  value: 130201
+  cn: 平台操作版本与应用或引擎不兼容。
+  en: Provider operation version is incompatible with the application or engine.
+  owning_domain: application-platform
+  owning_module: adapter-catalog
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-001, US-AIAPP-007]
+  related_rules: [BR-AIAPP-005, BR-AIAPP-023]
+
+template_parse_failed:
+  value: 130210
+  cn: 工作流模板解析失败。
+  en: Workflow template parsing failed.
   owning_domain: application-platform
   owning_module: template
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-001
-    - US-AIAPP-002
-  related_rules:
-    - BR-AIAPP-004
+  related_user_stories: [US-AIAPP-002]
+  related_rules: [BR-AIAPP-007]
+
+port_unresolved:
+  value: 130211
+  cn: 所选端口尚未解析完成。
+  en: Selected port has not been resolved.
+  owning_domain: application-platform
+  owning_module: template
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-002, US-AIAPP-003]
+  related_rules: [BR-AIAPP-008, BR-AIAPP-009]
+
+candidate_output_unconfirmed:
+  value: 130212
+  cn: 候选输出尚未确认。
+  en: Candidate output has not been confirmed.
+  owning_domain: application-platform
+  owning_module: template
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-003]
+  related_rules: [BR-AIAPP-009, BR-AIAPP-015]
 
 template_reference_blocked:
-  value: 130201
-  cn: 模板存在引用，禁止删除。
-  en: Template has references and cannot be deleted.
+  value: 130213
+  cn: 模板存在应用引用，禁止删除。
+  en: Template has application references and cannot be deleted.
   owning_domain: application-platform
   owning_module: template
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-008
-  related_rules:
-    - BR-AIAPP-008
+  related_user_stories: [US-AIAPP-003]
+  related_rules: [BR-AIAPP-012]
 
-template_name_duplicated:
-  value: 130203
-  cn: 同一用户下模板名称重复。
-  en: Template name is duplicated for the same owner.
-  owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-001
-    - US-AIAPP-002
-    - US-AIAPP-003
-  related_rules:
-    - BR-AIAPP-005
-
-template_content_immutable:
-  value: 130204
-  cn: 模板类型、内容或解析变量创建后不可修改。
-  en: Template kind, content, and parsed fields are immutable after creation.
-  owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-003
-  related_rules:
-    - BR-AIAPP-006
-    - BR-AIAPP-007
-
-mapping_path_invalid:
+input_mapping_invalid:
   value: 130300
-  cn: 字段映射路径不在模板解析变量中。
-  en: Field mapping source path is not present in parsed template fields.
+  cn: 应用输入映射非法。
+  en: Application input mapping is invalid.
   owning_domain: application-platform
-  owning_module: field-mapping
+  owning_module: application
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-  related_rules:
-    - BR-AIAPP-016
+  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
+  related_rules: [BR-AIAPP-015, BR-AIAPP-016]
 
-field_key_duplicated:
+output_mapping_invalid:
   value: 130301
-  cn: 同一应用内字段标识重复。
-  en: Field key is duplicated in the same application.
+  cn: 应用输出映射非法。
+  en: Application output mapping is invalid.
   owning_domain: application-platform
-  owning_module: field-mapping
+  owning_module: application
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-  related_rules:
-    - BR-AIAPP-017
+  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
+  related_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
 
-field_mapping_incomplete:
+fixed_parameter_conflicted:
   value: 130302
-  cn: 应用字段映射不完整。
-  en: Application field mappings are incomplete.
-  owning_domain: application-platform
-  owning_module: field-mapping
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-  related_rules:
-    - BR-AIAPP-013
-    - BR-AIAPP-018
-
-field_type_invalid:
-  value: 130303
-  cn: 字段类型不来自模板解析变量。
-  en: Field type is not derived from parsed template fields.
-  owning_domain: application-platform
-  owning_module: field-mapping
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-  related_rules:
-    - BR-AIAPP-019
-
-app_engine_not_visible:
-  value: 130600
-  cn: 应用引擎不存在或当前用户不可见。
-  en: AppEngine does not exist or is not visible to the current user.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-010
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-029
-    - BR-AIAPP-030
-
-app_engine_name_duplicated:
-  value: 130601
-  cn: 同一用户下应用引擎名称重复。
-  en: AppEngine name is duplicated for the same owner.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-010
-  related_rules:
-    - BR-AIAPP-029
-
-app_engine_auth_config_invalid:
-  value: 130602
-  cn: 应用引擎认证配置不完整或与认证方式不匹配。
-  en: AppEngine auth config is incomplete or does not match auth type.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-010
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-031
-    - BR-AIAPP-034
-
-app_engine_unhealthy:
-  value: 130603
-  cn: 应用引擎健康检测失败或不可用。
-  en: AppEngine health check failed or the engine is unavailable.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: true
-  related_user_stories:
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-033
-    - BR-AIAPP-034
-    - BR-AIAPP-035
-
-app_engine_type_mismatched:
-  value: 130604
-  cn: 应用运行时选择的应用引擎类型与应用类型不一致。
-  en: Selected AppEngine type does not match application kind at runtime.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-037
-
-saas_platform_mismatched:
-  value: 130605
-  cn: SaaS Application 与 AppEngine 的第三方平台类型不一致。
-  en: SaaS platform type of the Application and AppEngine does not match.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-047
-
-app_engine_capability_unsupported:
-  value: 130606
-  cn: SaaS 平台预置能力矩阵不支持 Application 所需能力。
-  en: SaaS platform capability matrix does not support the capability required by the Application.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-047
-
-app_engine_reference_blocked:
-  value: 130607
-  cn: 应用引擎存在运行引用，禁止物理删除。
-  en: AppEngine has application run references and cannot be physically deleted.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-010
-  related_rules:
-    - BR-AIAPP-055
-    - BR-AIAPP-056
-
-custom_http_config_invalid:
-  value: 130608
-  cn: 自定义 HTTP 配置缺失或非法。
-  en: Custom HTTP configuration is missing or invalid.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-058
-    - BR-AIAPP-059
-
-saas_platform_metadata_unsupported:
-  value: 130609
-  cn: SaaS 平台元数据不存在或不支持所选能力。
-  en: SaaS platform metadata does not exist or does not support the selected capability.
-  owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
-  retryable: false
-  related_user_stories:
-    - US-AIAPP-010
-    - US-AIAPP-012
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-047
-    - BR-AIAPP-063
-    - BR-AIAPP-064
-
-application_run_create_failed:
-  value: 130400
-  cn: 应用运行创建失败。
-  en: Application run creation failed.
-  owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
-  retryable: true
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-050
-    - BR-AIAPP-052
-
-application_run_not_visible:
-  value: 130401
-  cn: 应用运行不存在或当前用户不可见。
-  en: Application run does not exist or is not visible to the current user.
+  cn: 同一参数路径不能同时开放和固化。
+  en: A parameter path cannot be both exposed and fixed.
   owning_domain: application-platform
   owning_module: application
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-054
+  related_user_stories: [US-AIAPP-005]
+  related_rules: [BR-AIAPP-017]
 
 application_reference_blocked:
-  value: 130402
-  cn: 应用存在运行引用，禁止物理删除。
-  en: Application has application run references and cannot be physically deleted.
+  value: 130303
+  cn: 应用存在运行引用，禁止删除。
+  en: Application has run references and cannot be deleted.
   owning_domain: application-platform
   owning_module: application
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-006
-  related_rules:
-    - BR-AIAPP-015
-    - BR-AIAPP-061
+  related_user_stories: [US-AIAPP-005]
+  related_rules: [BR-AIAPP-020]
+
+engine_unavailable:
+  value: 130400
+  cn: 自动路由没有找到可用应用引擎。
+  en: Automatic routing found no available application engine.
+  owning_domain: application-platform
+  owning_module: engine-router
+  severity: error
+  http_status: 200
+  retryable: true
+  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
+  related_rules: [BR-AIAPP-023, BR-AIAPP-030, BR-AIAPP-032]
+
+selected_engine_unavailable:
+  value: 130401
+  cn: 用户指定的应用引擎不可用。
+  en: The selected application engine is unavailable.
+  owning_domain: application-platform
+  owning_module: engine-router
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
+  related_rules: [BR-AIAPP-027, BR-AIAPP-029, BR-AIAPP-031]
+
+app_engine_auth_config_invalid:
+  value: 130402
+  cn: 应用引擎认证配置非法。
+  en: Application engine authentication configuration is invalid.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-006]
+  related_rules: [BR-AIAPP-022]
+
+app_engine_reference_blocked:
+  value: 130403
+  cn: 应用引擎存在运行引用，禁止删除。
+  en: Application engine has run references and cannot be deleted.
+  owning_domain: application-platform
+  owning_module: app-engine
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-006]
+  related_rules: [BR-AIAPP-028]
+
+adapter_invocation_failed:
+  value: 130500
+  cn: 平台适配器调用失败。
+  en: Provider adapter invocation failed.
+  owning_domain: application-platform
+  owning_module: application-run
+  severity: error
+  http_status: 200
+  retryable: true
+  related_user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
+  related_rules: [BR-AIAPP-038, BR-AIAPP-041]
+
+external_task_recovery_failed:
+  value: 130501
+  cn: 已提交的外部任务无法恢复查询。
+  en: Previously submitted external task could not be recovered.
+  owning_domain: application-platform
+  owning_module: application-run
+  severity: error
+  http_status: 200
+  retryable: true
+  related_user_stories: [US-AIAPP-009, US-AIAPP-010]
+  related_rules: [BR-AIAPP-039, BR-AIAPP-040, BR-AIAPP-044]
+
+application_test_failed:
+  value: 130502
+  cn: 应用真实测试失败。
+  en: Application live test failed.
+  owning_domain: application-platform
+  owning_module: application-run
+  severity: error
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-008]
+  related_rules: [BR-AIAPP-034, BR-AIAPP-035]
+
+projection_version_stale:
+  value: 130503
+  cn: TaskRun 投影事件版本已过期。
+  en: TaskRun projection event version is stale.
+  owning_domain: application-platform
+  owning_module: application-run
+  severity: warning
+  http_status: 200
+  retryable: false
+  related_user_stories: [US-AIAPP-009]
+  related_rules: [BR-AIAPP-036, BR-AIAPP-037]
 
 permission_denied:
-  value: 130500
-  cn: 当前用户缺少操作权限。
-  en: Current user does not have permission.
+  value: 130600
+  cn: 当前用户缺少资源管理权或引擎使用权。
+  en: Current user lacks resource management or engine usage permission.
   owning_domain: application-platform
   owning_module: access
   severity: error
   http_status: 200
   retryable: false
-  related_user_stories:
-    - US-AIAPP-003
-    - US-AIAPP-006
-    - US-AIAPP-007
-    - US-AIAPP-008
-    - US-AIAPP-009
-    - US-AIAPP-010
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-021
-    - BR-AIAPP-022
-    - BR-AIAPP-023
-    - BR-AIAPP-024
-    - BR-AIAPP-026
-    - BR-AIAPP-029
-    - BR-AIAPP-030
+  related_user_stories: [US-AIAPP-006, US-AIAPP-007, US-AIAPP-012]
+  related_rules: [BR-AIAPP-026, BR-AIAPP-047, BR-AIAPP-048, BR-AIAPP-049]

@@ -2,6 +2,14 @@
 
 ## 2026-07-10
 
+- 重构 `application-platform` 第一阶段为 ProviderAdapter/Operation 目录、工作流模板、统一输入输出端口、应用、AppEngine 路由、真实测试和 TaskRun 异步执行链路。
+- 新增 CapabilityGraph、CapabilityNode、PortDefinition、InputMapping、OutputMapping 和 ApplicationOutputValue 产品及 S2 契约，ComfyUI 保留多节点图，direct SaaS Operation 直接创建应用。
+- 新增 ByteDance Seedance 2.0 文生视频、图生视频、多模态参考视频 Operation，以及 OpenAI `gpt-image-2` 图像生成和编辑 Operation 语义。
+- 新增 `GET /api/v1/applications/{application_id}/available-engines`；无匹配项时成功返回空列表，用户可指定有使用权的匹配引擎，也可使用自动路由。
+- 明确 AppEngine 只保存运行实例配置和状态，ProviderAdapter 承担平台调用协议，Worker 承担 TaskRun、Lease、重试和结果回写。
+- 明确 TaskRun 是执行状态唯一事实源，AppRun 仅保存业务快照和按 `task_run_id + resource_version` 幂等更新的状态、进度与标准输出投影。
+- 增加应用真实测试 `run_mode=test`、异步外部任务 `external_job_id` 恢复、引擎并发占用和大型媒体结果引用规则。
+- 同步更新应用平台 S1/S2、任务中心协作语义、领域/全局架构、错误码索引和计划归档；独立 Secret Vault 继续作为后续能力，当前明文凭证风险保持不变。
 - 收敛 `asset-library` 双层标签 S1 语义：Labels/Tags trim 后区分大小写，明确字段长度、Label key 保留字符、来源、数量上限和批量部分成功规则。
 - 将统一选择器的分组谓词从 `group=<分组名>` 调整为 `@group=<分组名>`，保留 `group` 作为合法自定义 Label key，并固化 AND/OR 优先级、引号转义、空值与复杂度限制。
 - 新增素材列表标签查询与 `POST /api/v1/assets/batch-labels` OpenAPI 契约，返回自然语言解析模式及逐素材批量结果。

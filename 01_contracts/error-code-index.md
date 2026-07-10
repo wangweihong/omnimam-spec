@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
-| application-platform | `01_contracts/domains/application-platform/errors.yaml` | AI 应用平台第一阶段模板、应用、字段映射、应用运行和应用引擎相关错误码 |
+| application-platform | `01_contracts/domains/application-platform/errors.yaml` | AI 应用平台适配器、模板、输入输出映射、引擎路由和应用运行错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | 任务中心任务定义、运行、Worker、Lease、Attempt 与权限相关错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、标签写入与当前用户访问边界错误码 |
 
@@ -28,11 +28,11 @@
 | 120600-120799 | model-management | default-model | 默认模型缺失、候选不可用和用途错误 |
 | 120800-120999 | model-management | health | 模型健康检测错误 |
 | 121000-121199 | model-management | access | 用户模型配置访问控制错误 |
-| 130200-130299 | application-platform | template | 应用模板解析、唯一性、不可变与引用保护错误 |
-| 130300-130399 | application-platform | field-mapping | 字段映射路径、唯一性和完整性错误 |
-| 130400-130499 | application-platform | application | 应用创建、更新和删除错误 |
-| 130500-130599 | application-platform | access | 权限、可见性与所有权错误 |
-| 130600-130699 | application-platform | app-engine | 应用引擎可见性、认证配置、平台元数据和健康检测错误 |
+| 130200-130299 | application-platform | adapter-template | 适配器目录、操作版本、模板解析和端口错误 |
+| 130300-130399 | application-platform | application | 输入输出映射、固化参数和应用引用错误 |
+| 130400-130499 | application-platform | app-engine-router | 引擎认证、引用、自动路由和指定引擎错误 |
+| 130500-130599 | application-platform | application-run | Adapter 调用、外部任务恢复、测试和投影错误 |
+| 130600-130699 | application-platform | access | 资源管理权、引擎使用权和运行可见性错误 |
 | 140200-140399 | task-center | definition | 任务定义、TaskGroup 和 DAGFlowTask 校验错误 |
 | 140400-140599 | task-center | run | TaskRun 状态、取消、重试和可见性错误 |
 | 140600-140799 | task-center | worker | Worker 注册、心跳和能力匹配错误 |

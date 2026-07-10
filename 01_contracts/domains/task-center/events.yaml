@@ -9,6 +9,12 @@ task_run_created:
     definition_type: string
     definition_id: string
     status: string
+    resource_version: integer
+    adapter_key: string
+    operation_key: string
+    operation_version: string
+    requested_engine_id: string
+    resolved_engine_id: string
     project_id: string
     namespace: string
     created_by: string
@@ -33,9 +39,10 @@ task_run_status_changed:
     from_status: string
     to_status: string
     progress: number
+    resource_version: integer
     last_error: object
     occurred_at: string(date-time)
-  idempotency_key: run_id:from_status:to_status:occurred_at
+  idempotency_key: run_id:resource_version
   retry_policy: 失败后按固定间隔重试，直到消费者接收或进入人工排查。
   failure_policy: TaskRun 状态以 schema 记录为准，事件可从 task_run_events 重放。
   related_user_stories:
@@ -59,9 +66,10 @@ task_run_progress_updated:
     worker_id: string
     lease_id: string
     progress: number
+    resource_version: integer
     output_snapshot: object
     occurred_at: string(date-time)
-  idempotency_key: run_id:attempt_id:progress:occurred_at
+  idempotency_key: run_id:resource_version
   retry_policy: 失败后按固定间隔重试；实时刷新消费者允许丢弃过期进度事件。
   failure_policy: 最新进度以 TaskRun 记录为准，事件失败不影响 Worker 继续执行。
   related_user_stories:

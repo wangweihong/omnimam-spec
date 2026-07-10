@@ -16,7 +16,7 @@
 | `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
 | `asset-library` | 用户素材、上传会话、预览、处理任务、画布输出资产 | 已有 S1，S2 已有 schema，其他契约待补 |
-| `application-platform` | 应用模板、正式应用、字段映射、用户级 AppEngine | 已有 S1/S2 |
+| `application-platform` | Adapter/Operation 目录、工作流模板、应用输入输出、AppEngine 路由和 AppRun 投影 | 已有 S1/S2 |
 | `task-center` | 任务定义、运行实例、Worker 协议、Lease、Watchdog | 已有 S1/S2 |
 | `workflow-canvas` | 工作流画布能力预留 | 缺少 S1，S2 暂未定义业务表 |
 
@@ -28,7 +28,7 @@ graph TD
   Model["model-management<br/>用户模型能力"]
   Chat["ai-chatting<br/>对话与生成"]
   Asset["asset-library<br/>素材与预览"]
-  App["application-platform<br/>模板、应用与 AppEngine"]
+  App["application-platform<br/>Adapter、模板、应用与 AppEngine"]
   Task["task-center<br/>任务调度与执行状态"]
   Canvas["workflow-canvas<br/>画布能力预留"]
 
@@ -50,8 +50,8 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义应用、字段映射、SaaS 平台元数据和用户级 AppEngine；不直接承担应用运行，运行链路交给 `task-center`，AppEngine 只表达用户维护的运行平台、明文凭证、custom_http 配置与健康状态。
-- `task-center` 只管理任务定义、运行状态、Worker 协议与故障恢复，不理解具体业务执行逻辑。
+- `application-platform` 定义 ProviderAdapter/Operation 目录、模板、应用输入输出、AppEngine、引擎路由和 AppRun 业务投影；AppEngine 只表达运行实例配置和状态。
+- `task-center` 管理 TaskRun 唯一执行状态、Worker 协议与故障恢复；Worker 调用 ProviderAdapter，Adapter 使用 AppEngine endpoint 执行平台协议。
 - `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
 
 ## 4. 运行链路
@@ -81,14 +81,18 @@ sequenceDiagram
   participant App as application-platform
   participant Task as task-center
   participant Worker as Worker
-  participant Engine as AppEngine
+  participant Adapter as ProviderAdapter
+  participant Engine as AppEngine endpoint
 
-  User->>App: 选择正式应用与输入参数
-  App->>Task: 创建 TaskRun
+  User->>App: 选择应用、输入和可选 AppEngine
+  App->>App: 校验指定引擎或自动路由并占用
+  App->>Task: 创建带 Operation/Engine 快照的 TaskRun
   Worker->>Task: 注册、心跳、领取任务
-  Worker->>Engine: 调用应用执行能力
+  Worker->>Adapter: 调用 ProviderAdapter
+  Adapter->>Engine: 调用平台 endpoint
   Worker->>Task: 上报进度和结果
-  Task-->>User: 返回运行状态、失败排查信息
+  Task-->>App: 带 resourceVersion 的状态事件
+  App-->>User: 返回 AppRun 状态投影与标准输出
 ```
 
 ## 5. 数据与事件原则

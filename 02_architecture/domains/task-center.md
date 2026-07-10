@@ -5,83 +5,58 @@
 - S1：`00_product/domains/task-center/product-spec.md`
 - S2：`01_contracts/domains/task-center/`
 
-任务中心负责底层任务定义、运行状态、Worker 协议、Lease、系统周期性调度和故障恢复，不负责具体业务函数、应用引擎实现或外部执行器细节。
+任务中心负责任务定义、TaskRun 唯一执行状态、Worker 协议、Lease、调度和故障恢复，不解释 ProviderAdapter、AppEngine 或平台调用协议。
 
 ## 2. 模块划分
 
 | 模块 | 架构职责 | 主要资源 |
 | --- | --- | --- |
-| `definition` | 管理 AtomicTask、TaskGroup、DAGFlowTask 定义 | `task_definitions` |
-| `run` | 管理 TaskRun 创建、状态流转、取消、重试、结果引用 | `task_runs`、`task_run_events` |
-| `worker-protocol` | 管理 Worker 注册、心跳、领取、进度、完成、失败和 Lease 续约 | `task_workers`、`task_attempts`、`task_execution_leases` |
-| `watchdog` | 扫描 Worker 心跳超时、Lease 过期、任务超时和长时间无进度 | `task_watchdog_records` |
-| `scheduler` | 为系统内部维护任务周期性创建计划执行的 TaskRun | `task_definitions`、`task_runs.schedule_at` |
-| `access` | 控制项目、命名空间、调用主体和用户权限边界 | 访问控制聚合 |
+| definition | AtomicTask、TaskGroup、DAGFlowTask 定义 | task_definitions |
+| run | TaskRun 状态、版本、取消、重试和结果引用 | task_runs、task_run_events |
+| worker-protocol | Worker、Attempt、Lease、进度和结果回写 | task_workers、task_attempts、task_execution_leases |
+| watchdog | 扫描失联、过期、超时和停滞 | task_watchdog_records |
+| scheduler | 创建系统维护 TaskRun | task_definitions、task_runs |
+| access | 项目、命名空间和调用主体权限 | 访问控制聚合 |
 
 ## 3. 外部依赖
 
-- 依赖 `identity` 提供调用主体、当前用户和权限边界。
-- 被 `application-platform` 或后续业务模块调用，用于创建和追踪应用运行。
-- 与 AppEngine 协作时，任务中心只表达运行状态和调度协议，AppEngine 负责业务执行解释。
-- 与 `application-platform` 协作时，任务中心可周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 平台连接、明文凭证携带、custom_http 配置解释、平台预置健康检测策略、健康判断和状态写回由应用平台负责。
-- 与 `asset-library` 协作时，任务中心可周期性触发 `asset.sha256_backfill`，但素材库负责具体扫描、读取素材、计算 SHA256 和写回。
+- application-platform 创建应用 TaskRun，并提供 ProviderAdapter、AppEngine 路由结果和标准输出语义。
+- Worker 调用 ProviderAdapter；Adapter 使用 AppEngine endpoint、认证和能力快照访问平台。
+- asset-library 保存大型媒体，TaskRun 只保存摘要和引用。
+- identity 提供调用主体和权限边界。
 
 ## 4. 核心链路
 
 ```mermaid
 sequenceDiagram
-  participant Caller as 调用方
-  participant Run as run
+  participant App as application-platform
+  participant Run as task-center run
   participant Worker as worker-protocol
-  participant Lease as ExecutionLease
-  participant Engine as AppEngine
+  participant Adapter as ProviderAdapter
+  participant Engine as AppEngine endpoint
   participant Watchdog as watchdog
-  participant Scheduler as scheduler
 
-  Caller->>Run: 创建 TaskRun
-  Scheduler->>Run: 周期性创建计划 TaskRun
-  Worker->>Run: 领取 READY 任务
-  Run->>Lease: 创建或刷新 Lease
-  Worker->>Engine: 执行业务函数
-  Worker->>Run: 上报进度
-  Worker->>Run: 完成或失败
-  Watchdog->>Run: 扫描超时与失联
+  App->>Run: 创建含 Operation/Engine 快照的 TaskRun
+  Worker->>Run: 领取 READY TaskRun 与 Lease
+  Worker->>Adapter: 调用适配器
+  Adapter->>Engine: submit / poll / cancel / collectResult
+  Adapter-->>Worker: 标准结果或错误
+  Worker->>Run: 上报进度和结果
+  Run-->>App: run_id + resource_version 状态事件
+  Watchdog->>Run: 扫描超时、失联和过期 Lease
 ```
 
-## 5. 状态与一致性
+## 5. 一致性
 
-- TaskRun 状态包括 `PENDING`、`READY`、`CLAIMED`、`RUNNING`、`RETRYING`、`CANCEL_REQUESTED`、`PAUSED`、`SUCCESS`、`FAILED`、`CANCELED`、`TIMEOUT`、`LOST`。
-- TaskAttempt 状态包括 `CLAIMED`、`RUNNING`、`SUCCESS`、`FAILED`、`TIMEOUT`、`CANCELED`、`WORKER_LOST`、`LEASE_EXPIRED`、`STALLED`。
-- 同一运行的状态变更应写入 `task_run_events`，便于失败排查和事件重放。
-- Lease 当前只允许同一运行存在一个 `ACTIVE` 或 `RENEWED` 执行租约。
-- 取消是协作式语义，Worker 与 AppEngine 需要持续检查取消请求。
-- 系统周期性调度创建的 TaskRun 仍遵循普通 TaskRun 状态机、Worker 领取、Lease、重试和结果回写规则。
+- TaskRun 是执行状态唯一事实源，每次状态、进度和结果变化递增 resource_version。
+- 消费者按 run_id + resource_version 幂等处理，旧事件不得覆盖新投影。
+- 同一 TaskRun 同时只能有一个有效 Lease。
+- TaskAttempt 保留每次失败和 external_job_id；重试先恢复已有外部任务。
+- Worker 负责生命周期，ProviderAdapter 负责平台协议，AppEngine 只提供实例配置和状态。
+- 取消由 Worker 调用 ProviderAdapter 协作完成，最终状态仍可能是 SUCCESS、FAILED、CANCELED 或 TIMEOUT。
 
-## 6. API 面
+## 6. 风险
 
-S2 OpenAPI 将能力拆为：
-
-- `/api/v1/task-definitions`
-- `/api/v1/atomic-tasks`
-- `/api/v1/task-groups`
-- `/api/v1/dag-flow-tasks`
-- `/api/v1/task-runs`
-- `/api/v1/task-runs/{run_id}`
-- `/api/v1/task-runs/{run_id}/attempts`
-- `/api/v1/task-runs/{run_id}/cancel`
-- `/api/v1/task-runs/{run_id}/retry`
-- `/api/v1/workers`
-- `/api/v1/workers/{worker_id}/heartbeat`
-- `/api/v1/workers/{worker_id}/claim`
-- `/api/v1/task-runs/{run_id}/progress`
-- `/api/v1/task-runs/{run_id}/complete`
-- `/api/v1/task-runs/{run_id}/fail`
-- `/api/v1/leases/{lease_id}/renew`
-- `/api/v1/task-center/health`
-
-## 7. 架构风险
-
-- Worker 失联、Lease 过期和任务超时必须有明确优先级，避免重复执行或状态回退。
-- DAG 与 TaskGroup 执行需要保证定义不可被运行中实例隐式修改。
-- 结果内容不应无限写入任务中心，S1/S2 倾向存储结果引用和摘要。
-- Watchdog 处理应可追踪，避免后台修复动作不可审计。
+- Worker 失联和第三方异步任务仍运行时，必须依靠 external_job_id 恢复，避免重复提交。
+- 状态事件可能乱序或重复，所有投影必须使用 resource_version。
+- 大型结果不得进入 TaskRun output 正文。

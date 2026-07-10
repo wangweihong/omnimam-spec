@@ -1,1255 +1,1183 @@
 openapi: 3.0.3
 info:
-  title: OmniMAM AI Application Platform API
-  version: 0.4.0-draft
-  description: AI 应用平台第一阶段 S2 API 契约，覆盖模板管理、应用管理、字段映射、用户级应用引擎和应用运行。
+  title: Application Platform API
+  version: 0.5.0-draft
+  description: 平台适配器目录、工作流模板、应用输入输出、应用引擎和异步运行契约。
 servers:
-  - url: /api/v1
+  - url: /
 tags:
+  - name: adapter-catalog
   - name: templates
-    description: 应用模板管理。
   - name: applications
-    description: 应用管理。
-  - name: field-mappings
-    description: 字段映射管理。
-  - name: saas-platforms
-    description: SaaS 平台元数据只读查询。
   - name: app-engines
-    description: 用户应用引擎管理与健康检测。
   - name: application-runs
-    description: 应用运行与 task-center TaskRun 协作。
+
+x-provider-operation-catalog:
+  - adapter_key: bytedance-seedance
+    operation_key: seedance-2.text-to-video
+    capability_type: video_generation
+    source_mode: direct
+    execution_mode: asynchronous
+    input_ports: [prompt, duration, aspect_ratio, resolution, generate_audio, seed]
+    output_ports: [video, audio, thumbnail, metadata]
+  - adapter_key: bytedance-seedance
+    operation_key: seedance-2.image-to-video
+    capability_type: video_generation
+    source_mode: direct
+    execution_mode: asynchronous
+    input_ports: [prompt, input_images, duration, aspect_ratio, resolution, generate_audio, seed]
+    output_ports: [video, audio, thumbnail, metadata]
+  - adapter_key: bytedance-seedance
+    operation_key: seedance-2.reference-to-video
+    capability_type: video_generation
+    source_mode: direct
+    execution_mode: asynchronous
+    input_ports: [prompt, input_images, input_videos, input_audios, duration, aspect_ratio, resolution, generate_audio, seed]
+    output_ports: [video, audio, thumbnail, metadata]
+  - adapter_key: openai
+    operation_key: gpt-image-2.generate
+    capability_type: image_generation
+    source_mode: direct
+    execution_mode: synchronous
+    input_ports: [prompt, size, quality, background, output_format, count]
+    output_ports: [images]
+  - adapter_key: openai
+    operation_key: gpt-image-2.edit
+    capability_type: image_editing
+    source_mode: direct
+    execution_mode: synchronous
+    input_ports: [prompt, input_images, mask, size, quality, background, output_format, count]
+    output_ports: [images]
 
 paths:
+  /api/v1/provider-adapters:
+    get:
+      tags: [adapter-catalog]
+      summary: 查询只读平台适配器目录
+      operationId: list_provider_adapters
+      x-s1-refs:
+        user_stories: [US-AIAPP-001]
+        business_rules: [BR-AIAPP-001, BR-AIAPP-004]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - name: platform_type
+          in: query
+          schema: {type: string}
+        - name: capability_type
+          in: query
+          schema: {type: string}
+        - name: enabled
+          in: query
+          schema: {type: boolean}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderAdapterListResponse'}
+
+  /api/v1/provider-adapters/{adapter_key}/operations:
+    get:
+      tags: [adapter-catalog]
+      summary: 查询适配器操作目录
+      operationId: list_provider_operations
+      x-s1-refs:
+        user_stories: [US-AIAPP-001, US-AIAPP-004, US-AIAPP-010, US-AIAPP-011]
+        business_rules: [BR-AIAPP-002, BR-AIAPP-042, BR-AIAPP-045]
+      parameters:
+        - $ref: '#/components/parameters/adapter_key'
+        - name: source_mode
+          in: query
+          schema: {$ref: '#/components/schemas/SourceMode'}
+        - name: capability_type
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderOperationListResponse'}
+
   /api/v1/app-templates:
     get:
       tags: [templates]
-      summary: 查询应用模板列表
+      summary: 查询工作流模板
       operationId: list_app_templates
       x-s1-refs:
-        user_stories: [US-AIAPP-003, US-AIAPP-009]
-        business_rules: [BR-AIAPP-001, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023]
+        user_stories: [US-AIAPP-002, US-AIAPP-003]
+        business_rules: [BR-AIAPP-006, BR-AIAPP-047, BR-AIAPP-048]
       parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - $ref: "#/components/parameters/keyword"
-        - name: kind
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: source_kind
           in: query
-          schema:
-            $ref: "#/components/schemas/TemplateKind"
-        - name: sort_field
+          schema: {$ref: '#/components/schemas/TemplateSourceKind'}
+        - name: adapter_key
           in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, updated_at, kind]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {type: string}
       responses:
-        "200":
-          description: 应用模板列表。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppTemplateListResponse"
+              schema: {$ref: '#/components/schemas/AppTemplateListResponse'}
     post:
       tags: [templates]
-      summary: 创建应用模板
+      summary: 创建并解析工作流模板
       operationId: create_app_template
       x-s1-refs:
-        user_stories: [US-AIAPP-001, US-AIAPP-002]
-        business_rules: [BR-AIAPP-001, BR-AIAPP-002, BR-AIAPP-003, BR-AIAPP-004, BR-AIAPP-005]
+        user_stories: [US-AIAPP-002]
+        business_rules: [BR-AIAPP-006, BR-AIAPP-007, BR-AIAPP-008, BR-AIAPP-010]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AppTemplateCreateRequest"
+            schema: {$ref: '#/components/schemas/AppTemplateCreateRequest'}
       responses:
-        "200":
-          description: 应用模板详情。
+        '200':
+          description: 创建成功或返回业务错误。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppTemplate"
+              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
 
   /api/v1/app-templates/{template_id}:
     get:
       tags: [templates]
-      summary: 获取应用模板详情
+      summary: 获取工作流模板
       operationId: get_app_template
       x-s1-refs:
-        user_stories: [US-AIAPP-003, US-AIAPP-007, US-AIAPP-009]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023]
-      parameters:
-        - $ref: "#/components/parameters/template_id"
+        user_stories: [US-AIAPP-002, US-AIAPP-003]
+        business_rules: [BR-AIAPP-011, BR-AIAPP-047, BR-AIAPP-048]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
       responses:
-        "200":
-          description: 应用模板详情。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppTemplate"
+              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
     patch:
       tags: [templates]
-      summary: 更新应用模板元数据
+      summary: 更新模板名称或描述
       operationId: update_app_template
       x-s1-refs:
-        user_stories: [US-AIAPP-003]
-        business_rules: [BR-AIAPP-006, BR-AIAPP-007, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023]
-      parameters:
-        - $ref: "#/components/parameters/template_id"
+        user_stories: [US-AIAPP-002]
+        business_rules: [BR-AIAPP-011]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AppTemplateUpdateRequest"
+            schema: {$ref: '#/components/schemas/MetadataUpdateRequest'}
       responses:
-        "200":
-          description: 应用模板详情。
+        '200':
+          description: 更新完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppTemplate"
+              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
     delete:
       tags: [templates]
-      summary: 删除应用模板
+      summary: 删除无引用模板
       operationId: delete_app_template
       x-s1-refs:
-        user_stories: [US-AIAPP-008]
-        business_rules: [BR-AIAPP-008, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023]
-      parameters:
-        - $ref: "#/components/parameters/template_id"
+        user_stories: [US-AIAPP-002]
+        business_rules: [BR-AIAPP-012]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
       responses:
-        "200":
-          description: 删除成功。
+        '200': {$ref: '#/components/responses/Success'}
+
+  /api/v1/app-templates/{template_id}/capability-graph:
+    get:
+      tags: [templates]
+      summary: 获取模板能力图和端口
+      operationId: get_app_template_capability_graph
+      x-s1-refs:
+        user_stories: [US-AIAPP-002, US-AIAPP-003]
+        business_rules: [BR-AIAPP-007, BR-AIAPP-008, BR-AIAPP-009]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
+      responses:
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
+              schema: {$ref: '#/components/schemas/CapabilityGraphResponse'}
 
   /api/v1/app-templates/{template_id}/references:
     get:
       tags: [templates]
-      summary: 查询模板引用关系
+      summary: 查询模板引用应用
       operationId: list_app_template_references
       x-s1-refs:
-        user_stories: [US-AIAPP-007, US-AIAPP-008]
-        business_rules: [BR-AIAPP-008]
-      parameters:
-        - $ref: "#/components/parameters/template_id"
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - name: sort_field
-          in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, updated_at, kind]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+        user_stories: [US-AIAPP-003]
+        business_rules: [BR-AIAPP-012]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
       responses:
-        "200":
-          description: 引用该模板的应用列表。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationListResponse"
+              schema: {$ref: '#/components/schemas/ApplicationListResponse'}
 
   /api/v1/app-templates/{template_id}/convert-to-application:
     post:
-      tags: [templates]
-      summary: 将应用模板转换成正式应用
+      tags: [templates, applications]
+      summary: 从工作流模板创建应用
       operationId: convert_app_template_to_application
       x-s1-refs:
-        user_stories: [US-AIAPP-004]
-        business_rules: [BR-AIAPP-010, BR-AIAPP-013, BR-AIAPP-016, BR-AIAPP-019, BR-AIAPP-065]
-      parameters:
-        - $ref: "#/components/parameters/template_id"
+        user_stories: [US-AIAPP-003]
+        business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017]
+      parameters: [{$ref: '#/components/parameters/template_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AppTemplateConvertToApplicationRequest"
+            schema: {$ref: '#/components/schemas/ApplicationFromTemplateRequest'}
       responses:
-        "200":
-          description: 应用详情。
+        '200':
+          description: 创建完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Application"
+              schema: {$ref: '#/components/schemas/ApplicationResponse'}
 
   /api/v1/applications:
     get:
       tags: [applications]
-      summary: 查询应用列表
+      summary: 查询应用
       operationId: list_applications
       x-s1-refs:
-        user_stories: [US-AIAPP-004, US-AIAPP-009]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023, BR-AIAPP-026, BR-AIAPP-027]
+        user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005, US-AIAPP-012]
+        business_rules: [BR-AIAPP-047, BR-AIAPP-048]
       parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - $ref: "#/components/parameters/keyword"
-        - name: kind
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: source_type
           in: query
-          schema:
-            $ref: "#/components/schemas/TemplateKind"
-        - name: sort_field
+          schema: {$ref: '#/components/schemas/ApplicationSourceType'}
+        - name: capability_type
           in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, updated_at, kind]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {type: string}
       responses:
-        "200":
-          description: 应用列表。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationListResponse"
+              schema: {$ref: '#/components/schemas/ApplicationListResponse'}
     post:
       tags: [applications]
-      summary: 基于模板创建正式应用
-      operationId: create_application
+      summary: 从 direct ProviderOperation 创建应用
+      operationId: create_application_from_provider_operation
       x-s1-refs:
-        user_stories: [US-AIAPP-004]
-        business_rules: [BR-AIAPP-010, BR-AIAPP-011, BR-AIAPP-012, BR-AIAPP-013, BR-AIAPP-016, BR-AIAPP-019]
+        user_stories: [US-AIAPP-004, US-AIAPP-010, US-AIAPP-011]
+        business_rules: [BR-AIAPP-013, BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-042, BR-AIAPP-045]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ApplicationCreateRequest"
+            schema: {$ref: '#/components/schemas/ApplicationFromOperationRequest'}
       responses:
-        "200":
-          description: 应用详情。
+        '200':
+          description: 创建完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Application"
+              schema: {$ref: '#/components/schemas/ApplicationResponse'}
 
   /api/v1/applications/{application_id}:
     get:
       tags: [applications]
-      summary: 获取应用详情
+      summary: 获取应用
       operationId: get_application
       x-s1-refs:
-        user_stories: [US-AIAPP-004, US-AIAPP-007, US-AIAPP-009]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023, BR-AIAPP-026, BR-AIAPP-027]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-019, BR-AIAPP-047, BR-AIAPP-048]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
       responses:
-        "200":
-          description: 应用详情。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Application"
+              schema: {$ref: '#/components/schemas/ApplicationResponse'}
     patch:
       tags: [applications]
-      summary: 更新应用
+      summary: 更新应用元数据和固化参数
       operationId: update_application
       x-s1-refs:
-        user_stories: [US-AIAPP-005, US-AIAPP-009]
-        business_rules: [BR-AIAPP-014, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023, BR-AIAPP-024]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-017, BR-AIAPP-019]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ApplicationUpdateRequest"
+            schema: {$ref: '#/components/schemas/ApplicationUpdateRequest'}
       responses:
-        "200":
-          description: 应用详情。
+        '200':
+          description: 更新完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Application"
+              schema: {$ref: '#/components/schemas/ApplicationResponse'}
     delete:
       tags: [applications]
-      summary: 删除应用
+      summary: 删除无运行引用应用
       operationId: delete_application
       x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-023, BR-AIAPP-061]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-020]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
       responses:
-        "200":
-          description: 删除成功。
+        '200': {$ref: '#/components/responses/Success'}
+
+  /api/v1/applications/{application_id}/input-mappings:
+    get:
+      tags: [applications]
+      summary: 查询应用输入映射
+      operationId: list_input_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-015, BR-AIAPP-016]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      responses:
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
+              schema: {$ref: '#/components/schemas/InputMappingListResponse'}
+    put:
+      tags: [applications]
+      summary: 整体保存应用输入映射
+      operationId: save_input_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/InputMappingSaveRequest'}
+      responses:
+        '200':
+          description: 保存完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/InputMappingListResponse'}
+
+  /api/v1/applications/{application_id}/output-mappings:
+    get:
+      tags: [applications]
+      summary: 查询应用输出映射
+      operationId: list_output_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OutputMappingListResponse'}
+    put:
+      tags: [applications]
+      summary: 整体保存应用输出映射
+      operationId: save_output_mappings
+      x-s1-refs:
+        user_stories: [US-AIAPP-005]
+        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
+      responses:
+        '200':
+          description: 保存完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OutputMappingListResponse'}
+
+  /api/v1/applications/{application_id}/available-engines:
+    get:
+      tags: [applications, app-engines]
+      summary: 查询当前用户可使用的匹配引擎
+      description: 无匹配项时 code 仍为成功，items 返回空数组；响应不包含认证配置。
+      operationId: list_available_app_engines
+      x-s1-refs:
+        user_stories: [US-AIAPP-007]
+        business_rules: [BR-AIAPP-023, BR-AIAPP-024, BR-AIAPP-025, BR-AIAPP-026, BR-AIAPP-027]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AvailableEngineListResponse'}
 
   /api/v1/applications/{application_id}/runs:
     post:
       tags: [application-runs]
-      summary: 运行应用
+      summary: 创建正式应用运行
       operationId: create_application_run
       x-s1-refs:
-        user_stories: [US-AIAPP-013]
-        business_rules: [BR-AIAPP-037, BR-AIAPP-047, BR-AIAPP-049, BR-AIAPP-050, BR-AIAPP-051, BR-AIAPP-052, BR-AIAPP-054]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
+        user_stories: [US-AIAPP-007, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
+        business_rules: [BR-AIAPP-027, BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032, BR-AIAPP-036]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ApplicationRunCreateRequest"
+            schema: {$ref: '#/components/schemas/ApplicationRunCreateRequest'}
       responses:
-        "200":
-          description: 应用运行详情。
+        '200':
+          description: 创建成功或返回路由业务错误。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationRun"
+              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
+
+  /api/v1/applications/{application_id}/test-runs:
+    post:
+      tags: [application-runs]
+      summary: 创建真实应用测试运行
+      operationId: create_application_test_run
+      x-s1-refs:
+        user_stories: [US-AIAPP-008]
+        business_rules: [BR-AIAPP-029, BR-AIAPP-034, BR-AIAPP-035, BR-AIAPP-036]
+      parameters: [{$ref: '#/components/parameters/application_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApplicationRunCreateRequest'}
+      responses:
+        '200':
+          description: 创建成功或返回测试业务错误。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
 
   /api/v1/application-runs:
     get:
       tags: [application-runs]
-      summary: 查询应用运行列表
+      summary: 查询应用运行
       operationId: list_application_runs
       x-s1-refs:
-        user_stories: [US-AIAPP-013]
-        business_rules: [BR-AIAPP-050, BR-AIAPP-053, BR-AIAPP-054]
+        user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-012]
+        business_rules: [BR-AIAPP-036, BR-AIAPP-037, BR-AIAPP-047, BR-AIAPP-048]
       parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - name: status
-          in: query
-          schema:
-            $ref: "#/components/schemas/ApplicationRunStatus"
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
         - name: application_id
           in: query
-          schema:
-            type: string
-        - name: sort_field
+          schema: {type: string}
+        - name: run_mode
           in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [created_at, updated_at, status, kind]
-        - name: sort_order
+          schema: {$ref: '#/components/schemas/RunMode'}
+        - name: task_status
           in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {type: string}
       responses:
-        "200":
-          description: 应用运行列表。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationRunListResponse"
+              schema: {$ref: '#/components/schemas/ApplicationRunListResponse'}
 
   /api/v1/application-runs/{run_id}:
     get:
       tags: [application-runs]
-      summary: 获取应用运行详情
+      summary: 获取应用运行及 TaskRun 投影
       operationId: get_application_run
       x-s1-refs:
-        user_stories: [US-AIAPP-013]
-        business_rules: [BR-AIAPP-050, BR-AIAPP-053, BR-AIAPP-054]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
+        user_stories: [US-AIAPP-008, US-AIAPP-009]
+        business_rules: [BR-AIAPP-036, BR-AIAPP-037, BR-AIAPP-041]
+      parameters: [{$ref: '#/components/parameters/run_id'}]
       responses:
-        "200":
-          description: 应用运行详情。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationRun"
-
-  /api/v1/applications/{application_id}/field-mappings:
-    get:
-      tags: [field-mappings]
-      summary: 查询应用字段映射
-      operationId: list_field_mappings
-      x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018, BR-AIAPP-019]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
-        - name: sort_field
-          in: query
-          description: 排序字段；默认按 sort_order 排序。
-          schema:
-            type: string
-            enum: [sort_order, field_key, field_label, field_type, source_path]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
-      responses:
-        "200":
-          description: 字段映射列表。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FieldMappingListResponse"
-    put:
-      tags: [field-mappings]
-      summary: 整体保存应用字段映射
-      operationId: save_field_mappings
-      x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-014, BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018, BR-AIAPP-019]
-      parameters:
-        - $ref: "#/components/parameters/application_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/FieldMappingSaveRequest"
-      responses:
-        "200":
-          description: 字段映射列表。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FieldMappingListResponse"
-
-  /api/v1/saas-platforms:
-    get:
-      tags: [saas-platforms]
-      summary: 查询 SaaS 平台元数据
-      operationId: list_saas_platforms
-      x-s1-refs:
-        user_stories: [US-AIAPP-010, US-AIAPP-012]
-        business_rules: [BR-AIAPP-042, BR-AIAPP-047, BR-AIAPP-063, BR-AIAPP-064]
-      parameters:
-        - name: saas_platform_type
-          in: query
-          schema:
-            $ref: "#/components/schemas/SaaSPlatformType"
-        - name: capability_type
-          in: query
-          schema:
-            $ref: "#/components/schemas/CapabilityType"
-      responses:
-        "200":
-          description: 系统预置 SaaS 平台元数据。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SaaSPlatformMetadataListResponse"
+              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
 
   /api/v1/app-engines:
     get:
       tags: [app-engines]
-      summary: 查询应用引擎列表
+      summary: 查询应用引擎管理列表
       operationId: list_app_engines
       x-s1-refs:
-        user_stories: [US-AIAPP-010, US-AIAPP-011]
-        business_rules: [BR-AIAPP-028, BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032, BR-AIAPP-035]
+        user_stories: [US-AIAPP-006, US-AIAPP-012]
+        business_rules: [BR-AIAPP-021, BR-AIAPP-047, BR-AIAPP-048]
       parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - $ref: "#/components/parameters/keyword"
-        - name: engine_type
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: adapter_key
           in: query
-          schema:
-            $ref: "#/components/schemas/AppEngineType"
-        - name: status
-          in: query
-          schema:
-            $ref: "#/components/schemas/AppEngineStatus"
+          schema: {type: string}
         - name: health_status
           in: query
-          schema:
-            $ref: "#/components/schemas/AppEngineHealthStatus"
-        - name: sort_field
-          in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, updated_at, engine_type, status, health_status, last_health_check_at]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {$ref: '#/components/schemas/EngineHealthStatus'}
       responses:
-        "200":
-          description: 应用引擎列表。
+        '200':
+          description: 查询完成；有管理权限时可返回 auth_config。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngineListResponse"
+              schema: {$ref: '#/components/schemas/AppEngineListResponse'}
     post:
       tags: [app-engines]
       summary: 创建应用引擎
       operationId: create_app_engine
       x-s1-refs:
-        user_stories: [US-AIAPP-010]
-        business_rules: [BR-AIAPP-028, BR-AIAPP-029, BR-AIAPP-031, BR-AIAPP-032]
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-021, BR-AIAPP-022]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AppEngineCreateRequest"
+            schema: {$ref: '#/components/schemas/AppEngineCreateRequest'}
       responses:
-        "200":
-          description: 应用引擎详情。
+        '200':
+          description: 创建完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngine"
-
-  /api/v1/app-engines/health-check:
-    post:
-      tags: [app-engines]
-      summary: 使用临时连接参数检测应用引擎健康状态
-      operationId: check_app_engine_health_by_config
-      x-s1-refs:
-        user_stories: [US-AIAPP-011]
-        business_rules: [BR-AIAPP-034, BR-AIAPP-058, BR-AIAPP-059, BR-AIAPP-060]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AppEngineHealthCheckRequest"
-      responses:
-        "200":
-          description: 临时健康检测结果；不创建或更新 AppEngine。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngineHealthCheckResult"
+              schema: {$ref: '#/components/schemas/AppEngineResponse'}
 
   /api/v1/app-engines/{app_engine_id}:
     get:
       tags: [app-engines]
-      summary: 获取应用引擎详情
+      summary: 获取应用引擎管理详情
       operationId: get_app_engine
       x-s1-refs:
-        user_stories: [US-AIAPP-010, US-AIAPP-011]
-        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-032]
-      parameters:
-        - $ref: "#/components/parameters/app_engine_id"
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-047, BR-AIAPP-048]
+      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
       responses:
-        "200":
-          description: 应用引擎详情。
+        '200':
+          description: 查询完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngine"
+              schema: {$ref: '#/components/schemas/AppEngineResponse'}
     patch:
       tags: [app-engines]
       summary: 更新应用引擎
       operationId: update_app_engine
       x-s1-refs:
-        user_stories: [US-AIAPP-010]
-        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032]
-      parameters:
-        - $ref: "#/components/parameters/app_engine_id"
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-027]
+      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AppEngineUpdateRequest"
+            schema: {$ref: '#/components/schemas/AppEngineUpdateRequest'}
       responses:
-        "200":
-          description: 应用引擎详情。
+        '200':
+          description: 更新完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngine"
+              schema: {$ref: '#/components/schemas/AppEngineResponse'}
     delete:
       tags: [app-engines]
-      summary: 删除应用引擎
+      summary: 删除无运行引用引擎
       operationId: delete_app_engine
       x-s1-refs:
-        user_stories: [US-AIAPP-010]
-        business_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-055, BR-AIAPP-056]
-      parameters:
-        - $ref: "#/components/parameters/app_engine_id"
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-028]
+      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
       responses:
-        "200":
-          description: 删除成功。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
+        '200': {$ref: '#/components/responses/Success'}
 
   /api/v1/app-engines/{app_engine_id}/health-check:
     post:
       tags: [app-engines]
-      summary: 触发应用引擎健康检测
+      summary: 检测并写回已保存引擎健康状态
       operationId: check_app_engine_health
       x-s1-refs:
-        user_stories: [US-AIAPP-011]
-        business_rules: [BR-AIAPP-033, BR-AIAPP-034, BR-AIAPP-035, BR-AIAPP-057, BR-AIAPP-060]
-      parameters:
-        - $ref: "#/components/parameters/app_engine_id"
+        user_stories: [US-AIAPP-006]
+        business_rules: [BR-AIAPP-003, BR-AIAPP-021, BR-AIAPP-023]
+      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
       responses:
-        "200":
-          description: 健康检测后的应用引擎详情。
+        '200':
+          description: 检测完成。
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AppEngine"
+              schema: {$ref: '#/components/schemas/HealthCheckResponse'}
 
 components:
   parameters:
     page_num:
       name: page_num
       in: query
-      schema:
-        type: integer
-        minimum: 0
-        default: 0
+      schema: {type: integer, minimum: 0, default: 0}
     page_size:
       name: page_size
       in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 200
-        default: 20
+      schema: {type: integer, minimum: 1, maximum: 200, default: 20}
     keyword:
       name: keyword
       in: query
-      schema:
-        type: string
-        default: ""
+      schema: {type: string, default: ''}
+    adapter_key:
+      name: adapter_key
+      in: path
+      required: true
+      schema: {type: string}
     template_id:
       name: template_id
       in: path
       required: true
-      schema:
-        type: string
+      schema: {type: string}
     application_id:
       name: application_id
       in: path
       required: true
-      schema:
-        type: string
+      schema: {type: string}
     app_engine_id:
       name: app_engine_id
       in: path
       required: true
-      schema:
-        type: string
+      schema: {type: string}
     run_id:
       name: run_id
       in: path
       required: true
-      schema:
-        type: string
+      schema: {type: string}
+
+  responses:
+    Success:
+      description: 操作完成。
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SuccessResponse'}
 
   schemas:
-    TemplateKind:
+    SourceMode:
       type: string
-      enum: [comfyui, saas_api]
-    AppEngineType:
+      enum: [direct, workflow]
+    ExecutionMode:
       type: string
-      enum: [comfyui, saas_api]
-    SaaSPlatformType:
+      enum: [synchronous, asynchronous]
+    TemplateSourceKind:
       type: string
-      description: 仅 kind=saas_api 或 engine_type=saas_api 时生效。
-      enum: [modelscope, custom_http]
-    CapabilityType:
+      enum: [comfyui_workflow, provider_workflow]
+    ApplicationSourceType:
       type: string
-      description: SaaS API 能力类型。
-      enum: [image_generation, image_editing, video_generation]
-    ApplicationRunStatus:
+      enum: [template, provider_operation]
+    RunMode:
       type: string
-      enum: [pending, running, success, failed, canceled, timeout]
-    SaaSPlatformCapability:
-      type: object
-      required: [capability_type]
-      properties:
-        capability_type:
-          $ref: "#/components/schemas/CapabilityType"
-        display_name:
-          type: string
-    SaaSPlatformMetadata:
-      type: object
-      required:
-        [
-          saas_platform_type,
-          default_endpoint,
-          allow_endpoint_override,
-          requires_custom_http_config,
-          capabilities,
-        ]
-      properties:
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        display_name:
-          type: string
-        default_endpoint:
-          type: string
-        allow_endpoint_override:
-          type: boolean
-          default: true
-        requires_custom_http_config:
-          type: boolean
-          default: false
-        capabilities:
-          type: array
-          items:
-            $ref: "#/components/schemas/SaaSPlatformCapability"
-    SaaSPlatformMetadataListResponse:
-      type: object
-      required: [total, items]
-      properties:
-        total:
-          type: integer
-          minimum: 0
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/SaaSPlatformMetadata"
-    CustomHttpConfig:
-      type: object
-      description: 自定义 HTTP 平台配置；仅 saas_platform_type=custom_http 时使用，认证凭证仍放在 auth_config。
-      required: [api_path]
-      properties:
-        api_path:
-          type: string
-        method:
-          type: string
-        headers:
-          type: object
-          additionalProperties:
-            type: string
-        health_check_path:
-          type: string
-    AppEngineStatus:
+      enum: [test, normal]
+    PortDirection:
+      type: string
+      enum: [input, output]
+    PortDataType:
+      type: string
+      enum: [text, number, boolean, enum, json, image, video, audio, file, model_ref, array]
+    Cardinality:
+      type: string
+      enum: [single, multiple]
+    Materialization:
+      type: string
+      enum: [inline, reference, asset]
+    EngineStatus:
       type: string
       enum: [active, disabled]
-    AppEngineHealthStatus:
+    EngineHealthStatus:
       type: string
       enum: [unknown, healthy, unhealthy]
-    AppEngineAuthType:
+    AuthType:
       type: string
       enum: [bearer_token, api_key, ak_sk, none]
-    AppEngineAuthConfig:
+    LatestTestStatus:
+      type: string
+      enum: [untested, running, passed, failed]
+
+    ProviderAdapter:
       type: object
-      description: 明文认证配置；前端仅做可见/不可见展示控制。
+      required: [adapter_key, name, platform_type, version, operation_keys, enabled]
       properties:
-        token:
-          type: string
-          description: bearer_token 认证方式使用的明文 token。
-        api_key:
-          type: string
-          description: api_key 认证方式使用的明文 API Key。
-        access_key:
-          type: string
-          description: ak_sk 认证方式使用的明文 Access Key。
-        secret_key:
-          type: string
-          description: ak_sk 认证方式使用的明文 Secret Key。
-    AppEngineHealthCheckRequest:
+        adapter_key: {type: string}
+        name: {type: string}
+        platform_type: {type: string}
+        version: {type: string}
+        operation_keys: {type: array, items: {type: string}}
+        enabled: {type: boolean}
+
+    ProviderOperation:
       type: object
-      required: [engine_type, endpoint, auth_type]
+      required: [adapter_key, operation_key, operation_version, name, capability_type, source_mode, execution_mode, input_schema, output_schema, progress_supported, cancel_supported, idempotency_supported]
       properties:
-        engine_type:
-          $ref: "#/components/schemas/AppEngineType"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        endpoint:
-          type: string
-        auth_type:
-          $ref: "#/components/schemas/AppEngineAuthType"
-        auth_config:
-          $ref: "#/components/schemas/AppEngineAuthConfig"
-        custom_http_config:
-          $ref: "#/components/schemas/CustomHttpConfig"
-    AppEngineHealthCheckResult:
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        name: {type: string}
+        capability_type: {type: string}
+        source_mode: {$ref: '#/components/schemas/SourceMode'}
+        execution_mode: {$ref: '#/components/schemas/ExecutionMode'}
+        input_schema: {type: object, additionalProperties: true}
+        output_schema: {type: object, additionalProperties: true}
+        progress_supported: {type: boolean}
+        cancel_supported: {type: boolean}
+        idempotency_supported: {type: boolean}
+
+    PortDefinition:
       type: object
-      required: [health_status, checked_at]
+      required: [port_key, node_key, direction, data_type, required, cardinality, source_path, candidate]
       properties:
-        health_status:
-          $ref: "#/components/schemas/AppEngineHealthStatus"
-        checked_at:
-          type: string
-          format: date-time
-        unhealthy_reason:
-          type: string
-        latency_ms:
-          type: integer
-          minimum: 0
-        raw_summary:
-          type: object
-          additionalProperties: true
-    AppEngine:
+        port_key: {type: string}
+        node_key: {type: string}
+        direction: {$ref: '#/components/schemas/PortDirection'}
+        data_type: {$ref: '#/components/schemas/PortDataType'}
+        required: {type: boolean}
+        cardinality: {$ref: '#/components/schemas/Cardinality'}
+        media_type: {type: string}
+        source_path: {type: string}
+        semantic_role: {type: string}
+        candidate: {type: boolean}
+
+    CapabilityNode:
       type: object
-      required:
-        [
-          id,
-          owner_user_id,
-          name,
-          engine_type,
-          endpoint,
-          auth_type,
-          auth_config,
-          status,
-          health_status,
-          reference_run_count,
-          created_at,
-          updated_at,
-        ]
+      required: [node_key, node_type, name, input_ports, output_ports, resolution_status]
       properties:
-        id:
-          type: string
-        owner_user_id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        engine_type:
-          $ref: "#/components/schemas/AppEngineType"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        endpoint:
-          type: string
-        auth_type:
-          $ref: "#/components/schemas/AppEngineAuthType"
-        auth_config:
-          $ref: "#/components/schemas/AppEngineAuthConfig"
-        custom_http_config:
-          $ref: "#/components/schemas/CustomHttpConfig"
-        status:
-          $ref: "#/components/schemas/AppEngineStatus"
-        health_status:
-          $ref: "#/components/schemas/AppEngineHealthStatus"
-        reference_run_count:
-          type: integer
-          minimum: 0
-        last_health_check_at:
-          type: string
-          format: date-time
-        unhealthy_reason:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    AppEngineCreateRequest:
+        node_key: {type: string}
+        node_type: {type: string}
+        name: {type: string}
+        input_ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
+        output_ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
+        resolution_status: {type: string, enum: [resolved, partial, unresolved]}
+        raw_reference: {type: object, additionalProperties: true}
+
+    CapabilityEdge:
       type: object
-      required: [name, engine_type, endpoint, auth_type]
+      required: [source_node_key, source_port_key, target_node_key, target_port_key]
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        engine_type:
-          $ref: "#/components/schemas/AppEngineType"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        endpoint:
-          type: string
-        auth_type:
-          $ref: "#/components/schemas/AppEngineAuthType"
-        auth_config:
-          $ref: "#/components/schemas/AppEngineAuthConfig"
-        custom_http_config:
-          $ref: "#/components/schemas/CustomHttpConfig"
-    AppEngineUpdateRequest:
+        source_node_key: {type: string}
+        source_port_key: {type: string}
+        target_node_key: {type: string}
+        target_port_key: {type: string}
+
+    CapabilityGraph:
       type: object
+      required: [nodes, edges, graph_version, unresolved_node_count]
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        endpoint:
-          type: string
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        auth_type:
-          $ref: "#/components/schemas/AppEngineAuthType"
-        auth_config:
-          $ref: "#/components/schemas/AppEngineAuthConfig"
-        custom_http_config:
-          $ref: "#/components/schemas/CustomHttpConfig"
-        status:
-          $ref: "#/components/schemas/AppEngineStatus"
-    ParsedField:
-      type: object
-      required: [source_path, field_type, required]
-      properties:
-        source_path:
-          type: string
-        field_type:
-          type: string
-        required:
-          type: boolean
-        label_hint:
-          type: string
+        nodes: {type: array, items: {$ref: '#/components/schemas/CapabilityNode'}}
+        edges: {type: array, items: {$ref: '#/components/schemas/CapabilityEdge'}}
+        graph_version: {type: string}
+        unresolved_node_count: {type: integer, minimum: 0}
+
     AppTemplate:
       type: object
-      required:
-        [
-          id,
-          owner_user_id,
-          name,
-          kind,
-          config,
-          parsed_fields,
-          reference_application_count,
-          created_at,
-          updated_at,
-        ]
+      required: [id, owner_user_id, name, source_kind, adapter_key, operation_key, operation_version, raw_config, capability_graph, required_node_types, required_model_refs, reference_application_count, created_at, updated_at]
       properties:
-        id:
-          type: string
-        owner_user_id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        kind:
-          $ref: "#/components/schemas/TemplateKind"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        capability_type:
-          $ref: "#/components/schemas/CapabilityType"
-        config:
-          type: object
-          additionalProperties: true
-        parsed_fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/ParsedField"
-        reference_application_count:
-          type: integer
-          minimum: 0
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
+        id: {type: string}
+        owner_user_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        source_kind: {$ref: '#/components/schemas/TemplateSourceKind'}
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        raw_config: {type: object, additionalProperties: true}
+        capability_graph: {$ref: '#/components/schemas/CapabilityGraph'}
+        required_node_types: {type: array, items: {type: string}}
+        required_model_refs: {type: array, items: {type: string}}
+        reference_application_count: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
     AppTemplateCreateRequest:
       type: object
-      required: [name, kind, config]
+      required: [name, source_kind, adapter_key, operation_key, operation_version, raw_config]
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        kind:
-          $ref: "#/components/schemas/TemplateKind"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        capability_type:
-          $ref: "#/components/schemas/CapabilityType"
-        config:
+        name: {type: string}
+        description: {type: string}
+        source_kind: {$ref: '#/components/schemas/TemplateSourceKind'}
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        raw_config:
           type: object
           additionalProperties: true
-    AppTemplateConvertToApplicationRequest:
+          x-naming-exception: 第三方工作流原始结构保留平台字段名。
+
+    MetadataUpdateRequest:
       type: object
-      required: [name, field_mappings]
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        fixed_parameters:
-          type: object
-          additionalProperties: true
-        field_mappings:
-          $ref: "#/components/schemas/FieldMappingSaveRequest"
-    AppTemplateUpdateRequest:
+        name: {type: string}
+        description: {type: string}
+
+    InputMappingInput:
       type: object
-      description: 模板内容创建后不可修改；本请求仅允许修改名称和描述。
+      required: [input_key, input_label, source_port_key, source_path, data_type, sort_order]
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-    FieldMappingInput:
-      type: object
-      required:
-        [
-          field_key,
-          field_label,
-          field_type,
-          source_path,
-          sort_order,
-        ]
-      properties:
-        field_key:
-          type: string
-        field_label:
-          type: string
-        field_type:
-          type: string
-          description: 必须来自模板解析变量中的 field_type。
-        source_path:
-          type: string
-          description: 必须来自模板解析变量中的 source_path。
+        input_key: {type: string}
+        input_label: {type: string}
+        source_port_key: {type: string}
+        source_path: {type: string}
+        data_type: {$ref: '#/components/schemas/PortDataType'}
         default_value: {}
-        sort_order:
-          type: integer
-    FieldMapping:
+        sort_order: {type: integer}
+
+    InputMapping:
       allOf:
-        - $ref: "#/components/schemas/FieldMappingInput"
+        - {$ref: '#/components/schemas/InputMappingInput'}
         - type: object
-          required: [id, application_id, template_id, required]
+          required: [id, application_id, required]
           properties:
-            id:
-              type: string
-            application_id:
-              type: string
-            template_id:
-              type: string
-            required:
-              type: boolean
-    FieldMappingSaveRequest:
+            id: {type: string}
+            application_id: {type: string}
+            required: {type: boolean}
+
+    OutputMappingInput:
+      type: object
+      required: [output_key, output_label, source_port_key, source_path, data_type, cardinality, primary, materialization, sort_order]
+      properties:
+        output_key: {type: string}
+        output_label: {type: string}
+        source_port_key: {type: string}
+        source_path: {type: string}
+        data_type: {$ref: '#/components/schemas/PortDataType'}
+        cardinality: {$ref: '#/components/schemas/Cardinality'}
+        primary: {type: boolean}
+        materialization: {$ref: '#/components/schemas/Materialization'}
+        sort_order: {type: integer}
+
+    OutputMapping:
+      allOf:
+        - {$ref: '#/components/schemas/OutputMappingInput'}
+        - type: object
+          required: [id, application_id]
+          properties:
+            id: {type: string}
+            application_id: {type: string}
+
+    InputMappingSaveRequest:
       type: object
       required: [items]
       properties:
-        items:
-          type: array
-          minItems: 1
-          items:
-            $ref: "#/components/schemas/FieldMappingInput"
+        items: {type: array, items: {$ref: '#/components/schemas/InputMappingInput'}}
+
+    OutputMappingSaveRequest:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/OutputMappingInput'}}
+
     Application:
       type: object
-      required:
-        [
-          id,
-          owner_user_id,
-          template_id,
-          name,
-          kind,
-          field_mappings,
-          reference_run_count,
-          created_at,
-          updated_at,
-        ]
+      required: [id, owner_user_id, name, source_type, adapter_key, operation_key, operation_version, capability_type, input_mappings, output_mappings, fixed_parameters, latest_test_status, reference_run_count, created_at, updated_at]
       properties:
-        id:
-          type: string
-        owner_user_id:
-          type: string
-        template_id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        kind:
-          $ref: "#/components/schemas/TemplateKind"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        capability_type:
-          $ref: "#/components/schemas/CapabilityType"
-        fixed_parameters:
-          type: object
-          additionalProperties: true
-        reference_run_count:
-          type: integer
-          minimum: 0
-        field_mappings:
-          type: array
-          items:
-            $ref: "#/components/schemas/FieldMapping"
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    ApplicationCreateRequest:
+        id: {type: string}
+        owner_user_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        source_type: {$ref: '#/components/schemas/ApplicationSourceType'}
+        template_id: {type: string}
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        capability_type: {type: string}
+        input_mappings: {type: array, items: {$ref: '#/components/schemas/InputMapping'}}
+        output_mappings: {type: array, items: {$ref: '#/components/schemas/OutputMapping'}}
+        fixed_parameters: {type: object, additionalProperties: true}
+        latest_test_status: {$ref: '#/components/schemas/LatestTestStatus'}
+        last_tested_at: {type: string, format: date-time}
+        latest_test_failure_summary: {type: string}
+        reference_run_count: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    ApplicationFromTemplateRequest:
       type: object
-      required: [template_id, name, field_mappings]
+      required: [name, input_mappings, output_mappings, fixed_parameters]
       properties:
-        template_id:
-          type: string
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        fixed_parameters:
-          type: object
-          additionalProperties: true
-        field_mappings:
-          $ref: "#/components/schemas/FieldMappingSaveRequest"
+        name: {type: string}
+        description: {type: string}
+        input_mappings: {$ref: '#/components/schemas/InputMappingSaveRequest'}
+        output_mappings: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
+        fixed_parameters: {type: object, additionalProperties: true}
+
+    ApplicationFromOperationRequest:
+      type: object
+      required: [name, adapter_key, operation_key, operation_version, input_mappings, output_mappings, fixed_parameters]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        input_mappings: {$ref: '#/components/schemas/InputMappingSaveRequest'}
+        output_mappings: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
+        fixed_parameters: {type: object, additionalProperties: true}
+
     ApplicationUpdateRequest:
       type: object
       properties:
-        name:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 500
-        fixed_parameters:
-          type: object
-          additionalProperties: true
+        name: {type: string}
+        description: {type: string}
+        fixed_parameters: {type: object, additionalProperties: true}
+
+    SupportedOperation:
+      type: object
+      required: [operation_key, min_version, max_version]
+      properties:
+        operation_key: {type: string}
+        min_version: {type: string}
+        max_version: {type: string}
+
+    AuthConfig:
+      type: object
+      description: 当前阶段明文认证配置，仅管理 API 返回；可用引擎查询不得返回。
+      properties:
+        bearer_token: {type: string}
+        api_key: {type: string}
+        access_key: {type: string}
+        secret_key: {type: string}
+
+    AppEngine:
+      type: object
+      required: [id, owner_user_id, name, adapter_key, endpoint, auth_type, status, health_status, supported_operations, node_types, model_refs, priority, max_concurrency, current_inflight, created_at, updated_at]
+      properties:
+        id: {type: string}
+        owner_user_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        adapter_key: {type: string}
+        endpoint: {type: string}
+        auth_type: {$ref: '#/components/schemas/AuthType'}
+        auth_config: {$ref: '#/components/schemas/AuthConfig'}
+        status: {$ref: '#/components/schemas/EngineStatus'}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        runtime_version: {type: string}
+        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
+        node_types: {type: array, items: {type: string}}
+        model_refs: {type: array, items: {type: string}}
+        priority: {type: integer}
+        max_concurrency: {type: integer}
+        current_inflight: {type: integer}
+        last_health_check_at: {type: string, format: date-time}
+        unhealthy_reason: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    AvailableEngine:
+      type: object
+      description: 运行选择投影，明确不包含 auth_config。
+      required: [id, name, adapter_key, supported_operations, health_status, runtime_version, max_concurrency, current_inflight, capability_summary]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        adapter_key: {type: string}
+        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        runtime_version: {type: string}
+        max_concurrency: {type: integer}
+        current_inflight: {type: integer}
+        capability_summary: {type: object, additionalProperties: true}
+
+    AppEngineCreateRequest:
+      type: object
+      required: [name, adapter_key, endpoint, auth_type, supported_operations, max_concurrency]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        adapter_key: {type: string}
+        endpoint: {type: string}
+        auth_type: {$ref: '#/components/schemas/AuthType'}
+        auth_config: {$ref: '#/components/schemas/AuthConfig'}
+        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
+        node_types: {type: array, items: {type: string}}
+        model_refs: {type: array, items: {type: string}}
+        priority: {type: integer, default: 100}
+        max_concurrency: {type: integer, minimum: 1}
+
+    AppEngineUpdateRequest:
+      type: object
+      properties:
+        name: {type: string}
+        description: {type: string}
+        endpoint: {type: string}
+        auth_type: {$ref: '#/components/schemas/AuthType'}
+        auth_config: {$ref: '#/components/schemas/AuthConfig'}
+        status: {$ref: '#/components/schemas/EngineStatus'}
+        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
+        node_types: {type: array, items: {type: string}}
+        model_refs: {type: array, items: {type: string}}
+        priority: {type: integer}
+        max_concurrency: {type: integer, minimum: 1}
+
     ApplicationRunCreateRequest:
       type: object
-      required: [app_engine_id, input]
+      required: [input]
       properties:
         app_engine_id:
           type: string
-        input:
-          type: object
-          additionalProperties: true
-        schedule_at:
-          type: string
-          format: date-time
+          description: 可选；填写时视为本次运行强制指定且不可用时不回退。
+        input: {type: object, additionalProperties: true}
+
+    ApplicationOutputValue:
+      type: object
+      required: [output_key, data_type, metadata]
+      properties:
+        output_key: {type: string}
+        data_type: {$ref: '#/components/schemas/PortDataType'}
+        inline_value: {}
+        asset_id: {type: string}
+        storage_uri: {type: string}
+        external_url: {type: string}
+        media_type: {type: string}
+        metadata: {type: object, additionalProperties: true}
+
     ApplicationRun:
       type: object
-      required:
-        [
-          id,
-          owner_user_id,
-          application_id,
-          app_template_id,
-          app_engine_id,
-          task_run_id,
-          kind,
-          input_snapshot,
-          rendered_payload_snapshot,
-          status,
-          created_at,
-          updated_at,
-        ]
+      required: [id, owner_user_id, application_id, task_run_id, run_mode, adapter_key, operation_key, operation_version, input_snapshot, rendered_payload_snapshot, output_mapping_snapshot, task_status_projection, task_resource_version, output_values, created_at, updated_at]
       properties:
-        id:
-          type: string
-        owner_user_id:
-          type: string
-        application_id:
-          type: string
-        app_template_id:
-          type: string
-        app_engine_id:
-          type: string
-        task_run_id:
-          type: string
-        kind:
-          $ref: "#/components/schemas/TemplateKind"
-        saas_platform_type:
-          $ref: "#/components/schemas/SaaSPlatformType"
-        capability_type:
-          $ref: "#/components/schemas/CapabilityType"
-        input_snapshot:
-          type: object
-          additionalProperties: true
-        rendered_payload_snapshot:
-          type: object
-          additionalProperties: true
-        status:
-          $ref: "#/components/schemas/ApplicationRunStatus"
-        output_summary:
-          type: object
-          additionalProperties: true
-        failure_reason:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    AppTemplateListResponse:
+        id: {type: string}
+        owner_user_id: {type: string}
+        application_id: {type: string}
+        task_run_id: {type: string}
+        run_mode: {$ref: '#/components/schemas/RunMode'}
+        requested_engine_id: {type: string}
+        resolved_engine_id: {type: string}
+        adapter_key: {type: string}
+        operation_key: {type: string}
+        operation_version: {type: string}
+        input_snapshot: {type: object, additionalProperties: true}
+        rendered_payload_snapshot: {type: object, additionalProperties: true}
+        output_mapping_snapshot: {type: array, items: {$ref: '#/components/schemas/OutputMappingInput'}}
+        task_status_projection: {type: string}
+        task_progress_projection: {type: object, additionalProperties: true}
+        task_resource_version: {type: integer}
+        output_values: {type: array, items: {$ref: '#/components/schemas/ApplicationOutputValue'}}
+        failure_summary: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    HealthCheckResult:
       type: object
-      required: [total, items]
+      required: [health_status, checked_at]
       properties:
-        total:
-          type: integer
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/AppTemplate"
-    ApplicationListResponse:
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        checked_at: {type: string, format: date-time}
+        unhealthy_reason: {type: string}
+        latency_ms: {type: integer}
+        capability_summary: {type: object, additionalProperties: true}
+
+    PageInfo:
       type: object
-      required: [total, items]
+      required: [page_num, page_size, total]
       properties:
-        total:
-          type: integer
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Application"
-    FieldMappingListResponse:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/FieldMapping"
-    AppEngineListResponse:
-      type: object
-      required: [total, items]
-      properties:
-        total:
-          type: integer
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/AppEngine"
-    ApplicationRunListResponse:
-      type: object
-      required: [total, items]
-      properties:
-        total:
-          type: integer
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationRun"
+        page_num: {type: integer}
+        page_size: {type: integer}
+        total: {type: integer}
+
     SuccessResponse:
       type: object
-      required: [success]
+      required: [code, value, message]
       properties:
-        success:
-          type: boolean
+        code: {type: integer, example: 0}
+        value: {type: string, example: success}
+        message: {type: string}
+
+    ProviderAdapterListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items, page]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/ProviderAdapter'}}
+            page: {$ref: '#/components/schemas/PageInfo'}
+    ProviderOperationListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/ProviderOperation'}}
+    AppTemplateResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/AppTemplate'}}
+    AppTemplateListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items, page]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/AppTemplate'}}
+            page: {$ref: '#/components/schemas/PageInfo'}
+    CapabilityGraphResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/CapabilityGraph'}}
+    ApplicationResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/Application'}}
+    ApplicationListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items, page]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/Application'}}
+            page: {$ref: '#/components/schemas/PageInfo'}
+    InputMappingListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items]
+          properties: {items: {type: array, items: {$ref: '#/components/schemas/InputMapping'}}}
+    OutputMappingListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items]
+          properties: {items: {type: array, items: {$ref: '#/components/schemas/OutputMapping'}}}
+    AvailableEngineListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items]
+          properties: {items: {type: array, items: {$ref: '#/components/schemas/AvailableEngine'}}}
+    AppEngineResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/AppEngine'}}
+    AppEngineListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items, page]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/AppEngine'}}
+            page: {$ref: '#/components/schemas/PageInfo'}
+    ApplicationRunResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/ApplicationRun'}}
+    ApplicationRunListResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [items, page]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/ApplicationRun'}}
+            page: {$ref: '#/components/schemas/PageInfo'}
+    HealthCheckResponse:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessResponse'}
+        - type: object
+          required: [data]
+          properties: {data: {$ref: '#/components/schemas/HealthCheckResult'}}

@@ -8,7 +8,7 @@
 
 - 负责 AtomicTask、TaskGroup 和 DAGFlowTask 的定义管理。
 - 负责校验 TaskGroup 只使用 `SERIAL` / `PARALLEL`，以及 DAGFlowTask 无环。
-- 不负责具体业务能力执行，也不负责 AppEngine 的能力封装。
+- 不负责具体业务能力执行，也不负责 ProviderAdapter 或 AppEngine 的能力封装。
 
 ### run
 
@@ -20,7 +20,7 @@
 
 - 负责 Worker 注册、心跳、领取任务、创建 TaskAttempt、创建 ExecutionLease、续约 lease、进度上报、成功回写和失败回写。
 - 负责校验 `worker_id`、`attempt_id`、`lease_id` 三者一致性。
-- 不决定业务任务如何执行；具体执行由 AppEngine 决定。
+- 不决定业务任务如何执行；Worker 调用 application-platform 注册的 ProviderAdapter，AppEngine 只提供实例配置。
 
 ### watchdog
 
@@ -34,7 +34,7 @@
 - 负责使用 `schedule_at` 表达计划开始时间，并沿用 TaskRun 生命周期、重试和失败处理规则。
 - 可周期性创建 `application-platform.app-engine-health-check` TaskRun，用于触发应用平台监听未停用 AppEngine 健康状态。
 - 不解释业务任务执行语义；例如 `asset.sha256_backfill` 的扫描、读取、计算和写回由素材库负责。
-- 不解释 AppEngine 认证方式、明文凭证、custom_http 配置、SaaS 平台能力矩阵、平台连接和健康判断语义；这些由 application-platform 负责。
+- 不解释 ProviderAdapter 操作协议、AppEngine 认证配置、平台能力、平台连接和健康判断语义；这些由 application-platform 负责。
 
 ### access
 
@@ -56,7 +56,7 @@
 
 - `run` 依赖 `definition` 校验任务定义存在且类型匹配。
 - `worker-protocol` 依赖 `run` 获取 READY TaskRun 并推进状态。
-- `worker-protocol` 依赖 AppEngine 执行具体业务能力，但 AppEngine 不属于任务中心。
+- `worker-protocol` 调用 ProviderAdapter 执行具体业务能力；Adapter 和 AppEngine 都不属于任务中心。
 - `watchdog` 依赖 `worker-protocol` 写入的 Worker、Attempt 和 Lease 状态。
 - `scheduler` 依赖 `definition` 和 `run` 创建计划执行的 TaskRun。
 - `application-platform` 可依赖 `scheduler` 周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 健康检测语义由 `application-platform` 自身解释。
@@ -69,6 +69,9 @@
 - 同一个 TaskRun 同一时间只能有一个有效 ExecutionLease。
 - 只有持有有效 lease 的 Worker 可以更新 TaskRun 进度、成功结果或失败结果。
 - TaskAttempt 历史不得被覆盖；TaskRun 只保存最近一次错误摘要。
+- TaskRun 的 resource_version 随状态、进度或结果变化递增，消费者必须按 run_id + resource_version 幂等投影。
+- 应用运行 TaskRun 保存 adapter_key、operation_key、operation_version、requested_engine_id 和 resolved_engine_id 快照。
+- TaskAttempt 已有 external_job_id 时，Worker 重试必须先调用 ProviderAdapter 恢复外部任务，不能直接重新提交。
 - 取消请求发出后，最终状态允许为 `CANCELED`、`SUCCESS`、`FAILED` 或 `TIMEOUT`。
 - `overallTimeout` 优先级高于重试策略；无限重试必须设置退出保护条件。
 - 系统周期性调度创建的 TaskRun 必须遵循普通 TaskRun 生命周期，不绕过 Worker 领取、lease、进度和结果回写规则。
@@ -90,7 +93,7 @@
 
 ## 7. 非目标范围
 
-- 不实现 AppEngine 的具体业务能力封装。
+- 不实现 ProviderAdapter 或 AppEngine 的具体业务能力封装。
 - 不保存大型二进制结果内容。
 - 不定义实际数据库 migration。
 - 不定义 PAUSE / RESUME、复杂条件 DAG、循环 DAG、Webhook 订阅、跨项目共享 Worker 或自动拉起 GPU Worker。

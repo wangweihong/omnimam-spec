@@ -1,106 +1,93 @@
+adapter_catalog_changed:
+  producer: adapter-catalog
+  consumers: [template-service, application-service, app-engine-service]
+  trigger_condition: 系统注册、升级、启用或禁用 ProviderAdapter/Operation。
+  payload:
+    adapter_key: string
+    operation_key: string
+    operation_version: string
+    enabled: boolean
+    occurred_at: string(date-time)
+  idempotency_key: adapter_key:operation_key:operation_version:occurred_at
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 目录事实以代码注册 Manifest 为准。
+  related_user_stories: [US-AIAPP-001]
+  related_rules: [BR-AIAPP-001, BR-AIAPP-004, BR-AIAPP-005]
+
 app_template_changed:
   producer: template-service
-  consumers:
-    - application-service
-  trigger_condition: 应用模板创建、名称或描述更新、删除成功。
+  consumers: [application-service]
+  trigger_condition: 模板创建、元数据更新或删除成功。
   payload:
     template_id: string
     owner_user_id: string
-    kind: string
+    adapter_key: string
+    operation_key: string
     changed_action: string
     occurred_at: string(date-time)
   idempotency_key: template_id:changed_action:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 记录事件失败，模板事实仍以 S2 schema 中模板记录为准。
-  related_user_stories:
-    - US-AIAPP-001
-    - US-AIAPP-002
-    - US-AIAPP-003
-  related_rules:
-    - BR-AIAPP-001
-    - BR-AIAPP-006
-    - BR-AIAPP-007
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 模板事实以 schema 记录为准。
+  related_user_stories: [US-AIAPP-002, US-AIAPP-003]
+  related_rules: [BR-AIAPP-006, BR-AIAPP-011, BR-AIAPP-012]
 
 application_changed:
   producer: application-service
-  consumers:
-    - template-service
-  trigger_condition: 应用创建、应用元数据更新、字段映射更新或删除导致模板引用关系变化。
+  consumers: [template-service, application-run-service]
+  trigger_condition: 应用创建、元数据或固化参数更新、删除成功。
   payload:
     application_id: string
-    template_id: string
     owner_user_id: string
+    source_type: string
+    adapter_key: string
+    operation_key: string
     changed_action: string
     occurred_at: string(date-time)
   idempotency_key: application_id:changed_action:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 引用计数更新失败时必须保留可修复记录，禁止继续物理删除关联模板。
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-    - US-AIAPP-006
-    - US-AIAPP-007
-  related_rules:
-    - BR-AIAPP-008
-    - BR-AIAPP-010
-    - BR-AIAPP-015
-    - BR-AIAPP-061
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 应用事实以 schema 记录为准；模板引用计数失败需保留修复记录。
+  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
+  related_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-019, BR-AIAPP-020]
 
-field_mapping_changed:
+application_mapping_changed:
   producer: application-service
-  consumers:
-    - template-service
-  trigger_condition: 应用字段映射在创建应用或整体保存字段映射时发生变化。
+  consumers: [application-run-service]
+  trigger_condition: 输入映射、输出映射或固化参数整体保存成功。
   payload:
     application_id: string
-    template_id: string
     owner_user_id: string
-    changed_action: string
-    invalid_mapping_count: integer
+    input_mapping_count: integer
+    output_mapping_count: integer
     occurred_at: string(date-time)
-  idempotency_key: application_id:changed_action:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 映射检查失败时保留应用当前字段映射，并在应用详情提示需要重新检查。
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-  related_rules:
-    - BR-AIAPP-016
-    - BR-AIAPP-017
-    - BR-AIAPP-018
-    - BR-AIAPP-019
+  idempotency_key: application_id:occurred_at
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 映射事实以输入和输出映射表为准。
+  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
+  related_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-018]
 
 app_engine_changed:
   producer: app-engine-service
-  consumers:
-    - task-center-scheduler
-  trigger_condition: 应用引擎创建、基础信息更新、endpoint 更新、明文认证配置更新、custom_http_config 更新、停用状态变化或删除成功。
+  consumers: [engine-router, task-center-scheduler]
+  trigger_condition: 引擎创建、配置更新、能力或并发变化、停用或删除成功。
   payload:
     app_engine_id: string
     owner_user_id: string
-    engine_type: string
+    adapter_key: string
     status: string
+    health_status: string
+    current_inflight: integer
     changed_action: string
     occurred_at: string(date-time)
   idempotency_key: app_engine_id:changed_action:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 应用引擎事实以 S2 schema 中应用引擎记录为准。
-  related_user_stories:
-    - US-AIAPP-010
-  related_rules:
-    - BR-AIAPP-028
-    - BR-AIAPP-029
-    - BR-AIAPP-030
-    - BR-AIAPP-031
-    - BR-AIAPP-032
-    - BR-AIAPP-055
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 引擎事实以 schema 记录为准。
+  related_user_stories: [US-AIAPP-006, US-AIAPP-007]
+  related_rules: [BR-AIAPP-021, BR-AIAPP-023, BR-AIAPP-027, BR-AIAPP-028]
 
 app_engine_health_changed:
   producer: app-engine-service
-  consumers:
-    - application-service
-    - task-center-scheduler
-  trigger_condition: task-center 周期性健康检测任务或使用 app_engine_id 的手动健康检测导致已保存应用引擎健康状态变化；临时健康检测不触发本事件。
+  consumers: [engine-router]
+  trigger_condition: 已保存引擎健康状态变化。
   payload:
     app_engine_id: string
     owner_user_id: string
@@ -109,60 +96,48 @@ app_engine_health_changed:
     unhealthy_reason: string
     occurred_at: string(date-time)
   idempotency_key: app_engine_id:health_status:last_health_check_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: 最新健康状态以 S2 schema 中应用引擎记录为准。
-  related_user_stories:
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-033
-    - BR-AIAPP-034
-    - BR-AIAPP-035
-    - BR-AIAPP-057
-    - BR-AIAPP-060
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 最新健康状态以 schema 记录为准。
+  related_user_stories: [US-AIAPP-006, US-AIAPP-007]
+  related_rules: [BR-AIAPP-021, BR-AIAPP-023]
 
 application_run_created:
-  producer: application-service
-  consumers:
-    - task-center
-  trigger_condition: Application 运行请求校验通过并创建 AppRun。
+  producer: application-run-service
+  consumers: [task-center]
+  trigger_condition: 引擎校验或自动路由成功并创建 AppRun。
   payload:
     application_run_id: string
     application_id: string
-    app_template_id: string
-    app_engine_id: string
     task_run_id: string
+    run_mode: string
+    requested_engine_id: string
+    resolved_engine_id: string
+    adapter_key: string
+    operation_key: string
+    operation_version: string
     owner_user_id: string
-    kind: string
-    saas_platform_type: string
-    capability_type: string
     occurred_at: string(date-time)
   idempotency_key: application_run_id:task_run_id
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: AppRun 与 TaskRun 创建事实以 S2 schema 和 task-center TaskRun 记录为准，事件失败必须保留可重放记录。
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-050
-    - BR-AIAPP-052
+  retry_policy: 失败后保留可重放记录并重试。
+  failure_policy: AppRun 与 TaskRun 创建必须使用幂等键避免重复。
+  related_user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
+  related_rules: [BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-036]
 
-application_run_status_changed:
-  producer: application-service
-  consumers:
-    - application-run-view
-  trigger_condition: TaskRun 状态变化同步到 AppRun，或 AppRun 写入输出摘要、失败原因。
+application_run_projection_changed:
+  producer: application-run-service
+  consumers: [application-run-view]
+  trigger_condition: 接收到更高 resource_version 的 TaskRun 状态、进度或结果事件。
   payload:
     application_run_id: string
     task_run_id: string
-    owner_user_id: string
-    status: string
-    output_summary: object
-    failure_reason: string
+    task_resource_version: integer
+    task_status: string
+    progress: object
+    output_values: array
+    failure_summary: string
     occurred_at: string(date-time)
-  idempotency_key: application_run_id:status:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: AppRun 最新状态以 S2 schema 中应用运行记录为准。
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-053
-    - BR-AIAPP-054
+  idempotency_key: task_run_id:task_resource_version
+  retry_policy: 失败后按固定间隔重试。
+  failure_policy: 不得用旧版本覆盖新投影；TaskRun 是执行状态事实源。
+  related_user_stories: [US-AIAPP-008, US-AIAPP-009]
+  related_rules: [BR-AIAPP-036, BR-AIAPP-037, BR-AIAPP-041]

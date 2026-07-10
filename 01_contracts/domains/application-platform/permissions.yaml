@@ -1,160 +1,61 @@
+aiapp.adapter.read:
+  description: 查看只读 ProviderAdapter 和 ProviderOperation 目录。
+  resource: provider_adapter, provider_operation
+  actions: [read]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AIAPP-001]
+  related_rules: [BR-AIAPP-001, BR-AIAPP-049]
+
 aiapp.template.manage_own:
-  domain: application-platform
-  module: template
+  description: 管理自己的工作流模板和能力图。
   resource: app_template
-  action: create, read_own, update_own, delete_own, convert_to_application_own
-  subject: regular_user
-  description: 普通用户管理自己的应用模板。
-  frontend_usage: 控制普通用户自己的模板列表、创建、编辑、删除预检和引用关系入口。
-  backend_enforcement: 必须校验模板 owner_user_id 为当前普通用户；存在引用时禁止删除；模板内容不可修改。
-  related_user_stories:
-    - US-AIAPP-001
-    - US-AIAPP-002
-    - US-AIAPP-003
-    - US-AIAPP-007
-    - US-AIAPP-008
-    - US-AIAPP-004
-  related_rules:
-    - BR-AIAPP-001
-    - BR-AIAPP-005
-    - BR-AIAPP-006
-    - BR-AIAPP-021
-    - BR-AIAPP-065
+  actions: [create, read, update, delete]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 普通用户必须是 owner_user_id；存在应用引用时不得删除。
+  related_user_stories: [US-AIAPP-002, US-AIAPP-003]
+  related_rules: [BR-AIAPP-006, BR-AIAPP-012, BR-AIAPP-047]
 
 aiapp.application.manage_own:
-  domain: application-platform
-  module: application
-  resource: application, field_mapping
-  action: create, read_own, update_own, delete_own
-  subject: regular_user
-  description: 普通用户管理自己的应用和字段映射。
-  frontend_usage: 控制普通用户自己的应用列表、应用详情、字段映射配置和删除入口。
-  backend_enforcement: 必须校验应用 owner_user_id 为当前普通用户；创建和更新字段映射时必须校验模板解析变量；删除应用前必须确认不存在 AppRun 引用。
-  related_user_stories:
-    - US-AIAPP-004
-    - US-AIAPP-005
-    - US-AIAPP-006
-  related_rules:
-    - BR-AIAPP-010
-    - BR-AIAPP-013
-    - BR-AIAPP-015
-    - BR-AIAPP-021
-    - BR-AIAPP-061
+  description: 管理自己的应用、输入映射、输出映射和固化参数。
+  resource: application, input_mapping, output_mapping
+  actions: [create, read, update, delete]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 普通用户必须是 owner_user_id；映射必须来自模板或 Operation 端口。
+  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
+  related_rules: [BR-AIAPP-013, BR-AIAPP-015, BR-AIAPP-047]
 
-aiapp.app_engine.manage_own:
-  domain: application-platform
-  module: app-engine
-  resource: app_engine, saas_platform_metadata
-  action: create, read_own, update_own, delete_own, health_check_own, health_check_temp
-  subject: regular_user
-  description: 普通用户管理自己的应用引擎并查看健康状态，可删除未被 AppRun 引用的应用引擎，也可执行不持久化的临时健康检测。
-  frontend_usage: 控制普通用户自己的应用引擎列表、创建、编辑、停用、删除、凭证可见控制、健康状态查看和临时连接检测。
-  backend_enforcement: 必须校验 AppEngine owner_user_id 为当前普通用户；明文凭证按请求保存和返回；SaaS 平台元数据只读；非 custom_http 平台使用预置健康检测方式；custom_http 必须校验 custom_http_config；临时健康检测不得创建或更新 AppEngine；删除前必须确认不存在 AppRun 引用。
-  related_user_stories:
-    - US-AIAPP-010
-    - US-AIAPP-011
-  related_rules:
-    - BR-AIAPP-028
-    - BR-AIAPP-029
-    - BR-AIAPP-031
-    - BR-AIAPP-032
-    - BR-AIAPP-033
-    - BR-AIAPP-034
-    - BR-AIAPP-035
-    - BR-AIAPP-055
-    - BR-AIAPP-056
-    - BR-AIAPP-057
-    - BR-AIAPP-058
-    - BR-AIAPP-059
-    - BR-AIAPP-060
+aiapp.engine.manage_own:
+  description: 管理自己的 AppEngine 和明文认证配置。
+  resource: app_engine
+  actions: [create, read, update, delete, health_check]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 普通用户必须是 owner_user_id；存在运行引用时只能停用。
+  related_user_stories: [US-AIAPP-006]
+  related_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-028, BR-AIAPP-047]
 
-aiapp.application.run_own:
-  domain: application-platform
-  module: application
-  resource: application, app_engine, application_run
-  action: run_own, read_run_own
-  subject: regular_user
-  description: 普通用户运行自己可访问的应用，并查看自己的应用运行记录。
-  frontend_usage: 控制应用详情中的运行入口、可选 AppEngine 列表和自己的运行记录列表。
-  backend_enforcement: 必须校验 Application 和 AppEngine 对当前用户可见；运行时校验 kind、SaaS 平台类型、平台预置能力矩阵、引擎状态和健康状态；AppRun owner_user_id 为运行发起用户。
-  related_user_stories:
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-037
-    - BR-AIAPP-047
-    - BR-AIAPP-049
-    - BR-AIAPP-050
-    - BR-AIAPP-054
-    - BR-AIAPP-062
+aiapp.engine.use:
+  description: 查询并使用当前用户有权使用的匹配 AppEngine。
+  resource: app_engine
+  actions: [discover, use]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 管理他人引擎的权限不自动授予 use；查询结果不得包含 auth_config。
+  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
+  related_rules: [BR-AIAPP-023, BR-AIAPP-025, BR-AIAPP-026, BR-AIAPP-029]
+
+aiapp.run.operate_own:
+  description: 创建并查看自己的测试或正式应用运行。
+  resource: application_run
+  actions: [create_test, create_normal, read]
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 必须有权访问 Application，并对指定或自动选择的引擎具有 aiapp.engine.use。
+  related_user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
+  related_rules: [BR-AIAPP-029, BR-AIAPP-034, BR-AIAPP-036, BR-AIAPP-047]
 
 aiapp.admin.manage_all:
-  domain: application-platform
-  module: application-platform
-  resource: app_template, application, field_mapping, app_engine, saas_platform_metadata, application_run
-  action: create, read_all, update_all, delete_all, convert_to_application_all, read_run_all, health_check_temp
-  subject: admin
-  description: 管理员管理全部用户的模板、应用、字段映射和应用引擎。
-  frontend_usage: 控制管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 ADMIN 身份；管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；SaaS 平台元数据只读；模板删除仍需遵守引用保护。
-  related_user_stories:
-    - US-AIAPP-003
-    - US-AIAPP-006
-    - US-AIAPP-007
-    - US-AIAPP-008
-    - US-AIAPP-009
-    - US-AIAPP-010
-    - US-AIAPP-011
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-008
-    - BR-AIAPP-022
-    - BR-AIAPP-024
-    - BR-AIAPP-025
-    - BR-AIAPP-026
-    - BR-AIAPP-027
-    - BR-AIAPP-030
-    - BR-AIAPP-054
-    - BR-AIAPP-055
-    - BR-AIAPP-056
-    - BR-AIAPP-057
-    - BR-AIAPP-058
-    - BR-AIAPP-059
-    - BR-AIAPP-060
-    - BR-AIAPP-061
-    - BR-AIAPP-065
-
-aiapp.super_admin.manage_all:
-  domain: application-platform
-  module: application-platform
-  resource: app_template, application, field_mapping, app_engine, saas_platform_metadata, application_run
-  action: create, read_all, update_all, delete_all, convert_to_application_all, read_run_all, health_check_temp
-  subject: super_admin
-  description: 超级管理员管理全部用户的模板、应用、字段映射和应用引擎。
-  frontend_usage: 控制超级管理员查看和维护全部应用平台配置及应用引擎；公共应用仅作为权限范围说明，不展示业务入口。
-  backend_enforcement: 必须校验 SUPER_ADMIN 身份；超级管理员创建资源归属自己；修改他人应用或应用引擎不得改变 owner_user_id；SaaS 平台元数据只读；模板删除仍需遵守引用保护。
-  related_user_stories:
-    - US-AIAPP-003
-    - US-AIAPP-006
-    - US-AIAPP-007
-    - US-AIAPP-008
-    - US-AIAPP-009
-    - US-AIAPP-010
-    - US-AIAPP-011
-    - US-AIAPP-013
-  related_rules:
-    - BR-AIAPP-008
-    - BR-AIAPP-023
-    - BR-AIAPP-024
-    - BR-AIAPP-025
-    - BR-AIAPP-026
-    - BR-AIAPP-027
-    - BR-AIAPP-030
-    - BR-AIAPP-054
-    - BR-AIAPP-055
-    - BR-AIAPP-056
-    - BR-AIAPP-057
-    - BR-AIAPP-058
-    - BR-AIAPP-059
-    - BR-AIAPP-060
-    - BR-AIAPP-061
-    - BR-AIAPP-065
+  description: 管理全量模板、应用和引擎并查看全量运行。
+  resource: app_template, application, input_mapping, output_mapping, app_engine, application_run
+  actions: [read, update, delete, health_check]
+  default_roles: [ADMIN, SUPER_ADMIN]
+  backend_enforcement: 跨用户修改不得改变 owner_user_id；本权限不自动授予他人引擎的使用权。
+  related_user_stories: [US-AIAPP-012]
+  related_rules: [BR-AIAPP-026, BR-AIAPP-048]
