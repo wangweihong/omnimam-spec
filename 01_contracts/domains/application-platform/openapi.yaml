@@ -15,6 +15,7 @@ tags:
 x-provider-operation-catalog:
   - adapter_key: bytedance-seedance
     operation_key: seedance-2.text-to-video
+    operation_version: seedance-2.0
     capability_type: video_generation
     source_mode: direct
     execution_mode: asynchronous
@@ -22,6 +23,7 @@ x-provider-operation-catalog:
     output_ports: [video, audio, thumbnail, metadata]
   - adapter_key: bytedance-seedance
     operation_key: seedance-2.image-to-video
+    operation_version: seedance-2.0
     capability_type: video_generation
     source_mode: direct
     execution_mode: asynchronous
@@ -29,6 +31,7 @@ x-provider-operation-catalog:
     output_ports: [video, audio, thumbnail, metadata]
   - adapter_key: bytedance-seedance
     operation_key: seedance-2.reference-to-video
+    operation_version: seedance-2.0
     capability_type: video_generation
     source_mode: direct
     execution_mode: asynchronous
@@ -36,6 +39,7 @@ x-provider-operation-catalog:
     output_ports: [video, audio, thumbnail, metadata]
   - adapter_key: openai
     operation_key: gpt-image-2.generate
+    operation_version: gpt-image-2
     capability_type: image_generation
     source_mode: direct
     execution_mode: synchronous
@@ -43,6 +47,7 @@ x-provider-operation-catalog:
     output_ports: [images]
   - adapter_key: openai
     operation_key: gpt-image-2.edit
+    operation_version: gpt-image-2
     capability_type: image_editing
     source_mode: direct
     execution_mode: synchronous
