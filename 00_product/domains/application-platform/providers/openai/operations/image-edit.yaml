@@ -1,0 +1,12 @@
+operation:
+  code: image.edit
+inputs:
+  image:
+    type: asset.image
+  mask:
+    type: asset.image
+  prompt:
+    type: string
+outputs:
+  image:
+    type: asset.image

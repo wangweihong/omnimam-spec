@@ -1,0 +1,26 @@
+operation:
+  code:
+    video.text_to_video
+  inputs:
+    prompt:
+      type:
+        string
+    negative_prompt:
+      type:
+        string
+    width:
+      type:
+        integer
+    height:
+      type:
+        integer
+    frames:
+      type:
+        integer
+    fps:
+      type:
+        integer
+  outputs:
+    video:
+      type:
+        asset.video

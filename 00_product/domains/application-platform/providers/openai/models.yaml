@@ -1,0 +1,6 @@
+models:
+  - canonical_code: gpt-image-2
+    provider_model_id: gpt-image-2
+    capabilities:
+      - image.text_to_image
+      - image.edit

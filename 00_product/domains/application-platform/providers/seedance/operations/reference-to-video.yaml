@@ -1,0 +1,37 @@
+operation:
+  code:
+    video.reference_to_video
+  name:
+    Reference Material To Video
+  inputs:
+    prompt:
+      type:
+        string
+    reference_images:
+      type:
+        asset.image[]
+      constraints:
+        max_items:
+          9
+    reference_videos:
+      type:
+        asset.video[]
+      constraints:
+        max_items:
+          3
+    reference_audio:
+      type:
+        asset.audio[]
+      constraints:
+        max_items:
+          3
+    model:
+      type:
+        model
+    duration:
+      type:
+        integer
+  outputs:
+    video:
+      type:
+        asset.video

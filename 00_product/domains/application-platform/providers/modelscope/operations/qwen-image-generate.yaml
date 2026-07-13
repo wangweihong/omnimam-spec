@@ -1,0 +1,23 @@
+operation:
+  code:
+    image.text_to_image
+  inputs:
+    prompt:
+      type:
+        string
+    width:
+      type:
+        integer
+    height:
+      type:
+        integer
+    steps:
+      type:
+        integer
+    guidance_scale:
+      type:
+        float
+  outputs:
+    image:
+      type:
+        asset.image

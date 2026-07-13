@@ -1,0 +1,12 @@
+authentication:
+  schemes:
+    - code: api_key
+      type: header
+      header:
+        name: Authorization
+      format:
+        prefix: Bearer
+      fields:
+        api_key:
+          type: secret
+          required: true

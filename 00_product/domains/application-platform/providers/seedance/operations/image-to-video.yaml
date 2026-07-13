@@ -1,0 +1,39 @@
+operation:
+  code:
+    video.image_to_video
+  name:
+    Image To Video
+  inputs:
+    prompt:
+      type:
+        string
+      required:
+        true
+    images:
+      type:
+        asset.image[]
+      required:
+        true
+      constraints:
+        min_items:
+          1
+        max_items:
+          2
+    model:
+      type:
+        model
+    duration:
+      type:
+        integer
+    resolution:
+      type:
+        enum
+      constraints:
+        enum:
+          - 480p
+          - 720p
+          - 1080p
+  outputs:
+    video:
+      type:
+        asset.video

@@ -1,0 +1,12 @@
+operation:
+  code: video.image_to_video
+  inputs:
+    image:
+      type: asset.image
+    prompt:
+      type: string
+    frames:
+      type: integer
+  outputs:
+    video:
+      type: asset.video

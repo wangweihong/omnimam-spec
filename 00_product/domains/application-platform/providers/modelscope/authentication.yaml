@@ -1,0 +1,19 @@
+model:
+  provider_model_id: Qwen/Qwen-Image
+request:
+  prompt:
+    source: prompt
+    target: prompt
+  width:
+    source: width
+    target: parameters.width
+  height:
+    source: height
+    target: parameters.height
+  steps:
+    source: steps
+    target: parameters.num_inference_steps
+response:
+  output:
+    image:
+      source: output_images[0].url

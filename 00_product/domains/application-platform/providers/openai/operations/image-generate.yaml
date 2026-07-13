@@ -1,0 +1,23 @@
+operation:
+  code: image.text_to_image
+inputs:
+  prompt:
+    type: string
+  size:
+    type: enum
+    constraints:
+      enum:
+        - 1024x1024
+        - 1536x864
+        - 864x1536
+        - auto
+  quality:
+    type: enum
+    constraints:
+      enum:
+        - low
+        - medium
+        - high
+outputs:
+  image:
+    type: asset.image
