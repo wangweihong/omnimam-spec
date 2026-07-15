@@ -1,227 +1,480 @@
-adapter_disabled:
-  value: 130200
-  cn: 平台适配器或操作已禁用。
-  en: Provider adapter or operation is disabled.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_DIRECTORY_UNREADABLE
+  value: 130220
+  http: 200
+  cn: ProviderCapability 目录不存在或不可读取，能力注册表已降级。
+  en: The ProviderCapability directory is missing or unreadable; the registry is degraded.
   owning_domain: application-platform
-  owning_module: adapter-catalog
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-001]
-  related_rules: [BR-AIAPP-004]
+  deprecated: false
+  related_rules: [BR-AIAPP-131, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-operation_version_incompatible:
-  value: 130201
-  cn: 平台操作版本与应用或引擎不兼容。
-  en: Provider operation version is incompatible with the application or engine.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_YAML_INVALID
+  value: 130221
+  http: 200
+  cn: ProviderCapability 文件不是合法 YAML。
+  en: The ProviderCapability file is not valid YAML.
   owning_domain: application-platform
-  owning_module: adapter-catalog
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-001, US-AIAPP-007]
-  related_rules: [BR-AIAPP-005, BR-AIAPP-023]
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-template_parse_failed:
-  value: 130210
-  cn: 工作流模板解析失败。
-  en: Workflow template parsing failed.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_INVALID
+  value: 130222
+  http: 200
+  cn: ProviderCapability 字段不符合当前 Schema。
+  en: ProviderCapability fields do not conform to the current schema.
   owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-002]
-  related_rules: [BR-AIAPP-007]
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-port_unresolved:
-  value: 130211
-  cn: 所选端口尚未解析完成。
-  en: Selected port has not been resolved.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_VERSION_UNSUPPORTED
+  value: 130223
+  http: 200
+  cn: ProviderCapability schema_version 不受支持。
+  en: The ProviderCapability schema_version is not supported.
   owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-002, US-AIAPP-003]
-  related_rules: [BR-AIAPP-008, BR-AIAPP-009]
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-candidate_output_unconfirmed:
-  value: 130212
-  cn: 候选输出尚未确认。
-  en: Candidate output has not been confirmed.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_DUPLICATED
+  value: 130224
+  http: 200
+  cn: 多个 ProviderCapability 文件声明了相同 ID，所有冲突项均不可用。
+  en: Multiple ProviderCapability files declare the same ID; all conflicting entries are unavailable.
   owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-003]
-  related_rules: [BR-AIAPP-009, BR-AIAPP-015]
+  deprecated: false
+  related_rules: [BR-AIAPP-133, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-template_reference_blocked:
-  value: 130213
-  cn: 模板存在应用引用，禁止删除。
-  en: Template has application references and cannot be deleted.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ENGINE_TYPE_MISSING
+  value: 130225
+  http: 200
+  cn: ProviderCapability 引用的 ApplicationEngineType 未注册。
+  en: The ApplicationEngineType referenced by ProviderCapability is not registered.
   owning_domain: application-platform
-  owning_module: template
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-003]
-  related_rules: [BR-AIAPP-012]
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-input_mapping_invalid:
-  value: 130300
-  cn: 应用输入映射非法。
-  en: Application input mapping is invalid.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ADAPTER_MISSING
+  value: 130226
+  http: 200
+  cn: ProviderCapability 对应的 EngineAdapter 未注册。
+  en: The EngineAdapter required by ProviderCapability is not registered.
   owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
-  related_rules: [BR-AIAPP-015, BR-AIAPP-016]
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-output_mapping_invalid:
-  value: 130301
-  cn: 应用输出映射非法。
-  en: Application output mapping is invalid.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_EXECUTOR_MISSING
+  value: 130227
+  http: 200
+  cn: ProviderCapability 中至少一个 Operation 缺少 OperationExecutor。
+  en: At least one ProviderCapability operation has no registered OperationExecutor.
   owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
-  related_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-fixed_parameter_conflicted:
-  value: 130302
-  cn: 同一参数路径不能同时开放和固化。
-  en: A parameter path cannot be both exposed and fixed.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_VARIANT_INVALID
+  value: 130228
+  http: 200
+  cn: ProviderCapability 的模型、Operation、Variant 或参数约束不一致。
+  en: ProviderCapability models, operations, variants, or parameter constraints are inconsistent.
   owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-005]
-  related_rules: [BR-AIAPP-017]
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-application_reference_blocked:
-  value: 130303
-  cn: 应用存在运行引用，禁止删除。
-  en: Application has run references and cannot be deleted.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_UNAVAILABLE
+  value: 130229
+  http: 200
+  cn: ProviderCapability 当前不可用，不能用于绑定、表单解析或运行。
+  en: ProviderCapability is unavailable and cannot be used for binding, form resolution, or execution.
   owning_domain: application-platform
-  owning_module: application
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
   retryable: false
-  related_user_stories: [US-AIAPP-005]
-  related_rules: [BR-AIAPP-020]
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137]
+  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-043]
 
-engine_unavailable:
-  value: 130400
-  cn: 自动路由没有找到可用应用引擎。
-  en: Automatic routing found no available application engine.
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_NOT_FOUND
+  value: 130230
+  http: 200
+  cn: ProviderCapability 不存在或当前不可见。
+  en: The ProviderCapability does not exist or is not visible.
   owning_domain: application-platform
-  owning_module: engine-router
-  severity: error
-  http_status: 200
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-136]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+- code: ERR_AIAPP_ENGINE_INSTANCE_NOT_FOUND
+  value: 130420
+  http: 200
+  cn: ApplicationEngineInstance 不存在或当前用户不可见。
+  en: The ApplicationEngineInstance does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_ENGINE_AUTH_CONFIG_INVALID
+  value: 130421
+  http: 200
+  cn: EngineInstance 鉴权配置与 ApplicationEngineType 不兼容。
+  en: EngineInstance authentication configuration is incompatible with its ApplicationEngineType.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_ENGINE_BINDING_INCOMPATIBLE
+  value: 130422
+  http: 200
+  cn: EngineInstance 与 ProviderCapability 的 ApplicationEngineType 不一致或能力不可用。
+  en: EngineInstance and ProviderCapability have incompatible ApplicationEngineTypes or unavailable capability.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_ENGINE_BINDING_RESTRICTION_EXPANDS
+  value: 130423
+  http: 200
+  cn: EngineCapabilityBinding restrictions 扩张了 ProviderCapability。
+  en: EngineCapabilityBinding restrictions expand ProviderCapability.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_ENGINE_UNAVAILABLE
+  value: 130424
+  http: 200
+  cn: 没有健康且具备当前有效能力的 EngineInstance。
+  en: No healthy EngineInstance has the currently effective capability.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
   retryable: true
-  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
-  related_rules: [BR-AIAPP-023, BR-AIAPP-030, BR-AIAPP-032]
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-140, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041, US-AIAPP-043]
 
-selected_engine_unavailable:
-  value: 130401
-  cn: 用户指定的应用引擎不可用。
-  en: The selected application engine is unavailable.
+- code: ERR_AIAPP_ENGINE_REFERENCE_BLOCKED
+  value: 130425
+  http: 200
+  cn: EngineInstance 已被历史运行引用，只能停用，不能删除。
+  en: The EngineInstance is referenced by historical runs and may only be disabled.
   owning_domain: application-platform
-  owning_module: engine-router
-  severity: error
-  http_status: 200
+  owning_module: engine
+  range: 130400-130599
   retryable: false
-  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
-  related_rules: [BR-AIAPP-027, BR-AIAPP-029, BR-AIAPP-031]
+  deprecated: false
+  related_rules: [BR-AIAPP-140, BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-041]
 
-app_engine_auth_config_invalid:
-  value: 130402
-  cn: 应用引擎认证配置非法。
-  en: Application engine authentication configuration is invalid.
+- code: ERR_AIAPP_ENGINE_BINDING_NOT_FOUND
+  value: 130426
+  http: 200
+  cn: EngineCapabilityBinding 不存在或当前不可见。
+  en: The EngineCapabilityBinding does not exist or is not visible.
   owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
+  owning_module: engine
+  range: 130400-130599
   retryable: false
-  related_user_stories: [US-AIAPP-006]
-  related_rules: [BR-AIAPP-022]
+  deprecated: false
+  related_rules: [BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
 
-app_engine_reference_blocked:
-  value: 130403
-  cn: 应用引擎存在运行引用，禁止删除。
-  en: Application engine has run references and cannot be deleted.
+- code: ERR_AIAPP_TEMPLATE_SOURCE_INVALID
+  value: 130620
+  http: 200
+  cn: 应用模板来源或能力契约不完整。
+  en: The application template source or capability contract is incomplete.
   owning_domain: application-platform
-  owning_module: app-engine
-  severity: error
-  http_status: 200
+  owning_module: application
+  range: 130600-130799
   retryable: false
-  related_user_stories: [US-AIAPP-006]
-  related_rules: [BR-AIAPP-028]
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-144]
+  related_user_stories: [US-AIAPP-042]
 
-adapter_invocation_failed:
-  value: 130500
-  cn: 平台适配器调用失败。
-  en: Provider adapter invocation failed.
+- code: ERR_AIAPP_APPLICATION_VERSION_IMMUTABLE
+  value: 130621
+  http: 200
+  cn: 已发布 ApplicationVersion 不允许原地修改。
+  en: A published ApplicationVersion cannot be modified in place.
   owning_domain: application-platform
-  owning_module: application-run
-  severity: error
-  http_status: 200
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_RUNTIME_FORM_NO_VALID_VARIANT
+  value: 130622
+  http: 200
+  cn: 当前应用、能力和 Engine 限制没有可执行的 CapabilityVariant。
+  en: No executable CapabilityVariant remains for the current application, capability, and engine restrictions.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-142]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_APPLICATION_INPUT_INVALID
+  value: 130623
+  http: 200
+  cn: ApplicationRun 输入不符合 RuntimeFormSchema 或当前能力约束。
+  en: ApplicationRun input violates RuntimeFormSchema or current capability constraints.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_TEMPLATE_NOT_FOUND
+  value: 130624
+  http: 200
+  cn: ApplicationTemplate 不存在或当前不可见。
+  en: The ApplicationTemplate does not exist or is not visible.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_TEMPLATE_VERSION_NOT_FOUND
+  value: 130625
+  http: 200
+  cn: ApplicationTemplateVersion 不存在或当前不可见。
+  en: The ApplicationTemplateVersion does not exist or is not visible.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_APPLICATION_NOT_FOUND
+  value: 130626
+  http: 200
+  cn: Application 不存在或当前用户不可见。
+  en: The Application does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-148]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-043]
+
+- code: ERR_AIAPP_APPLICATION_VERSION_NOT_FOUND
+  value: 130627
+  http: 200
+  cn: ApplicationVersion 不存在或当前用户不可见。
+  en: The ApplicationVersion does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-043]
+
+- code: ERR_AIAPP_TEMPLATE_VERSION_NOT_PUBLISHABLE
+  value: 130628
+  http: 200
+  cn: 模板版本的能力来源、参数映射、输出提取或执行器校验未通过，不能发布。
+  en: The template version cannot be published because its source, mapping, output, or executor validation failed.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_APPLICATION_VERSION_NOT_PUBLISHABLE
+  value: 130629
+  http: 200
+  cn: 应用版本未通过输入输出、参数策略或模板版本校验，不能发布。
+  en: The application version cannot be published because its inputs, outputs, policies, or template version are invalid.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-142, BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_APPLICATION_SEMANTIC_VERSION_DUPLICATED
+  value: 130630
+  http: 200
+  cn: 同一 Application 下已存在相同语义版本号。
+  en: The semantic version already exists for this Application.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-147]
+  related_user_stories: [US-AIAPP-042]
+
+- code: ERR_AIAPP_RESOURCE_VERSION_CONFLICT
+  value: 130631
+  http: 200
+  cn: 资源版本已变化，请刷新后重试。
+  en: The resource version has changed; refresh and retry.
+  owning_domain: application-platform
+  owning_module: application
+  range: 130600-130799
   retryable: true
-  related_user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
-  related_rules: [BR-AIAPP-038, BR-AIAPP-041]
+  deprecated: false
+  related_rules: [BR-AIAPP-147, BR-AIAPP-148]
+  related_user_stories: [US-AIAPP-042]
 
-external_task_recovery_failed:
-  value: 130501
-  cn: 已提交的外部任务无法恢复查询。
-  en: Previously submitted external task could not be recovered.
+- code: ERR_AIAPP_APPLICATION_RUN_CREATE_FAILED
+  value: 130820
+  http: 200
+  cn: 创建 ApplicationRun 或关联 TaskRun 失败。
+  en: Failed to create ApplicationRun or its associated TaskRun.
   owning_domain: application-platform
   owning_module: application-run
-  severity: error
-  http_status: 200
+  range: 130800-130999
   retryable: true
-  related_user_stories: [US-AIAPP-009, US-AIAPP-010]
-  related_rules: [BR-AIAPP-039, BR-AIAPP-040, BR-AIAPP-044]
+  deprecated: false
+  related_rules: [BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-043]
 
-application_test_failed:
-  value: 130502
-  cn: 应用真实测试失败。
-  en: Application live test failed.
+- code: ERR_AIAPP_TASK_PROJECTION_STALE
+  value: 130821
+  http: 200
+  cn: TaskRun 投影事件版本早于当前 ApplicationRun 投影。
+  en: The TaskRun projection event is older than the current ApplicationRun projection.
   owning_domain: application-platform
   owning_module: application-run
-  severity: error
-  http_status: 200
+  range: 130800-130999
   retryable: false
-  related_user_stories: [US-AIAPP-008]
-  related_rules: [BR-AIAPP-034, BR-AIAPP-035]
+  deprecated: false
+  related_rules: [BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-043]
 
-projection_version_stale:
-  value: 130503
-  cn: TaskRun 投影事件版本已过期。
-  en: TaskRun projection event version is stale.
+- code: ERR_AIAPP_PROVIDER_RUNTIME_CAPABILITY_MISMATCH
+  value: 130822
+  http: 200
+  cn: 外部平台拒绝了清单声明的模型或参数组合。
+  en: The external provider rejected a model or parameter combination declared by the manifest.
   owning_domain: application-platform
   owning_module: application-run
-  severity: warning
-  http_status: 200
+  range: 130800-130999
   retryable: false
-  related_user_stories: [US-AIAPP-009]
-  related_rules: [BR-AIAPP-036, BR-AIAPP-037]
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-138]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-043]
 
-permission_denied:
-  value: 130600
-  cn: 当前用户缺少资源管理权或引擎使用权。
-  en: Current user lacks resource management or engine usage permission.
+- code: ERR_AIAPP_TASK_RUN_CREATE_FAILED
+  value: 130823
+  http: 200
+  cn: TaskRun 创建暂时失败，ApplicationRun 快照已保留，可使用相同幂等键重试。
+  en: TaskRun creation failed; the ApplicationRun snapshot is retained and may be retried with the same idempotency key.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-143, BR-AIAPP-149]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_ARTIFACT_REGISTRATION_FAILED
+  value: 130824
+  http: 200
+  cn: Artifact 未能登记为 UserAsset，TaskRun 终态不受影响。
+  en: The Artifact could not be registered as a UserAsset; the TaskRun terminal state is unchanged.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-150]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_APPLICATION_RUN_NOT_FOUND
+  value: 130825
+  http: 200
+  cn: ApplicationRun 不存在或当前用户不可见。
+  en: The ApplicationRun does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-143, BR-AIAPP-149]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_PERMISSION_DENIED
+  value: 131020
+  http: 200
+  cn: 当前用户缺少所需的应用平台权限。
+  en: The current user lacks the required application-platform permission.
   owning_domain: application-platform
   owning_module: access
-  severity: error
-  http_status: 200
+  range: 131000-131199
   retryable: false
-  related_user_stories: [US-AIAPP-006, US-AIAPP-007, US-AIAPP-012]
-  related_rules: [BR-AIAPP-026, BR-AIAPP-047, BR-AIAPP-048, BR-AIAPP-049]
+  deprecated: false
+  related_rules: [BR-AIAPP-136, BR-AIAPP-140, BR-AIAPP-142, BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-042, US-AIAPP-043]

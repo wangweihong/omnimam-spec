@@ -1,10 +1,54 @@
 # Changelog
 
+## 2026-07-15
+
+- 修复 application-platform v0.8.0-draft 的 S1/S2 缺口：新增 `BR-AIAPP-145..152`，统一 ProviderCapability/ComfyUI 联合能力来源、RuntimeFormSchema 数组字段与 changes/violations、模板版本显式发布、Application 语义开关和语义版本号。
+- 新增 application-platform `runtime-registry.yaml`，登记 CapabilityDefinition、ApplicationEngineType、EngineAdapter、OperationExecutor、鉴权结构和映射，并覆盖 BytePlus Seedance、DeepSeek 与 ComfyUI 清单引用。
+- 修复 ApplicationRun 强制 ProviderCapability 的冲突；新增可恢复 TaskRun 创建状态、联合能力快照、Artifact 持久化和 Artifact→UserAsset 独立登记状态。
+- 对齐 task-center application.execute 协作：TaskRun API、SQL 和事件新增 `application_run_id` 与幂等键，应用任务不再依赖旧 adapter/operation 字段路由。
+- 对齐 asset-library Artifact 登记：新增 `POST /api/v1/artifact-registrations`、`application_output` 来源、成功登记映射、权限、事件和 150800-150999 错误码区间。
+- 明确 workflow-canvas 本次仍为 deferred：application-platform S1 第 10～14 章保留产品设计但不作为当前实现、验收或 Release 依据；本次不写 RELEASE.md。
+- 将 application-platform S1 升级为 v0.8.0-draft：ProviderCapability 改为服务启动时从单一可配置目录加载的只读 YAML 事实源，移除管理员导入、编辑、启用、删除与热加载语义。
+- 新增 `BR-AIAPP-130..144`、`US-AIAPP-039..043` 及验收标准，固化文件原子加载、重复 ID 全部失败、目录失败服务降级启动、Binding/Run revision 快照和能力不可用隔离规则。
+- 在 application-platform S2 新增 YAML 表达的 JSON Schema 2020-12，以及基于 2026-07-15 官方资料核验的 Seedance 2.0/2.0 Fast、DeepSeek V4 Pro/Flash 平台能力清单。
+- 重建 application-platform OpenAPI、设计态 SQL、错误码、权限码、事件和模块契约；ProviderCapability、ApplicationEngineType、加载诊断与 RuntimeFormSchema 不建表，不提供能力写入或重新加载 API。
+- 同步更新应用平台架构、全局术语、端类型、task-center 协作说明和错误码区间；本次仍为未 Release 草稿，不写入 RELEASE.md。
+- 增加 S1 实现细节处置规则：发现 HTTP 路径、Go 接口、前端实现细节或其他 S2 实现细节时，必须保留原文并向用户询问处理指示；未经明确指示不得删除、修改、迁移或仅作记录后视为已处理。
+- 修复 S1 规则文档的标题、列表与代码围栏格式，不改变规则语义。
+
+## 2026-07-14
+
+- 将 application-platform S1 重构为 v0.7.0-draft，按 S1 标准模板补齐文档信息、原型来源、领域模型、实体关系、类型差异、数据来源、生命周期、领域不变量、业务规则、领域流程、用户故事、端矩阵、验收标准、非目标和待确认问题。
+- 使用 INV-AIAPP-001..010、BR-AIAPP-090..129、PF-AIAPP-001..010、US-AIAPP-026..038 和对应 AC 建立追溯链；旧草稿编号保持 deprecated，不复用。
+- 将 Adapter 职责、ComfyUI 能力前置对象、固定/多 Engine、不可变版本继承扩张、模板版本、SaaS 模板、画布事实源和凭证归属等冲突集中为 Q-AIAPP-001..012；全部问题关闭前禁止 S2 推导和 Release。
+- 补充全局 glossary 和端类型定义，并同步 task-center 的 TaskRun 状态事实源边界、asset-library 的 Artifact → UserAsset 所有权、幂等和失败语义；未修改 application-platform S2 与架构参考。
+- 对 application-platform `product-spec.md` 进行无产品语义变更的章节层级、连续编号和核心数据结构引用关系整理。
+- 将现有总体组件关系、EngineType 注册、EngineAdapter、OperationExecutor、ApplicationExecutor、画布执行流程和前端实现边界迁移至领域架构参考，并将可执行代码改写为等价伪代码。
+- 在 `review-notes.md` 记录命名不统一、引用但未定义、定义关系不完整及语义冲突；所有问题仅报告、未自动修正，S1/S2 定义未新增或变更。
+
+## 2026-07-13
+
+- 将 application-platform S1 升级为 v0.6.0-draft，以更新后的应用平台、能力注册与画布编排设计为主事实输入，统一管理员能力注册、固定 Engine、应用模板版本、应用版本和画布固定版本主线。
+- 新增 CapabilityDefinition、CapabilityTemplate、CapabilityTemplateVersion、CapabilityVariant、EngineCapabilityBinding、EngineInstance、ApplicationTemplateVersion、RuntimeFormSchema 和 CapabilityCorrectionRequired 产品语义。
+- 明确 CapabilityTemplateVersion、ApplicationTemplateVersion、ApplicationVersion 发布后不可变；能力变化通过新版本、人工验证和影响分析处理，系统不得自动抓取、发现、修改或发布能力事实。
+- 将 providers/ 下 ModelScope、OpenAI、Seedance 清单定位为管理员录入结构示例，不把示例中的易变模型、参数和平台能力直接视为运行事实。
+- 将第一阶段执行范围收敛为固定 EngineInstance，移除 ProviderOperation 绕过模板版本直建正式应用及多 Engine 自动路由语义。
+- 补充 ComfyUI 普通 Workflow/API Workflow 双文件、object_info 解析、人工配置、模板快照深拷贝和输出 Asset 登记规则。
+- 补充 ApplicationNode 固定已发布 ApplicationVersion、端口类型校验、DAGFlowTask 编译、ApplicationRun 与 TaskRun 运行树的跨域语义。
+- 同步修订 task-center S1，统一 Worker → AppEngine → ProviderAdapter → EngineInstance 调用链，并明确 TaskRun 是状态唯一事实源、TaskAttempt/Lease/retry/cancel/externalJobId 的职责边界。
+- 新增 BR-AIAPP-050..089、US-AIAPP-013..025 与 BR-TASK-051..060；旧 application-platform v0.5 编号统一标记 deprecated，不复用表达新语义。
+- 更新 application-platform 计划归档；当前 application-platform 与 task-center S2 尚未对齐 v0.6.0-draft，不得 release。
+
+## 2026-07-11
+
+- 修正 `application-platform` 的 SaaS 与模板边界：AppTemplate 仅支持 ComfyUI 工作流；SaaS 能力由系统依据官方文档预置为版本化 ProviderOperation，并直接创建 Application，不允许用户或管理员定义 SaaS Operation schema。
+
 ## 2026-07-10
 
 - 重构 `application-platform` 第一阶段为 ProviderAdapter/Operation 目录、工作流模板、统一输入输出端口、应用、AppEngine 路由、真实测试和 TaskRun 异步执行链路。
 - 新增 CapabilityGraph、CapabilityNode、PortDefinition、InputMapping、OutputMapping 和 ApplicationOutputValue 产品及 S2 契约，ComfyUI 保留多节点图，direct SaaS Operation 直接创建应用。
 - 新增 ByteDance Seedance 2.0 文生视频、图生视频、多模态参考视频 Operation，以及 OpenAI `gpt-image-2` 图像生成和编辑 Operation 语义。
+- 为内置 ProviderOperation catalog 补齐外部版本口径的 `operation_version`，Seedance 使用 `seedance-2.0`，GPT Image 2 使用 `gpt-image-2`。
 - 新增 `GET /api/v1/applications/{application_id}/available-engines`；无匹配项时成功返回空列表，用户可指定有使用权的匹配引擎，也可使用自动路由。
 - 明确 AppEngine 只保存运行实例配置和状态，ProviderAdapter 承担平台调用协议，Worker 承担 TaskRun、Lease、重试和结果回写。
 - 明确 TaskRun 是执行状态唯一事实源，AppRun 仅保存业务快照和按 `task_run_id + resource_version` 幂等更新的状态、进度与标准输出投影。
@@ -20,7 +64,7 @@
 ## 2026-07-09
 
 - 补全 `application-platform` S1/S2 设计，保留 `kind=comfyui|saas_api`，并在 `kind=saas_api` 分支新增 SaaS 平台类型和能力类型。
-- 明确 AppTemplate 可表示第三方平台某个接口参数总和，Application 从 AppTemplate 中抽取并固化特定参数，ModelScope z-image / klein 作为 SaaS 生图模板派生应用示例。
+- 曾将 AppTemplate 用于第三方平台接口参数；该设计已在 2026-07-11 修正，SaaS 应用改为直接基于系统预置 ProviderOperation 创建。
 - 收敛 AppEngine SaaS 平台配置，移除用户维护的支持能力类型、能力标签和通用健康检测配置；非 `custom_http` 平台的健康检测方式、能力矩阵、官方 endpoint 和具体接口调用规则由系统预置。
 - 新增只读 SaaS 平台元数据契约，用于返回官方默认 endpoint、预置能力矩阵、是否允许 endpoint 覆盖以及是否需要 `custom_http_config`。
 - 为 `custom_http` 增加独立 `custom_http_config`，至少包含 `api_path`；运行 Application 时要求 AppEngine 与 Application 的 `kind` 匹配，SaaS 分支还需平台类型匹配，并由平台预置能力矩阵支持能力类型。
@@ -37,7 +81,7 @@
 - 补充 `application-platform` 用户级 AppEngine S1/S2 契约，支持普通用户维护自己的应用引擎，管理员和超级管理员管理全量应用引擎。
 - 明确 AppEngine 支持 `bearer_token`、`api_key`、`ak_sk`、`none` 认证方式，凭证明文保存和返回，前端仅做可见/不可见展示控制。
 - 补充 task-center 周期性触发未停用 AppEngine 健康检测的协作语义，健康检测连接、明文凭证携带和状态写回由 application-platform 负责。
-- 补充 `application-platform` 模板详情 S1 语义：支持点击模板进入详情，ComfyUI 模板基于 API JSON 展示只读节点依赖图，SaaS API 模板展示只读配置与解析变量。
+- 补充 `application-platform` 模板详情 S1 语义：支持点击模板进入详情，ComfyUI 模板基于 API JSON 展示只读节点依赖图；原 SaaS 模板设计已在 2026-07-11 移除。
 - 明确 ComfyUI 模板节点依赖图仅用于查看模板结构，不执行工作流、不编辑模板内容、不还原原画布坐标；API JSON 缺少坐标时使用自动布局。
 - 将 `application-platform` 应用引擎基础管理重新纳入 S1 产品事实源，当前阶段仅覆盖 AppEngine 管理和健康查看。
 - 将 `EngineClass`、`EngineClaim`、`EngineProvision`、资源规格、预算确认、Worker 绑定和引擎供给流程继续保留为后续开发能力。

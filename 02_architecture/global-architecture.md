@@ -15,8 +15,8 @@
 | `identity` | 统一认证、会话、Token、RBAC、权限资源、审计 | 已有 S1，S2 待补 |
 | `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
-| `asset-library` | 用户素材、上传会话、预览、处理任务、画布输出资产 | 已有 S1，S2 已有 schema，其他契约待补 |
-| `application-platform` | Adapter/Operation 目录、工作流模板、应用输入输出、AppEngine 路由和 AppRun 投影 | 已有 S1/S2 |
+| `asset-library` | 用户素材、上传会话、预览、处理任务、画布输出资产和 Application Artifact 登记 | 已有 S1/S2，部分普通素材 API 待补 |
+| `application-platform` | Runtime Registry、ProviderCapability、模板/应用版本、Engine、ApplicationRun 与 Artifact | 已有 S1/S2 |
 | `task-center` | 任务定义、运行实例、Worker 协议、Lease、Watchdog | 已有 S1/S2 |
 | `workflow-canvas` | 工作流画布能力预留 | 缺少 S1，S2 暂未定义业务表 |
 
@@ -50,7 +50,7 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义 ProviderAdapter/Operation 目录、模板、应用输入输出、AppEngine、引擎路由和 AppRun 业务投影；AppEngine 只表达运行实例配置和状态。
+- `application-platform` 定义只读 Runtime Registry、ProviderCapability、模板/应用版本、Engine 路由、ApplicationRun 投影和 Artifact；EngineInstance 只表达运行实例配置和状态。
 - `task-center` 管理 TaskRun 唯一执行状态、Worker 协议与故障恢复；Worker 调用 ProviderAdapter，Adapter 使用 AppEngine endpoint 执行平台协议。
 - `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
 
@@ -83,16 +83,20 @@ sequenceDiagram
   participant Worker as Worker
   participant Adapter as ProviderAdapter
   participant Engine as AppEngine endpoint
+  participant Asset as asset-library
 
   User->>App: 选择应用、输入和可选 AppEngine
   App->>App: 校验指定引擎或自动路由并占用
-  App->>Task: 创建带 Operation/Engine 快照的 TaskRun
+  App->>App: 保存 ApplicationRun 不可变快照
+  App->>Task: application_run_id + idempotency_key 创建 TaskRun
   Worker->>Task: 注册、心跳、领取任务
   Worker->>Adapter: 调用 ProviderAdapter
   Adapter->>Engine: 调用平台 endpoint
   Worker->>Task: 上报进度和结果
-  Task-->>App: 带 resourceVersion 的状态事件
-  App-->>User: 返回 AppRun 状态投影与标准输出
+  Task-->>App: 带 application_run_id + resourceVersion 的状态事件
+  App->>App: 标准输出形成 Artifact
+  App->>Asset: 幂等登记 UserAsset
+  App-->>User: 返回 ApplicationRun 状态投影、Artifact 和资产引用
 ```
 
 ## 5. 数据与事件原则
@@ -105,6 +109,6 @@ sequenceDiagram
 ## 6. 当前架构缺口
 
 - `identity` 只有 S1，尚缺 S2 契约，其他领域的权限集成只能按 S1 语义描述。
-- `asset-library` 已有设计态 schema，但 OpenAPI、错误码、权限码、事件和模块契约为空。
+- `asset-library` 的素材列表、批量打标和 Artifact 登记已有 S2；上传、预览、下载、重命名、删除与完整分组 API 仍待补。
 - `workflow-canvas` 缺少 S1 产品事实源，S2 仅声明暂不定义业务表。
 - 领域架构文档不得绕过这些缺口直接补写实现契约。

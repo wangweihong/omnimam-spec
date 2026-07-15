@@ -177,3 +177,78 @@ asset_not_found_or_not_writable:
   deprecated: false
   related_user_stories: [US-USER-ASSET-18, US-USER-ASSET-23]
   related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-32, BR-USER-ASSET-40]
+
+artifact_registration_invalid:
+  code: artifact_registration_invalid
+  value: 150800
+  cn: Artifact 登记请求缺少运行、输出或内容引用信息。
+  en: The Artifact registration request is missing run, output, or content-reference information.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+
+artifact_owner_mismatch:
+  code: artifact_owner_mismatch
+  value: 150801
+  cn: Artifact owner 与 ApplicationRun 发起用户不一致。
+  en: The Artifact owner does not match the ApplicationRun initiating user.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-60, BR-USER-ASSET-62]
+
+artifact_content_unavailable:
+  code: artifact_content_unavailable
+  value: 150802
+  cn: Artifact 内容引用不存在、不可读取或无权访问。
+  en: The Artifact content reference is missing, unreadable, or inaccessible.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+
+artifact_media_invalid:
+  code: artifact_media_invalid
+  value: 150803
+  cn: Artifact 媒体类型或媒体元数据无效。
+  en: The Artifact media type or media metadata is invalid.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+
+artifact_idempotency_conflict:
+  code: artifact_idempotency_conflict
+  value: 150804
+  cn: 同一 Artifact ID 已使用不同内容或所有者完成登记。
+  en: The Artifact ID has already been registered with different content or ownership.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-63]

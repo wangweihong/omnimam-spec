@@ -261,6 +261,11 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-56** 素材详情页展示当前素材已关联的所有分组，并允许在详情页快速添加或移除分组关联。
 * **BR-USER-ASSET-57** 素材可以维护轻量引用摘要，包括 `referenceCount` 和 `referenceSources`。该摘要用于列表、卡片和详情的引用提示，不作为强一致权限判断或完整依赖图事实源。
 * **BR-USER-ASSET-58** 画布等外部模块可以通过回调或等价协作方式维护素材引用摘要。引用摘要允许最终一致；当引用数量大于 0 时，前端可在素材卡片上展示角标，例如“被 2 个画布引用”。
+* **BR-USER-ASSET-59** application-platform 的 Artifact 是待登记输出引用，不是 Asset；只有素材库完成所有权、内容引用和媒体信息校验并成功登记后，才产生 UserAsset。
+* **BR-USER-ASSET-60** ApplicationRun 输出登记必须使用运行发起用户作为 owner；不得把输出登记到 Worker、EngineInstance、管理员或其他用户名下。
+* **BR-USER-ASSET-61** 同一 Artifact 的重复登记必须幂等返回同一 UserAsset，或者明确返回已登记结果，不得产生重复素材。
+* **BR-USER-ASSET-62** Artifact 内容缺失、不可读取、所有权不一致或媒体信息不合法时，登记整体失败，不创建空 UserAsset；失败结果由 application-platform 记录在 Artifact 上。
+* **BR-USER-ASSET-63** 素材库负责 UserAsset 身份、内容引用和后续生命周期；application-platform 负责 Artifact、ApplicationRun 输出名及两者关联，双方不得互相改写对方状态事实。
 
 ---
 
@@ -461,6 +466,12 @@ Tags 用于大量描述性分类，例如：
 ### US-USER-ASSET-40 素材引用角标提示
 
 用户浏览素材卡片时，如果某个素材被画布引用，卡片上展示轻量角标，例如“被 2 个画布引用”。用户打开详情时，可以看到引用来源摘要。
+
+### US-USER-ASSET-41 登记应用运行输出
+
+作为应用运行发起用户，我希望媒体或文件输出在执行成功后登记为自己的素材，并能从运行结果进入素材详情。
+
+系统必须先校验 Artifact 内容引用和用户归属；重复请求保持幂等。校验或登记失败时不创建空素材，并由 application-platform 展示失败原因。
 
 ---
 
@@ -1028,6 +1039,8 @@ thumbnail 或前端抽帧失败时使用占位图标
 不进入平台共享素材库
 ```
 
+ApplicationRun 产生的 Artifact 使用同一用户素材登记边界：application-platform 提供运行发起用户、输出名、媒体类型和内容引用；素材库负责校验并创建或返回幂等命中的 UserAsset。Artifact 在登记成功前不得被称为 Asset，登记失败不改变 ApplicationRun 的 TaskRun 终态，但必须保留独立的输出登记失败结果。
+
 ### 9.17 只读状态
 
 当 canWrite=false 时，页面可以展示当前用户已有素材，但以下操作需要禁用：
@@ -1069,5 +1082,17 @@ thumbnail 或前端抽帧失败时使用占位图标
 | asset_content_forbidden   | 当前用户无权访问 content 或 thumbnail 时拒绝 |
 | asset_preview_unavailable | thumbnail 或前端抽帧失败时使用占位图标，不阻塞列表浏览 |
 | asset_delete_confirmed    | 删除必须经过确认                         |
+| artifact_registration_failed | ApplicationRun Artifact 因内容、所有权或媒体信息校验失败而未登记为 UserAsset |
+| artifact_already_registered | 重复登记同一 Artifact 时返回既有 UserAsset，不创建重复素材 |
 
 ---
+
+## 11. 跨域验收标准
+
+### AC-USER-ASSET-41-01
+
+当 ApplicationRun 已产生属于运行发起用户、内容可读取且媒体信息合法的 Artifact 时，首次登记创建归属于该用户的 UserAsset；重复登记返回同一 UserAsset，不产生重复记录。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59～63。
+
+### AC-USER-ASSET-41-02
+
+当 Artifact 内容缺失、不可读取、所有者不一致或媒体信息非法时，素材库拒绝登记且不创建空 UserAsset；application-platform 保留登记失败原因；素材库不得改写 TaskRun 历史状态。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59、BR-USER-ASSET-62～63。

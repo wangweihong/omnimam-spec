@@ -21,7 +21,7 @@ CREATE TABLE user_assets (
   width INTEGER DEFAULT 0,
   height INTEGER DEFAULT 0,
   duration_seconds REAL DEFAULT 0,
-  source_type TEXT NOT NULL CHECK (source_type IN ('upload', 'canvas_output')),
+  source_type TEXT NOT NULL CHECK (source_type IN ('upload', 'canvas_output', 'application_output')),
   object_path TEXT NOT NULL,
   thumbnail_status TEXT NOT NULL CHECK (thumbnail_status IN ('none', 'pending', 'ready', 'failed')),
   preview_status TEXT NOT NULL DEFAULT 'none' CHECK (preview_status IN ('none', 'pending', 'ready', 'failed')),
@@ -42,6 +42,29 @@ CREATE INDEX idx_user_assets_reference_count ON user_assets(owner_user_id, refer
 CREATE INDEX idx_user_assets_display_name ON user_assets(owner_user_id, display_name);
 CREATE INDEX idx_user_assets_original_name ON user_assets(owner_user_id, original_name);
 CREATE UNIQUE INDEX idx_user_assets_owner_id_unique ON user_assets(owner_user_id, id);
+
+-- S1 refs: US-USER-ASSET-41; BR-USER-ASSET-59..BR-USER-ASSET-63.
+-- 仅保存成功登记映射；失败原因由 application-platform 的 Artifact 记录。
+CREATE TABLE artifact_asset_registrations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  artifact_id TEXT NOT NULL,
+  application_run_id TEXT NOT NULL,
+  owner_user_id TEXT NOT NULL,
+  asset_id TEXT NOT NULL,
+  content_ref TEXT NOT NULL,
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
+  FOREIGN KEY (owner_user_id, asset_id) REFERENCES user_assets(owner_user_id, id)
+);
+
+CREATE UNIQUE INDEX idx_artifact_asset_registrations_artifact ON artifact_asset_registrations(artifact_id);
+CREATE INDEX idx_artifact_asset_registrations_run ON artifact_asset_registrations(application_run_id);
+CREATE INDEX idx_artifact_asset_registrations_asset ON artifact_asset_registrations(asset_id);
 
 -- 模糊搜索索引建议：生产部署可在启用 PostgreSQL pg_trgm 后，为 display_name、original_name、
 -- description 分别建立包含 owner_user_id 过滤条件的 GIN trigram 索引。扩展安装与实际 migration

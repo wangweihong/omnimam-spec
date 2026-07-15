@@ -99,6 +99,25 @@ task_retry_policy_invalid:
     - BR-TASK-035
     - BR-TASK-036
 
+task_run_idempotency_conflict:
+  code: ERR_TASK_RUN_IDEMPOTENCY_CONFLICT
+  value: 140403
+  cn: 相同 applicationRunId 和幂等键已用于不同的 TaskRun 创建请求。
+  en: The same applicationRunId and idempotency key were used with a different TaskRun creation request.
+  owning_domain: task-center
+  owning_module: run
+  range: 140400-140599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories:
+    - US-TASK-001
+  related_rules:
+    - BR-TASK-061
+    - BR-TASK-062
+
 worker_not_available:
   code: ERR_TASK_WORKER_NOT_AVAILABLE
   value: 140600

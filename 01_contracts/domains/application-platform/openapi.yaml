@@ -1,78 +1,504 @@
 openapi: 3.0.3
 info:
-  title: Application Platform API
-  version: 0.5.0-draft
-  description: 平台适配器目录、工作流模板、应用输入输出、应用引擎和异步运行契约。
+  title: OmniMAM Application Platform API
+  version: 0.8.0-draft
+  description: >-
+    ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
+    应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
+    ProviderCapability 为只读注册表资源，不提供写入或重新加载 API。
 servers:
   - url: /
+security:
+  - bearerAuth: []
 tags:
-  - name: adapter-catalog
-  - name: templates
+  - name: provider-capabilities
+  - name: application-engine-types
+  - name: engine-instances
+  - name: engine-capability-bindings
+  - name: application-templates
   - name: applications
-  - name: app-engines
   - name: application-runs
 
-x-provider-operation-catalog:
-  - adapter_key: bytedance-seedance
-    operation_key: seedance-2.text-to-video
-    operation_version: seedance-2.0
-    capability_type: video_generation
-    source_mode: direct
-    execution_mode: asynchronous
-    input_ports: [prompt, duration, aspect_ratio, resolution, generate_audio, seed]
-    output_ports: [video, audio, thumbnail, metadata]
-  - adapter_key: bytedance-seedance
-    operation_key: seedance-2.image-to-video
-    operation_version: seedance-2.0
-    capability_type: video_generation
-    source_mode: direct
-    execution_mode: asynchronous
-    input_ports: [prompt, input_images, duration, aspect_ratio, resolution, generate_audio, seed]
-    output_ports: [video, audio, thumbnail, metadata]
-  - adapter_key: bytedance-seedance
-    operation_key: seedance-2.reference-to-video
-    operation_version: seedance-2.0
-    capability_type: video_generation
-    source_mode: direct
-    execution_mode: asynchronous
-    input_ports: [prompt, input_images, input_videos, input_audios, duration, aspect_ratio, resolution, generate_audio, seed]
-    output_ports: [video, audio, thumbnail, metadata]
-  - adapter_key: openai
-    operation_key: gpt-image-2.generate
-    operation_version: gpt-image-2
-    capability_type: image_generation
-    source_mode: direct
-    execution_mode: synchronous
-    input_ports: [prompt, size, quality, background, output_format, count]
-    output_ports: [images]
-  - adapter_key: openai
-    operation_key: gpt-image-2.edit
-    operation_version: gpt-image-2
-    capability_type: image_editing
-    source_mode: direct
-    execution_mode: synchronous
-    input_ports: [prompt, input_images, mask, size, quality, background, output_format, count]
-    output_ports: [images]
-
 paths:
-  /api/v1/provider-adapters:
+  /api/v1/provider-capabilities:
     get:
-      tags: [adapter-catalog]
-      summary: 查询只读平台适配器目录
-      operationId: list_provider_adapters
+      tags: [provider-capabilities]
+      operationId: list_provider_capabilities
+      summary: 查询只读 ProviderCapability 目录
+      description: 返回可解析能力及其运行态状态，不返回来源文件路径和完整失败详情。
+      x-permission: aiapp.provider_capability.read
       x-s1-refs:
-        user_stories: [US-AIAPP-001]
-        business_rules: [BR-AIAPP-001, BR-AIAPP-004]
+        user_stories: [US-AIAPP-039, US-AIAPP-040]
+        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
-        - name: platform_type
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/search_fields'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - name: application_engine_type_id
           in: query
           schema: {type: string}
-        - name: capability_type
+        - name: availability
+          in: query
+          schema: {$ref: '#/components/schemas/ProviderCapabilityAvailability'}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderCapabilityListResponse'}
+
+  /api/v1/provider-capabilities/{provider_capability_id}:
+    get:
+      tags: [provider-capabilities]
+      operationId: get_provider_capability
+      summary: 查询 ProviderCapability 详情
+      x-permission: aiapp.provider_capability.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-039, US-AIAPP-040]
+        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136]
+      parameters:
+        - $ref: '#/components/parameters/provider_capability_id'
+      responses:
+        '200':
+          description: 返回能力详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProviderCapability'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/provider-capability-load-results:
+    get:
+      tags: [provider-capabilities]
+      operationId: list_provider_capability_load_results
+      summary: 查询启动加载诊断
+      description: 仅管理员可读取目录与文件路径、稳定错误码和完整失败详情。
+      x-permission: aiapp.provider_capability.read_diagnostics
+      x-s1-refs:
+        user_stories: [US-AIAPP-040]
+        business_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-139]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - name: result
+          in: query
+          schema: {type: string, enum: [loaded, disabled, failed]}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProviderCapabilityLoadResultListResponse'}
+
+  /api/v1/application-engine-types:
+    get:
+      tags: [application-engine-types]
+      operationId: list_application_engine_types
+      summary: 查询系统内置 ApplicationEngineType
+      x-permission: aiapp.provider_capability.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-039, US-AIAPP-041]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-140, BR-AIAPP-151]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationEngineTypeListResponse'}
+
+  /api/v1/engine-instances:
+    get:
+      tags: [engine-instances]
+      operationId: list_engine_instances
+      summary: 查询 ApplicationEngineInstance
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - name: application_engine_type_id
           in: query
           schema: {type: string}
-        - name: enabled
+        - name: health_status
+          in: query
+          schema: {$ref: '#/components/schemas/EngineHealthStatus'}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EngineInstanceListResponse'}
+    post:
+      tags: [engine-instances]
+      operationId: create_engine_instance
+      summary: 创建 ApplicationEngineInstance
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EngineInstanceCreateRequest'}
+      responses:
+        '200':
+          description: 创建结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineInstance'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/engine-instances/{engine_instance_id}:
+    get:
+      tags: [engine-instances]
+      operationId: get_engine_instance
+      summary: 查询 ApplicationEngineInstance
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140]
+      parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
+      responses:
+        '200':
+          description: 查询结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineInstance'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [engine-instances]
+      operationId: update_engine_instance
+      summary: 更新 ApplicationEngineInstance
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140]
+      parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EngineInstanceUpdateRequest'}
+      responses:
+        '200':
+          description: 更新结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineInstance'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [engine-instances]
+      operationId: delete_engine_instance
+      summary: 删除未被历史运行引用的 EngineInstance
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140, BR-AIAPP-143]
+      parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
+      responses:
+        '200':
+          description: 删除结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DeleteResult'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/engine-instances/{engine_instance_id}/health-check:
+    post:
+      tags: [engine-instances]
+      operationId: check_engine_instance_health
+      summary: 执行并保存实例健康检测
+      x-permission: aiapp.engine_instance.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-140]
+      parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
+      responses:
+        '200':
+          description: 健康检测结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineHealthCheckResult'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/engine-capability-bindings:
+    get:
+      tags: [engine-capability-bindings]
+      operationId: list_engine_capability_bindings
+      summary: 查询 EngineCapabilityBinding
+      x-permission: aiapp.engine_binding.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-040, US-AIAPP-041]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - name: engine_instance_id
+          in: query
+          schema: {type: string}
+        - name: provider_capability_id
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EngineCapabilityBindingListResponse'}
+    post:
+      tags: [engine-capability-bindings]
+      operationId: create_engine_capability_binding
+      summary: 创建 EngineCapabilityBinding
+      x-permission: aiapp.engine_binding.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EngineCapabilityBindingCreateRequest'}
+      responses:
+        '200':
+          description: 创建结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineCapabilityBinding'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/engine-capability-bindings/{binding_id}:
+    patch:
+      tags: [engine-capability-bindings]
+      operationId: update_engine_capability_binding
+      summary: 更新绑定的启用状态或收紧限制
+      x-permission: aiapp.engine_binding.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-137, BR-AIAPP-141]
+      parameters: [{$ref: '#/components/parameters/binding_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EngineCapabilityBindingUpdateRequest'}
+      responses:
+        '200':
+          description: 更新结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EngineCapabilityBinding'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [engine-capability-bindings]
+      operationId: delete_engine_capability_binding
+      summary: 删除 EngineCapabilityBinding
+      x-permission: aiapp.engine_binding.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-041]
+        business_rules: [BR-AIAPP-137, BR-AIAPP-141]
+      parameters: [{$ref: '#/components/parameters/binding_id'}]
+      responses:
+        '200':
+          description: 删除结果。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeleteResult'}
+
+  /api/v1/application-templates:
+    get:
+      tags: [application-templates]
+      operationId: list_application_templates
+      summary: 查询应用模板
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-144]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationTemplateListResponse'}
+    post:
+      tags: [application-templates]
+      operationId: create_application_template
+      summary: 从 ComfyUI 工作流或 SaaS 能力创建模板草稿
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApplicationTemplateCreateRequest'}
+      responses:
+        '200':
+          description: 创建结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationTemplate'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/application-templates/{application_template_id}:
+    get:
+      tags: [application-templates]
+      operationId: get_application_template
+      summary: 查询应用模板及当前发布版本
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_template_id'}]
+      responses:
+        '200':
+          description: 查询结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationTemplate'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/application-templates/{application_template_id}/versions:
+    get:
+      tags: [application-templates]
+      operationId: list_application_template_versions
+      summary: 查询应用模板版本
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+      parameters:
+        - $ref: '#/components/parameters/application_template_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationTemplateVersionListResponse'}
+    post:
+      tags: [application-templates]
+      operationId: create_application_template_version
+      summary: 创建应用模板草稿版本
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_template_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApplicationTemplateVersionCreateRequest'}
+      responses:
+        '200':
+          description: 创建结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationTemplateVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/application-template-versions/{application_template_version_id}:
+    get:
+      tags: [application-templates]
+      operationId: get_application_template_version
+      summary: 查询应用模板版本
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_template_version_id'}]
+      responses:
+        '200':
+          description: 查询结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationTemplateVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/application-template-versions/{application_template_version_id}/publish:
+    post:
+      tags: [application-templates]
+      operationId: publish_application_template_version
+      summary: 校验并发布应用模板版本
+      x-permission: aiapp.application.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_template_version_id'}]
+      responses:
+        '200':
+          description: 发布结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationTemplateVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/applications:
+    get:
+      tags: [applications]
+      operationId: list_applications
+      summary: 查询应用
+      x-permission: aiapp.application.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-042, US-AIAPP-043]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-148]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: capability_definition_id
+          in: query
+          schema: {type: string}
+        - name: visibility
+          in: query
+          schema: {type: string, enum: [private, global]}
+        - name: run_enabled
           in: query
           schema: {type: boolean}
       responses:
@@ -80,237 +506,57 @@ paths:
           description: 查询完成。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ProviderAdapterListResponse'}
-
-  /api/v1/provider-adapters/{adapter_key}/operations:
-    get:
-      tags: [adapter-catalog]
-      summary: 查询适配器操作目录
-      operationId: list_provider_operations
-      x-s1-refs:
-        user_stories: [US-AIAPP-001, US-AIAPP-004, US-AIAPP-010, US-AIAPP-011]
-        business_rules: [BR-AIAPP-002, BR-AIAPP-042, BR-AIAPP-045]
-      parameters:
-        - $ref: '#/components/parameters/adapter_key'
-        - name: source_mode
-          in: query
-          schema: {$ref: '#/components/schemas/SourceMode'}
-        - name: capability_type
-          in: query
-          schema: {type: string}
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ProviderOperationListResponse'}
-
-  /api/v1/app-templates:
-    get:
-      tags: [templates]
-      summary: 查询工作流模板
-      operationId: list_app_templates
-      x-s1-refs:
-        user_stories: [US-AIAPP-002, US-AIAPP-003]
-        business_rules: [BR-AIAPP-006, BR-AIAPP-047, BR-AIAPP-048]
-      parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
-        - name: source_kind
-          in: query
-          schema: {$ref: '#/components/schemas/TemplateSourceKind'}
-        - name: adapter_key
-          in: query
-          schema: {type: string}
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppTemplateListResponse'}
-    post:
-      tags: [templates]
-      summary: 创建并解析工作流模板
-      operationId: create_app_template
-      x-s1-refs:
-        user_stories: [US-AIAPP-002]
-        business_rules: [BR-AIAPP-006, BR-AIAPP-007, BR-AIAPP-008, BR-AIAPP-010]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/AppTemplateCreateRequest'}
-      responses:
-        '200':
-          description: 创建成功或返回业务错误。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
-
-  /api/v1/app-templates/{template_id}:
-    get:
-      tags: [templates]
-      summary: 获取工作流模板
-      operationId: get_app_template
-      x-s1-refs:
-        user_stories: [US-AIAPP-002, US-AIAPP-003]
-        business_rules: [BR-AIAPP-011, BR-AIAPP-047, BR-AIAPP-048]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
-    patch:
-      tags: [templates]
-      summary: 更新模板名称或描述
-      operationId: update_app_template
-      x-s1-refs:
-        user_stories: [US-AIAPP-002]
-        business_rules: [BR-AIAPP-011]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/MetadataUpdateRequest'}
-      responses:
-        '200':
-          description: 更新完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppTemplateResponse'}
-    delete:
-      tags: [templates]
-      summary: 删除无引用模板
-      operationId: delete_app_template
-      x-s1-refs:
-        user_stories: [US-AIAPP-002]
-        business_rules: [BR-AIAPP-012]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      responses:
-        '200': {$ref: '#/components/responses/Success'}
-
-  /api/v1/app-templates/{template_id}/capability-graph:
-    get:
-      tags: [templates]
-      summary: 获取模板能力图和端口
-      operationId: get_app_template_capability_graph
-      x-s1-refs:
-        user_stories: [US-AIAPP-002, US-AIAPP-003]
-        business_rules: [BR-AIAPP-007, BR-AIAPP-008, BR-AIAPP-009]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/CapabilityGraphResponse'}
-
-  /api/v1/app-templates/{template_id}/references:
-    get:
-      tags: [templates]
-      summary: 查询模板引用应用
-      operationId: list_app_template_references
-      x-s1-refs:
-        user_stories: [US-AIAPP-003]
-        business_rules: [BR-AIAPP-012]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ApplicationListResponse'}
-
-  /api/v1/app-templates/{template_id}/convert-to-application:
-    post:
-      tags: [templates, applications]
-      summary: 从工作流模板创建应用
-      operationId: convert_app_template_to_application
-      x-s1-refs:
-        user_stories: [US-AIAPP-003]
-        business_rules: [BR-AIAPP-013, BR-AIAPP-014, BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017]
-      parameters: [{$ref: '#/components/parameters/template_id'}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/ApplicationFromTemplateRequest'}
-      responses:
-        '200':
-          description: 创建完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ApplicationResponse'}
-
-  /api/v1/applications:
-    get:
-      tags: [applications]
-      summary: 查询应用
-      operationId: list_applications
-      x-s1-refs:
-        user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005, US-AIAPP-012]
-        business_rules: [BR-AIAPP-047, BR-AIAPP-048]
-      parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
-        - name: source_type
-          in: query
-          schema: {$ref: '#/components/schemas/ApplicationSourceType'}
-        - name: capability_type
-          in: query
-          schema: {type: string}
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
               schema: {$ref: '#/components/schemas/ApplicationListResponse'}
     post:
       tags: [applications]
-      summary: 从 direct ProviderOperation 创建应用
-      operationId: create_application_from_provider_operation
+      operationId: create_application
+      summary: 创建应用
+      x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-004, US-AIAPP-010, US-AIAPP-011]
-        business_rules: [BR-AIAPP-013, BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017, BR-AIAPP-042, BR-AIAPP-045]
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-148]
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/ApplicationFromOperationRequest'}
+            schema: {$ref: '#/components/schemas/ApplicationCreateRequest'}
       responses:
         '200':
-          description: 创建完成。
+          description: 创建结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ApplicationResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Application'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/applications/{application_id}:
     get:
       tags: [applications]
-      summary: 获取应用
       operationId: get_application
+      summary: 查询应用详情
+      x-permission: aiapp.application.read
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-019, BR-AIAPP-047, BR-AIAPP-048]
+        user_stories: [US-AIAPP-042, US-AIAPP-043]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-148]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       responses:
         '200':
-          description: 查询完成。
+          description: 查询结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ApplicationResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Application'
+                  - $ref: '#/components/schemas/ErrorResponse'
     patch:
       tags: [applications]
-      summary: 更新应用元数据和固化参数
       operationId: update_application
+      summary: 更新应用元数据和能力开关
+      x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-017, BR-AIAPP-019]
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-148]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
@@ -319,116 +565,133 @@ paths:
             schema: {$ref: '#/components/schemas/ApplicationUpdateRequest'}
       responses:
         '200':
-          description: 更新完成。
+          description: 更新结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ApplicationResponse'}
-    delete:
-      tags: [applications]
-      summary: 删除无运行引用应用
-      operationId: delete_application
-      x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-020]
-      parameters: [{$ref: '#/components/parameters/application_id'}]
-      responses:
-        '200': {$ref: '#/components/responses/Success'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Application'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/applications/{application_id}/input-mappings:
+  /api/v1/applications/{application_id}/versions:
     get:
       tags: [applications]
-      summary: 查询应用输入映射
-      operationId: list_input_mappings
+      operationId: list_application_versions
+      summary: 查询应用版本
+      x-permission: aiapp.application.read
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-016]
-      parameters: [{$ref: '#/components/parameters/application_id'}]
+        user_stories: [US-AIAPP-042, US-AIAPP-043]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
       responses:
         '200':
           description: 查询完成。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/InputMappingListResponse'}
-    put:
+              schema: {$ref: '#/components/schemas/ApplicationVersionListResponse'}
+    post:
       tags: [applications]
-      summary: 整体保存应用输入映射
-      operationId: save_input_mappings
+      operationId: create_application_version
+      summary: 创建不可变 ApplicationVersion
+      x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-017]
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-137, BR-AIAPP-142]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/InputMappingSaveRequest'}
+            schema: {$ref: '#/components/schemas/ApplicationVersionCreateRequest'}
       responses:
         '200':
-          description: 保存完成。
+          description: 创建结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/InputMappingListResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/applications/{application_id}/output-mappings:
+  /api/v1/application-versions/{application_version_id}:
     get:
       tags: [applications]
-      summary: 查询应用输出映射
-      operationId: list_output_mappings
+      operationId: get_application_version
+      summary: 查询应用版本
+      x-permission: aiapp.application.read
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
-      parameters: [{$ref: '#/components/parameters/application_id'}]
+        user_stories: [US-AIAPP-042, US-AIAPP-043]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_version_id'}]
       responses:
         '200':
-          description: 查询完成。
+          description: 查询结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/OutputMappingListResponse'}
-    put:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/application-versions/{application_version_id}/publish:
+    post:
       tags: [applications]
-      summary: 整体保存应用输出映射
-      operationId: save_output_mappings
+      operationId: publish_application_version
+      summary: 校验并发布语义版本
+      x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-005]
-        business_rules: [BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018]
+        user_stories: [US-AIAPP-042]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+      parameters: [{$ref: '#/components/parameters/application_version_id'}]
+      responses:
+        '200':
+          description: 发布结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationVersion'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/applications/{application_id}/runtime-form:
+    post:
+      tags: [applications]
+      operationId: resolve_application_runtime_form
+      summary: 解析当前 RuntimeFormSchema
+      x-permission: aiapp.application.run
+      x-s1-refs:
+        user_stories: [US-AIAPP-043]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-145, BR-AIAPP-146]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
+            schema: {$ref: '#/components/schemas/RuntimeFormResolveRequest'}
       responses:
         '200':
-          description: 保存完成。
+          description: 解析结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/OutputMappingListResponse'}
-
-  /api/v1/applications/{application_id}/available-engines:
-    get:
-      tags: [applications, app-engines]
-      summary: 查询当前用户可使用的匹配引擎
-      description: 无匹配项时 code 仍为成功，items 返回空数组；响应不包含认证配置。
-      operationId: list_available_app_engines
-      x-s1-refs:
-        user_stories: [US-AIAPP-007]
-        business_rules: [BR-AIAPP-023, BR-AIAPP-024, BR-AIAPP-025, BR-AIAPP-026, BR-AIAPP-027]
-      parameters: [{$ref: '#/components/parameters/application_id'}]
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AvailableEngineListResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RuntimeFormSchema'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/applications/{application_id}/runs:
     post:
       tags: [application-runs]
-      summary: 创建正式应用运行
       operationId: create_application_run
+      summary: 创建 ApplicationRun 并请求 TaskRun
+      x-permission: aiapp.application.run
       x-s1-refs:
-        user_stories: [US-AIAPP-007, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
-        business_rules: [BR-AIAPP-027, BR-AIAPP-029, BR-AIAPP-030, BR-AIAPP-031, BR-AIAPP-032, BR-AIAPP-036]
+        user_stories: [US-AIAPP-043]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149, BR-AIAPP-150]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
@@ -437,180 +700,40 @@ paths:
             schema: {$ref: '#/components/schemas/ApplicationRunCreateRequest'}
       responses:
         '200':
-          description: 创建成功或返回路由业务错误。
+          description: 创建结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationRun'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/applications/{application_id}/test-runs:
-    post:
-      tags: [application-runs]
-      summary: 创建真实应用测试运行
-      operationId: create_application_test_run
-      x-s1-refs:
-        user_stories: [US-AIAPP-008]
-        business_rules: [BR-AIAPP-029, BR-AIAPP-034, BR-AIAPP-035, BR-AIAPP-036]
-      parameters: [{$ref: '#/components/parameters/application_id'}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/ApplicationRunCreateRequest'}
-      responses:
-        '200':
-          description: 创建成功或返回测试业务错误。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
-
-  /api/v1/application-runs:
+  /api/v1/application-runs/{application_run_id}:
     get:
       tags: [application-runs]
-      summary: 查询应用运行
-      operationId: list_application_runs
-      x-s1-refs:
-        user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-012]
-        business_rules: [BR-AIAPP-036, BR-AIAPP-037, BR-AIAPP-047, BR-AIAPP-048]
-      parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - name: application_id
-          in: query
-          schema: {type: string}
-        - name: run_mode
-          in: query
-          schema: {$ref: '#/components/schemas/RunMode'}
-        - name: task_status
-          in: query
-          schema: {type: string}
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ApplicationRunListResponse'}
-
-  /api/v1/application-runs/{run_id}:
-    get:
-      tags: [application-runs]
-      summary: 获取应用运行及 TaskRun 投影
       operationId: get_application_run
+      summary: 查询 ApplicationRun 与 TaskRun 投影
+      x-permission: aiapp.application.run
       x-s1-refs:
-        user_stories: [US-AIAPP-008, US-AIAPP-009]
-        business_rules: [BR-AIAPP-036, BR-AIAPP-037, BR-AIAPP-041]
-      parameters: [{$ref: '#/components/parameters/run_id'}]
+        user_stories: [US-AIAPP-043]
+        business_rules: [BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-149, BR-AIAPP-150]
+      parameters: [{$ref: '#/components/parameters/application_run_id'}]
       responses:
         '200':
-          description: 查询完成。
+          description: 查询结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ApplicationRunResponse'}
-
-  /api/v1/app-engines:
-    get:
-      tags: [app-engines]
-      summary: 查询应用引擎管理列表
-      operationId: list_app_engines
-      x-s1-refs:
-        user_stories: [US-AIAPP-006, US-AIAPP-012]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-047, BR-AIAPP-048]
-      parameters:
-        - $ref: '#/components/parameters/page_num'
-        - $ref: '#/components/parameters/page_size'
-        - $ref: '#/components/parameters/keyword'
-        - name: adapter_key
-          in: query
-          schema: {type: string}
-        - name: health_status
-          in: query
-          schema: {$ref: '#/components/schemas/EngineHealthStatus'}
-      responses:
-        '200':
-          description: 查询完成；有管理权限时可返回 auth_config。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppEngineListResponse'}
-    post:
-      tags: [app-engines]
-      summary: 创建应用引擎
-      operationId: create_app_engine
-      x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/AppEngineCreateRequest'}
-      responses:
-        '200':
-          description: 创建完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppEngineResponse'}
-
-  /api/v1/app-engines/{app_engine_id}:
-    get:
-      tags: [app-engines]
-      summary: 获取应用引擎管理详情
-      operationId: get_app_engine
-      x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-047, BR-AIAPP-048]
-      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
-      responses:
-        '200':
-          description: 查询完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppEngineResponse'}
-    patch:
-      tags: [app-engines]
-      summary: 更新应用引擎
-      operationId: update_app_engine
-      x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-027]
-      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/AppEngineUpdateRequest'}
-      responses:
-        '200':
-          description: 更新完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AppEngineResponse'}
-    delete:
-      tags: [app-engines]
-      summary: 删除无运行引用引擎
-      operationId: delete_app_engine
-      x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-028]
-      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
-      responses:
-        '200': {$ref: '#/components/responses/Success'}
-
-  /api/v1/app-engines/{app_engine_id}/health-check:
-    post:
-      tags: [app-engines]
-      summary: 检测并写回已保存引擎健康状态
-      operationId: check_app_engine_health
-      x-s1-refs:
-        user_stories: [US-AIAPP-006]
-        business_rules: [BR-AIAPP-003, BR-AIAPP-021, BR-AIAPP-023]
-      parameters: [{$ref: '#/components/parameters/app_engine_id'}]
-      responses:
-        '200':
-          description: 检测完成。
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/HealthCheckResponse'}
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationRun'
+                  - $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     page_num:
       name: page_num
@@ -624,13 +747,30 @@ components:
       name: keyword
       in: query
       schema: {type: string, default: ''}
-    adapter_key:
-      name: adapter_key
+    search_fields:
+      name: search_fields
+      in: query
+      schema: {type: string, default: "name,description"}
+    sort_field:
+      name: sort_field
+      in: query
+      schema: {type: string, default: name}
+    sort_order:
+      name: sort_order
+      in: query
+      schema: {type: string, enum: [asc, desc], default: asc}
+    provider_capability_id:
+      name: provider_capability_id
       in: path
       required: true
       schema: {type: string}
-    template_id:
-      name: template_id
+    engine_instance_id:
+      name: engine_instance_id
+      in: path
+      required: true
+      schema: {type: string}
+    binding_id:
+      name: binding_id
       in: path
       required: true
       schema: {type: string}
@@ -639,550 +779,587 @@ components:
       in: path
       required: true
       schema: {type: string}
-    app_engine_id:
-      name: app_engine_id
+    application_template_id:
+      name: application_template_id
       in: path
       required: true
       schema: {type: string}
-    run_id:
-      name: run_id
+    application_template_version_id:
+      name: application_template_version_id
       in: path
       required: true
       schema: {type: string}
-
-  responses:
-    Success:
-      description: 操作完成。
-      content:
-        application/json:
-          schema: {$ref: '#/components/schemas/SuccessResponse'}
+    application_version_id:
+      name: application_version_id
+      in: path
+      required: true
+      schema: {type: string}
+    application_run_id:
+      name: application_run_id
+      in: path
+      required: true
+      schema: {type: string}
 
   schemas:
-    SourceMode:
+    ProviderCapabilityAvailability:
       type: string
-      enum: [direct, workflow]
-    ExecutionMode:
+      enum: [available, disabled, unavailable]
+    RegistryStatus:
       type: string
-      enum: [synchronous, asynchronous]
-    TemplateSourceKind:
-      type: string
-      enum: [comfyui_workflow, provider_workflow]
-    ApplicationSourceType:
-      type: string
-      enum: [template, provider_operation]
-    RunMode:
-      type: string
-      enum: [test, normal]
-    PortDirection:
-      type: string
-      enum: [input, output]
-    PortDataType:
-      type: string
-      enum: [text, number, boolean, enum, json, image, video, audio, file, model_ref, array]
-    Cardinality:
-      type: string
-      enum: [single, multiple]
-    Materialization:
-      type: string
-      enum: [inline, reference, asset]
-    EngineStatus:
-      type: string
-      enum: [active, disabled]
-    EngineHealthStatus:
-      type: string
-      enum: [unknown, healthy, unhealthy]
-    AuthType:
-      type: string
-      enum: [bearer_token, api_key, ak_sk, none]
-    LatestTestStatus:
-      type: string
-      enum: [untested, running, passed, failed]
-
-    ProviderAdapter:
+      enum: [ready, degraded]
+    Lifecycle:
       type: object
-      required: [adapter_key, name, platform_type, version, operation_keys, enabled]
+      required: [status]
       properties:
-        adapter_key: {type: string}
-        name: {type: string}
-        platform_type: {type: string}
-        version: {type: string}
-        operation_keys: {type: array, items: {type: string}}
-        enabled: {type: boolean}
-
+        status: {type: string, enum: [active, preview, deprecated, retired]}
+        available_since: {type: string, format: date}
+        deprecated_at: {type: string, format: date}
+        retired_at: {type: string, format: date}
+        replacement_model_id: {type: string}
+    ProviderModel:
+      type: object
+      required: [id, provider_model_id, display_name, family, variant, lifecycle]
+      properties:
+        id: {type: string}
+        provider_model_id: {type: string}
+        display_name: {type: string}
+        family: {type: string}
+        variant: {type: string}
+        lifecycle: {$ref: '#/components/schemas/Lifecycle'}
+        context_window_tokens: {type: integer}
+        maximum_output_tokens: {type: integer}
+        limits: {type: object, additionalProperties: true}
     ProviderOperation:
       type: object
-      required: [adapter_key, operation_key, operation_version, name, capability_type, source_mode, execution_mode, input_schema, output_schema, progress_supported, cancel_supported, idempotency_supported]
+      required: [id, capability_definition_id, execution_mode, input_media_types, output_media_types]
       properties:
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
-        name: {type: string}
-        capability_type: {type: string}
-        source_mode: {$ref: '#/components/schemas/SourceMode'}
-        execution_mode: {$ref: '#/components/schemas/ExecutionMode'}
+        id: {type: string}
+        capability_definition_id: {type: string}
+        execution_mode: {type: string, enum: [synchronous, asynchronous]}
+        input_media_types: {type: array, items: {type: string}}
+        output_media_types: {type: array, items: {type: string}}
+        description: {type: string}
+    CapabilityVariant:
+      type: object
+      required: [id, model_id, operation_id, lifecycle, input_schema, output_schema]
+      properties:
+        id: {type: string}
+        model_id: {type: string}
+        operation_id: {type: string}
+        lifecycle: {$ref: '#/components/schemas/Lifecycle'}
         input_schema: {type: object, additionalProperties: true}
         output_schema: {type: object, additionalProperties: true}
-        progress_supported: {type: boolean}
-        cancel_supported: {type: boolean}
-        idempotency_supported: {type: boolean}
-
-    PortDefinition:
+        unsupported_parameters: {type: array, items: {type: string}}
+        notes: {type: array, items: {type: string}}
+    ProviderCapability:
       type: object
-      required: [port_key, node_key, direction, data_type, required, cardinality, source_path, candidate]
+      required: [schema_version, id, name, application_engine_type_id, revision, enabled, provider, sources, models, operations, variants, availability, loaded_at]
       properties:
-        port_key: {type: string}
-        node_key: {type: string}
-        direction: {$ref: '#/components/schemas/PortDirection'}
-        data_type: {$ref: '#/components/schemas/PortDataType'}
-        required: {type: boolean}
-        cardinality: {$ref: '#/components/schemas/Cardinality'}
-        media_type: {type: string}
-        source_path: {type: string}
-        semantic_role: {type: string}
-        candidate: {type: boolean}
-
-    CapabilityNode:
-      type: object
-      required: [node_key, node_type, name, input_ports, output_ports, resolution_status]
-      properties:
-        node_key: {type: string}
-        node_type: {type: string}
+        schema_version: {type: string}
+        id: {type: string}
         name: {type: string}
-        input_ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
-        output_ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
-        resolution_status: {type: string, enum: [resolved, partial, unresolved]}
-        raw_reference: {type: object, additionalProperties: true}
-
-    CapabilityEdge:
+        description: {type: string}
+        application_engine_type_id: {type: string}
+        revision: {type: string}
+        enabled: {type: boolean}
+        provider: {type: object, additionalProperties: true}
+        sources: {type: array, items: {type: object, additionalProperties: true}}
+        models: {type: array, items: {$ref: '#/components/schemas/ProviderModel'}}
+        operations: {type: array, items: {$ref: '#/components/schemas/ProviderOperation'}}
+        variants: {type: array, items: {$ref: '#/components/schemas/CapabilityVariant'}}
+        labels: {type: object, additionalProperties: {type: string}}
+        notes: {type: array, items: {type: string}}
+        extensions: {type: object, additionalProperties: true}
+        availability: {$ref: '#/components/schemas/ProviderCapabilityAvailability'}
+        unavailable_code: {type: string}
+        unavailable_summary: {type: string}
+        loaded_at: {type: string, format: date-time}
+    ProviderCapabilityListResponse:
       type: object
-      required: [source_node_key, source_port_key, target_node_key, target_port_key]
+      required: [total, registry_status, items]
       properties:
-        source_node_key: {type: string}
-        source_port_key: {type: string}
-        target_node_key: {type: string}
-        target_port_key: {type: string}
-
-    CapabilityGraph:
+        total: {type: integer}
+        registry_status: {$ref: '#/components/schemas/RegistryStatus'}
+        items: {type: array, items: {$ref: '#/components/schemas/ProviderCapability'}}
+    ProviderCapabilityLoadResult:
       type: object
-      required: [nodes, edges, graph_version, unresolved_node_count]
+      required: [source_file, result, loaded_at]
       properties:
-        nodes: {type: array, items: {$ref: '#/components/schemas/CapabilityNode'}}
-        edges: {type: array, items: {$ref: '#/components/schemas/CapabilityEdge'}}
-        graph_version: {type: string}
-        unresolved_node_count: {type: integer, minimum: 0}
-
-    AppTemplate:
+        provider_capability_id: {type: string, nullable: true}
+        source_file: {type: string}
+        result: {type: string, enum: [loaded, disabled, failed]}
+        error_code: {type: string}
+        error_value: {type: integer}
+        failure_detail: {type: string}
+        loaded_at: {type: string, format: date-time}
+    ProviderCapabilityLoadResultListResponse:
       type: object
-      required: [id, owner_user_id, name, source_kind, adapter_key, operation_key, operation_version, raw_config, capability_graph, required_node_types, required_model_refs, reference_application_count, created_at, updated_at]
+      required: [total, registry_status, items]
+      properties:
+        total: {type: integer}
+        registry_status: {$ref: '#/components/schemas/RegistryStatus'}
+        items: {type: array, items: {$ref: '#/components/schemas/ProviderCapabilityLoadResult'}}
+    ApplicationEngineType:
+      type: object
+      required: [id, name, enabled, engine_adapter_id, capability_definition_ids]
       properties:
         id: {type: string}
-        owner_user_id: {type: string}
+        name: {type: string}
+        enabled: {type: boolean}
+        engine_adapter_id: {type: string}
+        capability_definition_ids: {type: array, items: {type: string}}
+        authentication_types: {type: array, items: {type: string, enum: [none, api_key, bearer_token, ak_sk]}}
+    ApplicationEngineTypeListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ApplicationEngineType'}}
+    EngineHealthStatus:
+      type: string
+      enum: [unknown, online, offline, degraded]
+    EngineInstance:
+      type: object
+      required: [id, name, application_engine_type_id, base_url, auth_type, enabled, health_status, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
         name: {type: string}
         description: {type: string}
-        source_kind: {$ref: '#/components/schemas/TemplateSourceKind'}
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
-        raw_config: {type: object, additionalProperties: true}
-        capability_graph: {$ref: '#/components/schemas/CapabilityGraph'}
-        required_node_types: {type: array, items: {type: string}}
-        required_model_refs: {type: array, items: {type: string}}
-        reference_application_count: {type: integer}
+        application_engine_type_id: {type: string}
+        base_url: {type: string, format: uri}
+        auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
+        auth_config: {type: object, additionalProperties: true, description: 仅有管理权限的详情接口可返回。}
+        enabled: {type: boolean}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        last_health_check_at: {type: string, format: date-time, nullable: true}
+        unhealthy_reason: {type: string}
+        region: {type: string}
+        max_concurrency: {type: integer, minimum: 1}
+        request_timeout_seconds: {type: integer, minimum: 1}
+        task_timeout_seconds: {type: integer, minimum: 1}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-
-    AppTemplateCreateRequest:
+        resource_version: {type: integer}
+    EngineInstanceCreateRequest:
       type: object
-      required: [name, source_kind, adapter_key, operation_key, operation_version, raw_config]
+      additionalProperties: false
+      required: [name, application_engine_type_id, base_url, auth_type, auth_config, enabled, max_concurrency]
       properties:
         name: {type: string}
         description: {type: string}
-        source_kind: {$ref: '#/components/schemas/TemplateSourceKind'}
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
-        raw_config:
-          type: object
-          additionalProperties: true
-          x-naming-exception: 第三方工作流原始结构保留平台字段名。
-
-    MetadataUpdateRequest:
+        application_engine_type_id: {type: string}
+        base_url: {type: string, format: uri}
+        auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
+        auth_config: {type: object, additionalProperties: true}
+        enabled: {type: boolean}
+        region: {type: string}
+        max_concurrency: {type: integer, minimum: 1}
+        request_timeout_seconds: {type: integer, minimum: 1}
+        task_timeout_seconds: {type: integer, minimum: 1}
+    EngineInstanceUpdateRequest:
       type: object
+      additionalProperties: false
       properties:
         name: {type: string}
         description: {type: string}
-
-    InputMappingInput:
+        base_url: {type: string, format: uri}
+        auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
+        auth_config: {type: object, additionalProperties: true}
+        enabled: {type: boolean}
+        region: {type: string}
+        max_concurrency: {type: integer, minimum: 1}
+        request_timeout_seconds: {type: integer, minimum: 1}
+        task_timeout_seconds: {type: integer, minimum: 1}
+        resource_version: {type: integer}
+    EngineInstanceListResponse:
       type: object
-      required: [input_key, input_label, source_port_key, source_path, data_type, sort_order]
+      required: [total, items]
       properties:
-        input_key: {type: string}
-        input_label: {type: string}
-        source_port_key: {type: string}
-        source_path: {type: string}
-        data_type: {$ref: '#/components/schemas/PortDataType'}
-        default_value: {}
-        sort_order: {type: integer}
-
-    InputMapping:
-      allOf:
-        - {$ref: '#/components/schemas/InputMappingInput'}
-        - type: object
-          required: [id, application_id, required]
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/EngineInstance'}}
+    EngineHealthCheckResult:
+      type: object
+      required: [engine_instance_id, health_status, checked_at]
+      properties:
+        engine_instance_id: {type: string}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        checked_at: {type: string, format: date-time}
+        failure_summary: {type: string}
+    EngineCapabilityBinding:
+      type: object
+      required: [id, name, engine_instance_id, provider_capability_id, provider_capability_revision, enabled, effective_status, restrictions, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        engine_instance_id: {type: string}
+        provider_capability_id: {type: string}
+        provider_capability_revision: {type: string}
+        enabled: {type: boolean}
+        effective_status: {type: string, enum: [available, disabled, unavailable]}
+        restrictions: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+    EngineCapabilityBindingCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, engine_instance_id, provider_capability_id, enabled, restrictions]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        engine_instance_id: {type: string}
+        provider_capability_id: {type: string}
+        enabled: {type: boolean}
+        restrictions: {type: object, additionalProperties: true}
+    EngineCapabilityBindingUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [resource_version]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        enabled: {type: boolean}
+        restrictions: {type: object, additionalProperties: true}
+        resource_version: {type: integer}
+    EngineCapabilityBindingListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/EngineCapabilityBinding'}}
+    ApplicationTemplate:
+      type: object
+      required: [id, name, capability_definition_id, capability_source_type, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        capability_definition_id: {type: string}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        current_version_id: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+    ApplicationTemplateCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, capability_definition_id, capability_source_type, template_contract]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        capability_definition_id: {type: string}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        provider_capability_id: {type: string}
+        provider_operation_id: {type: string}
+        workflow_contract_revision: {type: string}
+        comfyui_api_workflow: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        comfyui_object_info: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        template_contract: {type: object, additionalProperties: true}
+      oneOf:
+        - required: [provider_capability_id, provider_operation_id]
           properties:
-            id: {type: string}
-            application_id: {type: string}
-            required: {type: boolean}
-
-    OutputMappingInput:
-      type: object
-      required: [output_key, output_label, source_port_key, source_path, data_type, cardinality, primary, materialization, sort_order]
-      properties:
-        output_key: {type: string}
-        output_label: {type: string}
-        source_port_key: {type: string}
-        source_path: {type: string}
-        data_type: {$ref: '#/components/schemas/PortDataType'}
-        cardinality: {$ref: '#/components/schemas/Cardinality'}
-        primary: {type: boolean}
-        materialization: {$ref: '#/components/schemas/Materialization'}
-        sort_order: {type: integer}
-
-    OutputMapping:
-      allOf:
-        - {$ref: '#/components/schemas/OutputMappingInput'}
-        - type: object
-          required: [id, application_id]
+            capability_source_type: {enum: [provider_capability]}
+        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
           properties:
-            id: {type: string}
-            application_id: {type: string}
-
-    InputMappingSaveRequest:
+            capability_source_type: {enum: [comfyui_workflow]}
+    ApplicationTemplateListResponse:
       type: object
-      required: [items]
+      required: [total, items]
       properties:
-        items: {type: array, items: {$ref: '#/components/schemas/InputMappingInput'}}
-
-    OutputMappingSaveRequest:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ApplicationTemplate'}}
+    CapabilitySourceType:
+      type: string
+      enum: [provider_capability, comfyui_workflow]
+    ApplicationTemplateVersion:
       type: object
-      required: [items]
+      required: [id, application_template_id, version, status, capability_source_type, source_revision, template_contract, created_at, updated_at, resource_version]
       properties:
-        items: {type: array, items: {$ref: '#/components/schemas/OutputMappingInput'}}
-
+        id: {type: string}
+        application_template_id: {type: string}
+        version: {type: integer, minimum: 1}
+        status: {type: string, enum: [draft, published, retired]}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        source_revision: {type: string}
+        provider_capability_id: {type: string, nullable: true}
+        provider_capability_revision: {type: string, nullable: true}
+        provider_operation_id: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true}
+        template_contract: {type: object, additionalProperties: true}
+        comfyui_api_workflow: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        comfyui_object_info: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        published_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+      oneOf:
+        - required: [provider_capability_id, provider_capability_revision, provider_operation_id]
+          properties:
+            capability_source_type: {enum: [provider_capability]}
+        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
+          properties:
+            capability_source_type: {enum: [comfyui_workflow]}
+    ApplicationTemplateVersionCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [capability_source_type, template_contract]
+      properties:
+        name: {type: string, description: 版本显示名；不修改 ApplicationTemplate 名称。}
+        description: {type: string}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        provider_capability_id: {type: string}
+        provider_operation_id: {type: string}
+        workflow_contract_revision: {type: string}
+        comfyui_api_workflow: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        comfyui_object_info: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        template_contract: {type: object, additionalProperties: true}
+      oneOf:
+        - required: [provider_capability_id, provider_operation_id]
+          properties:
+            capability_source_type: {enum: [provider_capability]}
+        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
+          properties:
+            capability_source_type: {enum: [comfyui_workflow]}
+    ApplicationTemplateVersionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ApplicationTemplateVersion'}}
     Application:
       type: object
-      required: [id, owner_user_id, name, source_type, adapter_key, operation_key, operation_version, capability_type, input_mappings, output_mappings, fixed_parameters, latest_test_status, reference_run_count, created_at, updated_at]
+      required: [id, name, owner_user_id, capability_definition_id, visibility, run_enabled, canvas_enabled, copy_enabled, preset_enabled, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
-        owner_user_id: {type: string}
         name: {type: string}
         description: {type: string}
-        source_type: {$ref: '#/components/schemas/ApplicationSourceType'}
-        template_id: {type: string}
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
-        capability_type: {type: string}
-        input_mappings: {type: array, items: {$ref: '#/components/schemas/InputMapping'}}
-        output_mappings: {type: array, items: {$ref: '#/components/schemas/OutputMapping'}}
-        fixed_parameters: {type: object, additionalProperties: true}
-        latest_test_status: {$ref: '#/components/schemas/LatestTestStatus'}
-        last_tested_at: {type: string, format: date-time}
-        latest_test_failure_summary: {type: string}
-        reference_run_count: {type: integer}
+        owner_user_id: {type: string}
+        capability_definition_id: {type: string}
+        visibility: {type: string, enum: [private, global]}
+        run_enabled: {type: boolean}
+        canvas_enabled: {type: boolean}
+        copy_enabled: {type: boolean}
+        preset_enabled: {type: boolean}
+        current_version_id: {type: string, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-
-    ApplicationFromTemplateRequest:
+        resource_version: {type: integer}
+    ApplicationCreateRequest:
       type: object
-      required: [name, input_mappings, output_mappings, fixed_parameters]
+      additionalProperties: false
+      required: [name, capability_definition_id]
       properties:
         name: {type: string}
         description: {type: string}
-        input_mappings: {$ref: '#/components/schemas/InputMappingSaveRequest'}
-        output_mappings: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
-        fixed_parameters: {type: object, additionalProperties: true}
-
-    ApplicationFromOperationRequest:
-      type: object
-      required: [name, adapter_key, operation_key, operation_version, input_mappings, output_mappings, fixed_parameters]
-      properties:
-        name: {type: string}
-        description: {type: string}
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
-        input_mappings: {$ref: '#/components/schemas/InputMappingSaveRequest'}
-        output_mappings: {$ref: '#/components/schemas/OutputMappingSaveRequest'}
-        fixed_parameters: {type: object, additionalProperties: true}
-
+        capability_definition_id: {type: string}
+        visibility: {type: string, enum: [private, global], default: private}
+        run_enabled: {type: boolean, default: true}
+        canvas_enabled: {type: boolean, default: true}
+        copy_enabled: {type: boolean, default: false}
+        preset_enabled: {type: boolean, default: false}
     ApplicationUpdateRequest:
       type: object
+      additionalProperties: false
+      required: [resource_version]
       properties:
         name: {type: string}
         description: {type: string}
-        fixed_parameters: {type: object, additionalProperties: true}
-
-    SupportedOperation:
+        visibility: {type: string, enum: [private, global]}
+        run_enabled: {type: boolean}
+        canvas_enabled: {type: boolean}
+        copy_enabled: {type: boolean}
+        preset_enabled: {type: boolean}
+        resource_version: {type: integer}
+    ApplicationListResponse:
       type: object
-      required: [operation_key, min_version, max_version]
+      required: [total, items]
       properties:
-        operation_key: {type: string}
-        min_version: {type: string}
-        max_version: {type: string}
-
-    AuthConfig:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/Application'}}
+    ApplicationVersionCreateRequest:
       type: object
-      description: 当前阶段明文认证配置，仅管理 API 返回；可用引擎查询不得返回。
+      additionalProperties: false
+      required: [semantic_version, application_template_version_id, input_schema, output_schema, parameter_policies]
       properties:
-        bearer_token: {type: string}
-        api_key: {type: string}
-        access_key: {type: string}
-        secret_key: {type: string}
-
-    AppEngine:
+        semantic_version: {type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'}
+        application_template_version_id: {type: string}
+        input_schema: {type: object, additionalProperties: true}
+        output_schema: {type: object, additionalProperties: true}
+        parameter_policies: {type: object, additionalProperties: true}
+    ApplicationVersion:
       type: object
-      required: [id, owner_user_id, name, adapter_key, endpoint, auth_type, status, health_status, supported_operations, node_types, model_refs, priority, max_concurrency, current_inflight, created_at, updated_at]
+      required: [id, application_id, semantic_version, application_template_version_id, status, input_schema, output_schema, parameter_policies, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
-        owner_user_id: {type: string}
-        name: {type: string}
-        description: {type: string}
-        adapter_key: {type: string}
-        endpoint: {type: string}
-        auth_type: {$ref: '#/components/schemas/AuthType'}
-        auth_config: {$ref: '#/components/schemas/AuthConfig'}
-        status: {$ref: '#/components/schemas/EngineStatus'}
-        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
-        runtime_version: {type: string}
-        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
-        node_types: {type: array, items: {type: string}}
-        model_refs: {type: array, items: {type: string}}
-        priority: {type: integer}
-        max_concurrency: {type: integer}
-        current_inflight: {type: integer}
-        last_health_check_at: {type: string, format: date-time}
-        unhealthy_reason: {type: string}
+        application_id: {type: string}
+        semantic_version: {type: string}
+        application_template_version_id: {type: string}
+        status: {type: string, enum: [draft, published, retired]}
+        input_schema: {type: object, additionalProperties: true}
+        output_schema: {type: object, additionalProperties: true}
+        parameter_policies: {type: object, additionalProperties: true}
+        published_at: {type: string, format: date-time, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-
-    AvailableEngine:
+        resource_version: {type: integer}
+    ApplicationVersionListResponse:
       type: object
-      description: 运行选择投影，明确不包含 auth_config。
-      required: [id, name, adapter_key, supported_operations, health_status, runtime_version, max_concurrency, current_inflight, capability_summary]
+      required: [total, items]
       properties:
-        id: {type: string}
-        name: {type: string}
-        adapter_key: {type: string}
-        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
-        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
-        runtime_version: {type: string}
-        max_concurrency: {type: integer}
-        current_inflight: {type: integer}
-        capability_summary: {type: object, additionalProperties: true}
-
-    AppEngineCreateRequest:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ApplicationVersion'}}
+    RuntimeFormResolveRequest:
       type: object
-      required: [name, adapter_key, endpoint, auth_type, supported_operations, max_concurrency]
+      additionalProperties: false
+      required: [application_version_id]
       properties:
-        name: {type: string}
-        description: {type: string}
-        adapter_key: {type: string}
-        endpoint: {type: string}
-        auth_type: {$ref: '#/components/schemas/AuthType'}
-        auth_config: {$ref: '#/components/schemas/AuthConfig'}
-        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
-        node_types: {type: array, items: {type: string}}
-        model_refs: {type: array, items: {type: string}}
-        priority: {type: integer, default: 100}
-        max_concurrency: {type: integer, minimum: 1}
-
-    AppEngineUpdateRequest:
+        application_version_id: {type: string}
+        engine_instance_id: {type: string}
+        current_values: {type: object, additionalProperties: true}
+    RuntimeFormSchema:
       type: object
+      required: [application_version_id, capability_source_type, source_revision, compatible_engine_instance_ids, fields, changes, violations, resolved_at]
+      properties:
+        application_version_id: {type: string}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        source_revision: {type: string}
+        provider_capability_id: {type: string, nullable: true}
+        provider_capability_revision: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true}
+        compatible_engine_instance_ids: {type: array, items: {type: string}}
+        fields: {type: array, items: {$ref: '#/components/schemas/RuntimeFormField'}}
+        changes: {type: array, items: {$ref: '#/components/schemas/RuntimeFormChange'}}
+        violations: {type: array, items: {$ref: '#/components/schemas/RuntimeFormViolation'}}
+        resolved_at: {type: string, format: date-time}
+      oneOf:
+        - required: [provider_capability_id, provider_capability_revision]
+          properties:
+            capability_source_type: {enum: [provider_capability]}
+        - required: [workflow_contract_revision]
+          properties:
+            capability_source_type: {enum: [comfyui_workflow]}
+    RuntimeFormField:
+      type: object
+      required: [name, type, required, value, options, connectable, dynamic]
       properties:
         name: {type: string}
-        description: {type: string}
-        endpoint: {type: string}
-        auth_type: {$ref: '#/components/schemas/AuthType'}
-        auth_config: {$ref: '#/components/schemas/AuthConfig'}
-        status: {$ref: '#/components/schemas/EngineStatus'}
-        supported_operations: {type: array, items: {$ref: '#/components/schemas/SupportedOperation'}}
-        node_types: {type: array, items: {type: string}}
-        model_refs: {type: array, items: {type: string}}
-        priority: {type: integer}
-        max_concurrency: {type: integer, minimum: 1}
-
+        type: {type: string}
+        required: {type: boolean}
+        value: {$ref: '#/components/schemas/RuntimeValue'}
+        options: {type: array, items: {$ref: '#/components/schemas/RuntimeValue'}}
+        connectable: {type: boolean}
+        dynamic: {type: boolean}
+        depends_on: {type: array, items: {type: string}}
+        on_invalid: {type: string, enum: [reset, fallback, clamp, reject]}
+        unavailable_reason: {type: string, nullable: true}
+        ui: {type: object, additionalProperties: true}
+    RuntimeFormChange:
+      type: object
+      required: [field, reason, strategy]
+      properties:
+        field: {type: string}
+        reason: {type: string}
+        strategy: {type: string, enum: [reset, fallback, clamp]}
+        previous_value: {$ref: '#/components/schemas/RuntimeValue'}
+        current_value: {$ref: '#/components/schemas/RuntimeValue'}
+    RuntimeFormViolation:
+      type: object
+      required: [field, code, message]
+      properties:
+        field: {type: string}
+        code: {type: string}
+        message: {type: string}
+        current_value: {$ref: '#/components/schemas/RuntimeValue'}
+    RuntimeValue:
+      nullable: true
+      oneOf:
+        - {type: string}
+        - {type: number}
+        - {type: boolean}
+        - {type: object, additionalProperties: true}
+        - {type: array, items: {}}
     ApplicationRunCreateRequest:
       type: object
-      required: [input]
+      additionalProperties: false
+      required: [application_version_id, inputs, idempotency_key]
       properties:
-        app_engine_id:
-          type: string
-          description: 可选；填写时视为本次运行强制指定且不可用时不回退。
-        input: {type: object, additionalProperties: true}
-
-    ApplicationOutputValue:
-      type: object
-      required: [output_key, data_type, metadata]
-      properties:
-        output_key: {type: string}
-        data_type: {$ref: '#/components/schemas/PortDataType'}
-        inline_value: {}
-        asset_id: {type: string}
-        storage_uri: {type: string}
-        external_url: {type: string}
-        media_type: {type: string}
-        metadata: {type: object, additionalProperties: true}
-
+        application_version_id: {type: string}
+        engine_instance_id: {type: string}
+        inputs: {type: object, additionalProperties: true}
+        idempotency_key: {type: string}
     ApplicationRun:
       type: object
-      required: [id, owner_user_id, application_id, task_run_id, run_mode, adapter_key, operation_key, operation_version, input_snapshot, rendered_payload_snapshot, output_mapping_snapshot, task_status_projection, task_resource_version, output_values, created_at, updated_at]
+      required: [id, application_id, application_version_id, application_template_version_id, engine_instance_id, capability_source_type, source_revision, input_snapshot, execution_snapshot, output_mapping_snapshot, task_creation_status, task_resource_version, artifacts, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
-        owner_user_id: {type: string}
         application_id: {type: string}
-        task_run_id: {type: string}
-        run_mode: {$ref: '#/components/schemas/RunMode'}
-        requested_engine_id: {type: string}
-        resolved_engine_id: {type: string}
-        adapter_key: {type: string}
-        operation_key: {type: string}
-        operation_version: {type: string}
+        application_version_id: {type: string}
+        application_template_version_id: {type: string}
+        task_run_id: {type: string, nullable: true}
+        engine_instance_id: {type: string}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        source_revision: {type: string}
+        provider_capability_id: {type: string, nullable: true}
+        provider_capability_revision: {type: string, nullable: true}
+        provider_operation_id: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true}
         input_snapshot: {type: object, additionalProperties: true}
-        rendered_payload_snapshot: {type: object, additionalProperties: true}
-        output_mapping_snapshot: {type: array, items: {$ref: '#/components/schemas/OutputMappingInput'}}
-        task_status_projection: {type: string}
-        task_progress_projection: {type: object, additionalProperties: true}
-        task_resource_version: {type: integer}
-        output_values: {type: array, items: {$ref: '#/components/schemas/ApplicationOutputValue'}}
+        execution_snapshot: {type: object, additionalProperties: true}
+        output_mapping_snapshot: {type: object, additionalProperties: true}
+        task_creation_status: {type: string, enum: [pending, created, failed]}
+        task_creation_failure: {type: string, nullable: true}
+        task_status_projection: {type: string, nullable: true}
+        task_resource_version: {type: integer, minimum: 0}
+        output_values: {type: array, items: {type: object, additionalProperties: true}}
+        artifacts: {type: array, items: {$ref: '#/components/schemas/ApplicationArtifact'}}
         failure_summary: {type: string}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-
-    HealthCheckResult:
+        resource_version: {type: integer}
+      oneOf:
+        - required: [provider_capability_id, provider_capability_revision, provider_operation_id]
+          properties:
+            capability_source_type: {enum: [provider_capability]}
+        - required: [workflow_contract_revision]
+          properties:
+            capability_source_type: {enum: [comfyui_workflow]}
+    ApplicationArtifact:
       type: object
-      required: [health_status, checked_at]
+      required: [id, application_run_id, output_key, owner_user_id, media_type, content_ref, registration_status, created_at, updated_at, resource_version]
       properties:
-        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
-        checked_at: {type: string, format: date-time}
-        unhealthy_reason: {type: string}
-        latency_ms: {type: integer}
-        capability_summary: {type: object, additionalProperties: true}
-
-    PageInfo:
+        id: {type: string}
+        application_run_id: {type: string}
+        output_key: {type: string}
+        owner_user_id: {type: string}
+        media_type: {type: string, enum: [image, video, audio, text, pdf, other]}
+        content_ref: {type: string}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        asset_id: {type: string, nullable: true}
+        registration_error_code: {type: string, nullable: true}
+        registration_failure_detail: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+    DeleteResult:
       type: object
-      required: [page_num, page_size, total]
+      required: [id, deleted]
       properties:
-        page_num: {type: integer}
-        page_size: {type: integer}
-        total: {type: integer}
-
-    SuccessResponse:
+        id: {type: string}
+        deleted: {type: boolean}
+    ErrorResponse:
       type: object
-      required: [code, value, message]
+      required: [code, value, message, messages, retryable]
       properties:
-        code: {type: integer, example: 0}
-        value: {type: string, example: success}
+        code: {type: string}
+        value: {type: integer}
         message: {type: string}
-
-    ProviderAdapterListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items, page]
+        messages:
+          type: object
+          required: [zh-CN, en-US]
           properties:
-            items: {type: array, items: {$ref: '#/components/schemas/ProviderAdapter'}}
-            page: {$ref: '#/components/schemas/PageInfo'}
-    ProviderOperationListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items]
-          properties:
-            items: {type: array, items: {$ref: '#/components/schemas/ProviderOperation'}}
-    AppTemplateResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/AppTemplate'}}
-    AppTemplateListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items, page]
-          properties:
-            items: {type: array, items: {$ref: '#/components/schemas/AppTemplate'}}
-            page: {$ref: '#/components/schemas/PageInfo'}
-    CapabilityGraphResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/CapabilityGraph'}}
-    ApplicationResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/Application'}}
-    ApplicationListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items, page]
-          properties:
-            items: {type: array, items: {$ref: '#/components/schemas/Application'}}
-            page: {$ref: '#/components/schemas/PageInfo'}
-    InputMappingListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items]
-          properties: {items: {type: array, items: {$ref: '#/components/schemas/InputMapping'}}}
-    OutputMappingListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items]
-          properties: {items: {type: array, items: {$ref: '#/components/schemas/OutputMapping'}}}
-    AvailableEngineListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items]
-          properties: {items: {type: array, items: {$ref: '#/components/schemas/AvailableEngine'}}}
-    AppEngineResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/AppEngine'}}
-    AppEngineListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items, page]
-          properties:
-            items: {type: array, items: {$ref: '#/components/schemas/AppEngine'}}
-            page: {$ref: '#/components/schemas/PageInfo'}
-    ApplicationRunResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/ApplicationRun'}}
-    ApplicationRunListResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [items, page]
-          properties:
-            items: {type: array, items: {$ref: '#/components/schemas/ApplicationRun'}}
-            page: {$ref: '#/components/schemas/PageInfo'}
-    HealthCheckResponse:
-      allOf:
-        - {$ref: '#/components/schemas/SuccessResponse'}
-        - type: object
-          required: [data]
-          properties: {data: {$ref: '#/components/schemas/HealthCheckResult'}}
+            zh-CN: {type: string}
+            en-US: {type: string}
+        detail: {type: string}
+        retryable: {type: boolean}
+        data: {type: object, additionalProperties: true}

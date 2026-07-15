@@ -1,5 +1,13 @@
 # OmniMAM 应用平台、能力注册与画布编排功能设计
 
+> 文档状态：v0.8.0-draft
+>
+> 本次修订日期：2026-07-15
+>
+> 本版本以目录加载的只读 `ProviderCapability` 为平台能力事实源；管理员导入能力的旧方案已废弃。
+
+> 当前实现范围：本版本覆盖应用平台、任务中心协作与 Artifact 登记；第 10～14 章保留画布产品设计事实，但 `workflow-canvas` S1/S2 补齐前属于 deferred 内容，不作为本版本实现、验收或 Release 依据。
+
 ## 1. 文档目的
 
 本文定义 OmniMAM 中应用平台、能力注册、运行时动态表单、执行引擎、画布节点和异步任务中心之间的产品语义、职责边界及核心业务规则。
@@ -29,7 +37,7 @@
 本文重点解决以下问题：
 
 1. 如何将 ComfyUI 工作流、本地模型、RunningHub 工作流和第三方 SaaS 服务封装成统一应用。
-2. 如何通过管理员维护的 `ProviderCapability` 描述不同平台、模型、操作和参数组合。
+2. 如何通过系统启动时加载的只读 `ProviderCapability` 描述不同平台、模型、操作和参数组合。
 3. 如何处理同一个平台存在 Pro、Flash 等不同模型及其参数差异。
 4. 如何根据当前模型、平台和应用约束动态生成前端表单。
 5. 如何处理模型上架、下架、弃用、分辨率扩展和时长变化。
@@ -203,7 +211,7 @@ graph TD
     F --> G[ApplicationEngineInstance]
     X --> G
 
-    H[ProviderCapability 当前有效修订] --> I[EngineCapabilityBinding]
+    H[ProviderCapability 当前加载修订] --> I[EngineCapabilityBinding]
     I --> G
     H --> J[RuntimeFormResolver]
     S[ComfyUI 工作流能力契约] --> J
@@ -241,7 +249,7 @@ flowchart TD
         C2 --> C3["管理员补充参数映射与交互语义"]
         C3 --> C4["形成 ComfyUI 工作流能力契约"]
 
-        S1["导入 Seedance 2 ProviderCapability"] --> S2["校验模型、Operation 与 CapabilityVariant"]
+        S1["启动加载 Seedance 2 ProviderCapability YAML"] --> S2["校验模型、Operation 与 CapabilityVariant"]
         S2 --> S3["通过 EngineCapabilityBinding 绑定官方实例"]
         S3 --> S4["形成 Seedance 2 有效平台能力"]
     end
@@ -449,6 +457,17 @@ enabled: true
 3. 每种类型支持哪些 `OperationExecutor`；
 4. 每种类型支持哪些鉴权和配置字段。
 
+这些内置事实由只读 Runtime Registry 提供。Registry 至少登记：
+
+* `CapabilityDefinition`；
+* `ApplicationEngineType`；
+* `EngineAdapter`；
+* `OperationExecutor`；
+* EngineType 支持的鉴权结构；
+* EngineType、Adapter、CapabilityDefinition 和 OperationExecutor 的映射。
+
+ProviderCapability 中引用的 `application_engine_type_id` 和 `capability_definition_id` 必须能在同一 Registry 中解析。当前内置范围至少包含 `comfyui`、`byteplus_modelark`、`deepseek_official`，以及 `video.text_to_video`、`video.image_to_video`、`video.video_edit`、`text.chat_completion` 等相应能力定义。Registry 与 ProviderCapability 都是只读启动事实，不由管理员通过 API 修改。
+
 #### 4.2.1 注册 ApplicationEngineType
 
 平台启动时应加载所有受支持的 `ApplicationEngineType`，并建立引擎类型、适配器和操作执行器之间的关联。
@@ -503,7 +522,21 @@ capability = video.text_to_video
 如果有其他 Seedance 模型的代理平台或中转站，也应定义对应的 `ProviderCapability`。
 不为 ComfyUI 创建 `ProviderCapability`。
 
-`ProviderCapability` 由管理员负责导入，管理员需要根据 SaaS 平台的文档更新其内容。运行、绑定和模板解析所使用的“当前有效能力”，均指已启用的 `ProviderCapability` 当前有效修订。
+`ProviderCapability` 由系统在启动时从只读 YAML 文件加载。文件是平台能力的唯一事实源，不同步为数据库资源，也不提供导入、创建、更新、启用、删除或热加载 API。管理员可以查看能力与加载诊断，但不能通过管理端修改能力内容。运行、绑定和模板解析所使用的“当前有效能力”，均指只读注册表中状态为 `available` 的当前加载修订。
+
+系统使用单一配置项 `provider_capability_directory` 指定能力目录，默认值为 `./provider-capabilities`。加载器只读取目录第一层的 `.yaml` 或 `.yml` 普通文件，不递归扫描，不在多个目录之间执行覆盖。目录中的文件修改后必须重启服务才会生效。
+
+每个文件按原子单元加载。YAML 语法、Schema、模型、Operation、Variant、来源、`ApplicationEngineType`、`EngineAdapter` 或 `OperationExecutor` 任一校验失败时，整个文件对应的 `ProviderCapability` 标记为 `unavailable`，不得只启用其中一部分。多个文件声明同一 `id` 时不选择覆盖者，所有冲突项均不可用并记录诊断。目录缺失或不可读时，服务仍然启动，但注册表状态为 `degraded`，且没有 ProviderCapability 可用于绑定、表单解析或运行。
+
+ProviderCapability 运行状态统一为：
+
+```text
+available    文件启用且全部校验通过
+disabled     文件显式设置 enabled: false
+unavailable  文件加载、一致性或执行能力校验失败
+```
+
+`availability`、失败原因、加载时间和来源文件路径属于运行态诊断，不得写回 YAML。
 
 它描述：
 
@@ -562,8 +595,8 @@ variants:
 ```
 
 
-保存 `ProviderCapability` 时，需要检测 `capability_definition` 对应的 `OperationExecutor` 是否存在。
-如果不存在，应当提示：“该 `CapabilityDefinition` 对应的 `OperationExecutor` 不存在。”
+加载 `ProviderCapability` 时，需要检测 `capability_definition` 对应的 `OperationExecutor` 是否存在。
+如果不存在，应将该能力标记为不可用，并提示：“该 `CapabilityDefinition` 对应的 `OperationExecutor` 不存在。”
 `ProviderCapability` 不能绕过平台已经具备的执行能力。
 
 ---
@@ -669,7 +702,7 @@ ApplicationEngineInstance 保存：
 * 某个模型支持哪些操作
 * 某个模型是否已经下架
 
-这些必须通过管理员维护的 `ProviderCapability` 提供。
+这些必须通过系统从目录加载的 `ProviderCapability` 提供。
 
 ---
 
@@ -753,7 +786,7 @@ restrictions:
 ```text
 EngineEffectiveCapability
 =
-ProviderCapability 当前有效修订
+ProviderCapability 当前加载修订
 ∩ EngineCapabilityBinding.restrictions
 ```
 
@@ -773,7 +806,7 @@ ProviderCapability 当前有效修订
 
 #### 4.7.2 Seedance 能力注册与实例绑定完整流程
 
-下图展示 Seedance 业务能力从系统初始化、平台启动注册、管理员维护平台能力，到创建官方实例并形成有效能力的完整链路。`CapabilityDefinition` 定义业务语义，`OperationExecutor` 提供对应操作的执行能力，`ProviderCapability` 只能在二者均存在时启用。
+下图展示 Seedance 业务能力从系统初始化、平台启动注册、目录加载平台能力，到创建官方实例并形成有效能力的完整链路。`CapabilityDefinition` 定义业务语义，`OperationExecutor` 提供对应操作的执行能力，`ProviderCapability` 只有在文件与执行依赖全部校验通过时才可用。
 
 ```mermaid
 flowchart TD
@@ -795,13 +828,13 @@ flowchart TD
 
     D3 --> E1
 
-    subgraph CAPABILITY["三、管理员维护 ProviderCapability"]
+    subgraph CAPABILITY["三、系统加载 ProviderCapability"]
         direction LR
 
-        P1["根据 Seedance 2 官方文档导入当前修订"] --> P2["维护 Pro、Flash、Operation、CapabilityVariant 与参数约束"]
+        P1["从 provider_capability_directory 读取 Seedance YAML"] --> P2["解析模型、Operation、CapabilityVariant、参数约束与来源"]
         P2 --> P3{"每个 Operation 都能关联 CapabilityDefinition 与 OperationExecutor"}
-        P3 -->|"否"| PF["禁止启用 ProviderCapability 并列出缺失项"]
-        P3 -->|"是"| P4["启用 ProviderCapability 当前有效修订"]
+        P3 -->|"否"| PF["标记 ProviderCapability unavailable 并记录诊断；服务继续启动"]
+        P3 -->|"是"| P4["注册 ProviderCapability 当前加载修订为 available"]
     end
 
     E4 -->|"是"| P1
@@ -834,7 +867,7 @@ flowchart TD
     subgraph EFFECTIVE["六、形成实例有效能力"]
         direction LR
 
-        R1["ProviderCapability 当前有效修订"] --> R3["计算 EngineEffectiveCapability"]
+        R1["ProviderCapability 当前加载修订"] --> R3["计算 EngineEffectiveCapability"]
         R2["EngineCapabilityBinding.restrictions"] --> R3
         R3 --> R4["供 ApplicationTemplate、RuntimeFormSchema 与运行时 Engine 选择使用"]
     end
@@ -843,7 +876,7 @@ flowchart TD
     B4 --> R2
 ```
 
-引擎类型注册成功后，维护 `ProviderCapability` 与创建 `ApplicationEngineInstance` 可以独立进行，但启用绑定必须同时具备有效能力修订和健康可用的实例。注册失败时不会通过配置补足执行能力；能力校验失败时不能启用 `ProviderCapability`；健康检测失败时实例不可用于绑定；绑定校验失败时不能形成 `EngineEffectiveCapability`。
+引擎类型注册成功后，加载 `ProviderCapability` 与创建 `ApplicationEngineInstance` 可以独立进行，但启用绑定必须同时具备状态为 `available` 的加载修订和健康可用的实例。注册失败时不会通过配置补足执行能力；能力校验失败时只将对应能力标记为不可用，不阻止服务启动；健康检测失败时实例不可用于绑定；绑定校验失败时不能形成 `EngineEffectiveCapability`。
 
 ---
 
@@ -874,6 +907,19 @@ Application 负责：
 * 是否允许复制
 * 是否允许创建预设
 
+逻辑字段统一为：
+
+```yaml
+capability_definition_id: video.text_to_video
+visibility: private # private | global
+run_enabled: true
+canvas_enabled: true
+copy_enabled: false
+preset_enabled: false
+```
+
+普通用户创建 Application 时 `visibility` 默认为 `private`，只能管理本人私有 Application。只有管理员或超级管理员可以创建或修改 `global` Application。`run_enabled` 控制终端用户和 Open API 是否允许直接运行；其他开关分别控制画布引用、复制和预设创建，不得用 `enabled` 同时表达这些独立语义。
+
 Application 不直接保存完整参数契约和底层执行配置。
 
 ---
@@ -882,7 +928,7 @@ Application 不直接保存完整参数契约和底层执行配置。
 
 `ApplicationVersion` 是应用的不可变发布版本。
 
-“不可变”指业务输入输出、默认值、字段暴露方式和模板引用在发布后不被原地修改。运行时有效选项仍按该版本声明的参数策略计算：`fixed` 和 `allowlist` 保持版本内约束，`inherit` 和 `inherit_with_constraint` 可以随能力来源的当前有效修订变化。
+“不可变”指业务输入输出、默认值、字段暴露方式和模板引用在发布后不被原地修改。运行时有效选项仍按该版本声明的参数策略计算：`fixed` 和 `allowlist` 保持版本内约束，`inherit` 和 `inherit_with_constraint` 可以随能力来源的当前加载修订变化。
 
 它定义：
 
@@ -901,9 +947,9 @@ Application 不直接保存完整参数契约和底层执行配置。
 ```yaml
 id: appver_text_to_video_v1
 application_id: app_text_to_video
-version: 1.0.0
+semantic_version: 1.0.0
 status: published
-application_template_id: template_seedance_text_to_video
+application_template_version_id: templatever_seedance_text_to_video_v1
 # 暴露参数
 exposed_inputs:
   prompt:
@@ -938,6 +984,8 @@ outputs:
 
 画布必须引用具体 ApplicationVersion。
 
+公开版本号使用语义版本字符串，例如 `1.0.0`。同一 Application 下语义版本唯一，发布后不得修改版本号、模板版本引用、输入输出或参数策略。草稿完成校验后通过显式发布动作进入 `published`；发布失败时保留草稿和明确失败原因，不更新 Application 的当前发布版本。
+
 ---
 
 ### 4.10 ApplicationTemplate
@@ -959,12 +1007,22 @@ outputs:
 
 模板保存的是完整能力，不等于终端用户最终看到的应用。
 
+`ApplicationTemplateVersion` 保存模板的不可变可执行契约。ApplicationTemplate 保存元数据和当前发布版本引用；创建模板时形成第一个 draft 版本，后续修改通过创建新版本完成。模板版本只有在能力来源、参数映射、输出提取、Engine 约束和 OperationExecutor 校验全部通过后才能发布。ApplicationVersion 必须引用已发布的 `ApplicationTemplateVersion`，不得只引用可变的 ApplicationTemplate。
+
 
 模板创建时必须指定相应的 `CapabilityDefinition`，并根据底层能力来源建立可执行契约：
 
-* SaaS、平台代理和其他由管理员维护能力清单的平台，需要引用 `ProviderCapability` 当前有效修订；
+* SaaS、平台代理和其他目录清单平台，需要引用状态为 `available` 的 `ProviderCapability` 当前加载修订；
 * ComfyUI 不创建 `ProviderCapability`，其能力契约来自导入的 API Workflow、`object_info`、管理员参数映射和模板约束；
 * 两类模板都只能使用对应 `ApplicationEngineType` 已关联的 `OperationExecutor`，不能通过配置扩张平台实际执行能力。
+
+模板能力来源统一使用联合模型：
+
+```yaml
+capability_source_type: provider_capability # provider_capability | comfyui_workflow
+```
+
+当类型为 `provider_capability` 时，模板版本必须固定 `provider_capability_id`、创建时 revision 和 `provider_operation_id`；运行时仍需重新验证当前加载修订。当类型为 `comfyui_workflow` 时，不得填写任何 ProviderCapability 字段，必须保存 `workflow_contract_revision` 以及由 API Workflow、`object_info`、人工映射和模板约束形成的工作流能力契约。
 
 模板示例
 ```yaml
@@ -1054,7 +1112,18 @@ ApplicationTemplate + ApplicationRun + ApplicationEngineInstance
 → 登记 Artifact
 ```
 
-`ApplicationExecutor` 不维护模型清单、平台参数范围或供应商生命周期；这些事实来自模板、`ProviderCapability` 当前有效修订或 ComfyUI 工作流能力契约。
+`ApplicationExecutor` 不维护模型清单、平台参数范围或供应商生命周期；这些事实来自模板、`ProviderCapability` 当前加载修订或 ComfyUI 工作流能力契约。
+
+ApplicationRun 创建 TaskRun 的顺序为：先固定并保存 ApplicationRun 执行快照，再以 ApplicationRun ID 和幂等键请求 task-center 创建 `application.execute` TaskRun，成功后绑定 `task_run_id`。创建失败时 ApplicationRun 保留为 `task_creation_failed`，不得伪造 TaskRun 状态；重试必须返回或绑定同一 TaskRun，不能重复创建执行。
+
+ApplicationRun 的每个标准输出先形成不可变 `Artifact`。Artifact 至少保存运行发起用户、ApplicationRun、输出名、媒体类型、内容引用和登记状态；同一 `application_run_id + output_key` 只能形成一个 Artifact。
+
+TaskRun 成功只表示执行完成，不表示素材登记成功。application-platform 使用 Artifact ID 作为幂等键请求 asset-library 登记 UserAsset：
+
+* 首次登记成功时保存返回的 `asset_id`；
+* 重复登记返回同一 UserAsset；
+* 内容缺失、不可读取、所有者不一致或媒体信息非法时，Artifact 进入 `registration_failed` 并保存稳定错误码和失败详情；
+* 登记失败不得回滚或改写 TaskRun 终态，可以由 application-platform 独立重试。
 
 ---
 
@@ -1243,7 +1312,7 @@ ComfyUI 应用从工作流导入到运行的产品链路为：
 
 ### 6.1 平台能力和应用意图分离
 
-`CapabilitySource` 表示平台当前确认可执行的完整能力：SaaS 等平台来自 `ProviderCapability` 当前有效修订，ComfyUI 来自工作流能力契约。
+`CapabilitySource` 表示平台当前确认可执行的完整能力：SaaS 等平台来自状态为 `available` 的 `ProviderCapability` 当前加载修订，ComfyUI 来自工作流能力契约。
 
 对于 `ProviderCapability`：
 
@@ -1312,7 +1381,7 @@ resolution:
 
 #### inherit
 
-继承能力来源的当前有效修订。
+继承能力来源的当前加载修订。
 
 ```yaml
 resolution:
@@ -1541,7 +1610,7 @@ CapabilitySource
 
 其中 `CapabilitySource` 根据模板类型确定：
 
-* SaaS 等平台取 `ProviderCapability` 当前有效修订，`EngineRestrictions` 取 `EngineCapabilityBinding.restrictions`；
+* SaaS 等平台取状态为 `available` 的 `ProviderCapability` 当前加载修订，`EngineRestrictions` 取 `EngineCapabilityBinding.restrictions`；
 * ComfyUI 取 API Workflow、`object_info`、管理员参数映射和模板约束共同形成的工作流能力契约，`EngineRestrictions` 取模板的 Engine 选择约束。
 
 如果任一约束应用后不存在有效 `CapabilityVariant`，表单解析必须返回“当前没有可执行的能力组合”，不得生成可提交表单。
@@ -1554,7 +1623,7 @@ CapabilitySource
 
 ```
 {
-  "values": {}
+  "current_values": {}
 }
 ```
 
@@ -1660,32 +1729,36 @@ ApplicationVersion
 ```json
 {
   "application_version_id": "appver_text_to_video_v1",
-  "engine_id": "seedance-official-prod",
-  "values": {
+  "engine_instance_id": "seedance-official-prod",
+  "current_values": {
     "model": "flash"
   }
 }
 ```
 
-解析结果包含字段当前值与有效选项、兼容引擎、系统修正以及仍未解决的违规项。示例：
+解析结果包含字段当前值与有效选项、兼容引擎、系统修正以及仍未解决的违规项。`fields` 在所有接口和示例中统一使用数组，每个字段以 `name` 作为稳定标识。示例：
 
 ```json
 {
-  "fields": {
-    "model": {
+  "capability_source_type": "provider_capability",
+  "fields": [
+    {
+      "name": "model",
       "options": ["pro", "flash"],
       "value": "flash"
     },
-    "resolution": {
+    {
+      "name": "resolution",
       "options": ["720p", "1080p"],
       "value": null
     },
-    "duration": {
+    {
+      "name": "duration",
       "options": [5, 10],
       "value": null
     }
-  },
-  "compatible_engines": [
+  ],
+  "compatible_engine_instance_ids": [
     "seedance-official-prod"
   ],
   "changes": [
@@ -1701,6 +1774,8 @@ ApplicationVersion
 当用户修改动态字段时，前端使用完整当前值重新请求解析。平台必须基于同一组能力约束重新计算，不依赖前端自行裁剪选项。
 
 解析结果存在 `violations` 时不得提交运行；系统自动执行 `reset`、`fallback` 或 `clamp` 时，必须通过 `changes` 告知前端字段及原因。
+
+对于 ComfyUI，返回 `capability_source_type = comfyui_workflow` 和工作流能力契约 revision，不返回也不要求 `provider_capability_id` 或 `provider_capability_revision`。对于目录平台，两项 ProviderCapability 快照字段必须同时返回。
 
 ---
 
@@ -1794,6 +1869,8 @@ Pro + 1080p + 10 秒
 ---
 
 ## 10. 应用与画布打通
+
+> Deferred：本章至第 14 章保留已确认的画布产品设计，但本次不生成 workflow-canvas S2。相关 Canvas、Node、Edge、CanvasRun、CanvasNodeRun、升级检查和 DAG 编译内容不得作为当前实现或验收依据；当前 application-platform 只承诺已发布 ApplicationVersion 可被未来 workflow-canvas 引用。
 
 ### 10.1 ApplicationNode 引用 ApplicationVersion
 
@@ -2103,6 +2180,8 @@ CanvasGraph
 }
 ```
 
+非画布入口的 ApplicationRun 不包含 `canvas_run_id` 或 `canvas_node_run_id`。画布字段只在未来 workflow-canvas 契约完成后启用。
+
 ---
 
 ### 13.5 Engine 选择
@@ -2116,7 +2195,7 @@ ApplicationRun
 → 选择 ApplicationEngineInstance
 ```
 
-对于 SaaS 等平台，`CapabilitySource` 为 `ProviderCapability` 当前有效修订，并通过 `EngineCapabilityBinding` 找到候选实例。对于 ComfyUI，`CapabilitySource` 为工作流能力契约，并从满足模板 Engine 约束的 ComfyUI 实例中选择候选实例。
+对于 SaaS 等平台，`CapabilitySource` 为状态为 `available` 的 `ProviderCapability` 当前加载修订，并通过 `EngineCapabilityBinding` 找到候选实例。对于 ComfyUI，`CapabilitySource` 为工作流能力契约，并从满足模板 Engine 约束的 ComfyUI 实例中选择候选实例。
 
 如果没有实例同时满足能力约束、启用状态和运行时可用性，`ApplicationRun` 必须在提交外部平台前失败，并说明当前无可执行引擎。
 
@@ -2220,8 +2299,11 @@ PINNED
 
 ### 15.1 ProviderCapability 注册校验
 
-校验：
+启动加载时逐文件校验：
 
+* YAML 语法、`schema_version` 和完整字段 Schema 是否有效
+* 文件是否位于配置目录第一层且为普通 `.yaml` / `.yml` 文件
+* `id` 是否与其他文件重复
 * 模型是否存在
 * Operation 是否存在
 * Variant 是否重复
@@ -2229,10 +2311,9 @@ PINNED
 * 默认值是否合法
 * 输出是否兼容 CapabilityDefinition
 * `OperationExecutor` 是否支持对应的标准操作参数
-* 是否记录人工验证
-* 是否提供来源
+* 是否提供来源、来源更新时间和人工核验日期
 
-如果对应 `ApplicationEngineType`、`EngineAdapter` 或 `OperationExecutor` 缺失，`ProviderCapability` 不得启用，并向管理员列出缺失项。
+如果对应 `ApplicationEngineType`、`EngineAdapter` 或 `OperationExecutor` 缺失，`ProviderCapability` 标记为 `unavailable` 并向管理员列出缺失项；其他有效文件继续加载，服务继续启动。加载结果不写入数据库，服务运行期间不自动重新加载。
 
 ---
 
@@ -2286,7 +2367,7 @@ PINNED
 
 ### 15.5 平台返回能力不匹配
 
-即使管理员维护的 `ProviderCapability` 已经启用，第三方平台仍可能临时改变行为。
+即使目录加载的 `ProviderCapability` 当前状态为 `available`，第三方平台仍可能临时改变行为。
 
 如果平台返回：
 
@@ -2311,11 +2392,81 @@ PINNED
 CapabilityCorrectionRequired
 ```
 
-系统不得自动修改 `ProviderCapability`；管理员核实平台文档和实际行为后，再创建并启用新的修订。
+系统不得自动修改 `ProviderCapability`；维护人员核实平台文档和实际行为后，更新对应 YAML 的 `revision` 与来源信息，并通过重启加载新修订。
+
+### 15.6 启动加载失败与运行隔离
+
+ProviderCapability 加载失败属于能力级降级，不属于服务启动失败。加载器必须保留文件级结果，包括可解析的能力 ID、来源文件、稳定错误码、失败原因和加载时间。若 YAML 无法解析到能力 ID，则以来源文件作为诊断标识。
+
+已存在的 `EngineCapabilityBinding` 不因能力加载失败而删除。能力为 `disabled` 或 `unavailable` 时，绑定不进入 `EngineEffectiveCapability`，RuntimeFormSchema 不暴露其模型和参数，运行提交在调用外部平台前失败。目录平台的 `ApplicationRun` 必须快照实际使用的 `provider_capability_id` 和 `provider_capability_revision`；ComfyUI 的 ApplicationRun 必须快照 `workflow_contract_revision` 和工作流能力契约，用于能力变化审计。
+
+## 16. 本次修订的业务规则与验收
+
+### 16.1 业务规则
+
+1. `BR-AIAPP-130`：ProviderCapability YAML 是 SaaS 平台模型、Operation、Variant 和参数约束的唯一能力事实源，不得同步为管理员可写数据库资源。
+2. `BR-AIAPP-131`：系统只从 `provider_capability_directory` 指向的单一目录第一层加载 `.yaml`、`.yml` 普通文件，默认目录为 `./provider-capabilities`，不递归、不覆盖、不热加载。
+3. `BR-AIAPP-132`：每个文件必须原子校验；任一结构或语义校验失败时整个能力不可用，不允许部分注册。
+4. `BR-AIAPP-133`：重复 ID 的所有文件均不可用，不允许通过加载顺序选择覆盖者。
+5. `BR-AIAPP-134`：目录或文件加载失败不得阻止服务启动；目录级失败使注册表为 `degraded`，文件级失败只隔离对应能力。
+6. `BR-AIAPP-135`：ProviderCapability 状态只有 `available`、`disabled`、`unavailable`；只有 `available` 可以形成有效绑定、表单选项和运行能力。
+7. `BR-AIAPP-136`：管理员只能读取 ProviderCapability 和加载诊断，不得通过 API 导入、创建、更新、启用、删除或重新加载能力。
+8. `BR-AIAPP-137`：EngineCapabilityBinding 引用稳定能力 ID；绑定创建、表单解析和运行提交必须重新验证当前注册表状态与修订。
+9. `BR-AIAPP-138`：ApplicationRun 必须按能力来源快照 ProviderCapability ID/revision 或 ComfyUI workflow contract revision；能力变化不得改写历史运行快照。
+10. `BR-AIAPP-139`：运行态 availability、失败原因、加载时间和来源文件不得写回 ProviderCapability YAML 或数据库。
+11. `BR-AIAPP-140`：ApplicationEngineType 是系统内置类型；ApplicationEngineInstance 保存真实连接环境，创建、更新和健康检测不得改变类型已注册的执行能力。
+12. `BR-AIAPP-141`：EngineCapabilityBinding 必须连接相同 ApplicationEngineType 的实例与能力，restrictions 只能缩小能力，不得新增模型、Operation 或参数值。
+13. `BR-AIAPP-142`：ApplicationTemplate、ApplicationVersion 和 RuntimeFormSchema 必须从当前有效能力逐层裁剪；已发布版本不原地修改，运行时表单是临时解析结果。
+14. `BR-AIAPP-143`：ApplicationRun 在调用任务中心前固定应用版本、模板版本、EngineInstance、能力来源 revision、输入和输出映射快照；TaskRun 是执行状态事实源。
+15. `BR-AIAPP-144`：ComfyUI 模板能力来自 API Workflow、object_info、人工映射和模板约束，不创建 ProviderCapability，也不得借目录清单绕过工作流校验。
+16. `BR-AIAPP-145`：模板、RuntimeFormSchema 和 ApplicationRun 必须使用 `provider_capability` 或 `comfyui_workflow` 联合能力来源；ComfyUI 分支不得要求 ProviderCapability 字段。
+17. `BR-AIAPP-146`：RuntimeFormSchema 的 fields 统一为数组，并必须返回兼容 Engine、系统修正和未解决违规；存在 violations 时不得提交运行。
+18. `BR-AIAPP-147`：ApplicationTemplateVersion 和 ApplicationVersion 通过显式校验与发布动作形成不可变版本；ApplicationVersion 使用同一应用内唯一的语义版本字符串并引用已发布模板版本。
+19. `BR-AIAPP-148`：Application 必须独立保存能力分类、private/global 可见性和运行、画布、复制、预设开关；global 仅管理员可设置。
+20. `BR-AIAPP-149`：ApplicationRun 先保存不可变快照，再以幂等方式创建并绑定 TaskRun；创建失败保留可恢复状态，不得伪造执行状态或重复创建 TaskRun。
+21. `BR-AIAPP-150`：ApplicationRun 输出先形成 Artifact，再由 asset-library 幂等登记 UserAsset；登记失败独立记录且不得改变 TaskRun 终态。
+22. `BR-AIAPP-151`：CapabilityDefinition、ApplicationEngineType、EngineAdapter、OperationExecutor 及映射由只读 Runtime Registry 提供，ProviderCapability 引用必须能在 Registry 中解析。
+23. `BR-AIAPP-152`：第 10～14 章画布语义为 deferred 内容；workflow-canvas S1/S2 完成前不得作为本版本实现、验收或 Release 依据。
+
+### 16.2 用户故事与验收标准
+
+`US-AIAPP-039`：作为系统运维人员，我希望服务启动时自动加载目录中的平台能力文件，使平台能力可随交付物受控更新而不依赖管理员导入。
+
+* `AC-AIAPP-039-01`：两个有效文件加载后均可通过只读目录查询，且没有能力写接口。
+* `AC-AIAPP-039-02`：单个文件无效、ID 重复或执行器缺失时，服务仍启动，相关能力不可用于绑定或运行。
+* `AC-AIAPP-039-03`：目录缺失或不可读时注册表返回 `degraded`，能力列表为空，管理员可查看目录级诊断。
+* `AC-AIAPP-039-04`：修改文件后不自动生效，重启后才加载新 revision。
+* `AC-AIAPP-039-05`：两个内置清单引用的 EngineType、CapabilityDefinition、Adapter 和 Executor 均能在只读 Runtime Registry 中解析；任一引用缺失时整文件不可用。
+
+`US-AIAPP-040`：作为管理员，我希望查看 ProviderCapability 的可用状态和文件级失败原因，以便定位平台能力为何不能绑定或运行。
+
+* `AC-AIAPP-040-01`：普通读取接口返回能力状态但不暴露内部文件路径和完整诊断。
+* `AC-AIAPP-040-02`：只有管理员可以读取文件级加载结果、稳定错误码和失败详情。
+* `AC-AIAPP-040-03`：不可用能力的既有绑定保留但不参与有效能力计算，历史运行快照保持不变。
+
+`US-AIAPP-041`：作为管理员，我希望维护 ApplicationEngineInstance、健康状态和 EngineCapabilityBinding，使有效实例只能使用兼容且当前可用的平台能力。
+
+* `AC-AIAPP-041-01`：创建绑定时验证 EngineType 一致、ProviderCapability available、OperationExecutor 完整且 restrictions 只缩小能力。
+* `AC-AIAPP-041-02`：实例健康失败或能力不可用后，绑定保留但不能成为运行候选。
+
+`US-AIAPP-042`：作为应用创建者，我希望从 ComfyUI 模板或 SaaS 能力创建并发布应用版本，使输入输出、参数策略和底层能力引用可被稳定复用。
+
+* `AC-AIAPP-042-01`：ComfyUI 导入失败时不产生有效模板版本；SaaS 应用只能引用目录加载的能力。
+* `AC-AIAPP-042-02`：已发布 ApplicationVersion 不被能力更新原地改写。
+* `AC-AIAPP-042-03`：模板版本发布后才能被 ApplicationVersion 引用；同一 Application 不允许发布重复语义版本号。
+* `AC-AIAPP-042-04`：普通用户创建的 Application 默认为 private，只有管理员可设置 global；运行、画布、复制和预设开关分别生效。
+
+`US-AIAPP-043`：作为业务用户，我希望获得当前可执行的 RuntimeFormSchema 并提交 ApplicationRun，使系统在调用外部平台前完成能力、实例、权限和输入校验。
+
+* `AC-AIAPP-043-01`：表单只包含有效 Variant 与应用约束交集中的字段和值。
+* `AC-AIAPP-043-02`：运行创建后保存不可变能力与执行快照，并由 TaskRun 提供执行状态。
+* `AC-AIAPP-043-03`：ComfyUI 表单和运行不要求 ProviderCapability 字段；目录平台必须固定实际使用的能力 ID 与 revision。
+* `AC-AIAPP-043-04`：TaskRun 创建失败时 ApplicationRun 保留可恢复状态，使用相同幂等键重试不会创建重复 TaskRun。
+* `AC-AIAPP-043-05`：TaskRun 成功输出形成 Artifact；重复登记返回同一 UserAsset，登记失败不改变 TaskRun 终态。
 
 ---
 
-## 16. 前端实现边界
+## 17. 前端实现边界
 
 前端应实现：
 

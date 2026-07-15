@@ -10,6 +10,7 @@
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
 | `group` | 维护素材分组、分组排序、素材与分组的多对多关联 | `US-USER-ASSET-34`..`US-USER-ASSET-39`、`BR-USER-ASSET-49`..`BR-USER-ASSET-56` |
 | `processing-task` | 维护缩略图、派生预览和 `sha256_backfill` 等内部处理任务 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`BR-USER-ASSET-19`、`BR-USER-ASSET-43` |
+| `artifact-registration` | 校验 application-platform Artifact 并幂等登记 UserAsset | `US-USER-ASSET-41`、`BR-USER-ASSET-59`..`BR-USER-ASSET-63` |
 
 ## 2. SHA256 计算与去重
 
@@ -70,12 +71,20 @@
 - Label upsert、Tag add/remove 均为幂等写入；单项提交后递增该素材 `resource_version`，返回完整标签结果。
 - 单项失败仅回滚该素材事务并写入对应 result.error，不影响其他素材；不得通过错误差异泄露其他用户素材是否存在。
 
-## 10. 兼容与迁移边界
+## 10. Application Artifact 登记
+
+- `POST /api/v1/artifact-registrations` 仅接收 application-platform 产生的 Artifact，并要求 Artifact、ApplicationRun、运行发起用户、输出名、媒体类型和内容引用完整。
+- 素材库校验 owner、内容可读性和媒体信息后，在同一事务内创建 `source_type=application_output` 的 UserAsset 与 `artifact_asset_registrations` 成功映射。
+- `artifact_id` 全局唯一；完全相同的重复请求返回既有 UserAsset，内容、owner 或 ApplicationRun 不一致时返回幂等冲突。
+- 校验失败不创建 UserAsset 或成功映射；失败原因由 application-platform Artifact 保存，且不得改变 TaskRun 终态。
+- UserAsset 和成功登记映射归 asset-library 所有；Artifact、ApplicationRun、TaskRun 状态归各自领域所有，素材库不得反向改写。
+
+## 11. 兼容与迁移边界
 
 - `schema.sql` 只表达目标设计，不是实际 migration。实现从旧标签 JSON 切换时，必须先 trim、校验并回填到规范化表，再切换读写，最后停止读取旧字段。
 - 回填遇到大小写不同的 Label key 或 Tag 时必须保留为不同值；超出数量上限或字段约束的数据进入迁移异常报告，不得静默丢弃或折叠。
-- `permissions.yaml` 和 `events.yaml` 本次保持为空；读取沿用当前登录用户，写入沿用所有权和 `canWrite` 语义。
+- 素材查询与标签操作继续沿用当前登录用户、所有权和 `canWrite` 语义；Artifact 登记使用 `asset.artifact.register` 跨域权限并发布 `artifact_registered` 事件。
 
-## 11. S2 最小契约说明
+## 12. S2 最小契约说明
 
-本次 OpenAPI 只覆盖素材列表查询和批量打标；上传、预览、下载、重命名、删除及完整分组管理 API 仍是后续 S2 缺口。
+本次 OpenAPI 覆盖素材列表查询、批量打标和 Application Artifact 登记；上传、预览、下载、重命名、删除及完整分组管理 API 仍是后续 S2 缺口。

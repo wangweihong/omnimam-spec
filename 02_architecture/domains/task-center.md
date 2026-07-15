@@ -20,7 +20,7 @@
 
 ## 3. 外部依赖
 
-- application-platform 创建应用 TaskRun，并提供 ProviderAdapter、AppEngine 路由结果和标准输出语义。
+- application-platform 使用 application_run_id 与幂等键创建应用 TaskRun，并提供不可变模板、能力来源、Engine 和输出映射快照。
 - Worker 调用 ProviderAdapter；Adapter 使用 AppEngine endpoint、认证和能力快照访问平台。
 - asset-library 保存大型媒体，TaskRun 只保存摘要和引用。
 - identity 提供调用主体和权限边界。
@@ -36,13 +36,13 @@ sequenceDiagram
   participant Engine as AppEngine endpoint
   participant Watchdog as watchdog
 
-  App->>Run: 创建含 Operation/Engine 快照的 TaskRun
+  App->>Run: application_run_id + idempotency_key 创建 application.execute TaskRun
   Worker->>Run: 领取 READY TaskRun 与 Lease
   Worker->>Adapter: 调用适配器
   Adapter->>Engine: submit / poll / cancel / collectResult
   Adapter-->>Worker: 标准结果或错误
   Worker->>Run: 上报进度和结果
-  Run-->>App: run_id + resource_version 状态事件
+  Run-->>App: application_run_id + run_id + resource_version 状态事件
   Watchdog->>Run: 扫描超时、失联和过期 Lease
 ```
 
@@ -54,6 +54,7 @@ sequenceDiagram
 - TaskAttempt 保留每次失败和 external_job_id；重试先恢复已有外部任务。
 - Worker 负责生命周期，ProviderAdapter 负责平台协议，AppEngine 只提供实例配置和状态。
 - 取消由 Worker 调用 ProviderAdapter 协作完成，最终状态仍可能是 SUCCESS、FAILED、CANCELED 或 TIMEOUT。
+- 同一 application_run_id 与幂等键只对应一个 TaskRun；application.execute 从 ApplicationRun 快照读取执行路由，不依赖旧 adapter_key/operation_key 字段。
 
 ## 6. 风险
 

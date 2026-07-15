@@ -1,0 +1,16 @@
+artifact_registered:
+  producer: asset-library.artifact-registration
+  consumers: [application-platform.application-run, audit-service]
+  trigger_condition: Artifact 首次成功登记为 UserAsset，或幂等请求命中既有登记结果。
+  payload:
+    artifact_id: string
+    application_run_id: string
+    owner_user_id: string
+    asset_id: string
+    registration_result: string
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:asset_id
+  retry_policy: 发布失败后重试相同事件；不得重新创建 UserAsset。
+  failure_policy: artifact_asset_registrations 与 user_assets 是成功登记事实源；事件失败不回滚素材，也不改变 TaskRun 终态。
+  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-63]
+  related_user_stories: [US-USER-ASSET-41]

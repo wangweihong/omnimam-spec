@@ -6,6 +6,7 @@ task_run_created:
   trigger_condition: TaskRun 创建成功。
   payload:
     run_id: string
+    application_run_id: string|null
     definition_type: string
     definition_id: string
     status: string
@@ -26,6 +27,8 @@ task_run_created:
     - US-TASK-001
   related_rules:
     - BR-TASK-007
+    - BR-TASK-061
+    - BR-TASK-062
 
 task_run_status_changed:
   producer: run-service
@@ -36,6 +39,7 @@ task_run_status_changed:
   trigger_condition: TaskRun 状态发生变化，包括 ready、claimed、started、retrying、succeeded、failed、canceled、timeout。
   payload:
     run_id: string
+    application_run_id: string|null
     from_status: string
     to_status: string
     progress: number
@@ -53,6 +57,7 @@ task_run_status_changed:
     - BR-TASK-011
     - BR-TASK-037
     - BR-TASK-039
+    - BR-TASK-062
 
 task_run_progress_updated:
   producer: worker-protocol-service
@@ -62,6 +67,7 @@ task_run_progress_updated:
   trigger_condition: Worker 持有效 lease 上报 TaskRun 进度。
   payload:
     run_id: string
+    application_run_id: string|null
     attempt_id: string
     worker_id: string
     lease_id: string
@@ -77,6 +83,7 @@ task_run_progress_updated:
   related_rules:
     - BR-TASK-016
     - BR-TASK-019
+    - BR-TASK-062
 
 task_attempt_failed:
   producer: worker-protocol-service

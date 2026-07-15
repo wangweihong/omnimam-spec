@@ -1,0 +1,10 @@
+asset.artifact.register:
+  module: artifact-registration
+  resource: artifact_registration
+  action: create
+  description: 将 application-platform 产生的 Artifact 幂等登记为运行发起用户的 UserAsset。
+  frontend_usage: 不作为普通前端按钮权限；由 application-platform 在输出登记流程中调用。
+  backend_enforcement: 必须校验调用来源、运行发起用户、Artifact owner、内容可读性和媒体信息；不得允许调用方指定其他 owner。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-62, BR-USER-ASSET-63]
+  related_user_stories: [US-USER-ASSET-41]

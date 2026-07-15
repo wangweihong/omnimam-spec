@@ -14,6 +14,8 @@
 
 - 负责 TaskRun 创建、状态机推进、取消请求、重试请求、软删除和运行树查询。
 - 负责保存 TaskRun 最近一次错误摘要、进度、输入和输出引用。
+- 对 `application.execute` TaskRun 保存 `application_run_id`；使用 `application_run_id + idempotency_key` 保证重复创建请求返回同一 TaskRun。
+- application.execute 的具体模板、能力来源、Engine 和输出映射从 ApplicationRun 快照读取，不依赖 `adapter_key`、`operation_key` 或 `operation_version` 路由。
 - 不直接保存图片、视频、音频、长文本和日志等大型内容。
 
 ### worker-protocol
@@ -88,6 +90,7 @@
 
 - `run` 生产 `task_run_created` 和 `task_run_status_changed`。
 - `worker-protocol` 生产 `task_run_progress_updated` 和 `task_attempt_failed`。
+- application.execute 的创建、状态和进度事件必须携带 `application_run_id`；非应用 TaskRun 该字段为空。
 - `watchdog` 生产 `worker_lost` 和 `lease_expired`。
 - 第一阶段事件用于内部一致性、查询刷新、审计和运维监控，不定义 Webhook、消息队列、SSE 或 WebSocket 交付机制。
 

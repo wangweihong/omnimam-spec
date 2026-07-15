@@ -1,61 +1,76 @@
-aiapp.adapter.read:
-  description: 查看只读 ProviderAdapter 和 ProviderOperation 目录。
-  resource: provider_adapter, provider_operation
-  actions: [read]
+aiapp.provider_capability.read:
+  module: provider-capability
+  resource: provider_capability
+  action: read
+  description: 查看 ProviderCapability 只读目录、模型、Operation、Variant 和公开可用状态。
+  frontend_usage: 控制平台能力目录、应用参数来源和能力状态展示。
+  backend_enforcement: 不返回来源文件路径、完整加载失败详情或任何能力写入口。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_user_stories: [US-AIAPP-001]
-  related_rules: [BR-AIAPP-001, BR-AIAPP-049]
+  related_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
-aiapp.template.manage_own:
-  description: 管理自己的工作流模板和能力图。
-  resource: app_template
-  actions: [create, read, update, delete]
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  backend_enforcement: 普通用户必须是 owner_user_id；存在应用引用时不得删除。
-  related_user_stories: [US-AIAPP-002, US-AIAPP-003]
-  related_rules: [BR-AIAPP-006, BR-AIAPP-012, BR-AIAPP-047]
-
-aiapp.application.manage_own:
-  description: 管理自己的应用、输入映射、输出映射和固化参数。
-  resource: application, input_mapping, output_mapping
-  actions: [create, read, update, delete]
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  backend_enforcement: 普通用户必须是 owner_user_id；映射必须来自模板或 Operation 端口。
-  related_user_stories: [US-AIAPP-003, US-AIAPP-004, US-AIAPP-005]
-  related_rules: [BR-AIAPP-013, BR-AIAPP-015, BR-AIAPP-047]
-
-aiapp.engine.manage_own:
-  description: 管理自己的 AppEngine 和明文认证配置。
-  resource: app_engine
-  actions: [create, read, update, delete, health_check]
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  backend_enforcement: 普通用户必须是 owner_user_id；存在运行引用时只能停用。
-  related_user_stories: [US-AIAPP-006]
-  related_rules: [BR-AIAPP-021, BR-AIAPP-022, BR-AIAPP-028, BR-AIAPP-047]
-
-aiapp.engine.use:
-  description: 查询并使用当前用户有权使用的匹配 AppEngine。
-  resource: app_engine
-  actions: [discover, use]
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  backend_enforcement: 管理他人引擎的权限不自动授予 use；查询结果不得包含 auth_config。
-  related_user_stories: [US-AIAPP-007, US-AIAPP-008, US-AIAPP-009]
-  related_rules: [BR-AIAPP-023, BR-AIAPP-025, BR-AIAPP-026, BR-AIAPP-029]
-
-aiapp.run.operate_own:
-  description: 创建并查看自己的测试或正式应用运行。
-  resource: application_run
-  actions: [create_test, create_normal, read]
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  backend_enforcement: 必须有权访问 Application，并对指定或自动选择的引擎具有 aiapp.engine.use。
-  related_user_stories: [US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011]
-  related_rules: [BR-AIAPP-029, BR-AIAPP-034, BR-AIAPP-036, BR-AIAPP-047]
-
-aiapp.admin.manage_all:
-  description: 管理全量模板、应用和引擎并查看全量运行。
-  resource: app_template, application, input_mapping, output_mapping, app_engine, application_run
-  actions: [read, update, delete, health_check]
+aiapp.provider_capability.read_diagnostics:
+  module: provider-capability
+  resource: provider_capability_load_result
+  action: read
+  description: 查看 ProviderCapability 目录级和文件级启动加载诊断。
+  frontend_usage: 控制管理员加载诊断页面和失败详情。
+  backend_enforcement: 只有管理员和超级管理员可读取 source_file、稳定错误码和 failure_detail。
   default_roles: [ADMIN, SUPER_ADMIN]
-  backend_enforcement: 跨用户修改不得改变 owner_user_id；本权限不自动授予他人引擎的使用权。
-  related_user_stories: [US-AIAPP-012]
-  related_rules: [BR-AIAPP-026, BR-AIAPP-048]
+  related_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-136, BR-AIAPP-139]
+  related_user_stories: [US-AIAPP-040]
+
+aiapp.engine_instance.manage:
+  module: engine
+  resource: application_engine_instance
+  action: manage
+  description: 创建、查看、更新、停用、健康检测和删除 EngineInstance。
+  frontend_usage: 控制引擎实例管理和健康检测操作。
+  backend_enforcement: 必须验证内置 EngineType、鉴权结构和历史运行引用；列表不得回显 auth_config。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-140, BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-041]
+
+aiapp.engine_binding.manage:
+  module: engine
+  resource: engine_capability_binding
+  action: manage
+  description: 管理 EngineInstance 与只读 ProviderCapability 的绑定及收紧限制。
+  frontend_usage: 控制绑定创建、启停、限制编辑和删除。
+  backend_enforcement: ProviderCapability 必须 available、EngineType 必须一致、restrictions 只能缩小能力。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+aiapp.application.read:
+  module: application
+  resource: application
+  action: read
+  description: 查看当前用户有权访问的 Application、版本和公开契约。
+  frontend_usage: 控制应用列表、详情和画布应用选择。
+  backend_enforcement: 返回本人 private Application 和允许访问的 global Application；按 run_enabled 等能力开关过滤入口，不暴露执行凭证。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-147, BR-AIAPP-148]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-043]
+
+aiapp.application.manage:
+  module: application
+  resource: application_template, application, application_version
+  action: manage
+  description: 管理应用模板版本、Application 元数据和不可变语义版本。
+  frontend_usage: 控制模板导入、应用创建和版本发布。
+  backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 必须完成工作流校验；已发布版本不可原地修改；只有管理员可设置 global visibility。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148]
+  related_user_stories: [US-AIAPP-042]
+
+aiapp.application.run:
+  module: application-run
+  resource: runtime_form_schema, application_run
+  action: run
+  description: 解析 RuntimeFormSchema、提交运行并查看本人可见的 ApplicationRun。
+  frontend_usage: 控制应用运行表单、提交和运行详情。
+  backend_enforcement: 按联合能力来源重新校验模板版本、Binding/Engine、输入和用户访问权后保存 ApplicationRun 快照，再幂等创建 TaskRun；允许查看 Artifact 登记状态。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-149, BR-AIAPP-150]
+  related_user_stories: [US-AIAPP-043]

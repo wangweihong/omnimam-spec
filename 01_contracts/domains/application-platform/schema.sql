@@ -1,9 +1,56 @@
--- application-platform S2 design schema, phase 1.
--- Product source: 00_product/domains/application-platform/product-spec.md v0.5.0-draft.
--- ProviderAdapter and ProviderOperation are code-registered read-only catalogs and have no user-writable tables.
+-- application-platform S2 design schema, v0.8.0-draft.
+-- This is a design contract, not a migration.
+-- ProviderCapability, ApplicationEngineType and load diagnostics are startup-only
+-- registries and intentionally have no database tables.
 
--- S1 refs: US-AIAPP-002, US-AIAPP-003; BR-AIAPP-006..BR-AIAPP-012.
-CREATE TABLE aiapp_app_templates (
+-- s1_refs: US-AIAPP-041; BR-AIAPP-140.
+CREATE TABLE aiapp_engine_instances (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  application_engine_type_id TEXT NOT NULL,
+  base_url TEXT NOT NULL,
+  auth_type TEXT NOT NULL CHECK (auth_type IN ('none', 'api_key', 'bearer_token', 'ak_sk')),
+  auth_config_json TEXT NOT NULL DEFAULT '{}',
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  health_status TEXT NOT NULL DEFAULT 'unknown' CHECK (health_status IN ('unknown', 'online', 'offline', 'degraded')),
+  last_health_check_at TIMESTAMPTZ,
+  unhealthy_reason TEXT DEFAULT '',
+  region TEXT DEFAULT '',
+  max_concurrency INTEGER NOT NULL DEFAULT 1 CHECK (max_concurrency > 0),
+  request_timeout_seconds INTEGER NOT NULL DEFAULT 60 CHECK (request_timeout_seconds > 0),
+  task_timeout_seconds INTEGER NOT NULL DEFAULT 1800 CHECK (task_timeout_seconds > 0)
+);
+
+CREATE UNIQUE INDEX idx_aiapp_engine_instances_name ON aiapp_engine_instances(name);
+CREATE INDEX idx_aiapp_engine_instances_type_health ON aiapp_engine_instances(application_engine_type_id, enabled, health_status);
+
+-- s1_refs: US-AIAPP-040, US-AIAPP-041; BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141.
+-- provider_capability_id has no foreign key because the target is an in-memory registry.
+CREATE TABLE aiapp_engine_capability_bindings (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  provider_capability_id TEXT NOT NULL,
+  provider_capability_revision TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  restrictions_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE UNIQUE INDEX idx_aiapp_binding_engine_capability ON aiapp_engine_capability_bindings(engine_instance_id, provider_capability_id);
+CREATE INDEX idx_aiapp_binding_capability ON aiapp_engine_capability_bindings(provider_capability_id, enabled);
+
+-- s1_refs: US-AIAPP-042; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147.
+CREATE TABLE aiapp_application_templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
@@ -12,22 +59,54 @@ CREATE TABLE aiapp_app_templates (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
-  source_kind TEXT NOT NULL CHECK (source_kind IN ('comfyui_workflow', 'provider_workflow')),
-  adapter_key TEXT NOT NULL,
-  operation_key TEXT NOT NULL,
-  operation_version TEXT NOT NULL,
-  raw_config_json TEXT NOT NULL,
-  capability_graph_json TEXT NOT NULL,
-  required_node_types_json TEXT NOT NULL DEFAULT '[]',
-  required_model_refs_json TEXT NOT NULL DEFAULT '[]',
-  unresolved_node_count INTEGER NOT NULL DEFAULT 0,
-  reference_application_count INTEGER NOT NULL DEFAULT 0
+  capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
+  capability_definition_id TEXT NOT NULL,
+  current_version_id TEXT
 );
 
-CREATE UNIQUE INDEX idx_aiapp_templates_owner_name ON aiapp_app_templates(owner_user_id, name);
-CREATE INDEX idx_aiapp_templates_adapter_operation ON aiapp_app_templates(adapter_key, operation_key, operation_version);
+CREATE UNIQUE INDEX idx_aiapp_templates_owner_name ON aiapp_application_templates(owner_user_id, name);
+CREATE INDEX idx_aiapp_templates_capability ON aiapp_application_templates(capability_definition_id, capability_source_type);
 
--- S1 refs: US-AIAPP-003, US-AIAPP-004, US-AIAPP-005, US-AIAPP-008; BR-AIAPP-013..BR-AIAPP-020.
+-- s1_refs: US-AIAPP-042; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147.
+CREATE TABLE aiapp_application_template_versions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  application_template_id TEXT NOT NULL REFERENCES aiapp_application_templates(id),
+  version INTEGER NOT NULL CHECK (version > 0),
+  status TEXT NOT NULL CHECK (status IN ('draft', 'published', 'retired')),
+  capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
+  source_revision TEXT NOT NULL,
+  provider_capability_id TEXT,
+  provider_capability_revision TEXT,
+  provider_operation_id TEXT,
+  workflow_contract_revision TEXT,
+  template_contract_json TEXT NOT NULL,
+  comfyui_api_workflow_json TEXT,
+  comfyui_object_info_json TEXT,
+  published_at TIMESTAMPTZ,
+  CHECK (
+    (status = 'published' AND published_at IS NOT NULL) OR
+    (status <> 'published')
+  ),
+  CHECK (
+    (capability_source_type = 'provider_capability' AND provider_capability_id IS NOT NULL AND provider_capability_revision IS NOT NULL AND provider_operation_id IS NOT NULL AND workflow_contract_revision IS NULL AND comfyui_api_workflow_json IS NULL AND comfyui_object_info_json IS NULL) OR
+    (capability_source_type = 'comfyui_workflow' AND provider_capability_id IS NULL AND provider_capability_revision IS NULL AND provider_operation_id IS NULL AND workflow_contract_revision IS NOT NULL AND comfyui_api_workflow_json IS NOT NULL AND comfyui_object_info_json IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX idx_aiapp_template_versions_number ON aiapp_application_template_versions(application_template_id, version);
+
+-- Deferred self-reference after both template tables are defined.
+ALTER TABLE aiapp_application_templates
+  ADD CONSTRAINT fk_aiapp_template_current_version
+  FOREIGN KEY (current_version_id) REFERENCES aiapp_application_template_versions(id);
+
+-- s1_refs: US-AIAPP-042, US-AIAPP-043; BR-AIAPP-142, BR-AIAPP-148.
 CREATE TABLE aiapp_applications (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -37,107 +116,50 @@ CREATE TABLE aiapp_applications (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
-  source_type TEXT NOT NULL CHECK (source_type IN ('template', 'provider_operation')),
-  template_id TEXT REFERENCES aiapp_app_templates(id),
-  adapter_key TEXT NOT NULL,
-  operation_key TEXT NOT NULL,
-  operation_version TEXT NOT NULL,
-  capability_type TEXT NOT NULL,
-  fixed_parameters_json TEXT NOT NULL DEFAULT '{}',
-  latest_test_status TEXT NOT NULL DEFAULT 'untested' CHECK (latest_test_status IN ('untested', 'running', 'passed', 'failed')),
-  last_tested_at TIMESTAMPTZ,
-  latest_test_failure_summary TEXT DEFAULT '',
-  reference_run_count INTEGER NOT NULL DEFAULT 0,
+  capability_definition_id TEXT NOT NULL,
+  visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'global')),
+  run_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  canvas_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  copy_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  preset_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  current_version_id TEXT
+);
+
+CREATE UNIQUE INDEX idx_aiapp_applications_owner_name ON aiapp_applications(owner_user_id, name);
+CREATE INDEX idx_aiapp_applications_owner_visibility ON aiapp_applications(owner_user_id, visibility);
+CREATE INDEX idx_aiapp_applications_capability_run ON aiapp_applications(capability_definition_id, run_enabled);
+
+-- s1_refs: US-AIAPP-042, US-AIAPP-043; BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-147.
+CREATE TABLE aiapp_application_versions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  application_id TEXT NOT NULL REFERENCES aiapp_applications(id),
+  semantic_version TEXT NOT NULL CHECK (semantic_version ~ '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'),
+  status TEXT NOT NULL CHECK (status IN ('draft', 'published', 'retired')),
+  application_template_version_id TEXT NOT NULL REFERENCES aiapp_application_template_versions(id),
+  input_schema_json TEXT NOT NULL,
+  output_schema_json TEXT NOT NULL,
+  parameter_policies_json TEXT NOT NULL,
+  published_at TIMESTAMPTZ,
   CHECK (
-    (source_type = 'template' AND template_id IS NOT NULL) OR
-    (source_type = 'provider_operation' AND template_id IS NULL)
+    (status = 'published' AND published_at IS NOT NULL) OR
+    (status <> 'published')
   )
 );
 
-CREATE INDEX idx_aiapp_applications_owner ON aiapp_applications(owner_user_id);
-CREATE INDEX idx_aiapp_applications_source ON aiapp_applications(source_type, template_id);
-CREATE INDEX idx_aiapp_applications_operation ON aiapp_applications(adapter_key, operation_key, operation_version);
+CREATE UNIQUE INDEX idx_aiapp_application_versions_semver ON aiapp_application_versions(application_id, semantic_version);
 
--- S1 refs: US-AIAPP-003, US-AIAPP-004, US-AIAPP-005; BR-AIAPP-015..BR-AIAPP-019.
-CREATE TABLE aiapp_input_mappings (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL,
-  description TEXT DEFAULT '',
-  extend_shadow TEXT DEFAULT '',
-  resource_version INTEGER DEFAULT 0,
-  application_id TEXT NOT NULL REFERENCES aiapp_applications(id) ON DELETE CASCADE,
-  input_key TEXT NOT NULL,
-  input_label TEXT NOT NULL,
-  source_port_key TEXT NOT NULL,
-  source_path TEXT NOT NULL,
-  data_type TEXT NOT NULL,
-  required BOOLEAN NOT NULL,
-  default_value_json TEXT DEFAULT '',
-  sort_order INTEGER NOT NULL DEFAULT 0
-);
+ALTER TABLE aiapp_applications
+  ADD CONSTRAINT fk_aiapp_application_current_version
+  FOREIGN KEY (current_version_id) REFERENCES aiapp_application_versions(id);
 
-CREATE UNIQUE INDEX idx_aiapp_input_mappings_app_key ON aiapp_input_mappings(application_id, input_key);
-CREATE UNIQUE INDEX idx_aiapp_input_mappings_app_path ON aiapp_input_mappings(application_id, source_path);
-
--- S1 refs: US-AIAPP-003, US-AIAPP-004, US-AIAPP-005; BR-AIAPP-015, BR-AIAPP-016, BR-AIAPP-018.
-CREATE TABLE aiapp_output_mappings (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL,
-  description TEXT DEFAULT '',
-  extend_shadow TEXT DEFAULT '',
-  resource_version INTEGER DEFAULT 0,
-  application_id TEXT NOT NULL REFERENCES aiapp_applications(id) ON DELETE CASCADE,
-  output_key TEXT NOT NULL,
-  output_label TEXT NOT NULL,
-  source_port_key TEXT NOT NULL,
-  source_path TEXT NOT NULL,
-  data_type TEXT NOT NULL,
-  cardinality TEXT NOT NULL CHECK (cardinality IN ('single', 'multiple')),
-  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-  materialization TEXT NOT NULL CHECK (materialization IN ('inline', 'reference', 'asset')),
-  sort_order INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE UNIQUE INDEX idx_aiapp_output_mappings_app_key ON aiapp_output_mappings(application_id, output_key);
-CREATE UNIQUE INDEX idx_aiapp_output_mappings_app_path ON aiapp_output_mappings(application_id, source_path);
-CREATE UNIQUE INDEX idx_aiapp_output_mappings_primary ON aiapp_output_mappings(application_id) WHERE is_primary = TRUE;
-
--- S1 refs: US-AIAPP-006, US-AIAPP-007; BR-AIAPP-021..BR-AIAPP-028.
-CREATE TABLE aiapp_app_engines (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL,
-  description TEXT DEFAULT '',
-  extend_shadow TEXT DEFAULT '',
-  resource_version INTEGER DEFAULT 0,
-  owner_user_id TEXT NOT NULL,
-  adapter_key TEXT NOT NULL,
-  endpoint TEXT NOT NULL,
-  auth_type TEXT NOT NULL CHECK (auth_type IN ('bearer_token', 'api_key', 'ak_sk', 'none')),
-  auth_config_json TEXT NOT NULL DEFAULT '{}',
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
-  health_status TEXT NOT NULL DEFAULT 'unknown' CHECK (health_status IN ('unknown', 'healthy', 'unhealthy')),
-  runtime_version TEXT DEFAULT '',
-  supported_operations_json TEXT NOT NULL DEFAULT '[]',
-  node_types_json TEXT NOT NULL DEFAULT '[]',
-  model_refs_json TEXT NOT NULL DEFAULT '[]',
-  priority INTEGER NOT NULL DEFAULT 100,
-  max_concurrency INTEGER NOT NULL DEFAULT 1 CHECK (max_concurrency > 0),
-  current_inflight INTEGER NOT NULL DEFAULT 0 CHECK (current_inflight >= 0 AND current_inflight <= max_concurrency),
-  reference_run_count INTEGER NOT NULL DEFAULT 0,
-  last_health_check_at TIMESTAMPTZ,
-  unhealthy_reason TEXT DEFAULT ''
-);
-
-CREATE UNIQUE INDEX idx_aiapp_engines_owner_name ON aiapp_app_engines(owner_user_id, name);
-CREATE INDEX idx_aiapp_engines_route ON aiapp_app_engines(owner_user_id, adapter_key, status, health_status, priority);
-
--- S1 refs: US-AIAPP-008, US-AIAPP-009, US-AIAPP-010, US-AIAPP-011; BR-AIAPP-029..BR-AIAPP-046.
+-- s1_refs: US-AIAPP-043; BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149.
+-- Provider capability fields are conditional immutable snapshots and therefore have no registry FK.
 CREATE TABLE aiapp_application_runs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -148,23 +170,68 @@ CREATE TABLE aiapp_application_runs (
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
   application_id TEXT NOT NULL REFERENCES aiapp_applications(id),
-  task_run_id TEXT NOT NULL UNIQUE,
-  run_mode TEXT NOT NULL CHECK (run_mode IN ('test', 'normal')),
-  requested_engine_id TEXT REFERENCES aiapp_app_engines(id),
-  resolved_engine_id TEXT REFERENCES aiapp_app_engines(id),
-  adapter_key TEXT NOT NULL,
-  operation_key TEXT NOT NULL,
-  operation_version TEXT NOT NULL,
+  application_version_id TEXT NOT NULL REFERENCES aiapp_application_versions(id),
+  application_template_version_id TEXT NOT NULL REFERENCES aiapp_application_template_versions(id),
+  task_run_id TEXT UNIQUE,
+  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
+  source_revision TEXT NOT NULL,
+  provider_capability_id TEXT,
+  provider_capability_revision TEXT,
+  provider_operation_id TEXT,
+  workflow_contract_revision TEXT,
+  capability_source_snapshot_json TEXT NOT NULL,
   input_snapshot_json TEXT NOT NULL,
-  rendered_payload_snapshot_json TEXT NOT NULL,
+  execution_snapshot_json TEXT NOT NULL,
   output_mapping_snapshot_json TEXT NOT NULL,
-  task_status_projection TEXT NOT NULL DEFAULT 'READY',
-  task_progress_projection_json TEXT NOT NULL DEFAULT '{}',
+  task_creation_status TEXT NOT NULL DEFAULT 'pending' CHECK (task_creation_status IN ('pending', 'created', 'failed')),
+  task_creation_failure TEXT DEFAULT '',
+  task_status_projection TEXT,
   task_resource_version INTEGER NOT NULL DEFAULT 0,
   output_values_json TEXT NOT NULL DEFAULT '[]',
-  failure_summary TEXT DEFAULT ''
+  failure_summary TEXT DEFAULT '',
+  idempotency_key TEXT NOT NULL,
+  CHECK (
+    (capability_source_type = 'provider_capability' AND provider_capability_id IS NOT NULL AND provider_capability_revision IS NOT NULL AND provider_operation_id IS NOT NULL AND workflow_contract_revision IS NULL) OR
+    (capability_source_type = 'comfyui_workflow' AND provider_capability_id IS NULL AND provider_capability_revision IS NULL AND provider_operation_id IS NULL AND workflow_contract_revision IS NOT NULL)
+  ),
+  CHECK (
+    (task_creation_status = 'created' AND task_run_id IS NOT NULL AND task_status_projection IS NOT NULL) OR
+    (task_creation_status IN ('pending', 'failed') AND task_run_id IS NULL AND task_status_projection IS NULL)
+  )
 );
 
-CREATE INDEX idx_aiapp_runs_owner_created ON aiapp_application_runs(owner_user_id, created_at);
-CREATE INDEX idx_aiapp_runs_application ON aiapp_application_runs(application_id, created_at);
-CREATE INDEX idx_aiapp_runs_resolved_engine ON aiapp_application_runs(resolved_engine_id);
+CREATE UNIQUE INDEX idx_aiapp_runs_owner_idempotency ON aiapp_application_runs(owner_user_id, idempotency_key);
+CREATE INDEX idx_aiapp_runs_application_created ON aiapp_application_runs(application_id, created_at);
+CREATE INDEX idx_aiapp_runs_engine_created ON aiapp_application_runs(engine_instance_id, created_at);
+CREATE INDEX idx_aiapp_runs_capability_revision ON aiapp_application_runs(provider_capability_id, provider_capability_revision);
+
+-- s1_refs: US-AIAPP-043; BR-AIAPP-150.
+CREATE TABLE aiapp_artifacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  application_run_id TEXT NOT NULL REFERENCES aiapp_application_runs(id),
+  output_key TEXT NOT NULL,
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
+  content_ref TEXT NOT NULL,
+  registration_status TEXT NOT NULL DEFAULT 'pending' CHECK (registration_status IN ('pending', 'registered', 'failed')),
+  asset_id TEXT,
+  registration_error_code TEXT DEFAULT '',
+  registration_failure_detail TEXT DEFAULT '',
+  CHECK (
+    (registration_status = 'registered' AND asset_id IS NOT NULL) OR
+    (registration_status IN ('pending', 'failed') AND asset_id IS NULL)
+  )
+);
+
+CREATE UNIQUE INDEX idx_aiapp_artifacts_run_output ON aiapp_artifacts(application_run_id, output_key);
+CREATE INDEX idx_aiapp_artifacts_registration ON aiapp_artifacts(registration_status, updated_at);
+
+-- RuntimeFormSchema and ProviderCapability load results are derived, process-local
+-- objects. Persisting either would create a second fact source and is prohibited.

@@ -1,7 +1,0 @@
-image:
-  prompt:
-    provider_field: prompt
-  size:
-    provider_field: size
-  quality:
-    provider_field: quality

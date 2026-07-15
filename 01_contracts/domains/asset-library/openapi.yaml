@@ -10,6 +10,8 @@ security:
 tags:
   - name: assets
     description: 当前用户素材查询与标签操作。
+  - name: artifact-registrations
+    description: application-platform Artifact 到 UserAsset 的幂等登记。
 
 paths:
   /api/v1/assets:
@@ -111,6 +113,34 @@ paths:
                   - $ref: "#/components/schemas/BatchLabelResponse"
                   - $ref: "#/components/schemas/BusinessError"
 
+  /api/v1/artifact-registrations:
+    post:
+      tags: [artifact-registrations]
+      summary: 幂等登记 ApplicationRun Artifact 为 UserAsset
+      operationId: register_application_artifact
+      description: >-
+        仅接受 application-platform 按运行发起用户提交的 Artifact。首次成功登记创建
+        UserAsset；同一 artifact_id 重复请求返回同一 UserAsset。校验失败不创建空素材，
+        也不改变 ApplicationRun 对应 TaskRun 的终态。
+      x-permission: asset.artifact.register
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-41]
+        business_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-62, BR-USER-ASSET-63]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ArtifactRegistrationRequest'}
+      responses:
+        '200':
+          description: 登记结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ArtifactRegistrationResponse'
+                  - $ref: '#/components/schemas/BusinessError'
+
 components:
   securitySchemes:
     bearer_auth:
@@ -165,7 +195,7 @@ components:
       enum: [image, video, audio, text, pdf, other]
     SourceType:
       type: string
-      enum: [upload, canvas_output]
+      enum: [upload, canvas_output, application_output]
     LabelSource:
       type: string
       enum: [manual, auto]
@@ -223,6 +253,31 @@ components:
         resource_version: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    ArtifactRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [artifact_id, application_run_id, owner_user_id, output_name, media_type, content_ref, size_bytes]
+      properties:
+        artifact_id: {type: string}
+        application_run_id: {type: string}
+        owner_user_id: {type: string}
+        output_name: {type: string, minLength: 1, maxLength: 255}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        content_ref: {type: string, minLength: 1}
+        format: {type: string, maxLength: 64}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        width: {type: integer, minimum: 0}
+        height: {type: integer, minimum: 0}
+        duration_seconds: {type: number, minimum: 0}
+        sha256: {type: string}
+    ArtifactRegistrationResponse:
+      type: object
+      required: [artifact_id, application_run_id, registration_result, asset]
+      properties:
+        artifact_id: {type: string}
+        application_run_id: {type: string}
+        registration_result: {type: string, enum: [created, already_registered]}
+        asset: {$ref: '#/components/schemas/UserAsset'}
     Labels:
       type: object
       description: |

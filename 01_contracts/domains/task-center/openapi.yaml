@@ -177,7 +177,7 @@ paths:
       operationId: create_task_run
       x-s1-refs:
         user_stories: [US-TASK-001, US-TASK-004, US-TASK-005, US-TASK-006]
-        business_rules: [BR-TASK-007, BR-TASK-025, BR-TASK-026]
+        business_rules: [BR-TASK-007, BR-TASK-025, BR-TASK-026, BR-TASK-053, BR-TASK-061, BR-TASK-062]
       requestBody:
         required: true
         content:
@@ -777,6 +777,8 @@ components:
         definition_type:
           $ref: "#/components/schemas/TaskDefinitionType"
         definition_id: { type: string }
+        application_run_id: { type: string }
+        idempotency_key: { type: string }
         parent_run_id: { type: string }
         root_run_id: { type: string }
         status:
@@ -811,6 +813,12 @@ components:
         definition_type:
           $ref: "#/components/schemas/TaskDefinitionType"
         definition_id: { type: string }
+        application_run_id:
+          type: string
+          description: application.execute TaskRun 必填；非应用任务为空。
+        idempotency_key:
+          type: string
+          description: application.execute TaskRun 必填；与 application_run_id 共同保证创建幂等。
         parent_run_id: { type: string }
         root_run_id: { type: string }
         schedule_at: { type: string, format: date-time }
@@ -827,6 +835,12 @@ components:
         project_id: { type: string }
         namespace: { type: string }
         tags: { type: string }
+      oneOf:
+        - required: [application_run_id, idempotency_key]
+        - not:
+            anyOf:
+              - required: [application_run_id]
+              - required: [idempotency_key]
     TaskRunListResponse:
       type: object
       required: [total, items]

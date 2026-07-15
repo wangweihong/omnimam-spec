@@ -36,7 +36,7 @@ CREATE INDEX idx_task_definitions_project_namespace ON task_definitions(project_
 CREATE INDEX idx_task_definitions_type ON task_definitions(definition_type);
 CREATE INDEX idx_task_definitions_function_ref ON task_definitions(function_ref);
 
--- S1 refs: US-TASK-001, US-TASK-004, US-TASK-005, US-TASK-006; BR-TASK-007, BR-TASK-011, BR-TASK-025, BR-TASK-026, BR-TASK-037..BR-TASK-041.
+-- S1 refs: US-TASK-001, US-TASK-004, US-TASK-005, US-TASK-006; BR-TASK-007, BR-TASK-011, BR-TASK-025, BR-TASK-026, BR-TASK-037..BR-TASK-041, BR-TASK-053, BR-TASK-061, BR-TASK-062.
 CREATE TABLE task_runs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -47,6 +47,8 @@ CREATE TABLE task_runs (
   resource_version INTEGER DEFAULT 0,
   definition_type TEXT NOT NULL CHECK (definition_type IN ('ATOMIC', 'TASK_GROUP', 'DAG_FLOW')),
   definition_id TEXT NOT NULL REFERENCES task_definitions(id),
+  application_run_id TEXT DEFAULT '',
+  idempotency_key TEXT DEFAULT '',
   parent_run_id TEXT DEFAULT '',
   root_run_id TEXT DEFAULT '',
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'READY', 'CLAIMED', 'RUNNING', 'RETRYING', 'CANCEL_REQUESTED', 'PAUSED', 'SUCCESS', 'FAILED', 'CANCELED', 'TIMEOUT', 'LOST')),
@@ -70,12 +72,18 @@ CREATE TABLE task_runs (
   project_id TEXT NOT NULL,
   namespace TEXT NOT NULL,
   tags TEXT DEFAULT '',
-  deleted_at TEXT DEFAULT ''
+  deleted_at TEXT DEFAULT '',
+  CHECK (
+    (application_run_id = '' AND idempotency_key = '') OR
+    (application_run_id <> '' AND idempotency_key <> '')
+  )
 );
 
 CREATE INDEX idx_task_runs_project_namespace ON task_runs(project_id, namespace);
 CREATE INDEX idx_task_runs_status ON task_runs(status);
 CREATE INDEX idx_task_runs_definition ON task_runs(definition_type, definition_id);
+CREATE INDEX idx_task_runs_application ON task_runs(application_run_id) WHERE application_run_id <> '';
+CREATE UNIQUE INDEX idx_task_runs_application_idempotency ON task_runs(application_run_id, idempotency_key) WHERE application_run_id <> '' AND idempotency_key <> '';
 CREATE INDEX idx_task_runs_parent ON task_runs(parent_run_id);
 CREATE INDEX idx_task_runs_root ON task_runs(root_run_id);
 CREATE INDEX idx_task_runs_schedule ON task_runs(schedule_at);

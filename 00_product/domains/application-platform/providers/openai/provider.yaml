@@ -1,7 +1,0 @@
-provider:
-  code: openai
-  name: OpenAI
-  engine_types:
-    - openai_api
-  adapter:
-    code: openai_image_api
