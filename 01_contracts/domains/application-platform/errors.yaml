@@ -476,5 +476,187 @@
   range: 131000-131199
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-136, BR-AIAPP-140, BR-AIAPP-142, BR-AIAPP-143]
-  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-042, US-AIAPP-043]
+  related_rules: [BR-AIAPP-136, BR-AIAPP-140, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-156, BR-AIAPP-162]
+  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-042, US-AIAPP-043, US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_FILE_INVALID
+  value: 131220
+  http: 200
+  cn: API Workflow 文件缺失、不是合法 JSON 或不符合 ComfyUI API Workflow 基础结构。
+  en: The API Workflow file is missing, invalid JSON, or not a valid ComfyUI API Workflow structure.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-153, BR-AIAPP-154]
+  related_user_stories: [US-AIAPP-044]
+
+- code: ERR_AIAPP_COMFYUI_ENGINE_TYPE_INVALID
+  value: 131221
+  http: 200
+  cn: 指定的来源或目标 EngineInstance 不是 ComfyUI 类型。
+  en: The selected source or target EngineInstance is not a ComfyUI engine.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-154, BR-AIAPP-157]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045]
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_UNAVAILABLE
+  value: 131222
+  http: 200
+  cn: 无法从指定 ComfyUI EngineInstance 获取有效的 object_info。
+  en: Valid object_info could not be retrieved from the selected ComfyUI EngineInstance.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-154, BR-AIAPP-157]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_REFERENCE_INVALID
+  value: 131223
+  http: 200
+  cn: 工作流节点、输入连接或输出索引引用无效。
+  en: The workflow contains an invalid node, input connection, or output index reference.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-153, BR-AIAPP-154]
+  related_user_stories: [US-AIAPP-044]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_INCOMPATIBLE
+  value: 131224
+  http: 200
+  cn: 工作流节点、参数或运行依赖与目标 ComfyUI 实例不兼容。
+  en: The workflow nodes, parameters, or runtime dependencies are incompatible with the target ComfyUI engine.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-157, BR-AIAPP-158]
+  related_user_stories: [US-AIAPP-045, US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_NOT_FOUND
+  value: 131225
+  http: 200
+  cn: ComfyUI 工作流不存在或当前用户不可见。
+  en: The ComfyUI workflow does not exist or is not visible to the current user.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-156]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_ARCHIVED
+  value: 131226
+  http: 200
+  cn: 已归档工作流不能创建兼容性校验或转换为模板。
+  en: An archived workflow cannot be validated or converted into a template.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-155, BR-AIAPP-158]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_VALIDATION_NOT_FOUND
+  value: 131227
+  http: 200
+  cn: 兼容性校验记录不存在、不可见或不属于指定工作流。
+  en: The compatibility validation does not exist, is not visible, or does not belong to the selected workflow.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-156, BR-AIAPP-157, BR-AIAPP-158]
+  related_user_stories: [US-AIAPP-045, US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_VALIDATION_NOT_COMPATIBLE
+  value: 131228
+  http: 200
+  cn: 所选校验结果不是 compatible，不能用于模板转换。
+  en: The selected validation is not compatible and cannot be used for template conversion.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-158]
+  related_user_stories: [US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_TEMPLATE_CONTRACT_INVALID
+  value: 131229
+  http: 200
+  cn: 模板输入、固定参数、转换规则、输出提取或 Engine 约束不完整。
+  en: The template inputs, fixed parameters, mappings, output extraction, or engine restrictions are incomplete.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-161]
+  related_user_stories: [US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_ALREADY_CONVERTED
+  value: 131230
+  http: 200
+  cn: 工作流已转换为应用模板，不能再次转换。
+  en: The workflow has already been converted into an application template and cannot be converted again.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-159, BR-AIAPP-160]
+  related_user_stories: [US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_CONVERSION_IDEMPOTENCY_CONFLICT
+  value: 131231
+  http: 200
+  cn: 转换幂等键已被同一所有者的其他工作流使用。
+  en: The conversion idempotency key is already used by another workflow owned by the same user.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-160]
+  related_user_stories: [US-AIAPP-046]
+
+- code: ERR_AIAPP_COMFYUI_RESOURCE_VERSION_CONFLICT
+  value: 131232
+  http: 200
+  cn: ComfyUI 工作流资源版本已变化，请刷新后重试。
+  en: The ComfyUI workflow resource version has changed; refresh and retry.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-155]
+  related_user_stories: [US-AIAPP-044]
+
+- code: ERR_AIAPP_COMFYUI_WORKFLOW_ACCESS_DENIED
+  value: 131233
+  http: 200
+  cn: 当前用户无权访问或代管该 ComfyUI 工作流。
+  en: The current user is not allowed to access or administer this ComfyUI workflow.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-156]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]

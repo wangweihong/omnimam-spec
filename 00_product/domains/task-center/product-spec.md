@@ -316,6 +316,42 @@ TaskRun 是状态、进度、重试、超时和取消的唯一事实源。Applic
 
 ---
 
+### 5.6 系统启动与运行对象转换总览
+
+任务中心启动时，只初始化自身的任务定义、运行调度、Worker 协议、ExecutionLease、watchdog 和系统维护任务调度能力。任务中心不在启动时加载或解释应用平台的 ProviderCapability、ApplicationTemplate、EngineAdapter、OperationExecutor 或 EngineInstance 业务事实。
+
+应用平台的能力注册、ProviderCapability 目录加载、EngineInstance 健康状态和有效能力计算属于 application-platform。任务中心只消费应用平台在创建 ApplicationRun 时已经固定的运行快照，并通过 `application.execute` 这一 AtomicTask 定义承接应用运行请求。
+
+Worker 启动后必须先向任务中心注册或上报心跳，声明自身的 `workerType`、`capabilities`、`labels` 和 `maxConcurrency`。只有处于可用状态且能力匹配的 Worker 才能进入可领取池。Worker 不因为进程启动就自动拥有某个 TaskRun 的执行权，必须通过 claim 获取 TaskAttempt 和 ExecutionLease。
+
+核心对象转换链路为：
+
+```text
+AtomicTask / TaskGroup / DAGFlowTask
+  ↓ 创建运行
+TaskRun
+  ↓ Worker claim
+TaskAttempt
+  ↓ 获取临时执行权
+ExecutionLease
+  ↓ 持有 lease 的 Worker 推进
+RUNNING / progress / result / error
+  ↓ 状态和结果事件
+ApplicationRun / CanvasRun / 运维视图幂等投影
+```
+
+其中：
+
+* `AtomicTask / TaskGroup / DAGFlowTask` 是定义对象，只描述“要执行什么”，不得被 Worker 直接执行。
+* `TaskRun` 是一次运行事实，承载状态、进度、重试、超时、取消、输入输出摘要和运行树关系。
+* `TaskAttempt` 是某个 Worker 对 TaskRun 的一次具体执行尝试；首次执行和每次重试都必须形成独立 Attempt。
+* `ExecutionLease` 是 Worker 对当前 Attempt 的临时执行权；只有持有有效 lease 的 Worker 才能写回进度、成功结果或失败结果。
+* `Worker` 是推进运行生命周期的协议执行者，负责领取、心跳、续约、进度和结果回写，不解释业务模板、供应商协议或 Engine 选择。
+
+系统维护任务也遵守同一转换链路。scheduler 可以按周期创建 `application-platform.engine-instance-health-check`、`asset.sha256_backfill` 等系统维护 TaskRun，但具体健康判断、素材扫描、业务数据写回仍由所属 domain 解释。任务中心只负责计划创建、排队、Attempt、Lease、重试、失败记录和状态事件。
+
+---
+
 ## 6. 用户故事
 
 ### 6.1 用户故事：运行一个应用（US-TASK-001）
@@ -839,7 +875,54 @@ stateDiagram-v2
 
 ## 9. 核心流程
 
-## 9.1 应用运行到任务执行流程
+## 9.1 TaskCenter 启动到运行对象转换流程
+
+> 本流程描述任务中心从系统启动、Worker 进入可领取池、接收运行请求，到形成 Attempt、Lease 并写回状态事件的端到端对象转换。应用平台能力加载、模板解释和 EngineInstance 选择不属于任务中心启动职责。
+
+```mermaid
+sequenceDiagram
+    participant System as 系统启动
+    participant Task as 任务中心
+    participant Scheduler as scheduler
+    participant Watchdog as watchdog
+    participant Worker as Worker
+    participant App as 应用平台
+    participant Exec as 应用平台已注册执行能力
+    participant Consumer as ApplicationRun/CanvasRun/运维视图
+
+    System->>Task: 启动任务中心
+    Task->>Scheduler: 初始化系统维护任务调度
+    Task->>Watchdog: 初始化故障扫描
+    Task->>Task: 初始化定义、运行、Worker 协议与 Lease 能力
+
+    Worker->>Task: 注册或心跳(workerType/capabilities/labels/maxConcurrency)
+    Task->>Task: Worker 进入可领取池
+
+    App->>App: 固定 ApplicationRun 与运行快照
+    App->>Task: 以 applicationRunId + idempotencyKey 创建 application.execute TaskRun
+    Task->>Task: AtomicTask 定义转换为 TaskRun
+    Task->>Task: TaskRun PENDING / READY
+
+    Worker->>Task: claim 匹配能力的 READY TaskRun
+    Task->>Task: 创建 TaskAttempt
+    Task->>Task: 创建 ExecutionLease
+    Task->>Task: TaskRun -> CLAIMED
+    Task-->>Worker: 返回 TaskRun / TaskAttempt / ExecutionLease
+
+    Worker->>Task: 标记 RUNNING
+    Worker->>Exec: 调用应用平台已注册执行能力
+    loop 执行期间
+        Worker->>Task: heartbeat / progress / lease renew
+        Task->>Consumer: 发出带 resourceVersion 的进度事件
+    end
+    Exec-->>Worker: 返回标准化结果或错误
+    Worker->>Task: 写回 SUCCESS / FAILED / TIMEOUT / CANCELED
+    Task->>Consumer: 发出带 resourceVersion 与 applicationRunId 的终态事件
+```
+
+---
+
+## 9.2 应用运行到任务执行流程
 
 > ⚠️ 本图是对 BR-TASK-021～026、BR-TASK-051～060 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
 
@@ -876,7 +959,7 @@ sequenceDiagram
 
 ---
 
-## 9.2 Worker 领取任务流程
+## 9.3 Worker 领取任务流程
 
 ```mermaid
 sequenceDiagram
@@ -897,7 +980,7 @@ sequenceDiagram
 
 ---
 
-## 9.3 Worker 故障恢复流程
+## 9.4 Worker 故障恢复流程
 
 ```mermaid
 flowchart TD
@@ -923,7 +1006,7 @@ flowchart TD
 
 ---
 
-## 9.4 TaskGroup 串行执行流程
+## 9.5 TaskGroup 串行执行流程
 
 ```mermaid
 flowchart TD
@@ -940,7 +1023,7 @@ flowchart TD
 
 ---
 
-## 9.5 TaskGroup 并行执行流程
+## 9.6 TaskGroup 并行执行流程
 
 ```mermaid
 flowchart TD
@@ -957,7 +1040,7 @@ flowchart TD
 
 ---
 
-## 9.6 DAGFlowTask 执行流程
+## 9.7 DAGFlowTask 执行流程
 
 ```mermaid
 flowchart TD
@@ -1522,6 +1605,16 @@ Webhook 订阅
 10. BR-TASK-060：EngineInstance 提供 endpoint 和能力绑定；任何应用平台执行组件都不得被重新解释为运行实例。
 11. BR-TASK-061：application.execute TaskRun 必须保存 applicationRunId，并以 applicationRunId 与调用方幂等键保证创建唯一；重复请求返回同一 TaskRun。
 12. BR-TASK-062：application.execute TaskRun 的创建、状态、进度和结果事件必须携带 applicationRunId；执行路由从 ApplicationRun 快照读取，不依赖旧 adapterKey、operationKey 或 operationVersion 字段。
+
+---
+
+### 19.12 TaskCenter 启动与对象转换规则
+
+1. BR-TASK-063：TaskCenter 启动只初始化任务中心内部的任务定义、运行调度、Worker 协议、ExecutionLease、watchdog 和系统维护任务能力，不加载或解释 ProviderCapability、ApplicationTemplate、供应商协议或 EngineInstance 业务事实。
+2. BR-TASK-064：Worker 必须完成注册或心跳并声明 workerType、capabilities、labels 和 maxConcurrency 后，才允许进入可领取池。
+3. BR-TASK-065：AtomicTask、TaskGroup 和 DAGFlowTask 是任务定义对象，不得被 Worker 直接执行；任何实际执行必须先转换为 TaskRun。
+4. BR-TASK-066：Worker claim 成功必须同时形成 TaskAttempt 与 ExecutionLease；没有有效 ExecutionLease 的 Worker 不得推进 TaskRun。
+5. BR-TASK-067：系统维护任务与用户任务共用 TaskRun 生命周期，不得绕过 TaskAttempt、ExecutionLease、重试、取消、失败记录和状态事件。
 
 ---
 

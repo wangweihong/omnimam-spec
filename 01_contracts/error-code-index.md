@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
-| application-platform | `01_contracts/domains/application-platform/errors.yaml` | ProviderCapability 启动加载、引擎与绑定、应用契约、运行和访问错误码 |
+| application-platform | `01_contracts/domains/application-platform/errors.yaml` | ProviderCapability 启动加载、引擎与绑定、ComfyUI 工作流、应用契约、运行和访问错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | 任务中心任务定义、运行、Worker、Lease、Attempt 与权限相关错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、标签写入、当前用户访问与 Artifact 登记错误码 |
 
@@ -33,6 +33,7 @@
 | 130600-130799 | application-platform | application | 模板来源、不可变版本、RuntimeForm 和输入校验错误 |
 | 130800-130999 | application-platform | application-run | ApplicationRun、TaskRun 投影和平台能力不匹配错误 |
 | 131000-131199 | application-platform | access | 能力诊断、Engine、Application 和 Run 访问控制错误 |
+| 131200-131399 | application-platform | comfyui-workflow | ComfyUI 工作流导入、解析、实例校验、归档和模板转换错误 |
 | 140200-140399 | task-center | definition | 任务定义、TaskGroup 和 DAGFlowTask 校验错误 |
 | 140400-140599 | task-center | run | TaskRun 状态、取消、重试和可见性错误 |
 | 140600-140799 | task-center | worker | Worker 注册、心跳和能力匹配错误 |

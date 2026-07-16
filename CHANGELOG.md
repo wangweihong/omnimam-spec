@@ -1,7 +1,15 @@
 # Changelog
 
+## 2026-07-16
+
+- 将 application-platform 升级为 v0.9.0-draft，新增用户私有且不带版本树的 ComfyUIWorkflow 导入管理、派生解析结果、不可变 EngineInstance 兼容性校验历史，以及一次性转换 ApplicationTemplate 首个 draft 版本的产品语义。
+- 新增 `BR-AIAPP-153..162`、`US-AIAPP-044..046` 及验收标准，固化导入原子性、服务端 object_info 快照、归档恢复、管理员代管审计、无凭证实例发现、转换幂等与模板快照解耦规则。
+- 新增 ComfyUI 工作流导入、列表详情、元数据更新、归档恢复、节点/输入/输出/依赖查询、兼容性校验历史和模板转换 OpenAPI；通用模板创建接口不再接受 ComfyUI 首版原始 Workflow。
+- 新增 ComfyUI 工作流与校验设计态表、四项权限、`comfyui_workflow_converted` 事件、`131200-131399` 错误码区间及模块/架构契约；本次仍为未 Release 草稿，不写入 RELEASE.md。
+
 ## 2026-07-15
 
+- 补齐 task-center S1 中 TaskCenter 从系统启动、Worker 注册、接收 ApplicationRun 运行请求、TaskRun/TaskAttempt/ExecutionLease 转换到状态回写的端到端产品语义流程，并新增 `BR-TASK-063..067`。
 - 修复 application-platform v0.8.0-draft 的 S1/S2 缺口：新增 `BR-AIAPP-145..152`，统一 ProviderCapability/ComfyUI 联合能力来源、RuntimeFormSchema 数组字段与 changes/violations、模板版本显式发布、Application 语义开关和语义版本号。
 - 新增 application-platform `runtime-registry.yaml`，登记 CapabilityDefinition、ApplicationEngineType、EngineAdapter、OperationExecutor、鉴权结构和映射，并覆盖 BytePlus Seedance、DeepSeek 与 ComfyUI 清单引用。
 - 修复 ApplicationRun 强制 ProviderCapability 的冲突；新增可恢复 TaskRun 创建状态、联合能力快照、Artifact 持久化和 Artifact→UserAsset 独立登记状态。

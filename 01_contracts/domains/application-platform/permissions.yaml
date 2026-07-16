@@ -20,6 +20,17 @@ aiapp.provider_capability.read_diagnostics:
   related_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-136, BR-AIAPP-139]
   related_user_stories: [US-AIAPP-040]
 
+aiapp.engine_instance.read:
+  module: engine
+  resource: application_engine_instance
+  action: read
+  description: 只读查看可用于应用运行、ComfyUI 工作流导入和兼容性校验的 EngineInstance 基础状态。
+  frontend_usage: 控制工作流来源实例和目标校验实例选择器。
+  backend_enforcement: 只返回可见实例的标识、名称、类型、启用和健康状态，不返回 auth_config、凭证或内部连接详情。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-140, BR-AIAPP-154, BR-AIAPP-157, BR-AIAPP-162]
+  related_user_stories: [US-AIAPP-041, US-AIAPP-044, US-AIAPP-045]
+
 aiapp.engine_instance.manage:
   module: engine
   resource: application_engine_instance
@@ -42,6 +53,50 @@ aiapp.engine_binding.manage:
   related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
   related_user_stories: [US-AIAPP-041]
 
+aiapp.comfyui_workflow.read:
+  module: comfyui-workflow
+  resource: comfyui_workflow, comfyui_workflow_validation
+  action: read
+  description: 查看 ComfyUI 工作流、派生解析结果和兼容性校验历史。
+  frontend_usage: 控制工作流列表、详情、节点、输入输出候选、依赖和校验记录入口。
+  backend_enforcement: 普通用户只能读取本人资源；管理员和超级管理员可代管读取，但必须记录操作者与资源所有者。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-157]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045]
+
+aiapp.comfyui_workflow.manage:
+  module: comfyui-workflow
+  resource: comfyui_workflow
+  action: manage
+  description: 导入工作流、修改元数据、归档和恢复工作流。
+  frontend_usage: 控制工作流导入、名称描述编辑和归档恢复操作。
+  backend_enforcement: 不允许覆盖工作流内容或来源实例；普通用户仅管理本人资源，管理员代管必须审计操作者与所有者。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-153, BR-AIAPP-154, BR-AIAPP-155, BR-AIAPP-156]
+  related_user_stories: [US-AIAPP-044]
+
+aiapp.comfyui_workflow.validate:
+  module: comfyui-workflow
+  resource: comfyui_workflow_validation
+  action: validate
+  description: 针对指定 ComfyUI EngineInstance 创建不可变兼容性校验。
+  frontend_usage: 控制实例兼容性校验操作。
+  backend_enforcement: 仅 active 工作流可校验；目标必须为 comfyui 实例；不得提交 prompt 或覆盖历史校验。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-156, BR-AIAPP-157, BR-AIAPP-161]
+  related_user_stories: [US-AIAPP-045]
+
+aiapp.comfyui_workflow.convert:
+  module: comfyui-workflow
+  resource: comfyui_workflow, application_template, application_template_version
+  action: convert
+  description: 将已验证工作流一次性转换为新应用模板及首个草稿版本。
+  frontend_usage: 控制工作流转换入口和模板映射提交。
+  backend_enforcement: 同时要求 aiapp.application.manage；验证所有权、active 状态、compatible 校验、一次性约束、幂等键和事务原子性。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-156, BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
+  related_user_stories: [US-AIAPP-046]
+
 aiapp.application.read:
   module: application
   resource: application
@@ -58,11 +113,11 @@ aiapp.application.manage:
   resource: application_template, application, application_version
   action: manage
   description: 管理应用模板版本、Application 元数据和不可变语义版本。
-  frontend_usage: 控制模板导入、应用创建和版本发布。
-  backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 必须完成工作流校验；已发布版本不可原地修改；只有管理员可设置 global visibility。
+  frontend_usage: 控制模板创建、应用创建和版本发布；ComfyUI 首版入口由工作流转换权限单独控制。
+  backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 首版必须来自原子转换，后续版本使用模板版本机制；已发布版本不可原地修改；只有管理员可设置 global visibility。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148]
-  related_user_stories: [US-AIAPP-042]
+  related_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148, BR-AIAPP-159, BR-AIAPP-161]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-046]
 
 aiapp.application.run:
   module: application-run

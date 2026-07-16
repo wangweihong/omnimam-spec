@@ -1,4 +1,4 @@
--- application-platform S2 design schema, v0.8.0-draft.
+-- application-platform S2 design schema, v0.9.0-draft.
 -- This is a design contract, not a migration.
 -- ProviderCapability, ApplicationEngineType and load diagnostics are startup-only
 -- registries and intentionally have no database tables.
@@ -49,7 +49,89 @@ CREATE TABLE aiapp_engine_capability_bindings (
 CREATE UNIQUE INDEX idx_aiapp_binding_engine_capability ON aiapp_engine_capability_bindings(engine_instance_id, provider_capability_id);
 CREATE INDEX idx_aiapp_binding_capability ON aiapp_engine_capability_bindings(provider_capability_id, enabled);
 
--- s1_refs: US-AIAPP-042; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147.
+-- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-154, BR-AIAPP-155, BR-AIAPP-156, BR-AIAPP-157, BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161.
+-- A workflow import is deliberately not versioned. Re-import creates another row.
+CREATE TABLE aiapp_comfyui_workflows (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  created_by_user_id TEXT NOT NULL,
+  updated_by_user_id TEXT NOT NULL,
+  source_engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  api_workflow_json TEXT NOT NULL,
+  visual_workflow_json TEXT,
+  workflow_checksum TEXT NOT NULL CHECK (workflow_checksum ~ '^sha256:[0-9a-f]{64}$'),
+  import_object_info_json TEXT NOT NULL,
+  import_object_info_checksum TEXT NOT NULL CHECK (import_object_info_checksum ~ '^sha256:[0-9a-f]{64}$'),
+  parse_status TEXT NOT NULL CHECK (parse_status IN ('fully_supported', 'partially_supported', 'manual_configuration_required', 'unsupported')),
+  parse_summary_json TEXT NOT NULL,
+  parsed_nodes_json TEXT NOT NULL,
+  input_candidates_json TEXT NOT NULL,
+  output_candidates_json TEXT NOT NULL,
+  dependencies_json TEXT NOT NULL,
+  latest_validation_status TEXT NOT NULL DEFAULT 'not_validated' CHECK (latest_validation_status IN ('not_validated', 'compatible', 'incompatible', 'failed')),
+  lifecycle_status TEXT NOT NULL DEFAULT 'active' CHECK (lifecycle_status IN ('active', 'archived')),
+  archived_at TIMESTAMPTZ,
+  archived_by_user_id TEXT,
+  converted_application_template_id TEXT,
+  converted_template_version_id TEXT,
+  conversion_idempotency_key TEXT,
+  converted_at TIMESTAMPTZ,
+  converted_by_user_id TEXT,
+  CHECK (
+    (lifecycle_status = 'active' AND archived_at IS NULL AND archived_by_user_id IS NULL) OR
+    (lifecycle_status = 'archived' AND archived_at IS NOT NULL AND archived_by_user_id IS NOT NULL)
+  ),
+  CHECK (
+    (converted_application_template_id IS NULL AND converted_template_version_id IS NULL AND conversion_idempotency_key IS NULL AND converted_at IS NULL AND converted_by_user_id IS NULL) OR
+    (converted_application_template_id IS NOT NULL AND converted_template_version_id IS NOT NULL AND conversion_idempotency_key IS NOT NULL AND converted_at IS NOT NULL AND converted_by_user_id IS NOT NULL)
+  )
+);
+
+CREATE INDEX idx_aiapp_comfyui_workflows_owner_created ON aiapp_comfyui_workflows(owner_user_id, created_at);
+CREATE INDEX idx_aiapp_comfyui_workflows_filters ON aiapp_comfyui_workflows(owner_user_id, lifecycle_status, parse_status, latest_validation_status);
+CREATE INDEX idx_aiapp_comfyui_workflows_checksum ON aiapp_comfyui_workflows(owner_user_id, workflow_checksum);
+CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_conversion_key ON aiapp_comfyui_workflows(owner_user_id, conversion_idempotency_key) WHERE conversion_idempotency_key IS NOT NULL;
+CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_converted_template ON aiapp_comfyui_workflows(converted_application_template_id) WHERE converted_application_template_id IS NOT NULL;
+
+-- s1_refs: US-AIAPP-045, US-AIAPP-046; BR-AIAPP-157, BR-AIAPP-158, BR-AIAPP-161.
+-- Validation rows are immutable compatibility snapshots; common metadata is retained for contract consistency.
+CREATE TABLE aiapp_comfyui_workflow_validations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  workflow_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflows(id),
+  owner_user_id TEXT NOT NULL,
+  requested_by_user_id TEXT NOT NULL,
+  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  status TEXT NOT NULL CHECK (status IN ('compatible', 'incompatible', 'failed')),
+  comfyui_version TEXT DEFAULT '',
+  object_info_json TEXT,
+  object_info_checksum TEXT CHECK (object_info_checksum IS NULL OR object_info_checksum ~ '^sha256:[0-9a-f]{64}$'),
+  node_summary_json TEXT NOT NULL,
+  dependency_summary_json TEXT NOT NULL,
+  errors_json TEXT NOT NULL DEFAULT '[]',
+  warnings_json TEXT NOT NULL DEFAULT '[]',
+  validated_at TIMESTAMPTZ NOT NULL,
+  CHECK (
+    (status IN ('compatible', 'incompatible') AND object_info_json IS NOT NULL AND object_info_checksum IS NOT NULL) OR
+    (status = 'failed')
+  )
+);
+
+CREATE INDEX idx_aiapp_comfyui_validations_workflow_created ON aiapp_comfyui_workflow_validations(workflow_id, created_at);
+CREATE INDEX idx_aiapp_comfyui_validations_engine_status ON aiapp_comfyui_workflow_validations(engine_instance_id, status, validated_at);
+
+-- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-159, BR-AIAPP-161.
 CREATE TABLE aiapp_application_templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -67,7 +149,7 @@ CREATE TABLE aiapp_application_templates (
 CREATE UNIQUE INDEX idx_aiapp_templates_owner_name ON aiapp_application_templates(owner_user_id, name);
 CREATE INDEX idx_aiapp_templates_capability ON aiapp_application_templates(capability_definition_id, capability_source_type);
 
--- s1_refs: US-AIAPP-042; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147.
+-- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-159, BR-AIAPP-161.
 CREATE TABLE aiapp_application_template_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -84,18 +166,21 @@ CREATE TABLE aiapp_application_template_versions (
   provider_capability_id TEXT,
   provider_capability_revision TEXT,
   provider_operation_id TEXT,
-  workflow_contract_revision TEXT,
+  workflow_contract_revision TEXT CHECK (workflow_contract_revision IS NULL OR workflow_contract_revision ~ '^sha256:[0-9a-f]{64}$'),
+  source_comfyui_workflow_id TEXT REFERENCES aiapp_comfyui_workflows(id),
+  source_workflow_validation_id TEXT REFERENCES aiapp_comfyui_workflow_validations(id),
   template_contract_json TEXT NOT NULL,
   comfyui_api_workflow_json TEXT,
   comfyui_object_info_json TEXT,
+  comfyui_dependencies_json TEXT,
   published_at TIMESTAMPTZ,
   CHECK (
     (status = 'published' AND published_at IS NOT NULL) OR
     (status <> 'published')
   ),
   CHECK (
-    (capability_source_type = 'provider_capability' AND provider_capability_id IS NOT NULL AND provider_capability_revision IS NOT NULL AND provider_operation_id IS NOT NULL AND workflow_contract_revision IS NULL AND comfyui_api_workflow_json IS NULL AND comfyui_object_info_json IS NULL) OR
-    (capability_source_type = 'comfyui_workflow' AND provider_capability_id IS NULL AND provider_capability_revision IS NULL AND provider_operation_id IS NULL AND workflow_contract_revision IS NOT NULL AND comfyui_api_workflow_json IS NOT NULL AND comfyui_object_info_json IS NOT NULL)
+    (capability_source_type = 'provider_capability' AND provider_capability_id IS NOT NULL AND provider_capability_revision IS NOT NULL AND provider_operation_id IS NOT NULL AND workflow_contract_revision IS NULL AND comfyui_api_workflow_json IS NULL AND comfyui_object_info_json IS NULL AND comfyui_dependencies_json IS NULL) OR
+    (capability_source_type = 'comfyui_workflow' AND provider_capability_id IS NULL AND provider_capability_revision IS NULL AND provider_operation_id IS NULL AND workflow_contract_revision IS NOT NULL AND comfyui_api_workflow_json IS NOT NULL AND comfyui_object_info_json IS NOT NULL AND comfyui_dependencies_json IS NOT NULL)
   )
 );
 
@@ -105,6 +190,15 @@ CREATE UNIQUE INDEX idx_aiapp_template_versions_number ON aiapp_application_temp
 ALTER TABLE aiapp_application_templates
   ADD CONSTRAINT fk_aiapp_template_current_version
   FOREIGN KEY (current_version_id) REFERENCES aiapp_application_template_versions(id);
+
+-- Deferred conversion references after template tables are defined.
+ALTER TABLE aiapp_comfyui_workflows
+  ADD CONSTRAINT fk_aiapp_comfyui_workflow_converted_template
+  FOREIGN KEY (converted_application_template_id) REFERENCES aiapp_application_templates(id);
+
+ALTER TABLE aiapp_comfyui_workflows
+  ADD CONSTRAINT fk_aiapp_comfyui_workflow_converted_version
+  FOREIGN KEY (converted_template_version_id) REFERENCES aiapp_application_template_versions(id);
 
 -- s1_refs: US-AIAPP-042, US-AIAPP-043; BR-AIAPP-142, BR-AIAPP-148.
 CREATE TABLE aiapp_applications (
@@ -179,7 +273,7 @@ CREATE TABLE aiapp_application_runs (
   provider_capability_id TEXT,
   provider_capability_revision TEXT,
   provider_operation_id TEXT,
-  workflow_contract_revision TEXT,
+  workflow_contract_revision TEXT CHECK (workflow_contract_revision IS NULL OR workflow_contract_revision ~ '^sha256:[0-9a-f]{64}$'),
   capability_source_snapshot_json TEXT NOT NULL,
   input_snapshot_json TEXT NOT NULL,
   execution_snapshot_json TEXT NOT NULL,

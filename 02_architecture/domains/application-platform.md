@@ -1,6 +1,6 @@
 # AI 应用平台领域架构参考
 
-本文是 application-platform v0.8.0-draft 的架构参考。产品语义以 S1 为准，实现接口与数据结构以 S2 为准。
+本文是 application-platform v0.9.0-draft 的架构参考。产品语义以 S1 为准，实现接口与数据结构以 S2 为准。
 
 ## 1. 架构目标
 
@@ -8,6 +8,7 @@
 - 以启动目录中的 YAML 作为 ProviderCapability 唯一事实源，不创建数据库副本。
 - 任何单个能力文件失败只导致能力级降级，不阻止应用平台服务启动。
 - ProviderCapability 与 ComfyUI workflow 使用联合能力来源，ApplicationVersion、ApplicationRun 和 TaskRun 协作均使用可审计的 revision 与执行快照。
+- 将用户私有 ComfyUI 工作流的导入、解析、实例校验和一次性模板转换与 ApplicationTemplate 后续版本演进分离。
 
 ## 2. 模块关系
 
@@ -24,12 +25,17 @@ flowchart LR
     R --> B["EngineCapabilityBinding"]
     E["ApplicationEngineInstance"] --> B
     B --> F["RuntimeForm Resolver"]
+    E --> WI["ComfyUI Workflow Import"]
+    WI --> WV["Workflow Validation History"]
+    WV --> CT["Atomic Template Conversion"]
+    CT --> TV["ApplicationTemplateVersion v1 draft"]
+    TV --> V["ApplicationVersion"]
     V["ApplicationVersion"] --> F
     F --> U["RuntimeFormSchema"]
 
     U --> AR["ApplicationRun"]
     R --> AR
-    CW["ComfyUI Workflow Contract"] --> AR
+    CW["TemplateVersion ComfyUI Snapshot"] --> AR
     E --> AR
     AR --> TR["TaskRun / task-center"]
     AR --> AF["Artifact"]
@@ -109,6 +115,8 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 | ProviderCapabilityLoadResult | 当前进程加载诊断 | 否 |
 | ApplicationEngineInstance | application-platform 数据库 | 是 |
 | EngineCapabilityBinding | application-platform 数据库 | 是 |
+| ComfyUIWorkflow | application-platform 数据库中的用户私有非版本化导入资源 | 是 |
+| ComfyUIWorkflowValidation | application-platform 数据库中的不可变实例校验快照 | 是 |
 | ApplicationTemplateVersion | application-platform 数据库 | 是 |
 | ApplicationVersion | application-platform 数据库 | 是 |
 | RuntimeFormSchema | 请求时计算结果 | 否 |
@@ -119,7 +127,43 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 
 Binding 中的 ProviderCapability ID 没有数据库外键，创建、解析和运行时通过注册表校验。ApplicationRun 按能力来源保存 ProviderCapability 或 ComfyUI workflow revision 快照，不随重启后的能力变化。
 
-## 7. 有效能力计算
+ComfyUIWorkflow 不维护版本树。每次导入生成新资源并保存来源实例 `object_info`；每次兼容性校验保存目标实例独立快照。一次性转换将执行事实深拷贝到首个 draft ApplicationTemplateVersion，之后模板版本与源工作流生命周期解耦。
+
+## 7. ComfyUI 工作流导入与转换时序
+
+```mermaid
+sequenceDiagram
+    participant User as 用户或代管管理员
+    participant Workflow as ComfyUI Workflow Module
+    participant Source as Source EngineInstance
+    participant Target as Target EngineInstance
+    participant Template as Application Template Module
+    participant Outbox as Outbox/Audit
+
+    User->>Workflow: 上传 API Workflow 与可选普通 Workflow
+    Workflow->>Source: 校验 comfyui 类型并读取 object_info
+    Source-->>Workflow: object_info 与版本信息
+    Workflow->>Workflow: 原子解析、checksum、候选项与依赖
+    Workflow-->>User: 私有 ComfyUIWorkflow
+
+    User->>Workflow: 指定目标实例创建兼容性校验
+    Workflow->>Target: 重新读取 object_info
+    Target-->>Workflow: 当前能力快照
+    Workflow->>Workflow: 保存不可变 Validation
+    Workflow-->>User: compatible / incompatible / failed
+
+    User->>Workflow: 选择 compatible Validation 并提交模板契约
+    Workflow->>Workflow: 校验 active、未转换、所有权和幂等键
+    Workflow->>Template: 同一事务创建 Template 与 v1 draft
+    Template-->>Workflow: 模板、版本和服务端 revision
+    Workflow->>Workflow: 固定唯一转换关系
+    Workflow->>Outbox: comfyui_workflow_converted
+    Workflow-->>User: 原子转换结果
+```
+
+转换后的重新校验只追加诊断记录，不进入 TemplateVersion 更新路径。模板后续变化必须显式创建新版本。
+
+## 8. 有效能力计算
 
 ```text
 RuntimeApplicationCapability
@@ -133,7 +177,7 @@ RuntimeApplicationCapability
 
 任一来源不可用时不得静默切换模型、扩张参数或修改历史版本。RuntimeFormSchema 只暴露最终交集。
 
-## 8. 运行时序
+## 9. 运行时序
 
 ```mermaid
 sequenceDiagram
@@ -168,7 +212,7 @@ sequenceDiagram
     App->>Asset: 以 artifact_id 幂等登记 UserAsset
 ```
 
-## 9. 失败隔离
+## 10. 失败隔离
 
 - 目录不可读：注册表 `degraded`，服务继续启动，所有 ProviderCapability 不可执行。
 - 单文件失败：只隔离该文件；其他能力正常注册。
@@ -176,12 +220,19 @@ sequenceDiagram
 - Adapter/Executor 缺失：对应能力不可用，不能由 YAML 补足。
 - 运行时供应商拒绝：运行失败并创建 `CapabilityCorrectionRequired`，系统不自动改文件。
 - 能力重启后变化：既有 Binding 保留但可能失效；历史 ApplicationRun 快照保持不变。
+- ComfyUI 导入失败：不创建工作流；其他工作流与模板不受影响。
+- 实例复检失败：追加 failed 或 incompatible 校验，不覆盖旧结果，不修改模板快照。
+- 转换失败：模板、首版模板版本和工作流转换标记全部回滚；相同幂等键可安全重试。
 
-## 10. 安全与可见性
+## 11. 安全与可见性
 
 - 普通能力目录不暴露磁盘路径、完整加载失败详情或 Engine 凭证。
 - 文件级加载诊断仅管理员可见。
 - ProviderCapability 无任何写 API 或重新加载 API。
 - AppEngine 认证配置仍按当前 S1/S2 权限边界管理；ProviderCapability 文件不得包含凭证。
+- 应用创建者只能发现 EngineInstance 的标识、名称、类型、启用和健康状态；base URL、auth_config、凭证和实例写操作仍由管理员权限保护。
 - Application 默认 private，只有管理员可设置 global；运行、画布、复制与预设开关独立校验。
+- ComfyUIWorkflow 始终为 owner 私有资源，不存在 global 或跨用户共享；管理员代管记录 actor 与 owner。
+- 管理员跨所有者读取或操作必须写入 identity 安全审计，至少记录 action、actor、owner、workflow、结果和时间。
+- 导入时的 object_info 只能由服务端从 EngineInstance 读取，客户端不能注入；工作流 API 不返回 Engine 凭证。
 - workflow-canvas 仍无正式 S1/S2；application-platform S1 第 10～14 章仅保留 deferred 设计，不属于当前实现范围。

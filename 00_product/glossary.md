@@ -11,6 +11,8 @@
 | CapabilityVariant | 一个有效平台、Operation、模型及参数约束组合；不存在的组合表示不支持 | application-platform |
 | Application | 面向用户和画布的业务应用身份，聚合所有者、可见性和版本 | application-platform |
 | ApplicationTemplate | 描述底层能力、参数映射、固定参数和输出提取的应用模板 | application-platform |
+| ComfyUIWorkflow | 用户私有、非版本化的 ComfyUI 工作流导入资源；用于解析、实例兼容性校验及一次性转换模板首版，不等于 ApplicationTemplate | application-platform |
+| ComfyUIWorkflowValidation | 工作流针对一个 ComfyUI EngineInstance 的不可变兼容性校验快照；不提交 prompt，不覆盖历史结果 | application-platform |
 | ApplicationVersion | Application 的不可变发布契约，定义稳定的业务输入输出并引用底层模板 | application-platform |
 | RuntimeFormSchema | 根据应用版本、能力约束、权限和运行时可用性派生的临时业务表单 | application-platform |
 

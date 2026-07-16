@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 0.8.0-draft
+  version: 0.9.0-draft
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
-    应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
+    ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
     ProviderCapability 为只读注册表资源，不提供写入或重新加载 API。
 servers:
   - url: /
@@ -15,6 +15,8 @@ tags:
   - name: application-engine-types
   - name: engine-instances
   - name: engine-capability-bindings
+  - name: comfyui-workflows
+    description: 用户私有 ComfyUI 工作流的导入、解析、实例兼容性校验和一次性模板转换。
   - name: application-templates
   - name: applications
   - name: application-runs
@@ -119,10 +121,10 @@ paths:
       tags: [engine-instances]
       operationId: list_engine_instances
       summary: 查询 ApplicationEngineInstance
-      x-permission: aiapp.engine_instance.manage
+      x-permission: aiapp.engine_instance.read
       x-s1-refs:
-        user_stories: [US-AIAPP-041]
-        business_rules: [BR-AIAPP-140]
+        user_stories: [US-AIAPP-041, US-AIAPP-044, US-AIAPP-045]
+        business_rules: [BR-AIAPP-140, BR-AIAPP-162]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -332,6 +334,344 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/DeleteResult'}
 
+  /api/v1/comfyui-workflows:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflows
+      summary: 查询当前用户的 ComfyUI 工作流
+      description: 普通用户仅返回本人资源；管理员可使用 owner_user_id 代管筛选。
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-155, BR-AIAPP-156]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/search_fields'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - $ref: '#/components/parameters/created_after'
+        - $ref: '#/components/parameters/created_before'
+        - name: lifecycle_status
+          in: query
+          schema: {$ref: '#/components/schemas/ComfyUIWorkflowLifecycleStatus'}
+        - name: parse_status
+          in: query
+          schema: {$ref: '#/components/schemas/ComfyUIWorkflowParseStatus'}
+        - name: latest_validation_status
+          in: query
+          schema: {$ref: '#/components/schemas/ComfyUIWorkflowLatestValidationStatus'}
+        - name: converted
+          in: query
+          schema: {type: boolean}
+        - name: source_engine_instance_id
+          in: query
+          schema: {type: string}
+        - name: owner_user_id
+          in: query
+          description: 仅管理员和超级管理员可用。
+          schema: {type: string}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ComfyUIWorkflowListResponse'}
+    post:
+      tags: [comfyui-workflows]
+      operationId: import_comfyui_workflow
+      summary: 导入 ComfyUI 工作流
+      x-permission: aiapp.comfyui_workflow.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-154, BR-AIAPP-155]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: '#/components/schemas/ComfyUIWorkflowImportRequest'}
+      responses:
+        '200':
+          description: 导入结果、重复内容提示或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowImportResult'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}:
+    get:
+      tags: [comfyui-workflows]
+      operationId: get_comfyui_workflow
+      summary: 查询 ComfyUI 工作流详情
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-155, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      responses:
+        '200':
+          description: 查询结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowDetail'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [comfyui-workflows]
+      operationId: update_comfyui_workflow_metadata
+      summary: 修改 ComfyUI 工作流名称或描述
+      x-permission: aiapp.comfyui_workflow.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-155, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ComfyUIWorkflowUpdateRequest'}
+      responses:
+        '200':
+          description: 更新结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflow'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/archive:
+    post:
+      tags: [comfyui-workflows]
+      operationId: archive_comfyui_workflow
+      summary: 归档 ComfyUI 工作流
+      x-permission: aiapp.comfyui_workflow.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-155, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResourceVersionRequest'}
+      responses:
+        '200':
+          description: 归档结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflow'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/restore:
+    post:
+      tags: [comfyui-workflows]
+      operationId: restore_comfyui_workflow
+      summary: 恢复 ComfyUI 工作流
+      x-permission: aiapp.comfyui_workflow.manage
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-155, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResourceVersionRequest'}
+      responses:
+        '200':
+          description: 恢复结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflow'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/nodes:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflow_nodes
+      summary: 查询工作流节点解析结果
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-156]
+      parameters:
+        - $ref: '#/components/parameters/workflow_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowNodeListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/input-candidates:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflow_input_candidates
+      summary: 查询工作流输入候选
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowInputCandidateListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/output-candidates:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflow_output_candidates
+      summary: 查询工作流输出候选
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowOutputCandidateListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/dependencies:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflow_dependencies
+      summary: 查询工作流运行依赖
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-044]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-156]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowDependencyListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/validations:
+    get:
+      tags: [comfyui-workflows]
+      operationId: list_comfyui_workflow_validations
+      summary: 查询工作流兼容性校验历史
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-045]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-157]
+      parameters:
+        - $ref: '#/components/parameters/workflow_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowValidationListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [comfyui-workflows]
+      operationId: validate_comfyui_workflow
+      summary: 对目标 ComfyUI 实例执行兼容性校验
+      description: 重新读取目标实例 object_info 并保存不可变结果，不提交 /prompt。
+      x-permission: aiapp.comfyui_workflow.validate
+      x-s1-refs:
+        user_stories: [US-AIAPP-045]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-157, BR-AIAPP-158, BR-AIAPP-161]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ComfyUIWorkflowValidationCreateRequest'}
+      responses:
+        '200':
+          description: 校验结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowValidation'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflow-validations/{workflow_validation_id}:
+    get:
+      tags: [comfyui-workflows]
+      operationId: get_comfyui_workflow_validation
+      summary: 查询兼容性校验详情
+      x-permission: aiapp.comfyui_workflow.read
+      x-s1-refs:
+        user_stories: [US-AIAPP-045]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-157]
+      parameters: [{$ref: '#/components/parameters/workflow_validation_id'}]
+      responses:
+        '200':
+          description: 查询结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowValidation'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/comfyui-workflows/{workflow_id}/convert-to-application-template:
+    post:
+      tags: [comfyui-workflows]
+      operationId: convert_comfyui_workflow_to_application_template
+      summary: 一次性转换为应用模板首个草稿版本
+      x-permission: aiapp.comfyui_workflow.convert
+      x-additional-permissions: [aiapp.application.manage]
+      x-s1-refs:
+        user_stories: [US-AIAPP-046]
+        business_rules: [BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
+      parameters: [{$ref: '#/components/parameters/workflow_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ComfyUIWorkflowConvertRequest'}
+      responses:
+        '200':
+          description: 原子转换结果、幂等重试结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ComfyUIWorkflowConvertResult'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/application-templates:
     get:
       tags: [application-templates]
@@ -354,11 +694,12 @@ paths:
     post:
       tags: [application-templates]
       operationId: create_application_template
-      summary: 从 ComfyUI 工作流或 SaaS 能力创建模板草稿
+      summary: 从 ProviderCapability 创建模板草稿
+      description: ComfyUI 首版模板必须使用工作流转换接口创建，不接受原始 Workflow。
       x-permission: aiapp.application.manage
       x-s1-refs:
         user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-159, BR-AIAPP-161]
       requestBody:
         required: true
         content:
@@ -759,6 +1100,14 @@ components:
       name: sort_order
       in: query
       schema: {type: string, enum: [asc, desc], default: asc}
+    created_after:
+      name: created_after
+      in: query
+      schema: {type: string, format: date-time}
+    created_before:
+      name: created_before
+      in: query
+      schema: {type: string, format: date-time}
     provider_capability_id:
       name: provider_capability_id
       in: path
@@ -771,6 +1120,16 @@ components:
       schema: {type: string}
     binding_id:
       name: binding_id
+      in: path
+      required: true
+      schema: {type: string}
+    workflow_id:
+      name: workflow_id
+      in: path
+      required: true
+      schema: {type: string}
+    workflow_validation_id:
+      name: workflow_validation_id
       in: path
       required: true
       schema: {type: string}
@@ -976,7 +1335,18 @@ components:
       required: [total, items]
       properties:
         total: {type: integer}
-        items: {type: array, items: {$ref: '#/components/schemas/EngineInstance'}}
+        items: {type: array, items: {$ref: '#/components/schemas/EngineInstanceSummary'}}
+    EngineInstanceSummary:
+      type: object
+      required: [id, name, application_engine_type_id, enabled, health_status]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        application_engine_type_id: {type: string}
+        enabled: {type: boolean}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        region: {type: string}
     EngineHealthCheckResult:
       type: object
       required: [engine_instance_id, health_status, checked_at]
@@ -1028,6 +1398,317 @@ components:
       properties:
         total: {type: integer}
         items: {type: array, items: {$ref: '#/components/schemas/EngineCapabilityBinding'}}
+    ComfyUIWorkflowLifecycleStatus:
+      type: string
+      enum: [active, archived]
+    ComfyUIWorkflowParseStatus:
+      type: string
+      enum: [fully_supported, partially_supported, manual_configuration_required, unsupported]
+    ComfyUIWorkflowValidationStatus:
+      type: string
+      enum: [compatible, incompatible, failed]
+    ComfyUIWorkflowLatestValidationStatus:
+      type: string
+      enum: [not_validated, compatible, incompatible, failed]
+    ComfyUIWorkflow:
+      type: object
+      required: [id, name, owner_user_id, source_engine_instance_id, workflow_checksum, lifecycle_status, parse_status, latest_validation_status, converted, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        owner_user_id: {type: string}
+        source_engine_instance_id: {type: string}
+        workflow_checksum: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+        lifecycle_status: {$ref: '#/components/schemas/ComfyUIWorkflowLifecycleStatus'}
+        parse_status: {$ref: '#/components/schemas/ComfyUIWorkflowParseStatus'}
+        latest_validation_status: {$ref: '#/components/schemas/ComfyUIWorkflowLatestValidationStatus'}
+        converted: {type: boolean}
+        converted_application_template_id: {type: string, nullable: true}
+        converted_template_version_id: {type: string, nullable: true}
+        converted_at: {type: string, format: date-time, nullable: true}
+        archived_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+    ComfyUIWorkflowDetail:
+      allOf:
+        - $ref: '#/components/schemas/ComfyUIWorkflow'
+        - type: object
+          required: [api_workflow, object_info_snapshot, parse_summary, dependencies]
+          properties:
+            api_workflow: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+            visual_workflow: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+            object_info_snapshot: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+            object_info_checksum: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+            parse_summary: {$ref: '#/components/schemas/ComfyUIWorkflowParseSummary'}
+            dependencies: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDependency'}}
+    ComfyUIWorkflowImportRequest:
+      type: object
+      additionalProperties: false
+      required: [name, source_engine_instance_id, api_workflow_file]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        source_engine_instance_id: {type: string}
+        api_workflow_file: {type: string, format: binary}
+        visual_workflow_file: {type: string, format: binary}
+    ComfyUIWorkflowImportResult:
+      type: object
+      required: [workflow, duplicate_content, duplicate_workflow_ids]
+      properties:
+        workflow: {$ref: '#/components/schemas/ComfyUIWorkflow'}
+        duplicate_content: {type: boolean}
+        duplicate_workflow_ids: {type: array, description: 仅包含当前所有者名下 checksum 相同的工作流 ID。, items: {type: string}}
+    ComfyUIWorkflowUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 2
+      required: [resource_version]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        resource_version: {type: integer}
+    ResourceVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [resource_version]
+      properties:
+        resource_version: {type: integer}
+    ComfyUIWorkflowListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflow'}}
+    ComfyUIWorkflowParseSummary:
+      type: object
+      required: [total_nodes, supported_nodes, warning_nodes, unsupported_nodes]
+      properties:
+        total_nodes: {type: integer}
+        supported_nodes: {type: integer}
+        warning_nodes: {type: integer}
+        unsupported_nodes: {type: integer}
+    ComfyUIWorkflowNode:
+      type: object
+      required: [node_id, class_type, inputs, outputs, parse_status]
+      properties:
+        node_id: {type: string}
+        class_type: {type: string}
+        title: {type: string}
+        display_name: {type: string}
+        position: {type: object, additionalProperties: true}
+        inputs: {type: array, items: {type: object, additionalProperties: true}}
+        outputs: {type: array, items: {type: object, additionalProperties: true}}
+        parse_status: {$ref: '#/components/schemas/ComfyUIWorkflowParseStatus'}
+        errors: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDiagnostic'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDiagnostic'}}
+    ComfyUIWorkflowNodeListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowNode'}}
+    ComfyUIWorkflowInputCandidate:
+      type: object
+      required: [node_id, input_name, classification, data_type, current_value]
+      properties:
+        node_id: {type: string}
+        input_name: {type: string}
+        classification: {type: string, enum: [exposable, fixed_only, connection, hidden, unsupported]}
+        data_type: {type: string}
+        current_value: {description: ComfyUI 原始当前值，可为任意 JSON 值或 null。}
+        required: {type: boolean}
+        options: {type: array, items: {}}
+        minimum: {type: number}
+        maximum: {type: number}
+        step: {type: number}
+        source_node_id: {type: string}
+        source_output_index: {type: integer, minimum: 0}
+    ComfyUIWorkflowInputCandidateListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowInputCandidate'}}
+    ComfyUIWorkflowOutputCandidate:
+      type: object
+      required: [node_id, output_index, data_type, extractable]
+      properties:
+        node_id: {type: string}
+        output_index: {type: integer, minimum: 0}
+        output_name: {type: string}
+        data_type: {type: string}
+        extractable: {type: boolean}
+        media_type: {type: string}
+    ComfyUIWorkflowOutputCandidateListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowOutputCandidate'}}
+    ComfyUIWorkflowDependency:
+      type: object
+      required: [dependency_type, identifier, required]
+      properties:
+        dependency_type: {type: string, enum: [model, lora, custom_node, file, other]}
+        identifier: {type: string}
+        display_name: {type: string}
+        required: {type: boolean}
+        source_node_ids: {type: array, items: {type: string}}
+    ComfyUIWorkflowDependencyListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDependency'}}
+    ComfyUIWorkflowValidationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [engine_instance_id]
+      properties:
+        engine_instance_id: {type: string}
+    ComfyUIWorkflowDiagnostic:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        node_id: {type: string, nullable: true}
+        field_name: {type: string, nullable: true}
+        detail: {type: object, additionalProperties: true}
+    ComfyUIWorkflowValidation:
+      type: object
+      required: [id, workflow_id, owner_user_id, engine_instance_id, status, node_summary, dependency_summary, errors, warnings, validated_at, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        workflow_id: {type: string}
+        owner_user_id: {type: string}
+        engine_instance_id: {type: string}
+        status: {$ref: '#/components/schemas/ComfyUIWorkflowValidationStatus'}
+        comfyui_version: {type: string}
+        object_info_checksum: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
+        object_info_snapshot: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        node_summary: {type: object, additionalProperties: true}
+        dependency_summary: {type: object, additionalProperties: true}
+        errors: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDiagnostic'}}
+        warnings: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDiagnostic'}}
+        validated_at: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer}
+    ComfyUIWorkflowValidationListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowValidation'}}
+    ComfyUIWorkflowConvertRequest:
+      type: object
+      additionalProperties: false
+      required: [name, capability_definition_id, workflow_validation_id, template_contract, idempotency_key]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        capability_definition_id: {type: string}
+        workflow_validation_id: {type: string}
+        template_contract: {$ref: '#/components/schemas/ComfyUIWorkflowTemplateContract'}
+        idempotency_key: {type: string}
+    ComfyUIWorkflowTemplateContract:
+      type: object
+      additionalProperties: false
+      required: [inputs, fixed_parameters, parameter_mappings, outputs, engine_restrictions]
+      properties:
+        inputs:
+          type: array
+          items: {$ref: '#/components/schemas/ComfyUITemplateInput'}
+        fixed_parameters:
+          type: array
+          items: {$ref: '#/components/schemas/ComfyUITemplateFixedParameter'}
+        parameter_mappings:
+          type: array
+          items: {$ref: '#/components/schemas/ComfyUITemplateParameterMapping'}
+        outputs:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ComfyUITemplateOutput'}
+        engine_restrictions:
+          $ref: '#/components/schemas/ComfyUITemplateEngineRestrictions'
+    ComfyUITemplateInput:
+      type: object
+      additionalProperties: false
+      required: [key, data_type, required, connectable]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        description: {type: string}
+        data_type: {type: string}
+        required: {type: boolean}
+        connectable: {type: boolean}
+        default_value: {description: 默认 JSON 值，可为 null。}
+        interaction: {type: object, additionalProperties: true}
+    ComfyUITemplateFixedParameter:
+      type: object
+      additionalProperties: false
+      required: [node_id, input_name, value]
+      properties:
+        node_id: {type: string}
+        input_name: {type: string}
+        value: {description: 写入 API Workflow 节点输入的固定 JSON 值。}
+    ComfyUITemplateMappingTarget:
+      type: object
+      additionalProperties: false
+      required: [node_id, input_name]
+      properties:
+        node_id: {type: string}
+        input_name: {type: string}
+    ComfyUITemplateParameterMapping:
+      type: object
+      additionalProperties: false
+      required: [input_key, conversion_type, targets]
+      properties:
+        input_key: {type: string}
+        conversion_type:
+          type: string
+          enum: [DIRECT, FIXED_VALUE, ENUM_MAP, MULTI_TARGET_MAP, ASPECT_RATIO_TO_SIZE, BOOLEAN_SWITCH, CONDITIONAL, RANGE_SCALE, CONCAT, TEMPLATE_STRING]
+        targets:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ComfyUITemplateMappingTarget'}
+        config: {type: object, additionalProperties: true}
+    ComfyUITemplateOutput:
+      type: object
+      additionalProperties: false
+      required: [key, node_id, output_index, data_type]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        node_id: {type: string}
+        output_index: {type: integer, minimum: 0}
+        data_type: {type: string}
+        media_type: {type: string, enum: [image, video, audio, text, pdf, other]}
+    ComfyUITemplateEngineRestrictions:
+      type: object
+      additionalProperties: false
+      properties:
+        allowed_engine_instance_ids:
+          type: string
+          description: 允许的 EngineInstance ID，多个 ID 使用逗号分隔；为空表示所有兼容实例。
+        allowed_regions:
+          type: string
+          description: 允许的 region，多个值使用逗号分隔；为空表示不限制。
+        require_enabled: {type: boolean, default: true}
+        required_health_status: {type: string, enum: [online, degraded], default: online}
+    ComfyUIWorkflowConvertResult:
+      type: object
+      required: [workflow_id, application_template, application_template_version, workflow_contract_revision]
+      properties:
+        workflow_id: {type: string}
+        application_template: {$ref: '#/components/schemas/ApplicationTemplate'}
+        application_template_version: {$ref: '#/components/schemas/ApplicationTemplateVersion'}
+        workflow_contract_revision: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
     ApplicationTemplate:
       type: object
       required: [id, name, capability_definition_id, capability_source_type, created_at, updated_at, resource_version]
@@ -1044,25 +1725,15 @@ components:
     ApplicationTemplateCreateRequest:
       type: object
       additionalProperties: false
-      required: [name, capability_definition_id, capability_source_type, template_contract]
+      required: [name, capability_definition_id, capability_source_type, provider_capability_id, provider_operation_id, template_contract]
       properties:
         name: {type: string}
         description: {type: string}
         capability_definition_id: {type: string}
-        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        capability_source_type: {type: string, enum: [provider_capability]}
         provider_capability_id: {type: string}
         provider_operation_id: {type: string}
-        workflow_contract_revision: {type: string}
-        comfyui_api_workflow: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
-        comfyui_object_info: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
         template_contract: {type: object, additionalProperties: true}
-      oneOf:
-        - required: [provider_capability_id, provider_operation_id]
-          properties:
-            capability_source_type: {enum: [provider_capability]}
-        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
-          properties:
-            capability_source_type: {enum: [comfyui_workflow]}
     ApplicationTemplateListResponse:
       type: object
       required: [total, items]
@@ -1085,10 +1756,13 @@ components:
         provider_capability_id: {type: string, nullable: true}
         provider_capability_revision: {type: string, nullable: true}
         provider_operation_id: {type: string, nullable: true}
-        workflow_contract_revision: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
+        source_comfyui_workflow_id: {type: string, nullable: true}
+        source_workflow_validation_id: {type: string, nullable: true}
         template_contract: {type: object, additionalProperties: true}
         comfyui_api_workflow: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
         comfyui_object_info: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        comfyui_dependencies: {type: array, nullable: true, items: {$ref: '#/components/schemas/ComfyUIWorkflowDependency'}}
         published_at: {type: string, format: date-time, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
@@ -1097,7 +1771,7 @@ components:
         - required: [provider_capability_id, provider_capability_revision, provider_operation_id]
           properties:
             capability_source_type: {enum: [provider_capability]}
-        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
+        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info, comfyui_dependencies]
           properties:
             capability_source_type: {enum: [comfyui_workflow]}
     ApplicationTemplateVersionCreateRequest:
@@ -1110,15 +1784,15 @@ components:
         capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
         provider_capability_id: {type: string}
         provider_operation_id: {type: string}
-        workflow_contract_revision: {type: string}
         comfyui_api_workflow: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
         comfyui_object_info: {type: object, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
+        comfyui_dependencies: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowDependency'}}
         template_contract: {type: object, additionalProperties: true}
       oneOf:
         - required: [provider_capability_id, provider_operation_id]
           properties:
             capability_source_type: {enum: [provider_capability]}
-        - required: [workflow_contract_revision, comfyui_api_workflow, comfyui_object_info]
+        - required: [comfyui_api_workflow, comfyui_object_info, comfyui_dependencies]
           properties:
             capability_source_type: {enum: [comfyui_workflow]}
     ApplicationTemplateVersionListResponse:
@@ -1226,7 +1900,7 @@ components:
         source_revision: {type: string}
         provider_capability_id: {type: string, nullable: true}
         provider_capability_revision: {type: string, nullable: true}
-        workflow_contract_revision: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
         compatible_engine_instance_ids: {type: array, items: {type: string}}
         fields: {type: array, items: {$ref: '#/components/schemas/RuntimeFormField'}}
         changes: {type: array, items: {$ref: '#/components/schemas/RuntimeFormChange'}}
@@ -1303,7 +1977,7 @@ components:
         provider_capability_id: {type: string, nullable: true}
         provider_capability_revision: {type: string, nullable: true}
         provider_operation_id: {type: string, nullable: true}
-        workflow_contract_revision: {type: string, nullable: true}
+        workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
         input_snapshot: {type: object, additionalProperties: true}
         execution_snapshot: {type: object, additionalProperties: true}
         output_mapping_snapshot: {type: object, additionalProperties: true}

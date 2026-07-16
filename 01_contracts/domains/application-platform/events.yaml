@@ -14,6 +14,25 @@ engine_instance_health_changed:
   related_rules: [BR-AIAPP-140]
   related_user_stories: [US-AIAPP-041]
 
+comfyui_workflow_converted:
+  producer: application-platform.comfyui-workflow
+  consumers: [audit-service]
+  trigger_condition: 工作流转换事务已经创建 ApplicationTemplate、首个 draft ApplicationTemplateVersion 并固定转换关系。
+  payload:
+    workflow_id: string
+    owner_user_id: string
+    actor_user_id: string
+    workflow_validation_id: string
+    application_template_id: string
+    application_template_version_id: string
+    workflow_contract_revision: string
+    converted_at: string(date-time)
+  idempotency_key: workflow_id:application_template_id
+  retry_policy: 转换事务提交后通过 outbox 重试，消费者按 workflow_id 幂等处理。
+  failure_policy: 事件发布失败不得回滚转换；数据库中的工作流转换关系和模板首版是事实源。
+  related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
+  related_user_stories: [US-AIAPP-046]
+
 application_version_published:
   producer: application-platform.application
   consumers: [workflow-canvas, application-platform.runtime-form]
