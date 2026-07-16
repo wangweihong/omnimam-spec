@@ -1277,6 +1277,25 @@ components:
     EngineHealthStatus:
       type: string
       enum: [unknown, online, offline, degraded]
+    ApiKeyAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [api_key]
+      properties:
+        api_key: {type: string, minLength: 1}
+    BearerTokenAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [bearer_token]
+      properties:
+        bearer_token: {type: string, minLength: 1}
+    AkSkAuthConfig:
+      type: object
+      additionalProperties: false
+      required: [access_key, secret_key]
+      properties:
+        access_key: {type: string, minLength: 1}
+        secret_key: {type: string, minLength: 1}
     EngineInstance:
       type: object
       required: [id, name, application_engine_type_id, base_url, auth_type, enabled, health_status, created_at, updated_at, resource_version]
@@ -1287,7 +1306,12 @@ components:
         application_engine_type_id: {type: string}
         base_url: {type: string, format: uri}
         auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
-        auth_config: {type: object, additionalProperties: true, description: 仅有管理权限的详情接口可返回。}
+        auth_config:
+          description: 仅有管理权限的详情接口可返回；返回时必须与 auth_type 匹配。
+          oneOf:
+            - $ref: '#/components/schemas/ApiKeyAuthConfig'
+            - $ref: '#/components/schemas/BearerTokenAuthConfig'
+            - $ref: '#/components/schemas/AkSkAuthConfig'
         enabled: {type: boolean}
         health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
         last_health_check_at: {type: string, format: date-time, nullable: true}
@@ -1299,37 +1323,100 @@ components:
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}
+      allOf:
+        - oneOf:
+            - properties:
+                auth_type: {type: string, enum: [none]}
+              not: {required: [auth_config]}
+            - properties:
+                auth_type: {type: string, enum: [api_key]}
+                auth_config: {$ref: '#/components/schemas/ApiKeyAuthConfig'}
+            - properties:
+                auth_type: {type: string, enum: [bearer_token]}
+                auth_config: {$ref: '#/components/schemas/BearerTokenAuthConfig'}
+            - properties:
+                auth_type: {type: string, enum: [ak_sk]}
+                auth_config: {$ref: '#/components/schemas/AkSkAuthConfig'}
     EngineInstanceCreateRequest:
       type: object
       additionalProperties: false
-      required: [name, application_engine_type_id, base_url, auth_type, auth_config, enabled, max_concurrency]
+      description: auth_type 与 auth_config 必须严格匹配；校验失败返回 ERR_AIAPP_ENGINE_AUTH_CONFIG_INVALID。
+      required: [name, application_engine_type_id, base_url, auth_type, enabled, max_concurrency]
       properties:
         name: {type: string}
         description: {type: string}
         application_engine_type_id: {type: string}
         base_url: {type: string, format: uri}
         auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
-        auth_config: {type: object, additionalProperties: true}
+        auth_config:
+          oneOf:
+            - $ref: '#/components/schemas/ApiKeyAuthConfig'
+            - $ref: '#/components/schemas/BearerTokenAuthConfig'
+            - $ref: '#/components/schemas/AkSkAuthConfig'
         enabled: {type: boolean}
         region: {type: string}
         max_concurrency: {type: integer, minimum: 1}
         request_timeout_seconds: {type: integer, minimum: 1}
         task_timeout_seconds: {type: integer, minimum: 1}
+      allOf:
+        - oneOf:
+            - properties:
+                auth_type: {type: string, enum: [none]}
+              not: {required: [auth_config]}
+            - required: [auth_config]
+              properties:
+                auth_type: {type: string, enum: [api_key]}
+                auth_config: {$ref: '#/components/schemas/ApiKeyAuthConfig'}
+            - required: [auth_config]
+              properties:
+                auth_type: {type: string, enum: [bearer_token]}
+                auth_config: {$ref: '#/components/schemas/BearerTokenAuthConfig'}
+            - required: [auth_config]
+              properties:
+                auth_type: {type: string, enum: [ak_sk]}
+                auth_config: {$ref: '#/components/schemas/AkSkAuthConfig'}
     EngineInstanceUpdateRequest:
       type: object
       additionalProperties: false
+      description: 普通字段可独立更新；鉴权更新必须成组提交 auth_type 与匹配的 auth_config，切换为 none 时必须省略 auth_config。校验失败返回 ERR_AIAPP_ENGINE_AUTH_CONFIG_INVALID。
       properties:
         name: {type: string}
         description: {type: string}
         base_url: {type: string, format: uri}
         auth_type: {type: string, enum: [none, api_key, bearer_token, ak_sk]}
-        auth_config: {type: object, additionalProperties: true}
+        auth_config:
+          oneOf:
+            - $ref: '#/components/schemas/ApiKeyAuthConfig'
+            - $ref: '#/components/schemas/BearerTokenAuthConfig'
+            - $ref: '#/components/schemas/AkSkAuthConfig'
         enabled: {type: boolean}
         region: {type: string}
         max_concurrency: {type: integer, minimum: 1}
         request_timeout_seconds: {type: integer, minimum: 1}
         task_timeout_seconds: {type: integer, minimum: 1}
         resource_version: {type: integer}
+      allOf:
+        - oneOf:
+            - not:
+                anyOf:
+                  - required: [auth_type]
+                  - required: [auth_config]
+            - required: [auth_type]
+              properties:
+                auth_type: {type: string, enum: [none]}
+              not: {required: [auth_config]}
+            - required: [auth_type, auth_config]
+              properties:
+                auth_type: {type: string, enum: [api_key]}
+                auth_config: {$ref: '#/components/schemas/ApiKeyAuthConfig'}
+            - required: [auth_type, auth_config]
+              properties:
+                auth_type: {type: string, enum: [bearer_token]}
+                auth_config: {$ref: '#/components/schemas/BearerTokenAuthConfig'}
+            - required: [auth_type, auth_config]
+              properties:
+                auth_type: {type: string, enum: [ak_sk]}
+                auth_config: {$ref: '#/components/schemas/AkSkAuthConfig'}
     EngineInstanceListResponse:
       type: object
       required: [total, items]

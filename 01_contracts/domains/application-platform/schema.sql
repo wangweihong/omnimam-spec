@@ -15,6 +15,8 @@ CREATE TABLE aiapp_engine_instances (
   application_engine_type_id TEXT NOT NULL,
   base_url TEXT NOT NULL,
   auth_type TEXT NOT NULL CHECK (auth_type IN ('none', 'api_key', 'bearer_token', 'ak_sk')),
+  -- auth_type/auth_config_json form a strict union validated by the API/domain layer
+  -- against the selected ApplicationEngineType in the Runtime Registry.
   auth_config_json TEXT NOT NULL DEFAULT '{}',
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   health_status TEXT NOT NULL DEFAULT 'unknown' CHECK (health_status IN ('unknown', 'online', 'offline', 'degraded')),

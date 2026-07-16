@@ -2,6 +2,7 @@
 
 ## 2026-07-16
 
+- 收紧 application-platform EngineInstance 鉴权契约：auth_type 与 auth_config 改为严格联合类型，none 禁止提交配置，api_key、bearer_token、ak_sk 仅接受各自必填非空凭证字段，鉴权 PATCH 必须成组提交，并同步 Runtime Registry 与设计态 schema 说明；本次仍为未 Release 草稿。
 - 将 application-platform 升级为 v0.9.0-draft，新增用户私有且不带版本树的 ComfyUIWorkflow 导入管理、派生解析结果、不可变 EngineInstance 兼容性校验历史，以及一次性转换 ApplicationTemplate 首个 draft 版本的产品语义。
 - 新增 `BR-AIAPP-153..162`、`US-AIAPP-044..046` 及验收标准，固化导入原子性、服务端 object_info 快照、归档恢复、管理员代管审计、无凭证实例发现、转换幂等与模板快照解耦规则。
 - 新增 ComfyUI 工作流导入、列表详情、元数据更新、归档恢复、节点/输入/输出/依赖查询、兼容性校验历史和模板转换 OpenAPI；通用模板创建接口不再接受 ComfyUI 首版原始 Workflow。
