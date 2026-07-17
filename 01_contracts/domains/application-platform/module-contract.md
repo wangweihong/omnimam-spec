@@ -1,6 +1,6 @@
 # Application Platform Module Contract
 
-本契约实现 `product-spec.md` v0.9.0-draft。S1 引用：`US-AIAPP-039..046`、`BR-AIAPP-130..162`。
+本契约实现 `product-spec.md` v0.9.1。S1 引用：`US-AIAPP-039..046`、`BR-AIAPP-130..163`。
 
 ## 1. 模块边界
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | engine-type-registry | 从 `runtime-registry.yaml` 注册 CapabilityDefinition、ApplicationEngineType、EngineAdapter 和 OperationExecutor | 不保存账号、Provider 模型清单或管理员配置 | BR-AIAPP-140、151 |
 | provider-capability-loader | 从单一目录原子加载 YAML、验证 Schema 和执行依赖、建立只读注册表与诊断 | 不递归、不覆盖、不写库、不热加载、不阻止服务启动 | US-AIAPP-039、040；BR-AIAPP-130..139 |
-| engine-instance | 管理真实连接环境、鉴权配置和健康状态，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力或向普通用户暴露凭证 | US-AIAPP-041、044、045；BR-AIAPP-140、162 |
+| engine-instance | 管理真实连接环境、鉴权配置、手动/周期健康检测和安全失败摘要，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力或向普通用户暴露凭证及原始上游失败载荷 | US-AIAPP-041、044、045；BR-AIAPP-140、162、163 |
 | engine-binding | 绑定实例与当前加载能力并应用收紧限制 | 不复制能力清单，不允许 restrictions 扩张能力 | US-AIAPP-041；BR-AIAPP-135、137、141 |
 | comfyui-workflow | 导入用户私有工作流、保存来源 object_info、派生解析结果、创建不可变实例校验并一次性转换模板首版 | 不维护工作流版本树、不共享工作流、不执行 prompt、不编辑节点、不管理后续模板版本 | US-AIAPP-044..046；BR-AIAPP-153..161 |
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
@@ -31,6 +31,15 @@
 `EngineAdapter` 负责 base URL、鉴权、公共 Header、上传、平台级健康检测和公共错误映射。`OperationExecutor` 负责某个 `CapabilityDefinition` 的输入校验、供应商请求转换、提交、查询、取消和结果提取。
 
 ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Operation。清单不得定义可执行代码、覆盖 Adapter 或通过未知参数绕过 Executor。
+
+### 3.1 EngineInstance 健康检测契约
+
+- API Server 启动后立即检测，之后按全局配置周期执行；默认 30 秒，0 表示关闭自动检测。
+- 只选择 `enabled=true` 且从未检测或已超过一个周期的实例；禁用实例保留最后一次健康事实。
+- 多实例并发检测，单实例和整轮 Context 均限制为 5 秒；服务关闭必须取消请求并等待巡检任务退出。
+- 每次成功落库的检测更新 `last_health_check_at`；成功清空 `unhealthy_reason`，失败保存最多 512 个 UTF-8 字符的安全摘要。
+- 多副本通过到期筛选和 resource version 乐观锁尽力去重；版本冲突不得覆盖新结果，也不得重复发布状态变化事件。
+- 仅健康状态变化且更新成功后发布 `engine_instance_health_changed`；列表、详情和手动检测结果返回一致的检测时间与失败摘要。
 
 ## 4. 数据与一致性
 

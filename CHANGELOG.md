@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-17
+
+- 将 application-platform 升级为 v0.9.1，补充 EngineInstance 启动即检、默认 30 秒可配置周期、仅检测启用实例、并发 5 秒超时和多副本乐观锁尽力去重语义。
+- EngineInstance 列表摘要新增 `last_health_check_at` 与 `unhealthy_reason`；统一手动/周期检测的时间、状态、失败摘要持久化和返回规则，并明确敏感信息脱敏及 512 字符限制。
+- 新增 `BR-AIAPP-163` 与 `AC-AIAPP-041-04..06`，同步更新 OpenAPI、模块契约和领域架构；本次变更由用户于 2026-07-17 明确确认实施。
+
 ## 2026-07-16
 
 - 收紧 application-platform EngineInstance 鉴权契约：auth_type 与 auth_config 改为严格联合类型，none 禁止提交配置，api_key、bearer_token、ak_sk 仅接受各自必填非空凭证字段，鉴权 PATCH 必须成组提交，并同步 Runtime Registry 与设计态 schema 说明；本次仍为未 Release 草稿。

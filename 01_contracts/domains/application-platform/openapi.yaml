@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 0.9.0-draft
+  version: 0.9.1
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -1425,7 +1425,7 @@ components:
         items: {type: array, items: {$ref: '#/components/schemas/EngineInstanceSummary'}}
     EngineInstanceSummary:
       type: object
-      required: [id, name, application_engine_type_id, enabled, health_status]
+      required: [id, name, application_engine_type_id, enabled, health_status, unhealthy_reason]
       properties:
         id: {type: string}
         name: {type: string}
@@ -1433,6 +1433,15 @@ components:
         application_engine_type_id: {type: string}
         enabled: {type: boolean}
         health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        last_health_check_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最近一次成功持久化的健康检测完成时间；从未检测时为 null。
+        unhealthy_reason:
+          type: string
+          maxLength: 512
+          description: 最近一次健康检测的安全失败摘要；健康或从未失败时为空字符串。
         region: {type: string}
     EngineHealthCheckResult:
       type: object

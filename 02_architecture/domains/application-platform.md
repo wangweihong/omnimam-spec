@@ -224,6 +224,14 @@ sequenceDiagram
 - 实例复检失败：追加 failed 或 incompatible 校验，不覆盖旧结果，不修改模板快照。
 - 转换失败：模板、首版模板版本和工作流转换标记全部回滚；相同幂等键可安全重试。
 
+## 10.1 EngineInstance 周期健康检测
+
+API Server 在 bootstrap 阶段创建单个健康巡检器。巡检器启动后立即执行一轮，随后按全局周期选择已启用且到期的 EngineInstance；周期为 0 时不启动。每轮以 5 秒 Context 并发调用对应 EngineAdapter，单实例错误不会取消其他实例。
+
+检测结果通过 EngineInstance 的 resource version 乐观更新。多副本可能同时发起少量重复探测，但只有仍持有当前版本的结果能够提交；版本冲突视为其他副本已提交新事实，不做覆盖。服务关闭时取消轮次 Context 并等待所有检测退出。
+
+状态映射为：协议请求成功是 `online`，网络、超时或上游不可用是 `offline`，Adapter/协议配置异常是 `degraded`。失败详情先归一化为安全摘要再持久化和返回，禁止包含凭证、签名、完整 URL、Header 或未经处理的上游载荷。
+
 ## 11. 安全与可见性
 
 - 普通能力目录不暴露磁盘路径、完整加载失败详情或 Engine 凭证。
