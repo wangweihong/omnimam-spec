@@ -48,9 +48,12 @@ CREATE TABLE task_runs (
   definition_type TEXT NOT NULL CHECK (definition_type IN ('ATOMIC', 'TASK_GROUP', 'DAG_FLOW')),
   definition_id TEXT NOT NULL REFERENCES task_definitions(id),
   application_run_id TEXT DEFAULT '',
+  idempotency_scope TEXT DEFAULT '',
   idempotency_key TEXT DEFAULT '',
   parent_run_id TEXT DEFAULT '',
   root_run_id TEXT DEFAULT '',
+  group_child_key TEXT DEFAULT '',
+  group_child_order INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'READY', 'CLAIMED', 'RUNNING', 'RETRYING', 'CANCEL_REQUESTED', 'PAUSED', 'SUCCESS', 'FAILED', 'CANCELED', 'TIMEOUT', 'LOST')),
   schedule_at TEXT DEFAULT '',
   timeout_at TEXT DEFAULT '',
@@ -84,7 +87,9 @@ CREATE INDEX idx_task_runs_status ON task_runs(status);
 CREATE INDEX idx_task_runs_definition ON task_runs(definition_type, definition_id);
 CREATE INDEX idx_task_runs_application ON task_runs(application_run_id) WHERE application_run_id <> '';
 CREATE UNIQUE INDEX idx_task_runs_application_idempotency ON task_runs(application_run_id, idempotency_key) WHERE application_run_id <> '' AND idempotency_key <> '';
+CREATE UNIQUE INDEX idx_task_runs_scoped_idempotency ON task_runs(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '' AND idempotency_key <> '';
 CREATE INDEX idx_task_runs_parent ON task_runs(parent_run_id);
+CREATE UNIQUE INDEX idx_task_runs_group_child ON task_runs(parent_run_id, group_child_key) WHERE parent_run_id <> '' AND group_child_key <> '';
 CREATE INDEX idx_task_runs_root ON task_runs(root_run_id);
 CREATE INDEX idx_task_runs_schedule ON task_runs(schedule_at);
 CREATE INDEX idx_task_runs_adapter_operation ON task_runs(adapter_key, operation_key, operation_version);

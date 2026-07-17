@@ -118,6 +118,22 @@ task_run_idempotency_conflict:
     - BR-TASK-061
     - BR-TASK-062
 
+task_group_expansion_invalid:
+  code: ERR_TASK_GROUP_EXPANSION_INVALID
+  value: 140404
+  cn: TaskGroup 运行时子任务展开不合法。
+  en: TaskGroup runtime child expansion is invalid.
+  owning_domain: task-center
+  owning_module: run
+  range: 140400-140599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-004, US-TASK-005]
+  related_rules: [BR-TASK-068, BR-TASK-069]
+
 worker_not_available:
   code: ERR_TASK_WORKER_NOT_AVAILABLE
   value: 140600

@@ -34,7 +34,7 @@
 
 - 负责为系统内部维护任务周期性创建计划执行的 TaskRun。
 - 负责使用 `schedule_at` 表达计划开始时间，并沿用 TaskRun 生命周期、重试和失败处理规则。
-- 可周期性创建 `application-platform.app-engine-health-check` TaskRun，用于触发应用平台监听未停用 AppEngine 健康状态。
+- 可周期性创建 `application-platform.engine-health-plan` TaskRun，由应用平台枚举到期实例并建立 PARALLEL TaskGroup。
 - 不解释业务任务执行语义；例如 `asset.sha256_backfill` 的扫描、读取、计算和写回由素材库负责。
 - 不解释 ProviderAdapter 操作协议、AppEngine 认证配置、平台能力、平台连接和健康判断语义；这些由 application-platform 负责。
 
@@ -42,6 +42,14 @@
 
 - 负责项目、命名空间、创建人、Worker 协议调用方和运维角色的访问控制。
 - 普通用户只能访问授权范围内的 TaskRun；运维角色可查看跨项目健康和异常摘要。
+
+### task-group-runtime
+
+- 创建 TaskGroup TaskRun 时原子展开根运行与子运行；组根由任务中心推进，不得被 Worker 领取。
+- 支持静态 children 及调用领域提供的动态 `group_children`；动态引用必须属于定义白名单，最大嵌套深度 16，单树最多 10000 个运行。
+- PARALLEL 按 `max_parallelism` 限制 CLAIMED/RUNNING 直接子运行；SERIAL 只释放当前子运行。
+- 子运行进度和终态向父运行聚合；取消和组整体超时级联到未完成子运行。
+- PARALLEL 默认 `FAILED_ONLY`，SERIAL 默认 `FROM_FAILED`；重试保留 TaskAttempt 历史。
 
 ## 2. 输入输出边界
 
@@ -61,7 +69,7 @@
 - `worker-protocol` 调用 ProviderAdapter 执行具体业务能力；Adapter 和 AppEngine 都不属于任务中心。
 - `watchdog` 依赖 `worker-protocol` 写入的 Worker、Attempt 和 Lease 状态。
 - `scheduler` 依赖 `definition` 和 `run` 创建计划执行的 TaskRun。
-- `application-platform` 可依赖 `scheduler` 周期性触发 `application-platform.app-engine-health-check`，但 AppEngine 健康检测语义由 `application-platform` 自身解释。
+- `application-platform` 可依赖 `scheduler` 周期性触发 `application-platform.engine-health-plan`，但 AppEngine 健康检测语义由 `application-platform` 自身解释。
 - `asset-library` 可依赖 `scheduler` 周期性触发 `asset.sha256_backfill`，但业务执行语义由 `asset-library` 自身解释。
 - `access` 被 `definition`、`run`、`worker-protocol`、`watchdog` 和 `scheduler` 调用。
 
@@ -77,6 +85,7 @@
 - 取消请求发出后，最终状态允许为 `CANCELED`、`SUCCESS`、`FAILED` 或 `TIMEOUT`。
 - `overallTimeout` 优先级高于重试策略；无限重试必须设置退出保护条件。
 - 系统周期性调度创建的 TaskRun 必须遵循普通 TaskRun 生命周期，不绕过 Worker 领取、lease、进度和结果回写规则。
+- `application-platform.engine-health-plan` 由应用平台执行器枚举到期实例，并创建 `application-platform.engine-health-group` PARALLEL TaskGroup；每个实例使用 `application-platform.engine-instance-health-check` 原子子任务。
 - 软删除只允许作用于终态 TaskRun，且不得物理删除 TaskAttempt、状态历史和审计记录。
 
 ## 5. 权限边界

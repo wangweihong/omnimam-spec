@@ -17,3 +17,7 @@
   - 01_contracts/domains/application-platform/permissions.yaml
   - 01_contracts/domains/application-platform/events.yaml
   - 01_contracts/domains/application-platform/module-contract.md
+# spec-v0.9.2
+
+- AppEngine 健康检测迁移至 Task Center 与 PARALLEL TaskGroup。
+- TaskGroup 运行机制和动态子任务契约完成 release。

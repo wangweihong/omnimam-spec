@@ -147,6 +147,10 @@ paths:
           in: query
           schema:
             type: string
+        - name: parent_run_id
+          in: query
+          schema:
+            type: string
         - name: project_id
           in: query
           schema:
@@ -778,9 +782,12 @@ components:
           $ref: "#/components/schemas/TaskDefinitionType"
         definition_id: { type: string }
         application_run_id: { type: string }
+        idempotency_scope: { type: string }
         idempotency_key: { type: string }
         parent_run_id: { type: string }
         root_run_id: { type: string }
+        group_child_key: { type: string }
+        group_child_order: { type: integer }
         status:
           $ref: "#/components/schemas/TaskRunStatus"
         schedule_at: { type: string, format: date-time }
@@ -816,9 +823,12 @@ components:
         application_run_id:
           type: string
           description: application.execute TaskRun 必填；非应用任务为空。
+        idempotency_scope:
+          type: string
+          description: 系统调度或非 ApplicationRun 调用的幂等作用域；必须与 idempotency_key 同时出现。
         idempotency_key:
           type: string
-          description: application.execute TaskRun 必填；与 application_run_id 共同保证创建幂等。
+          description: 与 application_run_id 或 idempotency_scope 共同保证创建幂等。
         parent_run_id: { type: string }
         root_run_id: { type: string }
         schedule_at: { type: string, format: date-time }
@@ -828,6 +838,11 @@ components:
         requested_engine_id: { type: string }
         resolved_engine_id: { type: string }
         input: { type: object, additionalProperties: true }
+        group_children:
+          type: array
+          description: TASK_GROUP 的运行时子任务；引用必须属于定义 children 白名单。
+          items:
+            $ref: "#/components/schemas/TaskGroupRunChild"
         timeout_policy:
           $ref: "#/components/schemas/TimeoutPolicy"
         retry_policy:
@@ -837,10 +852,25 @@ components:
         tags: { type: string }
       oneOf:
         - required: [application_run_id, idempotency_key]
+        - required: [idempotency_scope, idempotency_key]
         - not:
             anyOf:
               - required: [application_run_id]
+              - required: [idempotency_scope]
               - required: [idempotency_key]
+    TaskGroupRunChild:
+      type: object
+      required: [key, definition_type, definition_id]
+      properties:
+        key: { type: string, minLength: 1, maxLength: 128 }
+        definition_type:
+          $ref: "#/components/schemas/TaskDefinitionType"
+        definition_id: { type: string }
+        input: { type: object, additionalProperties: true }
+        group_children:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskGroupRunChild"
     TaskRunListResponse:
       type: object
       required: [total, items]

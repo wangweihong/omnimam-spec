@@ -34,11 +34,11 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 
 ### 3.1 EngineInstance 健康检测契约
 
-- API Server 启动后立即检测，之后按全局配置周期执行；默认 30 秒，0 表示关闭自动检测。
-- 只选择 `enabled=true` 且从未检测或已超过一个周期的实例；禁用实例保留最后一次健康事实。
-- 多实例并发检测，单实例和整轮 Context 均限制为 5 秒；服务关闭必须取消请求并等待巡检任务退出。
+- Task Center 启动后立即创建 `application-platform.engine-health-plan`，之后按全局配置周期创建；默认 30 秒，0 表示关闭自动检测。
+- Planner 只选择 `enabled=true` 且从未检测或已超过一个周期的实例，并创建 `application-platform.engine-health-group` PARALLEL TaskGroup；每个实例对应一个原子健康子任务。
+- TaskGroup `max_parallelism=16`、整体超时 5 秒，单实例子任务超时 4 秒；上一轮未终止时合并后续触发。
 - 每次成功落库的检测更新 `last_health_check_at`；成功清空 `unhealthy_reason`，失败保存最多 512 个 UTF-8 字符的安全摘要。
-- 多副本通过到期筛选和 resource version 乐观锁尽力去重；版本冲突不得覆盖新结果，也不得重复发布状态变化事件。
+- 多副本通过 TaskRun 幂等、ExecutionLease 和 TaskGroup 并发控制去重；resource version 冲突不得覆盖新结果，也不得重复发布状态变化事件。
 - 仅健康状态变化且更新成功后发布 `engine_instance_health_changed`；列表、详情和手动检测结果返回一致的检测时间与失败摘要。
 
 ## 4. 数据与一致性

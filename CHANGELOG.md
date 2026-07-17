@@ -138,3 +138,7 @@
 - 调整 `application-platform` S1 产品规格中的角色语义，移除 `业务使用者`、`外部系统`、`应用创建者`、`平台管理员` 等旧角色表达，统一收敛为 `普通用户` 和 `系统管理员`。
 - 更新 `application-platform` 功能适配矩阵、用户故事、业务规则、系统呈现策略和待确认问题，避免旧四角色模型继续作为产品事实源。
 - 基于收敛后的 `application-platform` S1 生成 S2 契约草稿，新增 OpenAPI、设计态 SQL schema、错误码、权限码、事件和模块边界文档，并登记全局错误码区间。
+# spec-v0.9.2
+
+- 使用 Task Center 周期任务与 PARALLEL TaskGroup 执行 AppEngine 健康检测。
+- 补充动态 TaskGroup 展开、并发、聚合、取消、超时、重试和通用幂等契约。
