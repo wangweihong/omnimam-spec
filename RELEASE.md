@@ -2,8 +2,8 @@
 
 ## spec-v0.9.1
 
-- commit: pending
-- status: user-confirmed
+- commit: 339cc89c1060389ea7d18715af11ab60b1481fa4
+- status: released
 - confirmed_by: user（2026-07-17 明确要求实施 AppEngine 周期健康检测计划）
 - allowed_as_formal_implementation_basis: true
 - domains:
