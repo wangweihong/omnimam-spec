@@ -1,0 +1,57 @@
+canvas_version_published:
+  producer: canvas-version-service
+  consumers: [audit-service, application-platform]
+  trigger_condition: Canvas 草稿校验、编译和运行时定义注册全部成功后发布版本。
+  payload:
+    canvas_id: string
+    canvas_version_id: string
+    version: integer
+    content_digest: string
+    compiled_definition_name: string
+    compiled_definition_version: integer
+    project_id: string
+    namespace: string
+    published_by: string
+    occurred_at: string(date-time)
+  idempotency_key: canvas_version_id:published
+  retry_policy: 由事务 outbox 重试。
+  failure_policy: CanvasVersion 为事实源，事件失败不得回滚已发布版本。
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002]
+
+canvas_run_created:
+  producer: canvas-run-service
+  consumers: [audit-service]
+  trigger_condition: CanvasRun 已保存并成功绑定 DAGTaskGroup。
+  payload:
+    canvas_run_id: string
+    canvas_version_id: string
+    dag_task_group_id: string
+    status: string
+    project_id: string
+    namespace: string
+    created_by: string
+    occurred_at: string(date-time)
+  idempotency_key: canvas_run_id:created
+  retry_policy: 由事务 outbox 重试。
+  failure_policy: CanvasRun 与 dag_task_group_id 唯一绑定为事实源，不重复创建 DAGTaskGroup。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007]
+
+canvas_run_status_changed:
+  producer: canvas-projection-service
+  consumers: [frontend-realtime-adapter, notification-service, audit-service]
+  trigger_condition: task-center 的 Group 或 AtomicTask 投影推进 CanvasRun 或 CanvasNodeRun。
+  payload:
+    canvas_run_id: string
+    node_key: string|null
+    atomic_task_id: string|null
+    status: string
+    progress: number
+    task_resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: canvas_run_id:node_key:task_resource_version
+  retry_policy: 由 outbox 重试，消费者丢弃旧版本。
+  failure_policy: CanvasRun/CanvasNodeRun 投影可从 task-center 对账恢复。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-008, BR-WORKFLOW-014]

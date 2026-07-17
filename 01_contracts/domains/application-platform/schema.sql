@@ -1,4 +1,4 @@
--- application-platform S2 design schema, v0.9.0-draft.
+-- application-platform S2 design schema, v1.0.0.
 -- This is a design contract, not a migration.
 -- ProviderCapability, ApplicationEngineType and load diagnostics are startup-only
 -- registries and intentionally have no database tables.
@@ -268,7 +268,7 @@ CREATE TABLE aiapp_application_runs (
   application_id TEXT NOT NULL REFERENCES aiapp_applications(id),
   application_version_id TEXT NOT NULL REFERENCES aiapp_application_versions(id),
   application_template_version_id TEXT NOT NULL REFERENCES aiapp_application_template_versions(id),
-  task_run_id TEXT UNIQUE,
+  atomic_task_id TEXT UNIQUE,
   engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
   capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
   source_revision TEXT NOT NULL,
@@ -292,8 +292,8 @@ CREATE TABLE aiapp_application_runs (
     (capability_source_type = 'comfyui_workflow' AND provider_capability_id IS NULL AND provider_capability_revision IS NULL AND provider_operation_id IS NULL AND workflow_contract_revision IS NOT NULL)
   ),
   CHECK (
-    (task_creation_status = 'created' AND task_run_id IS NOT NULL AND task_status_projection IS NOT NULL) OR
-    (task_creation_status IN ('pending', 'failed') AND task_run_id IS NULL AND task_status_projection IS NULL)
+    (task_creation_status = 'created' AND atomic_task_id IS NOT NULL AND task_status_projection IS NOT NULL) OR
+    (task_creation_status IN ('pending', 'failed') AND atomic_task_id IS NULL AND task_status_projection IS NULL)
   )
 );
 

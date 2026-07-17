@@ -1,159 +1,96 @@
-task_run_created:
-  producer: run-service
-  consumers:
-    - scheduler-service
-    - application-platform
-  trigger_condition: TaskRun 创建成功。
+atomic_task_created:
+  producer: atomic-task-service
+  consumers: [application-platform, workflow-canvas, audit-service]
+  trigger_condition: AtomicTask 业务记录和运行时启动请求已持久化。
   payload:
-    run_id: string
-    application_run_id: string|null
-    definition_type: string
-    definition_id: string
+    atomic_task_id: string
+    function_ref: string
+    owner_type: string|null
+    owner_id: string|null
+    root_task_id: string
     status: string
     resource_version: integer
-    adapter_key: string
-    operation_key: string
-    operation_version: string
-    requested_engine_id: string
-    resolved_engine_id: string
     project_id: string
     namespace: string
-    created_by: string
     occurred_at: string(date-time)
-  idempotency_key: run_id:task_run_created
-  retry_policy: 失败后按固定间隔重试，直到消费者接收或进入人工排查。
-  failure_policy: 事件失败不得回滚 TaskRun 创建，必须保留可重放记录。
-  related_user_stories:
-    - US-TASK-001
-  related_rules:
-    - BR-TASK-007
-    - BR-TASK-061
-    - BR-TASK-062
+  idempotency_key: atomic_task_id:atomic_task_created
+  retry_policy: 由 PostgreSQL outbox 持续重试并支持人工重放。
+  failure_policy: 发布失败不得回滚 AtomicTask；消费者按事件幂等键去重。
+  related_user_stories: [US-TASK-008]
+  related_rules: [BR-TASK-073, BR-TASK-088, BR-TASK-090]
 
-task_run_status_changed:
-  producer: run-service
-  consumers:
-    - application-platform
-    - notification-service
-    - audit-service
-  trigger_condition: TaskRun 状态发生变化，包括 ready、claimed、started、retrying、succeeded、failed、canceled、timeout。
+atomic_task_status_changed:
+  producer: runtime-projection-service
+  consumers: [application-platform, workflow-canvas, notification-service, audit-service]
+  trigger_condition: AtomicTask 状态、进度、Attempt 或结果投影发生单调更新。
   payload:
-    run_id: string
-    application_run_id: string|null
+    atomic_task_id: string
+    owner_type: string|null
+    owner_id: string|null
     from_status: string
     to_status: string
     progress: number
-    resource_version: integer
+    current_attempt: integer
+    output: object
     last_error: object
-    occurred_at: string(date-time)
-  idempotency_key: run_id:resource_version
-  retry_policy: 失败后按固定间隔重试，直到消费者接收或进入人工排查。
-  failure_policy: TaskRun 状态以 schema 记录为准，事件可从 task_run_events 重放。
-  related_user_stories:
-    - US-TASK-001
-    - US-TASK-002
-    - US-TASK-003
-  related_rules:
-    - BR-TASK-011
-    - BR-TASK-037
-    - BR-TASK-039
-    - BR-TASK-062
-
-task_run_progress_updated:
-  producer: worker-protocol-service
-  consumers:
-    - application-platform
-    - frontend-realtime-adapter
-  trigger_condition: Worker 持有效 lease 上报 TaskRun 进度。
-  payload:
-    run_id: string
-    application_run_id: string|null
-    attempt_id: string
-    worker_id: string
-    lease_id: string
-    progress: number
     resource_version: integer
-    output_snapshot: object
     occurred_at: string(date-time)
-  idempotency_key: run_id:resource_version
-  retry_policy: 失败后按固定间隔重试；实时刷新消费者允许丢弃过期进度事件。
-  failure_policy: 最新进度以 TaskRun 记录为准，事件失败不影响 Worker 继续执行。
-  related_user_stories:
-    - US-TASK-001
-  related_rules:
-    - BR-TASK-016
-    - BR-TASK-019
-    - BR-TASK-062
+  idempotency_key: atomic_task_id:resource_version
+  retry_policy: 由 outbox 重试；消费者丢弃相同或更低 resource_version。
+  failure_policy: AtomicTask 投影为业务事实源，遗漏事件由运行时 reconciler 修复后重新发布。
+  related_user_stories: [US-TASK-008, US-TASK-015]
+  related_rules: [BR-TASK-075, BR-TASK-087, BR-TASK-088]
 
-task_attempt_failed:
-  producer: worker-protocol-service
-  consumers:
-    - run-service
-    - audit-service
-    - operations-monitor
-  trigger_condition: TaskAttempt 以 FAILED、TIMEOUT、WORKER_LOST、LEASE_EXPIRED 或 STALLED 结束。
+task_group_status_changed:
+  producer: orchestration-projection-service
+  consumers: [workflow-canvas, application-platform, audit-service]
+  trigger_condition: TaskGroup 或 DAGTaskGroup 的状态、进度或汇总发生变化。
   payload:
-    run_id: string
-    attempt_id: string
-    worker_id: string
-    failure_type: string
-    retryable: boolean
-    error: object
-    logs_ref: string
-    external_job_id: string
+    group_type: string
+    group_id: string
+    status: string
+    progress: number
+    summary: object
+    resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: attempt_id:task_attempt_failed
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: Attempt 失败事实以 task_attempts 记录为准，不得覆盖历史失败记录。
-  related_user_stories:
-    - US-TASK-003
-    - US-TASK-007
-  related_rules:
-    - BR-TASK-010
-    - BR-TASK-012
-    - BR-TASK-044
+  idempotency_key: group_type:group_id:resource_version
+  retry_policy: 由 outbox 重试，消费者按版本幂等。
+  failure_policy: 子 AtomicTask 和组合投影可重新计算汇总，不覆盖较新版本。
+  related_user_stories: [US-TASK-009, US-TASK-010]
+  related_rules: [BR-TASK-080, BR-TASK-088]
 
-worker_lost:
-  producer: watchdog-service
-  consumers:
-    - scheduler-service
-    - operations-monitor
-    - audit-service
-  trigger_condition: watchdog 判断 Worker heartbeat 超时并将 Worker 标记为 LOST。
+task_schedule_execution_recorded:
+  producer: schedule-service
+  consumers: [operations-monitor, audit-service]
+  trigger_condition: ScheduleExecution 创建或进入终态。
   payload:
-    worker_id: string
-    heartbeat_at: string(date-time)
-    affected_lease_count: integer
+    task_schedule_id: string
+    schedule_execution_id: string
+    scheduled_at: string(date-time)
+    status: string
+    target_type: string
+    target_id: string|null
+    reason: string|null
     occurred_at: string(date-time)
-  idempotency_key: worker_id:worker_lost:occurred_at
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: Worker LOST 事实以 task_workers 和 task_watchdog_records 为准。
-  related_user_stories:
-    - US-TASK-007
-  related_rules:
-    - BR-TASK-042
-    - BR-TASK-043
-    - BR-TASK-044
+  idempotency_key: schedule_execution_id:status
+  retry_policy: 由 outbox 重试并支持按 schedule_execution_id 重放。
+  failure_policy: ScheduleExecution 数据库记录为事实源；事件失败不重复启动目标。
+  related_user_stories: [US-TASK-011, US-TASK-013]
+  related_rules: [BR-TASK-084, BR-TASK-085]
 
-lease_expired:
-  producer: watchdog-service
-  consumers:
-    - scheduler-service
-    - operations-monitor
-  trigger_condition: watchdog 发现 ExecutionLease 过期。
+task_runtime_projection_reconciled:
+  producer: runtime-reconciler
+  consumers: [operations-monitor, audit-service]
+  trigger_condition: 对账发现运行时与业务投影不一致并完成单调修复。
   payload:
-    lease_id: string
-    run_id: string
-    attempt_id: string
-    worker_id: string
-    expire_at: string(date-time)
+    resource_type: string
+    resource_id: string
+    runtime_execution_id: string
+    previous_version: integer
+    current_version: integer
     occurred_at: string(date-time)
-  idempotency_key: lease_id:lease_expired
-  retry_policy: 失败后按固定间隔重试，直到消费者接收。
-  failure_policy: Lease 过期事实以 task_execution_leases 为准，调度恢复可通过 watchdog 记录补偿。
-  related_user_stories:
-    - US-TASK-007
-  related_rules:
-    - BR-TASK-030
-    - BR-TASK-031
-    - BR-TASK-043
+  idempotency_key: resource_type:resource_id:current_version:reconciled
+  retry_policy: 由 outbox 重试。
+  failure_policy: 对账事实保留在 runtime_projection_events；告警事件失败不回滚修复。
+  related_user_stories: [US-TASK-015]
+  related_rules: [BR-TASK-088]

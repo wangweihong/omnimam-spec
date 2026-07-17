@@ -397,7 +397,7 @@
   owning_module: application-run
   range: 130800-130999
   retryable: true
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-143]
   related_user_stories: [US-AIAPP-043]
 
@@ -410,7 +410,7 @@
   owning_module: application-run
   range: 130800-130999
   retryable: false
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-143]
   related_user_stories: [US-AIAPP-043]
 
@@ -430,13 +430,13 @@
 - code: ERR_AIAPP_TASK_RUN_CREATE_FAILED
   value: 130823
   http: 200
-  cn: TaskRun 创建暂时失败，ApplicationRun 快照已保留，可使用相同幂等键重试。
-  en: TaskRun creation failed; the ApplicationRun snapshot is retained and may be retried with the same idempotency key.
+  cn: 旧 TaskRun 创建暂时失败。
+  en: Legacy TaskRun creation failed.
   owning_domain: application-platform
   owning_module: application-run
   range: 130800-130999
   retryable: true
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-143, BR-AIAPP-149]
   related_user_stories: [US-AIAPP-043]
 
@@ -449,7 +449,7 @@
   owning_module: application-run
   range: 130800-130999
   retryable: true
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]
 
@@ -464,6 +464,45 @@
   retryable: false
   deprecated: false
   related_rules: [BR-AIAPP-143, BR-AIAPP-149]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_ATOMIC_TASK_CREATE_FAILED
+  value: 130826
+  http: 200
+  cn: AtomicTask 创建暂时失败，ApplicationRun 快照已保留，可使用相同幂等键重试。
+  en: AtomicTask creation failed; the ApplicationRun snapshot is retained and may be retried with the same idempotency key.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-143, BR-AIAPP-149]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_ATOMIC_TASK_PROJECTION_STALE
+  value: 130827
+  http: 200
+  cn: AtomicTask 投影事件版本早于当前 ApplicationRun 投影。
+  en: The AtomicTask projection event is older than the current ApplicationRun projection.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-043]
+
+- code: ERR_AIAPP_ARTIFACT_REGISTRATION_ATOMIC_TASK_UNCHANGED
+  value: 130828
+  http: 200
+  cn: Artifact 未能登记为 UserAsset，AtomicTask 终态不受影响。
+  en: The Artifact could not be registered as a UserAsset; the AtomicTask terminal state is unchanged.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]
 
 - code: ERR_AIAPP_PERMISSION_DENIED

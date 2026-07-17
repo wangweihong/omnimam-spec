@@ -125,7 +125,7 @@ aiapp.application.run:
   action: run
   description: 解析 RuntimeFormSchema、提交运行并查看本人可见的 ApplicationRun。
   frontend_usage: 控制应用运行表单、提交和运行详情。
-  backend_enforcement: 按联合能力来源重新校验模板版本、Binding/Engine、输入和用户访问权后保存 ApplicationRun 快照，再幂等创建 TaskRun；允许查看 Artifact 登记状态。
+  backend_enforcement: 按联合能力来源重新校验模板版本、Binding/Engine、输入和用户访问权后保存 ApplicationRun 快照，再幂等创建 AtomicTask；允许查看 Artifact 登记状态。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-149, BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]

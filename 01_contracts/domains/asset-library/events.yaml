@@ -1,3 +1,22 @@
+asset_uploaded:
+  producer: asset-library.upload-session
+  consumers: [task-center]
+  trigger_condition: 素材二进制和 UserAsset 在同一上传完成事务中持久化成功。
+  payload:
+    asset_id: string
+    owner_user_id: string
+    project_id: string
+    namespace: string
+    media_type: string
+    content_ref: string
+    profile_version: string
+    occurred_at: string(date-time)
+  idempotency_key: asset_id:uploaded
+  retry_policy: PostgreSQL outbox 通过 Watermill 持续重试并支持人工重放。
+  failure_policy: 发布失败不回滚素材；task-center 使用 thumbnail:asset_id:profile_version 幂等消费。
+  related_rules: [BR-USER-ASSET-19]
+  related_user_stories: [US-USER-ASSET-09]
+
 artifact_registered:
   producer: asset-library.artifact-registration
   consumers: [application-platform.application-run, audit-service]
@@ -11,6 +30,6 @@ artifact_registered:
     occurred_at: string(date-time)
   idempotency_key: artifact_id:asset_id
   retry_policy: 发布失败后重试相同事件；不得重新创建 UserAsset。
-  failure_policy: artifact_asset_registrations 与 user_assets 是成功登记事实源；事件失败不回滚素材，也不改变 TaskRun 终态。
+  failure_policy: artifact_asset_registrations 与 user_assets 是成功登记事实源；事件失败不回滚素材，也不改变 AtomicTask 终态。
   related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-63]
   related_user_stories: [US-USER-ASSET-41]

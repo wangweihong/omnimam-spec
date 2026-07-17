@@ -1,0 +1,35 @@
+workflow.canvas.manage:
+  domain: workflow-canvas
+  module: canvas
+  resource: canvas, canvas_version
+  action: create, read, update, publish, delete
+  subject: ordinary_user, business_developer, system_admin
+  description: 管理 Canvas 草稿并发布不可变版本。
+  frontend_usage: 控制画布列表、编辑器、发布和版本历史入口。
+  backend_enforcement: 校验 project、namespace、owner、草稿 revision、节点引用和发布图限制。
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002, BR-WORKFLOW-004]
+
+workflow.run.operate:
+  domain: workflow-canvas
+  module: run
+  resource: canvas_run, canvas_node_run
+  action: create, read, cancel, retry
+  subject: ordinary_user, business_developer, system_admin
+  description: 运行已发布版本、查看节点映射、取消和重跑。
+  frontend_usage: 控制运行、运行历史、节点状态、取消和重跑入口。
+  backend_enforcement: 校验版本可见性和租户边界；取消和重跑必须经 task-center，重跑创建新 CanvasRun。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-013]
+
+workflow.projection.internal:
+  domain: workflow-canvas
+  module: projection
+  resource: canvas_run, canvas_node_run
+  action: bind_task, project_status, reconcile
+  subject: workflow_canvas_service, task_center_service
+  description: 绑定 DAGTaskGroup/AtomicTask 并维护单调状态投影。
+  frontend_usage: 不向前端直接暴露。
+  backend_enforcement: 仅服务身份可调用，只接受匹配资源和更高 task_resource_version。
+  related_user_stories: [US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-008, BR-WORKFLOW-014]

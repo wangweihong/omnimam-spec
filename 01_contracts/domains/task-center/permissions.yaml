@@ -1,74 +1,59 @@
-task.definition.manage:
+task.atomic.operate:
   domain: task-center
-  module: definition
-  resource: atomic_task, task_group, dag_flow_task
-  action: create, read, update, delete
+  module: atomic-task
+  resource: atomic_task, task_attempt
+  action: create, read, cancel, retry
+  subject: ordinary_user, business_service, system_admin
+  description: 创建、查询、取消和手动重试 AtomicTask，并查看 Attempt 历史。
+  frontend_usage: 控制任务详情、取消、重试和 Attempt 历史入口。
+  backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；手动重试必须创建新 AtomicTask。
+  related_user_stories: [US-TASK-008]
+  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076]
+
+task.group.operate:
+  domain: task-center
+  module: orchestration
+  resource: task_group, dag_task_group
+  action: create, read, cancel, retry
+  subject: ordinary_user, business_developer, business_service, system_admin
+  description: 创建和操作串并行 TaskGroup 与 DAGTaskGroup，查看子任务和汇总。
+  frontend_usage: 控制组合任务列表、详情、节点状态、取消和重跑入口。
+  backend_enforcement: 校验租户边界、functionRef 白名单、节点和边限制；重跑必须创建新组合资源。
+  related_user_stories: [US-TASK-009, US-TASK-010]
+  related_rules: [BR-TASK-078, BR-TASK-081, BR-TASK-096, BR-TASK-099]
+
+task.schedule.manage:
+  domain: task-center
+  module: schedule
+  resource: task_schedule, task_schedule_execution
+  action: create, read, update, pause, resume, delete
   subject: business_developer, system_admin
-  description: 管理任务定义，包括 AtomicTask、TaskGroup 和 DAGFlowTask。
-  frontend_usage: 控制任务定义列表、创建、编辑、删除和 DAG 配置入口。
-  backend_enforcement: 必须校验项目、命名空间和创建人范围；DAGFlowTask 保存前必须校验无环。
-  related_user_stories:
-    - US-TASK-004
-    - US-TASK-005
-    - US-TASK-006
-  related_rules:
-    - BR-TASK-001
-    - BR-TASK-002
-    - BR-TASK-003
-    - BR-TASK-006
+  description: 管理周期或单次计划并查看全部调度历史与汇总。
+  frontend_usage: 控制 Schedule 列表、编辑、暂停、恢复、删除和执行历史入口。
+  backend_enforcement: 校验目标模板、六段 cron、显式时区、run_at 和租户边界；删除为软删除。
+  related_user_stories: [US-TASK-011, US-TASK-013]
+  related_rules: [BR-TASK-083, BR-TASK-084, BR-TASK-085, BR-TASK-086]
 
-task.run.operate:
+task.runtime.internal:
   domain: task-center
-  module: run
-  resource: task_run
-  action: create, read, cancel, retry, delete
-  subject: ordinary_user, business_developer, system_admin
-  description: 创建、查询、取消、重试和软删除 TaskRun。
-  frontend_usage: 控制任务状态页、进度查询、取消、重试和终态删除入口。
-  backend_enforcement: 必须校验项目、命名空间、创建人或授权可见性；取消和删除必须校验 TaskRun 状态。
-  related_user_stories:
-    - US-TASK-001
-    - US-TASK-002
-    - US-TASK-003
-  related_rules:
-    - BR-TASK-007
-    - BR-TASK-037
-    - BR-TASK-041
-
-task.worker.protocol:
-  domain: task-center
-  module: worker
-  resource: worker, task_attempt, execution_lease
-  action: register, heartbeat, claim, progress, complete, fail, renew_lease
-  subject: worker_process
-  description: Worker 使用任务中心协议领取任务、续约 lease、上报进度并回写结果。
-  frontend_usage: 不直接暴露给普通前端页面，仅用于 Worker 运行协议和运维诊断。
-  backend_enforcement: 必须校验 worker_id、attempt_id 和 lease_id；无有效 lease 时禁止更新 TaskRun。
-  related_user_stories:
-    - US-TASK-001
-    - US-TASK-007
-  related_rules:
-    - BR-TASK-013
-    - BR-TASK-014
-    - BR-TASK-015
-    - BR-TASK-016
-    - BR-TASK-018
-    - BR-TASK-029
+  module: runtime
+  resource: workflow_runtime, runtime_projection_event
+  action: register_definition, start, query, cancel, reconcile, project_event
+  subject: task_center_service, runtime_adapter
+  description: Task Center 与 WorkflowRuntime 的内部运行协议。
+  frontend_usage: 不向业务前端或普通 Open API 暴露。
+  backend_enforcement: 仅服务身份可调用；运行时事件按 runtime_event_id 幂等并按版本单调投影。
+  related_user_stories: [US-TASK-015]
+  related_rules: [BR-TASK-087, BR-TASK-088, BR-TASK-100]
 
 task.operation.admin:
   domain: task-center
   module: operations
-  resource: worker, watchdog, task_run, task_attempt
-  action: read_health, manage_worker, inspect_all
+  resource: atomic_task, task_group, dag_task_group, task_schedule, runtime_projection
+  action: inspect_all, reconcile, read_health
   subject: system_admin, ops_user
-  description: 查看任务中心健康、Worker 状态、watchdog 结果和跨项目异常任务。
-  frontend_usage: 控制运维健康页、Worker 管理和异常任务排查入口。
-  backend_enforcement: 必须校验运维或系统管理员身份；跨项目查询不得授予普通用户。
-  related_user_stories:
-    - US-TASK-003
-    - US-TASK-007
-  related_rules:
-    - BR-TASK-042
-    - BR-TASK-043
-    - BR-TASK-044
-    - BR-TASK-047
+  description: 跨项目查看异常任务、计划执行和运行时投影健康。
+  frontend_usage: 控制内部运维诊断入口；不提供 Conductor 原生 UI 权限。
+  backend_enforcement: 必须校验运维身份，诊断操作不得改写业务结果或绕过租户审计。
+  related_user_stories: [US-TASK-015]
+  related_rules: [BR-TASK-087, BR-TASK-088]

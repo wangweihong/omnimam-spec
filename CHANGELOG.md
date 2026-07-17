@@ -2,6 +2,12 @@
 
 ## 2026-07-17
 
+- 发布 `spec-v1.0.0` 任务中心破坏性重构：AtomicTask 成为唯一执行单元，TaskGroup/DAGTaskGroup 只组合 AtomicTask，TaskSchedule 统一周期与单次触发，并以 TaskAttempt、ScheduleExecution 和汇总查询保留完整历史。
+- 引入 Conductor OSS 的 WorkflowRuntime 边界以及 Watermill + PostgreSQL outbox 可靠事件边界，删除新实现对 TaskRun、ExecutionLease、Worker claim、watchdog、自研 Dispatcher 和自研 DAG 状态机的依赖。
+- 新增 workflow-canvas S1/S2，定义 Canvas 草稿、不可变 CanvasVersion、CanvasRun、CanvasNodeRun、拓扑分层编译、Dynamic Fork、任意无环图校验和 SSRF/RCE 防护。
+- application-platform 的 ApplicationRun 绑定从 `task_run_id` 迁移为 `atomic_task_id`；Engine 健康检测改为 TaskSchedule → Planner DAGTaskGroup → Dynamic Fork，并记录重叠跳过。
+- asset-library 上传完成使用事务 outbox 发布 `asset_uploaded`，task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建缩略图 AtomicTask。
+- 新增 task-center Schedule 错误码区间与 workflow-canvas 全域错误码区间；旧 TaskRun/Lease 错误码保留并标记 deprecated。本次变更由用户于 2026-07-17 明确要求直接修改 SSOT 并发布。
 - 将 application-platform 升级为 v0.9.1，补充 EngineInstance 启动即检、默认 30 秒可配置周期、仅检测启用实例、并发 5 秒超时和多副本乐观锁尽力去重语义。
 - EngineInstance 列表摘要新增 `last_health_check_at` 与 `unhealthy_reason`；统一手动/周期检测的时间、状态、失败摘要持久化和返回规则，并明确敏感信息脱敏及 512 字符限制。
 - 新增 `BR-AIAPP-163` 与 `AC-AIAPP-041-04..06`，同步更新 OpenAPI、模块契约和领域架构；本次变更由用户于 2026-07-17 明确确认实施。

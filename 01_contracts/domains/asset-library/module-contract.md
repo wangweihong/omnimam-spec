@@ -9,7 +9,7 @@
 | `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
 | `group` | 维护素材分组、分组排序、素材与分组的多对多关联 | `US-USER-ASSET-34`..`US-USER-ASSET-39`、`BR-USER-ASSET-49`..`BR-USER-ASSET-56` |
-| `processing-task` | 维护缩略图、派生预览和 `sha256_backfill` 等内部处理任务 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`BR-USER-ASSET-19`、`BR-USER-ASSET-43` |
+| `processing-task` | 维护缩略图、派生预览和 `sha256_backfill` 的业务结果；执行由 task-center AtomicTask 完成 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`BR-USER-ASSET-19`、`BR-USER-ASSET-43` |
 | `artifact-registration` | 校验 application-platform Artifact 并幂等登记 UserAsset | `US-USER-ASSET-41`、`BR-USER-ASSET-59`..`BR-USER-ASSET-63` |
 
 ## 2. SHA256 计算与去重
@@ -20,9 +20,16 @@
 
 ## 3. SHA256 Backfill 协作
 
-- 任务中心可以周期性触发 `asset.sha256_backfill` TaskRun。
+- 任务中心可以周期性触发 `asset.sha256_backfill` AtomicTask。
 - 素材库负责解释 `asset.sha256_backfill` 的业务语义，包括扫描缺失 `sha256` 的素材、读取内容、计算 checksum、更新 metadata 和汇总失败结果。
-- 任务中心只负责 TaskRun 调度、领取、状态、重试和运行记录，不直接读取素材内容或计算 checksum。
+- 任务中心只负责 AtomicTask 调度、状态、重试和运行记录，不直接读取素材内容或计算 checksum。
+
+## 3.1 上传派生任务协作
+
+- 素材上传完成事务必须同时写 `asset_uploaded` outbox 记录，事务回滚时不得发布事件。
+- task-center 消费事件并按 `thumbnail:<asset_id>:<profile_version>` 幂等创建 `asset.thumbnail.generate` AtomicTask。
+- 重复投递不得创建重复 AtomicTask；缩略图失败不回滚素材上传，也不阻塞素材列表。
+- AtomicTask 只保存 asset/profile 输入和结果引用，缩略图事实仍由 `preview` 模块拥有。
 
 ## 4. 素材分组
 
@@ -76,8 +83,8 @@
 - `POST /api/v1/artifact-registrations` 仅接收 application-platform 产生的 Artifact，并要求 Artifact、ApplicationRun、运行发起用户、输出名、媒体类型和内容引用完整。
 - 素材库校验 owner、内容可读性和媒体信息后，在同一事务内创建 `source_type=application_output` 的 UserAsset 与 `artifact_asset_registrations` 成功映射。
 - `artifact_id` 全局唯一；完全相同的重复请求返回既有 UserAsset，内容、owner 或 ApplicationRun 不一致时返回幂等冲突。
-- 校验失败不创建 UserAsset 或成功映射；失败原因由 application-platform Artifact 保存，且不得改变 TaskRun 终态。
-- UserAsset 和成功登记映射归 asset-library 所有；Artifact、ApplicationRun、TaskRun 状态归各自领域所有，素材库不得反向改写。
+- 校验失败不创建 UserAsset 或成功映射；失败原因由 application-platform Artifact 保存，且不得改变 AtomicTask 终态。
+- UserAsset 和成功登记映射归 asset-library 所有；Artifact、ApplicationRun、AtomicTask 状态归各自领域所有，素材库不得反向改写。
 
 ## 11. 兼容与迁移边界
 
