@@ -77,8 +77,9 @@ CREATE TABLE task_runs (
   tags TEXT DEFAULT '',
   deleted_at TEXT DEFAULT '',
   CHECK (
-    (application_run_id = '' AND idempotency_key = '') OR
-    (application_run_id <> '' AND idempotency_key <> '')
+    (application_run_id = '' AND idempotency_scope = '' AND idempotency_key = '') OR
+    (application_run_id <> '' AND idempotency_scope = '' AND idempotency_key <> '') OR
+    (application_run_id = '' AND idempotency_scope <> '' AND idempotency_key <> '')
   )
 );
 

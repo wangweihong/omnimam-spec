@@ -21,3 +21,6 @@
 
 - AppEngine 健康检测迁移至 Task Center 与 PARALLEL TaskGroup。
 - TaskGroup 运行机制和动态子任务契约完成 release。
+# spec-v0.9.3
+
+- 修复系统周期任务通用幂等作用域的 schema 约束。

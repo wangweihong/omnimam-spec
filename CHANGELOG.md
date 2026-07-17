@@ -142,3 +142,6 @@
 
 - 使用 Task Center 周期任务与 PARALLEL TaskGroup 执行 AppEngine 健康检测。
 - 补充动态 TaskGroup 展开、并发、聚合、取消、超时、重试和通用幂等契约。
+# spec-v0.9.3
+
+- 修正通用 `idempotency_scope` 与 TaskRun 数据库 CHECK 约束的一致性。
