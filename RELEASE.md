@@ -1,5 +1,16 @@
 # Release Records
 
+## spec-v1.0.4
+
+- commit: bdfc39c987a23ff00b585f5cb1b02669a95f64e2
+- status: released
+- confirmed_by: user（2026-07-18 明确要求 EngineInstance 列表返回 endpoint）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+
 ## spec-v1.0.3
 
 - commit: aa900201ac82ab01a8bc85f0f4953e12a92decab
