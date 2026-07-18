@@ -1,5 +1,29 @@
 # Release Records
 
+## spec-v1.3.0
+
+- commit: 82b59cf0baf5d147052676b42d4903f554ae14e9
+- status: released
+- confirmed_by: user（2026-07-18 明确要求发布 release 并完成后端与前端实现）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+  - application-platform
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/errors.yaml
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/events.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+  - 02_architecture/domains/application-platform.md
+
 ## spec-v1.1.0
 
 - commit: b3c402b
