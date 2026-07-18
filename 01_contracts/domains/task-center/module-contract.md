@@ -41,6 +41,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - V1 `misfire_policy` 和 `overlap_policy` 固定为 `SKIP`。
 - 每个 `schedule_id + scheduled_at` 先创建唯一 ScheduleExecution，再由活动锁判断是否启动目标。
 - Schedule 触发创建的目标继承 Schedule 的 project、namespace 和 createdBy；直接 AtomicTask 目标使用 TASK_SCHEDULE owner 关系，Group/DAG 通过 ScheduleExecution 关联。
+- Group/DAG 内部 childKey 在所属组合中唯一；周期 Schedule 每轮可复用模板 key，轮次唯一性由 ScheduleExecution 保证，不对 TASK_SCHEDULE owner 应用 owner/childKey 唯一索引。
 - 前一执行非终态时，本轮写 `SKIPPED_OVERLAP`，不得创建目标资源。
 - 暂停、恢复和软删除只影响未来触发，不取消已启动目标。
 - Schedule 与执行历史查询批量补充轻量目标摘要；全局任务与组合列表批量补充来源计划摘要，禁止逐行访问目标形成 N+1 查询。

@@ -5,6 +5,7 @@
 - 补充 TaskSchedule、ScheduleExecution 与实际 AtomicTask/TaskGroup/DAGTaskGroup 的双向可见关联：调度目标继承计划归属，计划与执行历史返回轻量目标摘要，全局运行列表返回来源计划摘要。
 - 明确执行历史按目标类型批量补充摘要，失败、重叠跳过或目标不可用时使用模板摘要降级；禁止逐行 N+1 查询、伪造 targetId 或复制大型输入输出。
 - 新增 `BR-TASK-101..104` 与 `AC-TASK-011-04..05`，同步更新 task-center OpenAPI、模块契约和架构参考。
+- 修正 AtomicTask owner/childKey 唯一索引范围：仅约束 TaskGroup/DAGTaskGroup 子任务，允许周期 Schedule 每轮复用同一模板 key。
 
 ## 2026-07-17
 

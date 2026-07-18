@@ -47,7 +47,7 @@ CREATE TABLE atomic_tasks (
 );
 
 CREATE UNIQUE INDEX idx_atomic_tasks_idempotency ON atomic_tasks(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
-CREATE UNIQUE INDEX idx_atomic_tasks_owner_child ON atomic_tasks(owner_type, owner_id, child_key) WHERE owner_type <> '' AND child_key <> '';
+CREATE UNIQUE INDEX idx_atomic_tasks_owner_child ON atomic_tasks(owner_type, owner_id, child_key) WHERE owner_type IN ('TASK_GROUP','DAG_TASK_GROUP') AND child_key <> '';
 CREATE INDEX idx_atomic_tasks_status ON atomic_tasks(status, schedule_at);
 CREATE INDEX idx_atomic_tasks_owner ON atomic_tasks(owner_type, owner_id, child_order);
 CREATE INDEX idx_atomic_tasks_retry_root ON atomic_tasks(root_task_id);
