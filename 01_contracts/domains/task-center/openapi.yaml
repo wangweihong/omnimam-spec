@@ -455,7 +455,6 @@ components:
             application_run_id: {type: string}
             canvas_run_id: {type: string}
             canvas_node_run_id: {type: string}
-            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
     TaskError:
       type: object
       properties:
@@ -491,6 +490,7 @@ components:
             updated_at: {type: string, format: date-time}
             started_at: {type: string, format: date-time}
             completed_at: {type: string, format: date-time}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
     AtomicTaskListResponse:
       type: object
       required: [total, items]
