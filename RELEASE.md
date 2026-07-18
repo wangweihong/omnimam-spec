@@ -1,5 +1,16 @@
 # Release Records
 
+## spec-v1.0.3
+
+- commit: aa900201ac82ab01a8bc85f0f4953e12a92decab
+- status: released
+- confirmed_by: user（2026-07-18 明确要求实施调度运行关联，客户端生成校验发现并修正响应字段归属）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+
 ## spec-v1.0.2
 
 - commit: a1d86a592c7e41cf95b55b71867198b4c54644eb
