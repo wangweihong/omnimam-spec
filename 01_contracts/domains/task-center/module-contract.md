@@ -40,8 +40,10 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - cron 是六段表达式并要求 IANA 时区；单次 `run_at` 使用持久化 WAIT launcher。
 - V1 `misfire_policy` 和 `overlap_policy` 固定为 `SKIP`。
 - 每个 `schedule_id + scheduled_at` 先创建唯一 ScheduleExecution，再由活动锁判断是否启动目标。
+- Schedule 触发创建的目标继承 Schedule 的 project、namespace 和 createdBy；直接 AtomicTask 目标使用 TASK_SCHEDULE owner 关系，Group/DAG 通过 ScheduleExecution 关联。
 - 前一执行非终态时，本轮写 `SKIPPED_OVERLAP`，不得创建目标资源。
 - 暂停、恢复和软删除只影响未来触发，不取消已启动目标。
+- Schedule 与执行历史查询批量补充轻量目标摘要；全局任务与组合列表批量补充来源计划摘要，禁止逐行访问目标形成 N+1 查询。
 
 ## 5. 投影与一致性
 
@@ -63,6 +65,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 ## 7. 安全与限制
 
 - 所有业务资源按 `project_id`、`namespace`、`created_by` 和授权关系隔离。
+- 调度目标的访问边界继承来源 Schedule；历史数据中错误落为系统身份的目标必须按 ScheduleExecution 关系幂等修复，空 target_id 不做推断。
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。
 - Conductor UI 和 API 只供内部运维，且不能替代 Task Center 权限、审计和租户隔离。

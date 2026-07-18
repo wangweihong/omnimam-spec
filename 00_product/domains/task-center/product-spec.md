@@ -237,6 +237,9 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 - TaskGroup/DAGTaskGroup 详情必须返回子任务计数、整体进度、节点状态和聚合结果。
 - TaskSchedule 详情必须返回总触发、运行、成功、失败、取消、重叠跳过数量，以及最近执行和下次触发时间。
 - ScheduleExecution、Group 子任务和 Attempt 历史必须支持分页、状态和时间范围过滤。
+- TaskSchedule 列表与详情必须返回可读的目标摘要；ScheduleExecution 历史必须返回实际目标摘要，使用户无需解析模板 JSON 或额外逐条查询即可识别本轮运行对象。
+- 调度创建的 AtomicTask、TaskGroup 和 DAGTaskGroup 必须继承 TaskSchedule 的 project、namespace 与 createdBy，并在全局运行列表中返回来源计划与 ScheduleExecution 摘要。
+- 触发失败或重叠跳过没有实际 targetId 时，ScheduleExecution 仍返回计划模板派生的目标摘要与失败或跳过原因，不得伪造目标资源。
 - 汇总事实以 Task Center 投影为准；运行时事件丢失时必须通过周期对账恢复。
 
 ---
@@ -279,6 +282,10 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 26. `BR-TASK-098`：取消 Group/DAG 必须级联未终态 AtomicTask，协作式取消仍允许底层已完成任务最终成功。
 27. `BR-TASK-099`：再次运行 Group/DAG 必须创建新资源并保留 retryOfId 关联。
 28. `BR-TASK-100`：运行时不可用不得回退到本地 Dispatcher，必须返回稳定业务错误并保留可恢复创建状态。
+29. `BR-TASK-101`：Schedule 触发创建的目标资源必须继承 Schedule 的 projectId、namespace 和 createdBy；直接 AtomicTask 目标还必须使用 ownerType=TASK_SCHEDULE 与 ownerId 关联来源计划。
+30. `BR-TASK-102`：TaskSchedule 和 ScheduleExecution 查询必须返回轻量目标摘要；摘要只包含标识、名称、状态、进度、functionRef、任务数量和业务资源引用，不包含大型输入输出正文。
+31. `BR-TASK-103`：全局 AtomicTask、TaskGroup 和 DAGTaskGroup 列表必须返回可选来源计划摘要，使调度目标可从运行列表回到 TaskSchedule 与 ScheduleExecution。
+32. `BR-TASK-104`：SKIPPED_OVERLAP、TRIGGER_FAILED 或目标已不可用时必须保留历史 type/id/reason，并使用计划模板摘要降级展示，不得猜测或伪造目标资源。
 
 ---
 
@@ -315,6 +322,8 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 - `AC-TASK-011-01`：Schedule 支持 cron、runAt、暂停、恢复和软删除。
 - `AC-TASK-011-02`：停机期间不补发，重叠周期记录 SKIPPED_OVERLAP。
 - `AC-TASK-011-03`：详情返回历史汇总、最近执行和下次触发时间。
+- `AC-TASK-011-04`：计划和执行历史直接返回可读目标摘要，成功触发的历史可以进入实际 AtomicTask、TaskGroup 或 DAGTaskGroup。
+- `AC-TASK-011-05`：调度创建的目标继承计划归属，并在全局运行列表中标识来源计划；失败或跳过历史即使没有 targetId 也展示计划目标和 reason。
 
 ### US-TASK-012 素材事件触发
 

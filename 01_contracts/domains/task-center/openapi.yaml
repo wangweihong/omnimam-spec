@@ -20,7 +20,7 @@ paths:
       summary: 查询 AtomicTask 列表
       operationId: list_atomic_tasks
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-073, BR-TASK-087]}
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-011], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-103]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -107,7 +107,7 @@ paths:
       summary: 查询 TaskGroup 列表
       operationId: list_task_groups
       x-permission: task.group.operate
-      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-078, BR-TASK-080]}
+      x-s1-refs: {user_stories: [US-TASK-009, US-TASK-011], business_rules: [BR-TASK-078, BR-TASK-080, BR-TASK-103]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -191,7 +191,7 @@ paths:
       summary: 查询 DAGTaskGroup 列表
       operationId: list_dag_task_groups
       x-permission: task.dag.operate
-      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-081, BR-TASK-082]}
+      x-s1-refs: {user_stories: [US-TASK-010, US-TASK-011], business_rules: [BR-TASK-081, BR-TASK-082, BR-TASK-103]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -273,7 +273,7 @@ paths:
       summary: 查询 TaskSchedule 列表
       operationId: list_task_schedules
       x-permission: task.schedule.manage
-      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-083, BR-TASK-086]}
+      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-083, BR-TASK-086, BR-TASK-102]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -304,7 +304,7 @@ paths:
       summary: 获取 TaskSchedule 及执行汇总
       operationId: get_task_schedule
       x-permission: task.schedule.manage
-      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-084, BR-TASK-085]}
+      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-102]}
       parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
       responses:
         '200':
@@ -365,7 +365,7 @@ paths:
       summary: 查询全部调度执行历史
       operationId: list_task_schedule_executions
       x-permission: task.schedule.manage
-      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-013], business_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-092]}
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-013], business_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-092, BR-TASK-102, BR-TASK-104]}
       parameters:
         - {$ref: '#/components/parameters/task_schedule_id'}
         - {$ref: '#/components/parameters/page_num'}
@@ -455,6 +455,7 @@ components:
             application_run_id: {type: string}
             canvas_run_id: {type: string}
             canvas_node_run_id: {type: string}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
     TaskError:
       type: object
       properties:
@@ -561,6 +562,7 @@ components:
             result: {type: object, additionalProperties: true}
             retry_of_id: {type: string}
             runtime_execution_id: {type: string}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
             resource_version: {type: integer}
             created_at: {type: string, format: date-time}
             updated_at: {type: string, format: date-time}
@@ -617,6 +619,7 @@ components:
             runtime_definition_name: {type: string}
             runtime_definition_version: {type: integer}
             runtime_definition_hash: {type: string}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
             resource_version: {type: integer}
             created_at: {type: string, format: date-time}
             updated_at: {type: string, format: date-time}
@@ -632,6 +635,28 @@ components:
       properties:
         type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
         template: {type: object, additionalProperties: true}
+    TaskTargetSummary:
+      type: object
+      required: [type, name]
+      properties:
+        type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string}
+        task_count: {type: integer, minimum: 0}
+        application_run_id: {type: string}
+        canvas_run_id: {type: string}
+        canvas_node_run_id: {type: string}
+    ScheduleSourceSummary:
+      type: object
+      required: [schedule_id, schedule_name, schedule_execution_id, scheduled_at]
+      properties:
+        schedule_id: {type: string}
+        schedule_name: {type: string}
+        schedule_execution_id: {type: string}
+        scheduled_at: {type: string, format: date-time}
     TaskScheduleCreateRequest:
       type: object
       required: [name, trigger_type, target, project_id, namespace]
@@ -671,6 +696,7 @@ components:
           properties:
             id: {type: string}
             status: {$ref: '#/components/schemas/TaskScheduleStatus'}
+            target_summary: {$ref: '#/components/schemas/TaskTargetSummary'}
             summary: {$ref: '#/components/schemas/ScheduleSummary'}
             last_execution: {$ref: '#/components/schemas/ScheduleExecution'}
             next_trigger_at: {type: string, format: date-time}
@@ -694,6 +720,7 @@ components:
         triggered_at: {type: string, format: date-time}
         target_type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
         target_id: {type: string}
+        target_summary: {$ref: '#/components/schemas/TaskTargetSummary'}
         runtime_execution_id: {type: string}
         status: {$ref: '#/components/schemas/ScheduleExecutionStatus'}
         reason: {type: string}

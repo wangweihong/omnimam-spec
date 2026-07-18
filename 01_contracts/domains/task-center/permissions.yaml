@@ -8,7 +8,7 @@ task.atomic.operate:
   frontend_usage: 控制任务详情、取消、重试和 Attempt 历史入口。
   backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；手动重试必须创建新 AtomicTask。
   related_user_stories: [US-TASK-008]
-  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076]
+  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076, BR-TASK-103]
 
 task.group.operate:
   domain: task-center
@@ -20,7 +20,7 @@ task.group.operate:
   frontend_usage: 控制组合任务列表、详情、节点状态、取消和重跑入口。
   backend_enforcement: 校验租户边界、functionRef 白名单、节点和边限制；重跑必须创建新组合资源。
   related_user_stories: [US-TASK-009, US-TASK-010]
-  related_rules: [BR-TASK-078, BR-TASK-081, BR-TASK-096, BR-TASK-099]
+  related_rules: [BR-TASK-078, BR-TASK-081, BR-TASK-096, BR-TASK-099, BR-TASK-103]
 
 task.schedule.manage:
   domain: task-center
@@ -32,7 +32,7 @@ task.schedule.manage:
   frontend_usage: 控制 Schedule 列表、编辑、暂停、恢复、删除和执行历史入口。
   backend_enforcement: 校验目标模板、六段 cron、显式时区、run_at 和租户边界；删除为软删除。
   related_user_stories: [US-TASK-011, US-TASK-013]
-  related_rules: [BR-TASK-083, BR-TASK-084, BR-TASK-085, BR-TASK-086]
+  related_rules: [BR-TASK-083, BR-TASK-084, BR-TASK-085, BR-TASK-086, BR-TASK-101, BR-TASK-102, BR-TASK-104]
 
 task.runtime.internal:
   domain: task-center

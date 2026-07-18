@@ -43,6 +43,8 @@ flowchart LR
 
 cron 由 Conductor Scheduler 触发，单次 `run_at` 由持久化 WAIT launcher 触发。Task Center 在每次触发入口先写唯一 ScheduleExecution 并获取 schedule 活动锁；存在非终态轮次时写 `SKIPPED_OVERLAP`。停机期间的历史周期不补发。
 
+调度触发创建的目标继承 TaskSchedule 的租户和创建者边界。查询 ScheduleExecution 时按 target type 批量读取实际目标并形成轻量摘要；查询全局 AtomicTask、TaskGroup 和 DAGTaskGroup 时通过 ScheduleExecution 批量反查来源计划。触发失败、重叠跳过或目标已不可用时使用计划模板摘要降级，不伪造目标资源。
+
 ## 5. 恢复与一致性
 
 - 业务创建、幂等记录和 outbox 同事务提交。
