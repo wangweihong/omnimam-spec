@@ -149,3 +149,19 @@
 # spec-v0.9.3
 
 - 修复系统周期任务通用幂等作用域的 schema 约束。
+## spec-v1.2.0
+
+- commit: 4edf0a34359fcb743c1262a78fc7b1848ddcd817
+- status: released
+- confirmed_by: user（2026-07-18 明确要求实施试运行配置快照、详情与再次运行计划）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
