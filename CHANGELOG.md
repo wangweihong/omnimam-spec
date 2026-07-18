@@ -1,5 +1,10 @@
 # Changelog
 
+## spec-v1.2.0
+
+- WorkflowTestRun 新增 EngineInstance 非敏感快照、参数覆盖数量和可选完整参数快照。
+- 试运行列表支持 `detail=false` 轻量投影，历史详情支持使用原配置重新确认并创建独立任务。
+
 ## 2026-07-18
 
 - 新增 ComfyUI 单文件双来源导入、visual Workflow 显式 API 转换、WorkflowTestRun、临时预览代理与三节点 Task Center DAG 契约，新增 BR-AIAPP-164..168、US-AIAPP-047..048、BR-TASK-105..106 和 US-TASK-016。

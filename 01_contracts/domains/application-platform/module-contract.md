@@ -76,7 +76,7 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - workflow-canvas 固定引用已发布 ApplicationVersion，不保存 ProviderCapability 可变副本。
 - ProviderCapability 加载仅是进程内启动步骤，不发布 `catalog_changed` 事件；运行中不存在目录变化事件。
 - 对外事件包括 Engine 健康、工作流转换、应用版本发布、ApplicationRun/AtomicTask 协作、状态投影和平台能力纠正事项。工作流转换事务提交后通过 outbox 发布 `comfyui_workflow_converted`；事件失败不回滚转换事实。
-- WorkflowTestRun 只向 Task Center 提交已注册的 comfyui.submit、comfyui.poll、comfyui.collect_preview，任务参数只携带 test_run_id 和父节点输出映射。
+- WorkflowTestRun 只向 Task Center 提交已注册的 comfyui.submit、comfyui.poll、comfyui.collect_preview，任务参数只携带 test_run_id 和父节点输出映射。Application Platform 保存不可变的 EngineInstance 非敏感快照与参数覆盖快照；列表可按 detail=false 省略复杂快照、步骤和输出，但不得通过逐行查询 EngineInstance 拼装历史名称。
 
 ## 7. 非目标
 

@@ -42,6 +42,7 @@ CREATE TABLE aiapp_engine_capability_bindings (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  engine_instance_snapshot_json TEXT NOT NULL,
   provider_capability_id TEXT NOT NULL,
   provider_capability_revision TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,

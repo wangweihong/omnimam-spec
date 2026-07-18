@@ -698,7 +698,15 @@ paths:
       summary: 查询工作流试运行历史
       x-permission: aiapp.comfyui_workflow.test
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-166, BR-AIAPP-168]}
-      parameters: [{$ref: '#/components/parameters/workflow_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      parameters:
+        - {$ref: '#/components/parameters/workflow_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - name: detail
+          in: query
+          required: false
+          description: 是否返回参数快照、任务步骤和输出；默认 false 时这些复杂字段显式返回 null。
+          schema: {type: boolean, default: false}
       responses:
         '200':
           description: 查询完成。
@@ -1936,6 +1944,14 @@ components:
         node_id: {type: string}
         input_name: {type: string}
         value: {$ref: '#/components/schemas/RuntimeValue'}
+    ComfyUIWorkflowTestEngineSnapshot:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        region: {type: string, nullable: true}
     ComfyUIWorkflowTestRunCreateRequest:
       type: object
       additionalProperties: false
@@ -1970,13 +1986,15 @@ components:
         content_url: {type: string, nullable: true}
     ComfyUIWorkflowTestRun:
       type: object
-      required: [id, name, workflow_id, owner_user_id, engine_instance_id, workflow_validation_id, idempotency_key, task_creation_status, created_at, updated_at, resource_version]
+      required: [id, name, workflow_id, owner_user_id, engine_instance_id, engine_instance_snapshot, parameter_override_count, workflow_validation_id, idempotency_key, task_creation_status, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
         workflow_id: {type: string}
         owner_user_id: {type: string}
         engine_instance_id: {type: string}
+        engine_instance_snapshot: {$ref: '#/components/schemas/ComfyUIWorkflowTestEngineSnapshot'}
+        parameter_override_count: {type: integer, minimum: 0}
         workflow_validation_id: {type: string}
         dag_task_group_id: {type: string, nullable: true}
         external_job_id: {type: string, nullable: true}
@@ -1990,14 +2008,24 @@ components:
       allOf:
         - $ref: '#/components/schemas/ComfyUIWorkflowTestRun'
         - type: object
-          required: [status, progress, steps, outputs]
+          required: [status, progress, parameter_snapshot, steps, outputs]
           properties:
             status: {type: string}
             progress: {type: number, minimum: 0, maximum: 1}
             current_step: {type: string, nullable: true}
             failure_summary: {type: string, nullable: true}
-            steps: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowTestStep'}}
-            outputs: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowTestOutput'}}
+            parameter_snapshot:
+              type: array
+              nullable: true
+              items: {$ref: '#/components/schemas/ComfyUIWorkflowTestParameter'}
+            steps:
+              type: array
+              nullable: true
+              items: {$ref: '#/components/schemas/ComfyUIWorkflowTestStep'}
+            outputs:
+              type: array
+              nullable: true
+              items: {$ref: '#/components/schemas/ComfyUIWorkflowTestOutput'}
     ComfyUIWorkflowTestRunListResponse:
       type: object
       required: [total, items]
