@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.0.1
+
+- commit: 19c02f9a837dd1f49cf90d98404dfb1e439fed40
+- status: released
+- confirmed_by: user（2026-07-18 明确要求实施调度计划目标与运行历史关联修复）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+
 ## spec-v1.0.0
 
 - commit: b928ab5e13d809f837da81ee362b9218c4629fdb
