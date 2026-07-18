@@ -1,5 +1,29 @@
 # Release Records
 
+## spec-v1.1.0
+
+- commit: b3c402b
+- status: released
+- confirmed_by: user（2026-07-18 明确要求执行 ComfyUI 双来源导入、API 转换和任务中心试运行计划）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+  - task-center
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/permissions.yaml
+  - 01_contracts/domains/application-platform/events.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+  - 02_architecture/domains/task-center.md
+
 ## spec-v1.0.4
 
 - commit: bdfc39c987a23ff00b585f5cb1b02669a95f64e2
