@@ -213,6 +213,8 @@ comfyui.submit
 
 poll 使用运行时延迟回调，不长期占用 Worker。prompt ID 保存为 externalJobId，重试和进程恢复必须查询原作业。
 
+WorkflowRuntime Worker handler 可以返回 `IN_PROGRESS` 和 `callbackAfterSeconds`。该结果表示当前 AtomicTask/Attempt 仍在运行，运行时必须在延迟后重新投递同一 runtime task，期间不占用 Worker 并保留小型输出投影。ComfyUI 工作流试运行使用 `comfyui.collect_preview` 代替持久化 Artifact 下载，只收集受控预览描述。
+
 ### 5.4 动态图片与视频 DAG
 
 ```mermaid
@@ -286,6 +288,8 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 30. `BR-TASK-102`：TaskSchedule 和 ScheduleExecution 查询必须返回轻量目标摘要；摘要只包含标识、名称、状态、进度、functionRef、任务数量和业务资源引用，不包含大型输入输出正文。
 31. `BR-TASK-103`：全局 AtomicTask、TaskGroup 和 DAGTaskGroup 列表必须返回可选来源计划摘要，使调度目标可从运行列表回到 TaskSchedule 与 ScheduleExecution。
 32. `BR-TASK-104`：SKIPPED_OVERLAP、TRIGGER_FAILED 或目标已不可用时必须保留历史 type/id/reason，并使用计划模板摘要降级展示，不得猜测或伪造目标资源。
+33. `BR-TASK-105`：WorkflowRuntime 必须支持 Worker 返回 IN_PROGRESS 与 callbackAfterSeconds；延迟期间不得占用 Worker，重复回调属于同一 runtime task 和 TaskAttempt。
+34. `BR-TASK-106`：ComfyUI WorkflowTestRun 使用 comfyui.submit、comfyui.poll、comfyui.collect_preview 三个已注册 functionRef；其输入只能包含业务资源 ID和稳定映射，不能包含 URL、凭证或任意运行时任务。
 
 ---
 
@@ -352,6 +356,14 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 
 - `AC-TASK-015-01`：运行时、Worker、API Server 或数据库重启不丢任务。
 - `AC-TASK-015-02`：事件遗漏经对账恢复，旧投影不得覆盖新状态。
+
+### US-TASK-016 ComfyUI 工作流试运行
+
+作为工作流所有者，我希望提交、轮询和临时预览是可观察且可恢复的独立步骤。
+
+- `AC-TASK-016-01`：poll 未完成时通过延迟回调释放 Worker，并持续投影 prompt ID、provider 状态和 queue position。
+- `AC-TASK-016-02`：Worker 或 API 重启后优先恢复同一 prompt，不重复 submit。
+- `AC-TASK-016-03`：Task Center DAG 详情可以查看三个节点和当前运行节点。
 
 ---
 

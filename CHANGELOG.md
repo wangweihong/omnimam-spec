@@ -2,6 +2,8 @@
 
 ## 2026-07-18
 
+- 新增 ComfyUI 单文件双来源导入、visual Workflow 显式 API 转换、WorkflowTestRun、临时预览代理与三节点 Task Center DAG 契约，新增 BR-AIAPP-164..168、US-AIAPP-047..048、BR-TASK-105..106 和 US-TASK-016。
+- WorkflowRuntime 增加 `IN_PROGRESS + callbackAfterSeconds` 延迟回调语义，ComfyUI poll 等待期间不得占用 Worker；工作流试运行不登记 Artifact/Asset。
 - EngineInstance 列表摘要新增 `base_url`，使实例列表直接返回执行端点，同时继续禁止列表返回 `auth_config` 等鉴权信息。
 - 补充 TaskSchedule、ScheduleExecution 与实际 AtomicTask/TaskGroup/DAGTaskGroup 的双向可见关联：调度目标继承计划归属，计划与执行历史返回轻量目标摘要，全局运行列表返回来源计划摘要。
 - 明确执行历史按目标类型批量补充摘要，失败、重叠跳过或目标不可用时使用模板摘要降级；禁止逐行 N+1 查询、伪造 targetId 或复制大型输入输出。

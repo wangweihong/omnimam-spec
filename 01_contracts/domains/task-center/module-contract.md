@@ -62,6 +62,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - application-platform 的 Engine 健康 TaskSchedule 每轮创建 Planner DAGTaskGroup，并动态展开健康 AtomicTask。
 - workflow-canvas 发布 CanvasVersion 后注册不可变 DAG 定义；CanvasRun 绑定 `dag_task_group_id`，CanvasNodeRun 绑定 `atomic_task_id`。
 - 大型输出先由 application-platform 形成 Artifact，再由 asset-library 登记 Asset；任务中心只保存引用。
+- ComfyUIWorkflowTestRun 创建 `comfyui.submit -> comfyui.poll -> comfyui.collect_preview` DAG；poll handler 可返回 IN_PROGRESS 和 callbackAfterSeconds，延迟回调属于同一 Attempt。
 
 ## 7. 安全与限制
 

@@ -10,7 +10,8 @@
 | provider-capability-loader | 从单一目录原子加载 YAML、验证 Schema 和执行依赖、建立只读注册表与诊断 | 不递归、不覆盖、不写库、不热加载、不阻止服务启动 | US-AIAPP-039、040；BR-AIAPP-130..139 |
 | engine-instance | 管理真实连接环境、鉴权配置、手动/周期健康检测和安全失败摘要，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力或向普通用户暴露凭证及原始上游失败载荷 | US-AIAPP-041、044、045；BR-AIAPP-140、162、163 |
 | engine-binding | 绑定实例与当前加载能力并应用收紧限制 | 不复制能力清单，不允许 restrictions 扩张能力 | US-AIAPP-041；BR-AIAPP-135、137、141 |
-| comfyui-workflow | 导入用户私有工作流、保存来源 object_info、派生解析结果、创建不可变实例校验并一次性转换模板首版 | 不维护工作流版本树、不共享工作流、不执行 prompt、不编辑节点、不管理后续模板版本 | US-AIAPP-044..046；BR-AIAPP-153..161 |
+| comfyui-workflow | 单文件导入双来源工作流、保存 object_info、显式生成 API、派生解析结果、兼容校验和一次性模板转换 | 不维护版本树、不共享工作流、不编辑节点、不管理后续模板版本 | US-AIAPP-044..047；BR-AIAPP-153..165 |
+| comfyui-workflow-test-run | 保存试运行快照并通过 Task Center 创建三节点 DAG，聚合任务投影和受控临时预览 | 不持久化媒体正文、不登记 Artifact/Asset、不拥有任务状态机 | US-AIAPP-048；BR-AIAPP-166..168 |
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
 | application | 管理 private/global Application、独立能力开关与不可变语义版本 | 不原地修改已发布版本，普通用户不得设置 global | US-AIAPP-042；BR-AIAPP-142、147、148 |
 | runtime-form | 按联合能力来源计算 ApplicationVersion、Engine 约束和权限的字段交集、修正与违规 | 不持久化 RuntimeFormSchema，不信任前端选项范围 | US-AIAPP-043；BR-AIAPP-135、137、142、145、146 |
@@ -66,6 +67,7 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - ComfyUI 工作流没有 global 可见性；普通用户只能访问本人资源。管理员和超级管理员可以代管，但每次代管操作必须记录 actor_user_id 与 owner_user_id。
 - 跨所有者代管读取或操作必须向 identity 审计能力写入 action、actor_user_id、owner_user_id、workflow_id、结果和时间；审计记录不由工作流表替代。
 - 工作流读取、管理、校验和转换分别执行专属权限；转换还必须同时通过 `aiapp.application.manage`。
+- 工作流试运行、取消和预览执行 `aiapp.comfyui_workflow.test`；预览不得接受客户端上游定位信息。
 
 ## 6. 跨域与事件边界
 
@@ -74,6 +76,7 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - workflow-canvas 固定引用已发布 ApplicationVersion，不保存 ProviderCapability 可变副本。
 - ProviderCapability 加载仅是进程内启动步骤，不发布 `catalog_changed` 事件；运行中不存在目录变化事件。
 - 对外事件包括 Engine 健康、工作流转换、应用版本发布、ApplicationRun/AtomicTask 协作、状态投影和平台能力纠正事项。工作流转换事务提交后通过 outbox 发布 `comfyui_workflow_converted`；事件失败不回滚转换事实。
+- WorkflowTestRun 只向 Task Center 提交已注册的 comfyui.submit、comfyui.poll、comfyui.collect_preview，任务参数只携带 test_run_id 和父节点输出映射。
 
 ## 7. 非目标
 

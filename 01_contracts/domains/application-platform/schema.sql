@@ -65,9 +65,12 @@ CREATE TABLE aiapp_comfyui_workflows (
   created_by_user_id TEXT NOT NULL,
   updated_by_user_id TEXT NOT NULL,
   source_engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
-  api_workflow_json TEXT NOT NULL,
+  source_type TEXT NOT NULL CHECK (source_type IN ('visual_workflow', 'api_workflow')),
+  api_conversion_status TEXT NOT NULL CHECK (api_conversion_status IN ('pending', 'ready')),
+  api_workflow_json TEXT,
   visual_workflow_json TEXT,
-  workflow_checksum TEXT NOT NULL CHECK (workflow_checksum ~ '^sha256:[0-9a-f]{64}$'),
+  source_checksum TEXT NOT NULL CHECK (source_checksum ~ '^sha256:[0-9a-f]{64}$'),
+  api_workflow_checksum TEXT CHECK (api_workflow_checksum IS NULL OR api_workflow_checksum ~ '^sha256:[0-9a-f]{64}$'),
   import_object_info_json TEXT NOT NULL,
   import_object_info_checksum TEXT NOT NULL CHECK (import_object_info_checksum ~ '^sha256:[0-9a-f]{64}$'),
   parse_status TEXT NOT NULL CHECK (parse_status IN ('fully_supported', 'partially_supported', 'manual_configuration_required', 'unsupported')),
@@ -92,12 +95,16 @@ CREATE TABLE aiapp_comfyui_workflows (
   CHECK (
     (converted_application_template_id IS NULL AND converted_template_version_id IS NULL AND conversion_idempotency_key IS NULL AND converted_at IS NULL AND converted_by_user_id IS NULL) OR
     (converted_application_template_id IS NOT NULL AND converted_template_version_id IS NOT NULL AND conversion_idempotency_key IS NOT NULL AND converted_at IS NOT NULL AND converted_by_user_id IS NOT NULL)
+  ),
+  CHECK (
+    (source_type = 'api_workflow' AND api_conversion_status = 'ready' AND api_workflow_json IS NOT NULL AND api_workflow_checksum IS NOT NULL) OR
+    (source_type = 'visual_workflow' AND visual_workflow_json IS NOT NULL AND ((api_conversion_status = 'pending' AND api_workflow_json IS NULL AND api_workflow_checksum IS NULL) OR (api_conversion_status = 'ready' AND api_workflow_json IS NOT NULL AND api_workflow_checksum IS NOT NULL)))
   )
 );
 
 CREATE INDEX idx_aiapp_comfyui_workflows_owner_created ON aiapp_comfyui_workflows(owner_user_id, created_at);
 CREATE INDEX idx_aiapp_comfyui_workflows_filters ON aiapp_comfyui_workflows(owner_user_id, lifecycle_status, parse_status, latest_validation_status);
-CREATE INDEX idx_aiapp_comfyui_workflows_checksum ON aiapp_comfyui_workflows(owner_user_id, workflow_checksum);
+CREATE INDEX idx_aiapp_comfyui_workflows_checksum ON aiapp_comfyui_workflows(owner_user_id, source_type, source_checksum);
 CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_conversion_key ON aiapp_comfyui_workflows(owner_user_id, conversion_idempotency_key) WHERE conversion_idempotency_key IS NOT NULL;
 CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_converted_template ON aiapp_comfyui_workflows(converted_application_template_id) WHERE converted_application_template_id IS NOT NULL;
 
@@ -132,6 +139,33 @@ CREATE TABLE aiapp_comfyui_workflow_validations (
 
 CREATE INDEX idx_aiapp_comfyui_validations_workflow_created ON aiapp_comfyui_workflow_validations(workflow_id, created_at);
 CREATE INDEX idx_aiapp_comfyui_validations_engine_status ON aiapp_comfyui_workflow_validations(engine_instance_id, status, validated_at);
+
+-- s1_refs: US-AIAPP-048; BR-AIAPP-166, BR-AIAPP-167, BR-AIAPP-168.
+CREATE TABLE aiapp_comfyui_workflow_test_runs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  workflow_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflows(id),
+  owner_user_id TEXT NOT NULL,
+  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  workflow_validation_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflow_validations(id),
+  dag_task_group_id TEXT,
+  external_job_id TEXT,
+  idempotency_key TEXT NOT NULL,
+  parameter_snapshot_json TEXT NOT NULL DEFAULT '[]',
+  api_workflow_snapshot_json TEXT NOT NULL,
+  output_descriptors_json TEXT NOT NULL DEFAULT '[]',
+  task_creation_status TEXT NOT NULL CHECK (task_creation_status IN ('pending', 'created', 'failed')),
+  task_creation_failure TEXT DEFAULT '',
+  CHECK ((task_creation_status = 'created' AND dag_task_group_id IS NOT NULL) OR (task_creation_status IN ('pending', 'failed') AND dag_task_group_id IS NULL))
+);
+
+CREATE UNIQUE INDEX idx_aiapp_comfyui_test_runs_owner_key ON aiapp_comfyui_workflow_test_runs(owner_user_id, idempotency_key);
+CREATE INDEX idx_aiapp_comfyui_test_runs_workflow_created ON aiapp_comfyui_workflow_test_runs(workflow_id, created_at);
 
 -- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-159, BR-AIAPP-161.
 CREATE TABLE aiapp_application_templates (

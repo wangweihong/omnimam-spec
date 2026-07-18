@@ -146,3 +146,37 @@ application_artifact_registration_changed:
   failure_policy: Artifact 表是登记状态事实源；事件失败不改变 AtomicTask 终态，也不重复创建 UserAsset。
   related_rules: [BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]
+
+comfyui_workflow_api_converted:
+  producer: application-platform.comfyui-workflow
+  consumers: [application-platform.comfyui-workflow-view, audit-service]
+  trigger_condition: visual_workflow 首次成功保存 API Workflow。
+  payload:
+    workflow_id: string
+    source_checksum: string
+    api_workflow_checksum: string
+    converted_by_user_id: string
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: workflow_id:api_workflow_checksum
+  retry_policy: outbox 重试直到投递成功。
+  failure_policy: 工作流表是转换事实源，事件失败不回滚转换。
+  related_rules: [BR-AIAPP-164, BR-AIAPP-165]
+  related_user_stories: [US-AIAPP-047]
+
+comfyui_workflow_test_run_changed:
+  producer: application-platform.comfyui-workflow-test-run
+  consumers: [application-platform.comfyui-workflow-view, audit-service]
+  trigger_condition: 试运行绑定 DAG、恢复 prompt ID 或收集预览描述。
+  payload:
+    test_run_id: string
+    workflow_id: string
+    dag_task_group_id: string|null
+    external_job_id: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: test_run_id:resource_version
+  retry_policy: outbox 按资源版本重试。
+  failure_policy: test run 与 Task Center 投影仍为事实源。
+  related_rules: [BR-AIAPP-166, BR-AIAPP-168]
+  related_user_stories: [US-AIAPP-048]

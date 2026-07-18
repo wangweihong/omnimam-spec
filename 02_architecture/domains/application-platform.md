@@ -127,7 +127,9 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 
 Binding 中的 ProviderCapability ID 没有数据库外键，创建、解析和运行时通过注册表校验。ApplicationRun 按能力来源保存 ProviderCapability 或 ComfyUI workflow revision 快照，不随重启后的能力变化。
 
-ComfyUIWorkflow 不维护版本树。每次导入生成新资源并保存来源实例 `object_info`；每次兼容性校验保存目标实例独立快照。一次性转换将执行事实深拷贝到首个 draft ApplicationTemplateVersion，之后模板版本与源工作流生命周期解耦。
+ComfyUIWorkflow 不维护版本树。每次导入生成新资源并保存来源实例 `object_info`；单文件由服务端识别 visual 或 API 来源，visual 来源显式转换后才形成 API 执行事实。每次兼容性校验保存目标实例独立快照。一次性模板转换将执行事实深拷贝到首个 draft ApplicationTemplateVersion，之后模板版本与源工作流生命周期解耦。
+
+WorkflowTestRun 归 application-platform 所有，通过 Task Center 创建 `submit -> poll -> collect_preview` DAG。输出正文不落库，预览经 EngineAdapter 使用服务端 output ID 受控代理。
 
 ## 7. ComfyUI 工作流导入与转换时序
 

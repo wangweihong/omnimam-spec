@@ -97,6 +97,17 @@ aiapp.comfyui_workflow.convert:
   related_rules: [BR-AIAPP-156, BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
   related_user_stories: [US-AIAPP-046]
 
+aiapp.comfyui_workflow.test:
+  module: comfyui-workflow
+  resource: comfyui_workflow_test_run
+  action: test
+  description: 在健康 ComfyUI EngineInstance 上试运行本人可见的 ready API Workflow。
+  frontend_usage: 控制试运行、取消、历史、任务步骤和临时预览入口。
+  backend_enforcement: 普通用户只能测试本人工作流；创建 DAG 前必须即时兼容校验，预览只按服务端 output ID 代理读取。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-166, BR-AIAPP-167, BR-AIAPP-168]
+  related_user_stories: [US-AIAPP-048]
+
 aiapp.application.read:
   module: application
   resource: application

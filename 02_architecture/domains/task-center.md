@@ -38,6 +38,7 @@ flowchart LR
 - DAGTaskGroup 按拓扑层编译，同层 Fork、层末 Join；动态节点使用 Dynamic Fork/Join。
 - CanvasVersion 与 DAGTaskGroup 内容摘要形成不可变 workflow definition 名称和版本。
 - ComfyUI 使用 `submit -> poll -> download_artifact`；poll 使用 callback/delay 并保存外部 job ID。
+- ComfyUI WorkflowTestRun 使用 `submit -> poll -> collect_preview`；Worker 返回 `IN_PROGRESS + callbackAfterSeconds` 后由 Conductor 延迟重投同一 task，期间释放 Worker。
 
 ## 4. 调度模型
 
