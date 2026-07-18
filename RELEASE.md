@@ -1,5 +1,17 @@
 # Release Records
 
+## spec-v1.0.2
+
+- commit: a1d86a592c7e41cf95b55b71867198b4c54644eb
+- status: released
+- confirmed_by: user（2026-07-18 明确要求实施调度目标关联，实施校验发现并修正周期轮次唯一索引冲突）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S2:
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/module-contract.md
+
 ## spec-v1.0.1
 
 - commit: 19c02f9a837dd1f49cf90d98404dfb1e439fed40
