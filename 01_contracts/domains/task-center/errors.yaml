@@ -397,3 +397,51 @@ task_schedule_state_blocked:
   deprecated: false
   related_user_stories: [US-TASK-011]
   related_rules: [BR-TASK-086]
+
+task_reconcile_config_invalid:
+  code: ERR_TASK_RECONCILE_CONFIG_INVALID
+  value: 141403
+  cn: 巡检配置、并发、单轮上限或超时不合法。
+  en: Reconcile config, parallelism, item limit, or timeout is invalid.
+  owning_domain: task-center
+  owning_module: schedule
+  range: 141400-141599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-017]
+  related_rules: [BR-TASK-107, BR-TASK-118]
+
+task_reconcile_ref_unregistered:
+  code: ERR_TASK_RECONCILE_REF_UNREGISTERED
+  value: 141404
+  cn: 计划引用的巡检器未在后端注册。
+  en: The reconcile handler referenced by the schedule is not registered.
+  owning_domain: task-center
+  owning_module: schedule
+  range: 141400-141599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-017]
+  related_rules: [BR-TASK-108]
+
+task_system_schedule_operation_restricted:
+  code: ERR_TASK_SYSTEM_SCHEDULE_OPERATION_RESTRICTED
+  value: 141405
+  cn: 系统内置计划不允许创建、删除或修改受保护字段。
+  en: A system schedule cannot be created, deleted, or have protected fields changed.
+  owning_domain: task-center
+  owning_module: schedule
+  range: 141400-141599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-017]
+  related_rules: [BR-TASK-112]

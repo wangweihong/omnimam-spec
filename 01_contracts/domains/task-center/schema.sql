@@ -149,7 +149,7 @@ CREATE INDEX idx_dag_groups_definition ON dag_task_groups(runtime_definition_nam
 CREATE UNIQUE INDEX idx_dag_groups_idempotency ON dag_task_groups(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE INDEX idx_dag_groups_canvas_version ON dag_task_groups(canvas_version_id) WHERE canvas_version_id <> '';
 
--- s1_refs: US-TASK-011, US-TASK-013, BR-TASK-083..086, BR-TASK-092.
+-- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, BR-TASK-083..086, BR-TASK-107..118.
 CREATE TABLE task_schedules (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -158,12 +158,22 @@ CREATE TABLE task_schedules (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
+  execution_mode TEXT NOT NULL DEFAULT 'MATERIALIZED' CHECK (execution_mode IN ('MATERIALIZED','RECONCILE')),
+  management_mode TEXT NOT NULL DEFAULT 'USER' CHECK (management_mode IN ('USER','SYSTEM')),
+  system_key TEXT NOT NULL DEFAULT '',
   trigger_type TEXT NOT NULL CHECK (trigger_type IN ('CRON','RUN_AT')),
   cron_expression TEXT DEFAULT '',
   run_at TIMESTAMPTZ,
   time_zone TEXT NOT NULL DEFAULT 'UTC',
-  target_type TEXT NOT NULL CHECK (target_type IN ('ATOMIC_TASK','TASK_GROUP','DAG_TASK_GROUP')),
-  target_template_json TEXT NOT NULL,
+  target_type TEXT NOT NULL DEFAULT '' CHECK (target_type IN ('','ATOMIC_TASK','TASK_GROUP','DAG_TASK_GROUP')),
+  target_template_json TEXT NOT NULL DEFAULT '',
+  reconcile_ref TEXT NOT NULL DEFAULT '',
+  reconcile_config_json TEXT NOT NULL DEFAULT '{}',
+  reconcile_max_parallelism INTEGER NOT NULL DEFAULT 16 CHECK (reconcile_max_parallelism BETWEEN 1 AND 64),
+  reconcile_max_items_per_run INTEGER NOT NULL DEFAULT 1000 CHECK (reconcile_max_items_per_run BETWEEN 1 AND 1000),
+  reconcile_per_item_timeout_seconds INTEGER NOT NULL DEFAULT 4 CHECK (reconcile_per_item_timeout_seconds BETWEEN 1 AND 30),
+  reconcile_overall_timeout_seconds INTEGER NOT NULL DEFAULT 5 CHECK (reconcile_overall_timeout_seconds BETWEEN 1 AND 300),
+  history_retention_json TEXT NOT NULL DEFAULT '{"success_count":4,"failure_count":20,"failure_duration_seconds":604800,"skipped_count":4,"runtime_retention_seconds":86400}',
   status TEXT NOT NULL CHECK (status IN ('ACTIVE','PAUSED','COMPLETED','DELETED')),
   misfire_policy TEXT NOT NULL DEFAULT 'SKIP' CHECK (misfire_policy = 'SKIP'),
   overlap_policy TEXT NOT NULL DEFAULT 'SKIP' CHECK (overlap_policy = 'SKIP'),
@@ -175,12 +185,41 @@ CREATE TABLE task_schedules (
   namespace TEXT NOT NULL,
   created_by TEXT NOT NULL,
   deleted_at TIMESTAMPTZ,
-  CHECK ((trigger_type = 'CRON' AND cron_expression <> '' AND run_at IS NULL) OR (trigger_type = 'RUN_AT' AND cron_expression = '' AND run_at IS NOT NULL))
+  CHECK ((trigger_type = 'CRON' AND cron_expression <> '' AND run_at IS NULL) OR (trigger_type = 'RUN_AT' AND cron_expression = '' AND run_at IS NOT NULL)),
+  CHECK ((management_mode = 'USER' AND system_key = '') OR (management_mode = 'SYSTEM' AND system_key <> '')),
+  CHECK (reconcile_overall_timeout_seconds >= reconcile_per_item_timeout_seconds),
+  CHECK (
+    (execution_mode = 'MATERIALIZED' AND target_type <> '' AND target_template_json <> '' AND reconcile_ref = '') OR
+    (execution_mode = 'RECONCILE' AND trigger_type = 'CRON' AND target_type = '' AND target_template_json = '' AND reconcile_ref <> '')
+  )
 );
 
 CREATE INDEX idx_task_schedules_status_next ON task_schedules(status, next_trigger_at);
+CREATE UNIQUE INDEX idx_task_schedules_system_key ON task_schedules(system_key) WHERE system_key <> '';
+CREATE INDEX idx_task_schedules_mode_status ON task_schedules(execution_mode, status, next_trigger_at);
 
--- s1_refs: US-TASK-011, US-TASK-013, BR-TASK-084..086, BR-TASK-092.
+-- s1_refs: US-TASK-017, BR-TASK-110, BR-TASK-113.
+-- ScheduleReconcileState 是 TaskSchedule 的内部一对一运行投影，不是独立可命名资源，因此不嵌入通用 ObjectMeta。
+CREATE TABLE task_schedule_reconcile_states (
+  schedule_id TEXT PRIMARY KEY REFERENCES task_schedules(id) ON DELETE CASCADE,
+  checkpoint_json TEXT NOT NULL DEFAULT '{}',
+  current_runtime_execution_id TEXT NOT NULL DEFAULT '',
+  last_started_at TIMESTAMPTZ,
+  last_completed_at TIMESTAMPTZ,
+  last_summary_json TEXT NOT NULL DEFAULT '{}',
+  consecutive_failures INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_failures >= 0),
+  total_runs BIGINT NOT NULL DEFAULT 0 CHECK (total_runs >= 0),
+  total_scanned BIGINT NOT NULL DEFAULT 0 CHECK (total_scanned >= 0),
+  total_findings BIGINT NOT NULL DEFAULT 0 CHECK (total_findings >= 0),
+  total_actions_created BIGINT NOT NULL DEFAULT 0 CHECK (total_actions_created >= 0),
+  resource_version INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_schedule_reconcile_states_checkpoint
+  ON task_schedule_reconcile_states(last_completed_at, updated_at);
+
+-- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, BR-TASK-084..086, BR-TASK-111, BR-TASK-114..116.
 CREATE TABLE task_schedule_executions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -190,21 +229,29 @@ CREATE TABLE task_schedule_executions (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   schedule_id TEXT NOT NULL REFERENCES task_schedules(id),
+  execution_mode TEXT NOT NULL CHECK (execution_mode IN ('MATERIALIZED','RECONCILE')),
   scheduled_at TIMESTAMPTZ NOT NULL,
   triggered_at TIMESTAMPTZ,
-  target_type TEXT NOT NULL CHECK (target_type IN ('ATOMIC_TASK','TASK_GROUP','DAG_TASK_GROUP')),
+  target_type TEXT NOT NULL DEFAULT '' CHECK (target_type IN ('','ATOMIC_TASK','TASK_GROUP','DAG_TASK_GROUP')),
   target_id TEXT DEFAULT '',
+  reconcile_summary_json TEXT NOT NULL DEFAULT '{}',
   runtime_execution_id TEXT DEFAULT '',
   status TEXT NOT NULL CHECK (status IN ('TRIGGERED','RUNNING','SUCCESS','FAILED','CANCELED','SKIPPED_OVERLAP','TRIGGER_FAILED')),
   reason TEXT DEFAULT '',
   completed_at TIMESTAMPTZ,
-  UNIQUE (schedule_id, scheduled_at)
+  UNIQUE (schedule_id, scheduled_at),
+  CHECK (
+    (execution_mode = 'MATERIALIZED' AND target_type <> '') OR
+    (execution_mode = 'RECONCILE' AND target_type = '' AND target_id = '')
+  )
 );
 
 CREATE INDEX idx_schedule_executions_status ON task_schedule_executions(schedule_id, status, scheduled_at);
 CREATE UNIQUE INDEX idx_schedule_executions_active
   ON task_schedule_executions(schedule_id)
   WHERE status IN ('TRIGGERED','RUNNING');
+CREATE INDEX idx_schedule_executions_reconcile_retention
+  ON task_schedule_executions(schedule_id, execution_mode, status, completed_at DESC, scheduled_at DESC);
 
 -- s1_refs: US-TASK-015, BR-TASK-087..088, BR-TASK-100.
 CREATE TABLE runtime_projection_events (

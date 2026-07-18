@@ -35,11 +35,12 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 
 ### 3.1 EngineInstance 健康检测契约
 
-- Task Center 启动后立即创建 `application-platform.engine-health-plan`，之后按全局配置周期创建；默认 30 秒，0 表示关闭自动检测。
-- Task Center 使用 TaskSchedule 每轮创建 `application-platform.engine-health-plan` DAGTaskGroup；Planner 只选择 `enabled=true` 且从未检测或已超过一个周期的实例，并通过 Dynamic Fork 创建健康 AtomicTask。
-- 动态任务 `max_parallelism=16`、整轮超时 5 秒，单实例超时 4 秒；上一轮未终态时 ScheduleExecution 记录 `SKIPPED_OVERLAP`。
+- application-platform 向 Task Center ReconcileRegistry 注册 `application-platform.engine-health`；Task Center 以同名唯一 system_key 原子确保 SYSTEM RECONCILE TaskSchedule。
+- 计划默认为六段 `*/30 * * * * *`、`UTC`、`max_parallelism=16`、`max_items_per_run=1000`、单实例超时 4 秒和整轮超时 5 秒；管理员可在受控范围内修改，启动补建不覆盖已保存值。
+- 巡检器以稳定 EngineInstance ID 为 checkpoint，分批读取 `enabled=true` 实例并直接并发探测；每轮不创建 Planner DAGTaskGroup 或健康 AtomicTask，未完成分块下轮重试。
+- 上一轮未终态时 ScheduleExecution 记录 `SKIPPED_OVERLAP`；轮次历史仅保存 Task Center 定义的有限轻量摘要。
 - 每次成功落库的检测更新 `last_health_check_at`；成功清空 `unhealthy_reason`，失败保存最多 512 个 UTF-8 字符的安全摘要。
-- 多副本通过 TaskSchedule 活动锁、AtomicTask 幂等和 WorkflowRuntime 持久化执行去重；resource version 冲突不得覆盖新结果，也不得重复发布状态变化事件。
+- 多副本通过 TaskSchedule 活动锁和 WorkflowRuntime 持久化执行去重；resource version 冲突不得覆盖新结果，也不得重复发布状态变化事件。
 - 仅健康状态变化且更新成功后发布 `engine_instance_health_changed`；列表、详情和手动检测结果返回一致的检测时间与失败摘要。
 
 ## 4. 数据与一致性

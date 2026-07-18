@@ -11,6 +11,8 @@ flowchart LR
   Outbox --> API
   API --> DB["Task Center Projection DB"]
   API --> Runtime["WorkflowRuntime"]
+  Runtime --> Reconcile["Fixed Reconcile Controller"]
+  Reconcile --> Registry["ReconcileRegistry"]
   Runtime --> Conductor["Conductor OSS"]
   Conductor --> Workers["Go AtomicTask Workers"]
   Conductor --> Events["Runtime events"]
@@ -24,7 +26,8 @@ flowchart LR
 | --- | --- |
 | AtomicTask service | 创建、查询、取消、手动重试和 Attempt 历史 |
 | Orchestration service | 展开 Group/DAG、编译定义和聚合状态结果 |
-| Schedule service | 计划管理、ScheduleExecution、活动锁和重叠跳过 |
+| Schedule service | 双模式计划管理、ScheduleExecution、ScheduleReconcileState、活动锁与 retention |
+| ReconcileRegistry | 注册受控巡检器、校验配置、路由轻量巡检与幂等修复动作 |
 | Function registry | 将受控 functionRef 映射到 Worker handler 和 schema |
 | ConductorRuntime | 注册、启动、查询、取消、Schedule 和事件适配 |
 | Projection consumer | 幂等消费运行时事件并推进业务投影 |
@@ -44,7 +47,11 @@ flowchart LR
 
 cron 由 Conductor Scheduler 触发，单次 `run_at` 由持久化 WAIT launcher 触发。Task Center 在每次触发入口先写唯一 ScheduleExecution 并获取 schedule 活动锁；存在非终态轮次时写 `SKIPPED_OVERLAP`。停机期间的历史周期不补发。
 
+MATERIALIZED 轮次创建 AtomicTask、TaskGroup 或 DAGTaskGroup。RECONCILE 轮次固定使用可复用内部 definition `task_center_reconcile_controller` 版本 1，由控制 handler 读取 ScheduleReconcileState，调用 ReconcileRegistry，再事务更新轻量 execution、checkpoint、累计统计和 outbox。巡检返回的修复动作经 functionRef 与稳定幂等键校验后才能创建 AtomicTask。
+
 调度触发创建的目标继承 TaskSchedule 的租户和创建者边界。查询 ScheduleExecution 时按 target type 批量读取实际目标并形成轻量摘要；查询全局 AtomicTask、TaskGroup 和 DAGTaskGroup 时通过 ScheduleExecution 批量反查来源计划。触发失败、重叠跳过或目标已不可用时使用计划模板摘要降级，不伪造目标资源。
+
+RECONCILE 历史由 retention worker 按状态、数量与时长幂等清理；累计统计独立保存于 ScheduleReconcileState。WorkflowRuntime adapter 只删除超过 24 小时的终态 RECONCILE execution，不删除 MATERIALIZED 历史。
 
 ## 5. 恢复与一致性
 
@@ -57,7 +64,7 @@ cron 由 Conductor Scheduler 触发，单次 `run_at` 由持久化 WAIT launcher
 
 ## 6. 数据所有权
 
-Task Center 拥有 AtomicTask、Attempt、Group、DAG、Schedule、ScheduleExecution、runtime binding 和 projection event。Conductor 拥有其 workflow/task/schedule 内部历史，并使用独立数据库或 schema。application-platform 拥有 ApplicationRun/Artifact，asset-library 拥有 Asset，workflow-canvas 拥有 Canvas 版本和运行视图。
+Task Center 拥有 AtomicTask、Attempt、Group、DAG、Schedule、ScheduleExecution、ScheduleReconcileState、runtime binding 和 projection event。Conductor 拥有其 workflow/task/schedule 内部历史，并使用独立数据库或 schema。application-platform 拥有 ApplicationRun/Artifact 与 EngineInstance 健康投影，asset-library 拥有 Asset，workflow-canvas 拥有 Canvas 版本和运行视图。
 
 ## 7. 安全边界
 

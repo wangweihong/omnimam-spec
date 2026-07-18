@@ -25,14 +25,14 @@ task.group.operate:
 task.schedule.manage:
   domain: task-center
   module: schedule
-  resource: task_schedule, task_schedule_execution
+  resource: task_schedule, task_schedule_execution, schedule_reconcile_state
   action: create, read, update, pause, resume, delete
   subject: business_developer, system_admin
-  description: 管理周期或单次计划并查看全部调度历史与汇总。
-  frontend_usage: 控制 Schedule 列表、编辑、暂停、恢复、删除和执行历史入口。
-  backend_enforcement: 校验目标模板、六段 cron、显式时区、run_at 和租户边界；删除为软删除。
-  related_user_stories: [US-TASK-011, US-TASK-013]
-  related_rules: [BR-TASK-083, BR-TASK-084, BR-TASK-085, BR-TASK-086, BR-TASK-101, BR-TASK-102, BR-TASK-104]
+  description: 管理 MATERIALIZED 周期/单次计划，管理员可查看并受限调整 SYSTEM RECONCILE 计划。
+  frontend_usage: 控制 Schedule 列表、执行模式筛选、详情、暂停、恢复、运行参数编辑和轻量历史；SYSTEM 计划隐藏删除。
+  backend_enforcement: 创建 API 只接受 MATERIALIZED；校验目标模板、六段 cron、显式时区、run_at 和租户边界。SYSTEM RECONCILE 只允许管理员暂停、恢复和编辑 cron、时区及安全运行参数，禁止创建、删除或更换 reconcile_ref。
+  related_user_stories: [US-TASK-011, US-TASK-013, US-TASK-017]
+  related_rules: [BR-TASK-083, BR-TASK-084, BR-TASK-085, BR-TASK-086, BR-TASK-101, BR-TASK-102, BR-TASK-104, BR-TASK-107, BR-TASK-112, BR-TASK-118]
 
 task.runtime.internal:
   domain: task-center

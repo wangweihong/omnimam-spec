@@ -67,16 +67,18 @@ task_schedule_execution_recorded:
     task_schedule_id: string
     schedule_execution_id: string
     scheduled_at: string(date-time)
+    execution_mode: string
     status: string
-    target_type: string
+    target_type: string|null
     target_id: string|null
+    reconcile_summary: object|null
     reason: string|null
     occurred_at: string(date-time)
   idempotency_key: schedule_execution_id:status
   retry_policy: 由 outbox 重试并支持按 schedule_execution_id 重放。
   failure_policy: ScheduleExecution 数据库记录为事实源；事件失败不重复启动目标。
-  related_user_stories: [US-TASK-011, US-TASK-013]
-  related_rules: [BR-TASK-084, BR-TASK-085]
+  related_user_stories: [US-TASK-011, US-TASK-013, US-TASK-017]
+  related_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-114]
 
 task_runtime_projection_reconciled:
   producer: runtime-reconciler

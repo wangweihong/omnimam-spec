@@ -230,9 +230,11 @@ sequenceDiagram
 
 ## 10.1 EngineInstance 周期健康检测
 
-Task Center 创建一个 Engine 健康 TaskSchedule，启动时立即触发一轮，随后按全局周期创建 Planner DAGTaskGroup；周期为 0 时暂停自动 Schedule。Planner 选择已启用且到期的 EngineInstance，通过 Dynamic Fork 创建健康 AtomicTask，最多并发 16。
+Application Platform 注册 `application-platform.engine-health` ReconcileHandler，Task Center 以同名 system_key 原子确保唯一 SYSTEM RECONCILE TaskSchedule。计划使用固定可复用的内部 workflow definition `task_center_reconcile_controller` 版本 1，按六段 cron 启动轻量 runtime execution，不为每轮注册 definition。
 
-单实例 AtomicTask 最多 4 秒、整轮最多 5 秒；前一轮非终态时当前 ScheduleExecution 记录 `SKIPPED_OVERLAP`。检测结果通过 EngineInstance resource version 乐观更新，旧结果不得覆盖新事实。
+巡检器以稳定 EngineInstance ID 为 checkpoint，按 max_parallelism 分块读取已启用实例并直接探测，不创建 Planner DAGTaskGroup 或健康 AtomicTask。默认并发 16、每轮 1000 项、单实例 4 秒和整轮 5 秒；只在整块完成后推进 checkpoint。前一轮非终态时当前 ScheduleExecution 记录 `SKIPPED_OVERLAP`。
+
+检测结果通过 EngineInstance resource version 乐观更新，旧结果不得覆盖新事实。健康状态变化时在同一业务事务中更新 EngineInstance 并写 outbox；状态未变时只更新最近检测时间与监控指标。
 
 状态映射为：协议请求成功是 `online`，网络、超时或上游不可用是 `offline`，Adapter/协议配置异常是 `degraded`。失败详情先归一化为安全摘要再持久化和返回，禁止包含凭证、签名、完整 URL、Header 或未经处理的上游载荷。
 

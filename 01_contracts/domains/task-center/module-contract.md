@@ -8,7 +8,8 @@
 | --- | --- | --- |
 | atomic-task | AtomicTask 创建、幂等、取消、手动重试、Attempt 查询 | Worker claim、Lease、业务函数实现 |
 | orchestration | TaskGroup、DAGTaskGroup、子任务展开、状态和结果汇总 | Group 嵌套、任意脚本、运行时 DAG 状态机 |
-| schedule | TaskSchedule、ScheduleExecution、暂停恢复、重叠门禁和历史汇总 | cron 引擎、业务目标执行 |
+| schedule | TaskSchedule、ScheduleExecution、ScheduleReconcileState、暂停恢复、重叠门禁和历史保留 | cron 引擎、具体领域巡检实现 |
+| reconcile-registry | 受控 reconcileRef、配置校验、轻量巡检路由和修复动作门禁 | 用户自定义代码、任意 Conductor 任务、具体领域数据归属 |
 | runtime | WorkflowRuntime 接口、Conductor 适配、运行时 binding、事件投影和对账 | 对外业务 API、Conductor 数据库所有权 |
 | function-registry | 可用 functionRef、输入输出 schema、能力要求和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
 | access | project、namespace、createdBy 和服务身份访问控制 | identity 主体生命周期 |
@@ -22,6 +23,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 查询、取消执行并读取运行时任务和重试历史；
 - 注册、暂停、恢复和删除 cron schedule；
 - 消费状态事件，并枚举全部非终态 execution 供 reconciler 对账。
+- 删除指定的终态 runtime execution，仅供 RECONCILE retention 使用。
 
 首个生产实现是 `ConductorRuntime`，测试使用 fake。业务服务、前端和其他领域不得直接调用 Conductor API。
 
@@ -34,9 +36,10 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 
-## 4. 调度契约
+## 4. 调度与巡检契约
 
-- TaskSchedule 只保存 AtomicTaskTemplate、TaskGroupTemplate 或 DAGTaskGroupTemplate。
+- MATERIALIZED TaskSchedule 只保存 AtomicTaskTemplate、TaskGroupTemplate 或 DAGTaskGroupTemplate，不得有 reconcile_spec。
+- RECONCILE TaskSchedule 只保存已注册 reconcile_ref、受控 config、并发、单轮上限和两级超时，不得有 materialized target。
 - cron 是六段表达式并要求 IANA 时区；单次 `run_at` 使用持久化 WAIT launcher。
 - V1 `misfire_policy` 和 `overlap_policy` 固定为 `SKIP`。
 - 每个 `schedule_id + scheduled_at` 先创建唯一 ScheduleExecution，再由活动锁判断是否启动目标。
@@ -45,6 +48,12 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 前一执行非终态时，本轮写 `SKIPPED_OVERLAP`，不得创建目标资源。
 - 暂停、恢复和软删除只影响未来触发，不取消已启动目标。
 - Schedule 与执行历史查询批量补充轻量目标摘要；全局任务与组合列表批量补充来源计划摘要，禁止逐行访问目标形成 N+1 查询。
+- ReconcileRegistry 消费方契约为 `Ref()`、`ValidateConfig(config)` 和 `Reconcile(ctx, request) -> result`。request 包含 schedule ID、scheduledAt、checkpoint、config、并发、单轮上限和两级超时；result 包含 nextCheckpoint、cycleCompleted、scanned、findings、deferred、actions 和 summary。
+- `actions[]` 只能包含已注册 functionRef 的 AtomicTaskCreateRequest，每项必须带稳定幂等键；Task Center 统一校验和创建，巡检器不得构造任意 Conductor 任务。
+- checkpoint 以稳定 ID 为游标，按 max_parallelism 分块且只在整块完成后推进。ScheduleReconcileState 与当轮 execution 在同一业务事务中更新。
+- 内部控制 handler 固定使用可复用 workflow definition `task_center_reconcile_controller` 版本 1；禁止按 schedule execution ID 注册新 definition。
+- SYSTEM 计划通过非空唯一 system_key 原子确保，启动时只补缺失计划，不覆盖管理员已保存的 cron、时区和运行参数。
+- retention worker 幂等保留所有非终态、最近 4 次成功、最近 4 次 SKIPPED_OVERLAP、最近 20 次且 7 天内的失败和 TRIGGER_FAILED；Conductor 终态 RECONCILE execution 默认保留 24 小时，不触碰 MATERIALIZED execution。
 
 ## 5. 投影与一致性
 
@@ -53,13 +62,13 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - reconciler 周期枚举全部非终态 execution，修复漏事件、乱序和 API/运行时重启窗口。
 - 状态、进度或结果变化递增 `resource_version`；消费者按资源 ID 与版本投影。
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
-- AtomicTask、TaskAttempt、Group、DAG、Schedule 和 ScheduleExecution 历史不得物理覆盖。
+- AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
 
 ## 6. 跨域协作
 
 - application-platform 创建 `application.execute` AtomicTask，并在 ApplicationRun 保存 `atomic_task_id` 与只读状态投影。
 - asset-library 在上传事务写 outbox；task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建 AtomicTask。
-- application-platform 的 Engine 健康 TaskSchedule 每轮创建 Planner DAGTaskGroup，并动态展开健康 AtomicTask。
+- application-platform 注册 `application-platform.engine-health` ReconcileHandler。其 SYSTEM TaskSchedule 直接分批探测 EngineInstance，不创建 Planner DAGTaskGroup 或健康 AtomicTask；状态变化由 application-platform 在同一事务中更新投影并写 outbox。
 - workflow-canvas 发布 CanvasVersion 后注册不可变 DAG 定义；CanvasRun 绑定 `dag_task_group_id`，CanvasNodeRun 绑定 `atomic_task_id`。
 - 大型输出先由 application-platform 形成 Artifact，再由 asset-library 登记 Asset；任务中心只保存引用。
 - ComfyUIWorkflowTestRun 创建 `comfyui.submit -> comfyui.poll -> comfyui.collect_preview` DAG；poll handler 可返回 IN_PROGRESS 和 callbackAfterSeconds，延迟回调属于同一 Attempt。
@@ -71,6 +80,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。
 - Conductor UI 和 API 只供内部运维，且不能替代 Task Center 权限、审计和租户隔离。
+- 巡检指标固定包含 `reconcile_runs_total{ref,status}`、`reconcile_scanned_total{ref}`、`reconcile_findings_total{ref}`、`reconcile_actions_total{ref}`、`reconcile_duration_seconds{ref}`、`reconcile_checkpoint_age_seconds{ref}`、`reconcile_overlap_skipped_total{ref}` 和 `reconcile_retention_failures_total{backend}`。label 不得包含 schedule ID、engine ID 等无界值。
 
 ## 8. 废弃路径
 

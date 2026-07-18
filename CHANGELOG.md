@@ -1,5 +1,11 @@
 # Changelog
 
+## spec-v1.3.0
+
+- TaskSchedule 新增 MATERIALIZED/RECONCILE 执行模式、USER/SYSTEM 管理模式、ReconcileRegistry、ScheduleReconcileState、受控修复动作、轻量历史与运行时 retention 契约。
+- 新增 `US-TASK-017` 与 `BR-TASK-107..119`，扩展 TaskSchedule/OpenAPI/schema/错误码/权限/事件/模块契约，并明确 SYSTEM 计划的受限操作。
+- EngineInstance 周期健康检测迁移为 `application-platform.engine-health` RECONCILE 计划，不再为每轮创建 Planner DAGTaskGroup 或健康 AtomicTask。
+
 ## spec-v1.2.0
 
 - WorkflowTestRun 新增 EngineInstance 非敏感快照、参数覆盖数量和可选完整参数快照。
