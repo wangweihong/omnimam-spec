@@ -1425,12 +1425,16 @@ components:
         items: {type: array, items: {$ref: '#/components/schemas/EngineInstanceSummary'}}
     EngineInstanceSummary:
       type: object
-      required: [id, name, application_engine_type_id, enabled, health_status, unhealthy_reason]
+      required: [id, name, application_engine_type_id, base_url, enabled, health_status, unhealthy_reason]
       properties:
         id: {type: string}
         name: {type: string}
         description: {type: string}
         application_engine_type_id: {type: string}
+        base_url:
+          type: string
+          format: uri
+          description: EngineInstance 的调用端点；列表不返回 auth_config 等鉴权信息。
         enabled: {type: boolean}
         health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
         last_health_check_at:
