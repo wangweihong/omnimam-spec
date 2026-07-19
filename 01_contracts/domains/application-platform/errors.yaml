@@ -528,7 +528,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-153, BR-AIAPP-154]
+  related_rules: [BR-AIAPP-153, BR-AIAPP-171]
   related_user_stories: [US-AIAPP-044]
 
 - code: ERR_AIAPP_COMFYUI_ENGINE_TYPE_INVALID
@@ -541,21 +541,21 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-154, BR-AIAPP-157]
-  related_user_stories: [US-AIAPP-044, US-AIAPP-045]
+  related_rules: [BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-172]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
 
 - code: ERR_AIAPP_COMFYUI_OBJECT_INFO_UNAVAILABLE
   value: 131222
   http: 200
-  cn: 无法从指定 ComfyUI EngineInstance 获取有效的 object_info。
-  en: Valid object_info could not be retrieved from the selected ComfyUI EngineInstance.
+  cn: 指定 ComfyUI EngineInstance 不存在可用的当前 object_info，或目录已超过 48 小时。
+  en: The selected ComfyUI EngineInstance has no usable current object_info, or the catalog is older than 48 hours.
   owning_domain: application-platform
   owning_module: comfyui-workflow
   range: 131200-131399
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-154, BR-AIAPP-157]
-  related_user_stories: [US-AIAPP-044, US-AIAPP-045]
+  related_rules: [BR-AIAPP-169, BR-AIAPP-176]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_REFERENCE_INVALID
   value: 131223
@@ -567,7 +567,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-153, BR-AIAPP-154]
+  related_rules: [BR-AIAPP-153, BR-AIAPP-171]
   related_user_stories: [US-AIAPP-044]
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_INCOMPATIBLE
@@ -580,7 +580,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-157, BR-AIAPP-158]
+  related_rules: [BR-AIAPP-172, BR-AIAPP-173]
   related_user_stories: [US-AIAPP-045, US-AIAPP-046]
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_NOT_FOUND
@@ -605,7 +605,7 @@
   owning_module: comfyui-workflow
   range: 131200-131399
   retryable: false
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-155, BR-AIAPP-158]
   related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
 
@@ -619,7 +619,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-156, BR-AIAPP-157, BR-AIAPP-158]
+  related_rules: [BR-AIAPP-156, BR-AIAPP-172, BR-AIAPP-173]
   related_user_stories: [US-AIAPP-045, US-AIAPP-046]
 
 - code: ERR_AIAPP_COMFYUI_VALIDATION_NOT_COMPATIBLE
@@ -632,7 +632,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-158]
+  related_rules: [BR-AIAPP-173]
   related_user_stories: [US-AIAPP-046]
 
 - code: ERR_AIAPP_COMFYUI_TEMPLATE_CONTRACT_INVALID
@@ -645,7 +645,7 @@
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-158, BR-AIAPP-159, BR-AIAPP-161]
+  related_rules: [BR-AIAPP-159, BR-AIAPP-173, BR-AIAPP-174]
   related_user_stories: [US-AIAPP-046]
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_ALREADY_CONVERTED
@@ -684,7 +684,7 @@
   range: 131200-131399
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-155]
+  related_rules: [BR-AIAPP-171]
   related_user_stories: [US-AIAPP-044]
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_ACCESS_DENIED
@@ -816,3 +816,29 @@
   deprecated: false
   related_rules: [BR-AIAPP-166]
   related_user_stories: [US-AIAPP-048]
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_NOT_ALLOWED
+  value: 131243
+  http: 200
+  cn: 只有已启用且健康在线的 ComfyUI EngineInstance 可以刷新 object_info。
+  en: Object-info refresh is allowed only for enabled, healthy online ComfyUI EngineInstances.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-170, BR-AIAPP-176]
+  related_user_stories: [US-AIAPP-049]
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_FAILED
+  value: 131244
+  http: 200
+  cn: 未能从 ComfyUI EngineInstance 获取并校验完整 object_info，已保留最后一次成功目录。
+  en: A complete valid object_info could not be retrieved from the ComfyUI EngineInstance; the last successful catalog was retained.
+  owning_domain: application-platform
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-169, BR-AIAPP-170]
+  related_user_stories: [US-AIAPP-049]

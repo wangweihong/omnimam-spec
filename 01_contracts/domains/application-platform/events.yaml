@@ -30,7 +30,7 @@ comfyui_workflow_converted:
   idempotency_key: workflow_id:application_template_id
   retry_policy: 转换事务提交后通过 outbox 重试，消费者按 workflow_id 幂等处理。
   failure_policy: 事件发布失败不得回滚转换；数据库中的工作流转换关系和模板首版是事实源。
-  related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
+  related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-173, BR-AIAPP-174]
   related_user_stories: [US-AIAPP-046]
 
 application_version_published:
