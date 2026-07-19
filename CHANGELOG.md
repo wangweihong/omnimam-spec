@@ -1,5 +1,14 @@
 # Changelog
 
+## spec-v1.4.0
+
+- 将 ComfyUI `object_info` 所有权集中到 EngineInstance 一对一当前目录；目录随实例级联删除，不保存 checksum、历史、状态机或递增版本。
+- 新增每日 `application-platform.comfyui-object-info-refresh` SYSTEM RECONCILE 刷新和管理员手动刷新语义，只处理 enabled、online 的 ComfyUI 实例，失败保留最后成功目录。
+- 新增 EngineInstance 当前 object-info 读取与刷新 OpenAPI；原始 JSON 支持 gzip 内容协商，实例摘要返回 available、refreshed_at 和派生 stale。
+- Workflow、Validation、TemplateVersion、WorkflowTestRun 和 ApplicationRun 不再持久化或返回 object-info 正文/checksum；模板 revision 仅覆盖 API Workflow 与模板契约。
+- 保留 nodes、input-candidates、output-candidates 和 dependencies，四个接口改为必须指定 EngineInstance 并按其当前目录即时派生；移除工作流 archive/restore 与 lifecycle 契约。
+- 新增 `BR-AIAPP-169..176`、`US-AIAPP-049` 及验收标准，旧快照、归档和历史 compatible 权威规则显式 deprecated。
+
 ## spec-v1.3.0
 
 - TaskSchedule 新增 MATERIALIZED/RECONCILE 执行模式、USER/SYSTEM 管理模式、ReconcileRegistry、ScheduleReconcileState、受控修复动作、轻量历史与运行时 retention 契约。

@@ -1,5 +1,25 @@
 # Release Records
 
+## spec-v1.4.0
+
+- commit: 9819f0e6eebbd06ae04a8c81393bf63bedad21a8
+- status: released
+- confirmed_by: user（2026-07-19 明确要求基于 EngineInstance 当前 object_info 方案修改 SSOT 并发布）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/permissions.yaml
+  - 01_contracts/domains/application-platform/events.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+
 ## spec-v1.3.0
 
 - commit: 82b59cf0baf5d147052676b42d4903f554ae14e9
