@@ -75,10 +75,10 @@ x-task-group-defaults: &task_group_defaults
 x-artifact-defaults: &artifact_defaults
   producer: sse-event-projector
   consumers: [omnimam-web]
-  source_events: [application-platform.application_artifact_processing_changed, application-platform.application_artifact_registration_changed]
+  source_events: [asset-library.artifact_created, asset-library.artifact_processing_changed, asset-library.artifact_registration_changed]
   payload:
     artifact_id: string
-    application_run_id: string
+    application_run_id: string|null
     atomic_task_id: string|null
     output_key: string
     media_type: string
@@ -100,8 +100,30 @@ x-artifact-defaults: &artifact_defaults
     occurred_at: string(date-time)
   idempotency_key: recipient_user_id:artifact_id:aggregate_version:event_name
   retry_policy: 由用户事件投影 outbox 重试，消费者按 Artifact 版本幂等。
-  failure_policy: Artifact 处理事实以 application-platform 为准，UserAsset 以 asset-library 为准；投影失败不回滚两者或 AtomicTask。
-  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-SSE-012]
+  failure_policy: Artifact 与 Asset 登记事实均以 asset-library 为准；投影失败不回滚 Artifact、AssetVersion 或 AtomicTask。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-SSE-012, BR-SSE-017, BR-SSE-018]
+  related_user_stories: [US-SSE-003, US-SSE-004]
+
+x-asset-version-defaults: &asset_version_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [asset-library.asset_version_processing_changed]
+  payload:
+    asset_id: string
+    asset_version_id: string
+    status: string(processing|ready|ready_with_warnings|failed)
+    expected_count: integer
+    completed_count: integer
+    failed_count: integer
+    task_group_id: string|null
+    atomic_task_id: string|null
+    error_code: string|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:asset_version_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，消费者按 AssetVersion 版本幂等。
+  failure_policy: AssetVersion 处理事实以 asset-library 为准；不得从 AtomicTask 终态推断或覆盖素材状态。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-SSE-017, BR-SSE-018]
   related_user_stories: [US-SSE-003, US-SSE-004]
 
 connection.ready:
@@ -243,7 +265,7 @@ dag_task_group.canceled:
 
 artifact.created:
   <<: *artifact_defaults
-  trigger_condition: application-platform Artifact 首次持久化为 created。
+  trigger_condition: asset-library Artifact 首次持久化为 created。
 artifact.transferring:
   <<: *artifact_defaults
   trigger_condition: Artifact 进入 transferring 或传输进度达到可推送阈值。
@@ -268,3 +290,19 @@ artifact.registration_failed:
 artifact.deleted:
   <<: *artifact_defaults
   trigger_condition: Artifact 进入 deleted；不级联删除已登记 UserAsset。
+
+asset_version.processing_started:
+  <<: *asset_version_defaults
+  trigger_condition: AssetVersion 首次进入 processing 并已请求 Representation build。
+asset_version.processing_progressed:
+  <<: *asset_version_defaults
+  trigger_condition: expected/completed/failed 计数或可见处理阶段变化。
+asset_version.ready:
+  <<: *asset_version_defaults
+  trigger_condition: 所有必需 Representation 已就绪且没有未处理警告。
+asset_version.ready_with_warnings:
+  <<: *asset_version_defaults
+  trigger_condition: 必需项可用但至少一个可选 Representation 失败。
+asset_version.processing_failed:
+  <<: *asset_version_defaults
+  trigger_condition: original、metadata 或其他必需 Representation 处理失败。

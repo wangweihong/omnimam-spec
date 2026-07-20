@@ -323,8 +323,9 @@ CREATE INDEX idx_aiapp_runs_application_created ON aiapp_application_runs(applic
 CREATE INDEX idx_aiapp_runs_engine_created ON aiapp_application_runs(engine_instance_id, created_at);
 CREATE INDEX idx_aiapp_runs_capability_revision ON aiapp_application_runs(provider_capability_id, provider_capability_revision);
 
--- s1_refs: US-AIAPP-043, US-AIAPP-050; BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179, BR-AIAPP-180.
-CREATE TABLE aiapp_artifacts (
+-- s1_refs: US-AIAPP-043, US-AIAPP-050; BR-AIAPP-150, BR-AIAPP-181..184.
+-- Artifact facts are stored by asset-library; this table is a rebuildable ApplicationRun output reference projection.
+CREATE TABLE aiapp_application_artifact_refs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
@@ -332,41 +333,24 @@ CREATE TABLE aiapp_artifacts (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
-  owner_user_id TEXT NOT NULL,
   application_run_id TEXT NOT NULL REFERENCES aiapp_application_runs(id),
+  artifact_id TEXT NOT NULL,
   output_key TEXT NOT NULL,
-  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
-  source_ref TEXT,
-  content_ref TEXT,
-  processing_status TEXT NOT NULL DEFAULT 'created' CHECK (processing_status IN ('created', 'transferring', 'processing', 'ready', 'failed', 'deleted')),
-  processing_progress NUMERIC(5,4),
-  processing_phase TEXT DEFAULT '',
-  preview_ref TEXT,
-  thumbnail_ref TEXT,
-  size_bytes BIGINT CHECK (size_bytes IS NULL OR size_bytes >= 0),
-  processing_error_code TEXT DEFAULT '',
-  processing_failure_detail TEXT DEFAULT '',
-  processing_retryable BOOLEAN NOT NULL DEFAULT FALSE,
-  ready_at TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ,
-  registration_status TEXT NOT NULL DEFAULT 'pending' CHECK (registration_status IN ('pending', 'registered', 'failed')),
+  sequence INTEGER NOT NULL DEFAULT 0 CHECK (sequence >= 0),
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'document', 'model_3d', 'prompt', 'prompt_template', 'pdf', 'other')),
+  artifact_processing_status TEXT NOT NULL CHECK (artifact_processing_status IN ('created', 'transferring', 'processing', 'ready', 'failed', 'deleted')),
+  artifact_registration_status TEXT NOT NULL CHECK (artifact_registration_status IN ('pending', 'registered', 'failed')),
   asset_id TEXT,
-  registration_error_code TEXT DEFAULT '',
-  registration_failure_detail TEXT DEFAULT '',
-  registration_retryable BOOLEAN NOT NULL DEFAULT FALSE,
-  CHECK (processing_progress IS NULL OR (processing_progress >= 0 AND processing_progress <= 1)),
-  CHECK (processing_status <> 'ready' OR (content_ref IS NOT NULL AND ready_at IS NOT NULL)),
-  CHECK (processing_status <> 'deleted' OR deleted_at IS NOT NULL),
-  CHECK (
-    (registration_status = 'registered' AND asset_id IS NOT NULL) OR
-    (registration_status IN ('pending', 'failed') AND asset_id IS NULL)
-  ),
-  CHECK (registration_status <> 'registered' OR (processing_status IN ('ready', 'deleted') AND content_ref IS NOT NULL))
+  asset_version_id TEXT,
+  artifact_resource_version INTEGER NOT NULL DEFAULT 0,
+  last_error_code TEXT DEFAULT '',
+  UNIQUE (artifact_id),
+  UNIQUE (application_run_id, output_key, sequence)
 );
 
-CREATE UNIQUE INDEX idx_aiapp_artifacts_run_output ON aiapp_artifacts(application_run_id, output_key);
-CREATE INDEX idx_aiapp_artifacts_processing ON aiapp_artifacts(processing_status, updated_at);
-CREATE INDEX idx_aiapp_artifacts_registration ON aiapp_artifacts(registration_status, updated_at);
+CREATE INDEX idx_aiapp_artifact_refs_run ON aiapp_application_artifact_refs(application_run_id, output_key, sequence);
+CREATE INDEX idx_aiapp_artifact_refs_processing ON aiapp_application_artifact_refs(artifact_processing_status, updated_at);
+CREATE INDEX idx_aiapp_artifact_refs_registration ON aiapp_application_artifact_refs(artifact_registration_status, updated_at);
 
 -- RuntimeFormSchema and ProviderCapability load results are derived, process-local
 -- objects. Persisting either would create a second fact source and is prohibited.

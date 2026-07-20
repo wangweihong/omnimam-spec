@@ -33,8 +33,8 @@ CanvasRun 固定 CanvasVersion 和输入快照，以稳定幂等键创建唯一 
 
 - workflow-canvas：Canvas、CanvasVersion、CanvasRun、CanvasNodeRun 和编译摘要。
 - task-center：DAGTaskGroup、AtomicTask、Attempt、运行状态、取消和重试。
-- application-platform：ApplicationVersion、ApplicationRun 和 Artifact。
-- asset-library：Asset。
+- application-platform：ApplicationVersion、ApplicationRun 和 Artifact 引用映射。
+- asset-library：Artifact、Asset、AssetVersion 和 Representation。
 
 画布不得复制 Conductor workflow/task 历史，也不得将 Conductor ID 暴露为产品主键。
 

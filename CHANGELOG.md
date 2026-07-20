@@ -2,6 +2,11 @@
 
 ## 2026-07-20
 
+- 将 Artifact、Blob、AssetVersion 与 AssetRepresentation 的事实源从 application-platform 迁移到 asset-library；application-platform 仅保留 ApplicationRun 输出引用投影，Task Center 仅保留任务与小型制品引用。
+- 为 Artifact 受控内容完成增加幂等 `asset-library.artifact.process` AtomicTask；登记事务复用 Blob 同步创建 original Representation，并以 `asset_version_representation_requested` 触发 Representation build DAG。
+- 增加 `asset-library.representation-backfill` SYSTEM RECONCILE 周期巡检，只为缺失、可重试或可重建的 Representation 创建幂等 `asset-library.representation.generate` AtomicTask，健康 AssetVersion 不物化任务。
+- SSE 的 Artifact 生命周期事件改由 asset-library 源事件投影，并新增 `asset_version.processing_started/progressed/ready/ready_with_warnings/processing_failed` 客户端事件；AtomicTask 成功不代表 AssetVersion ready。
+- 同步更新四个领域的 S1/S2、glossary、错误码区间、模块契约与架构参考；领域源事件使用下划线命名，SSE 客户端事件使用点号命名。
 - 整理 SSE S1 草案，保留原有连接、信封、断线恢复、顺序、前端缓存、网关和降级设计，新增 `BR-SSE-001..016`、`US-SSE-001..005` 与验收编号。
 - 将 SSE 任务事件从已废弃 TaskRun 迁移为 AtomicTask、TaskAttempt、TaskGroup 和 DAGTaskGroup，对齐 Task Center 当前状态、自动/手动重试和事实源边界。
 - 补全 Artifact `created/transferring/processing/preview_ready/ready/processing_failed/registration_succeeded/registration_failed/deleted` 事件，明确 application-platform 拥有处理状态、asset-library 拥有 UserAsset，处理与登记状态独立。

@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, US-TASK-018, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120.
+-- s1_refs: US-TASK-008, US-TASK-018..020, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -18,6 +18,7 @@ CREATE TABLE atomic_tasks (
   status TEXT NOT NULL CHECK (status IN ('PENDING','BLOCKED','READY','RUNNING','RETRYING','CANCEL_REQUESTED','SUCCESS','FAILED','CANCELED','TIMEOUT','SKIPPED')),
   progress REAL NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 1),
   current_attempt INTEGER NOT NULL DEFAULT 0,
+  -- Only small references such as artifact_refs/representation_refs; never media bodies or credentials.
   output_json TEXT NOT NULL DEFAULT '{}',
   last_error_json TEXT NOT NULL DEFAULT '{}',
   retry_of_task_id TEXT REFERENCES atomic_tasks(id),

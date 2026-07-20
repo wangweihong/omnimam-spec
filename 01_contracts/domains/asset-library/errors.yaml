@@ -181,8 +181,8 @@ asset_not_found_or_not_writable:
 artifact_registration_invalid:
   code: artifact_registration_invalid
   value: 150800
-  cn: Artifact 登记请求缺少运行、输出或内容引用信息。
-  en: The Artifact registration request is missing run, output, or content-reference information.
+  cn: Artifact 创建或登记请求缺少 producer、输出或目标信息。
+  en: The Artifact create or registration request is missing producer, output, or target information.
   owning_domain: asset-library
   owning_module: artifact-registration
   range: 150800-150999
@@ -190,14 +190,14 @@ artifact_registration_invalid:
   http_status: 200
   retryable: false
   deprecated: false
-  related_user_stories: [US-USER-ASSET-41]
-  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+  related_user_stories: [US-USER-ASSET-41, US-USER-ASSET-42]
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-67]
 
 artifact_owner_mismatch:
   code: artifact_owner_mismatch
   value: 150801
-  cn: Artifact owner 与 ApplicationRun 发起用户不一致。
-  en: The Artifact owner does not match the ApplicationRun initiating user.
+  cn: Artifact owner 与受信 producer 或当前访问用户不一致。
+  en: The Artifact owner does not match the trusted producer or current user.
   owning_domain: asset-library
   owning_module: artifact-registration
   range: 150800-150999
@@ -206,7 +206,7 @@ artifact_owner_mismatch:
   retryable: false
   deprecated: false
   related_user_stories: [US-USER-ASSET-41]
-  related_rules: [BR-USER-ASSET-60, BR-USER-ASSET-62]
+  related_rules: [BR-USER-ASSET-66]
 
 artifact_content_unavailable:
   code: artifact_content_unavailable
@@ -221,7 +221,7 @@ artifact_content_unavailable:
   retryable: true
   deprecated: false
   related_user_stories: [US-USER-ASSET-41]
-  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+  related_rules: [BR-USER-ASSET-65, BR-USER-ASSET-68]
 
 artifact_media_invalid:
   code: artifact_media_invalid
@@ -236,13 +236,13 @@ artifact_media_invalid:
   retryable: false
   deprecated: false
   related_user_stories: [US-USER-ASSET-41]
-  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-62]
+  related_rules: [BR-USER-ASSET-65, BR-USER-ASSET-68]
 
 artifact_idempotency_conflict:
   code: artifact_idempotency_conflict
   value: 150804
-  cn: 同一 Artifact ID 已使用不同内容或所有者完成登记。
-  en: The Artifact ID has already been registered with different content or ownership.
+  cn: 同一 Artifact producer key 已使用不同内容、所有者或登记目标。
+  en: The Artifact producer key has already been used with different content, ownership, or registration target.
   owning_domain: asset-library
   owning_module: artifact-registration
   range: 150800-150999
@@ -251,4 +251,94 @@ artifact_idempotency_conflict:
   retryable: false
   deprecated: false
   related_user_stories: [US-USER-ASSET-41]
-  related_rules: [BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-63]
+  related_rules: [BR-USER-ASSET-66, BR-USER-ASSET-67]
+
+artifact_state_invalid:
+  code: artifact_state_invalid
+  value: 150805
+  cn: Artifact 当前处理或登记状态不允许该操作。
+  en: The current Artifact processing or registration state does not allow this operation.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-43]
+  related_rules: [BR-USER-ASSET-65, BR-USER-ASSET-69]
+
+artifact_source_forbidden:
+  code: artifact_source_forbidden
+  value: 150806
+  cn: Artifact 内容来源包含不允许的 URL、私网地址、凭证或原始响应。
+  en: The Artifact source contains a forbidden URL, private address, credential, or raw response.
+  owning_domain: asset-library
+  owning_module: artifact-registration
+  range: 150800-150999
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-42]
+  related_rules: [BR-USER-ASSET-68]
+
+representation_plan_invalid:
+  code: representation_plan_invalid
+  value: 151000
+  cn: AssetVersion 的 Representation policy、profile 或生成计划无效。
+  en: The AssetVersion Representation policy, profile, or build plan is invalid.
+  owning_domain: asset-library
+  owning_module: representation
+  range: 151000-151199
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-43]
+  related_rules: [BR-USER-ASSET-70, BR-USER-ASSET-71]
+
+representation_write_conflict:
+  code: representation_write_conflict
+  value: 151001
+  cn: 相同类型和 profile 的 Representation 已登记为不同内容。
+  en: A Representation with the same type and profile has already been registered with different content.
+  owning_domain: asset-library
+  owning_module: representation
+  range: 151000-151199
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-43, US-USER-ASSET-44]
+  related_rules: [BR-USER-ASSET-67, BR-USER-ASSET-71, BR-USER-ASSET-74]
+
+representation_source_irrecoverable:
+  code: representation_source_irrecoverable
+  value: 151002
+  cn: original 或 canonical 源内容不可用，缺失 Representation 无法自动重建。
+  en: The original or canonical source is unavailable, so the missing Representation cannot be rebuilt automatically.
+  owning_domain: asset-library
+  owning_module: representation
+  range: 151000-151199
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-44]
+  related_rules: [BR-USER-ASSET-74, BR-USER-ASSET-75]
+
+representation_backfill_deferred:
+  code: representation_backfill_deferred
+  value: 151003
+  cn: Representation 补全因单轮动作上限或失败退避被延后。
+  en: Representation backfill was deferred by the per-run action limit or failure backoff.
+  owning_domain: asset-library
+  owning_module: representation
+  range: 151000-151199
+  severity: warning
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-44]
+  related_rules: [BR-USER-ASSET-73, BR-USER-ASSET-74, BR-USER-ASSET-75]

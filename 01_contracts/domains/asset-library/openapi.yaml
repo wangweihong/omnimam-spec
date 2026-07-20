@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: OmniMAM Asset Library Label Query API
-  version: 0.1.0-draft
-  description: 素材库标签选择器查询、自然语言搜索降级与批量打标的最小 S2 API 契约。
+  title: OmniMAM Asset Library API
+  version: 0.2.0-draft
+  description: 素材、Artifact、AssetVersion、AssetRepresentation、标签查询与周期修复协作契约。
 servers:
   - url: /api/v1
 security:
@@ -11,7 +11,11 @@ tags:
   - name: assets
     description: 当前用户素材查询与标签操作。
   - name: artifact-registrations
-    description: application-platform Artifact 到 UserAsset 的幂等登记。
+    description: Artifact 到 Asset/AssetVersion 的幂等登记。
+  - name: artifacts
+    description: 受信 producer 创建、上传、完成和查询 Artifact。
+  - name: representations
+    description: AssetVersion 与 AssetRepresentation 查询和受控写入。
 
 paths:
   /api/v1/assets:
@@ -113,19 +117,168 @@ paths:
                   - $ref: "#/components/schemas/BatchLabelResponse"
                   - $ref: "#/components/schemas/BusinessError"
 
-  /api/v1/artifact-registrations:
+  /api/v1/artifacts:
+    get:
+      tags: [artifacts]
+      summary: 查询当前用户 Artifact 列表
+      operationId: list_artifacts
+      x-permission: asset.artifact.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-76]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: processing_status, in: query, schema: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}}
+        - {name: registration_status, in: query, schema: {type: string, enum: [pending, registered, failed]}}
+        - {name: producer_type, in: query, schema: {type: string, enum: [application_run, canvas_run, atomic_task]}}
+      responses:
+        '200':
+          description: Artifact 列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/ArtifactListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    post:
+      tags: [artifacts]
+      summary: 幂等创建 Artifact
+      operationId: create_artifact
+      x-permission: asset.artifact.create
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42]
+        business_rules: [BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-68]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateArtifactRequest'}
+      responses:
+        '200':
+          description: Artifact 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Artifact'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/artifacts/{artifact_id}:
+    get:
+      tags: [artifacts]
+      summary: 查询 Artifact
+      operationId: get_artifact
+      x-permission: asset.artifact.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+        business_rules: [BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-76]
+      parameters:
+        - {name: artifact_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Artifact 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Artifact'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/artifacts/{artifact_id}/content:
+    post:
+      tags: [artifacts]
+      summary: 上传 Artifact 受控内容
+      operationId: upload_artifact_content
+      x-permission: asset.artifact.create
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42]
+        business_rules: [BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-68]
+      parameters:
+        - {name: artifact_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          description: 当前 Artifact 投影或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Artifact'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/artifacts/{artifact_id}/complete:
+    post:
+      tags: [artifacts]
+      summary: 完成 Artifact 上传并进入处理
+      operationId: complete_artifact
+      x-permission: asset.artifact.create
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42]
+        business_rules: [BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-67, BR-USER-ASSET-68, BR-USER-ASSET-76]
+      parameters:
+        - {name: artifact_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CompleteArtifactRequest'}
+      responses:
+        '200':
+          description: 当前 Artifact 投影或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Artifact'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/artifacts/{artifact_id}/register:
     post:
       tags: [artifact-registrations]
-      summary: 幂等登记 ApplicationRun Artifact 为 UserAsset
-      operationId: register_application_artifact
+      summary: 幂等登记 Artifact 为 Asset/AssetVersion
+      operationId: register_artifact
       description: >-
-        仅接受 application-platform 按运行发起用户提交的 Artifact。首次成功登记创建
-        UserAsset；同一 artifact_id 重复请求返回同一 UserAsset。校验失败不创建空素材，
-        也不改变 ApplicationRun 对应 AtomicTask 的终态。
+        仅接受当前 owner 可见且 processing_status=ready 的 Artifact。首次成功登记创建或追加
+        AssetVersion，并复用 Blob 创建 original Representation；重复请求返回同一结果。
+      x-permission: asset.artifact.register
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-41, US-USER-ASSET-43]
+        business_rules: [BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-69]
+      parameters:
+        - {name: artifact_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterArtifactRequest'}
+      responses:
+        '200':
+          description: 登记结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ArtifactRegistrationResponse'
+                  - $ref: '#/components/schemas/BusinessError'
+
+  /api/v1/artifact-registrations:
+    post:
+      deprecated: true
+      tags: [artifact-registrations]
+      summary: 兼容入口：幂等登记 Artifact
+      operationId: register_artifact_compat
+      description: 兼容旧调用方；行为与 `POST /api/v1/artifacts/{artifact_id}/register` 相同。
       x-permission: asset.artifact.register
       x-s1-refs:
         user_stories: [US-USER-ASSET-41]
-        business_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-62, BR-USER-ASSET-63]
+        business_rules: [BR-USER-ASSET-67, BR-USER-ASSET-69]
       requestBody:
         required: true
         content:
@@ -138,8 +291,74 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ArtifactRegistrationResponse'
-                  - $ref: '#/components/schemas/BusinessError'
+                  - {$ref: '#/components/schemas/ArtifactRegistrationResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/versions:
+    get:
+      tags: [representations]
+      summary: 查询 AssetVersion 列表
+      operationId: list_asset_versions
+      x-permission: asset.representation.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-43, US-USER-ASSET-45]
+        business_rules: [BR-USER-ASSET-69, BR-USER-ASSET-72, BR-USER-ASSET-77]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 版本列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetVersionListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-versions/{asset_version_id}/representations:
+    get:
+      tags: [representations]
+      summary: 查询 AssetRepresentation
+      operationId: list_asset_representations
+      x-permission: asset.representation.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-43, US-USER-ASSET-44]
+        business_rules: [BR-USER-ASSET-70, BR-USER-ASSET-72, BR-USER-ASSET-74]
+      parameters:
+        - {name: asset_version_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Representation 列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetRepresentationListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    post:
+      tags: [representations]
+      summary: Worker 幂等登记 AssetRepresentation
+      operationId: register_asset_representation
+      x-permission: asset.representation.write
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-43, US-USER-ASSET-44]
+        business_rules: [BR-USER-ASSET-67, BR-USER-ASSET-70, BR-USER-ASSET-71, BR-USER-ASSET-74]
+      parameters:
+        - {name: asset_version_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRepresentationRequest'}
+      responses:
+        '200':
+          description: Representation 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetRepresentation'}
+                  - {$ref: '#/components/schemas/BusinessError'}
 
 components:
   securitySchemes:
@@ -192,7 +411,7 @@ components:
   schemas:
     MediaType:
       type: string
-      enum: [image, video, audio, text, pdf, other]
+      enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]
     SourceType:
       type: string
       enum: [upload, canvas_output, application_output]
@@ -220,7 +439,7 @@ components:
           description: 自然语言成功解析后的规范化 selector；其他模式省略或返回 null。
     UserAsset:
       type: object
-      required: [id, owner_user_id, display_name, media_type, size_bytes, source_type, thumbnail_status, labels, tags, label_sources, tag_sources, resource_version, created_at, updated_at]
+      required: [id, owner_user_id, display_name, media_type, size_bytes, source_type, status, thumbnail_status, labels, tags, label_sources, tag_sources, resource_version, created_at, updated_at]
       properties:
         id: { type: string }
         owner_user_id: { type: string }
@@ -236,6 +455,8 @@ components:
         duration_seconds: { type: number, minimum: 0 }
         source_type:
           $ref: "#/components/schemas/SourceType"
+        status: {type: string, enum: [active, archived, deleted]}
+        current_version_id: {type: string, nullable: true}
         thumbnail_status:
           type: string
           enum: [none, pending, ready, failed]
@@ -254,30 +475,165 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     ArtifactRegistrationRequest:
+      allOf:
+        - {$ref: '#/components/schemas/RegisterArtifactRequest'}
+        - type: object
+          required: [artifact_id]
+          properties:
+            artifact_id: {type: string}
+    RegisterArtifactRequest:
       type: object
       additionalProperties: false
-      required: [artifact_id, application_run_id, owner_user_id, output_name, media_type, content_ref, size_bytes]
+      required: [mode]
       properties:
-        artifact_id: {type: string}
-        application_run_id: {type: string}
-        owner_user_id: {type: string}
-        output_name: {type: string, minLength: 1, maxLength: 255}
-        media_type: {$ref: '#/components/schemas/MediaType'}
-        content_ref: {type: string, minLength: 1}
-        format: {type: string, maxLength: 64}
-        size_bytes: {type: integer, format: int64, minimum: 0}
-        width: {type: integer, minimum: 0}
-        height: {type: integer, minimum: 0}
-        duration_seconds: {type: number, minimum: 0}
-        sha256: {type: string}
+        mode: {type: string, enum: [create_asset, append_version]}
+        asset_id: {type: string, nullable: true, description: append_version 时必填且必须属于 Artifact owner。}
+        name: {type: string, minLength: 1, maxLength: 255}
+        version_note: {type: string, maxLength: 1000}
+        profile_version: {type: string, minLength: 1, maxLength: 128}
     ArtifactRegistrationResponse:
       type: object
-      required: [artifact_id, application_run_id, registration_result, asset]
+      required: [artifact_id, registration_result, asset, asset_version]
       properties:
         artifact_id: {type: string}
-        application_run_id: {type: string}
         registration_result: {type: string, enum: [created, already_registered]}
         asset: {$ref: '#/components/schemas/UserAsset'}
+        asset_version: {$ref: '#/components/schemas/AssetVersion'}
+    CreateArtifactRequest:
+      type: object
+      additionalProperties: false
+      required: [producer_type, producer_id, producer_idempotency_key, output_key, sequence, artifact_type, media_type, save_policy, processing_profile_version]
+      properties:
+        producer_type: {type: string, enum: [application_run, canvas_run, atomic_task]}
+        producer_id: {type: string}
+        producer_idempotency_key: {type: string, minLength: 1, maxLength: 512}
+        atomic_task_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true}
+        application_run_id: {type: string, nullable: true}
+        canvas_run_id: {type: string, nullable: true}
+        node_run_id: {type: string, nullable: true}
+        node_id: {type: string, nullable: true}
+        output_key: {type: string, minLength: 1, maxLength: 255}
+        sequence: {type: integer, minimum: 0}
+        artifact_type: {type: string, minLength: 1, maxLength: 128}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        save_policy: {type: string, enum: [transient, manual_save, auto_save]}
+        processing_profile_version: {type: string, minLength: 1, maxLength: 128}
+        expires_at: {type: string, format: date-time, nullable: true}
+        metadata: {type: object, additionalProperties: true}
+    CompleteArtifactRequest:
+      type: object
+      additionalProperties: false
+      required: [sha256, size_bytes, mime_type, processing_profile_version]
+      properties:
+        sha256: {type: string, minLength: 64, maxLength: 64}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        mime_type: {type: string, minLength: 1, maxLength: 255}
+        processing_profile_version: {type: string, minLength: 1, maxLength: 128}
+        metadata: {type: object, additionalProperties: true}
+    Artifact:
+      type: object
+      required: [id, owner_user_id, producer_type, producer_id, producer_idempotency_key, output_key, sequence, artifact_type, media_type, processing_status, registration_status, save_policy, processing_profile_version, preview_available, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        owner_user_id: {type: string}
+        producer_type: {type: string, enum: [application_run, canvas_run, atomic_task]}
+        producer_id: {type: string}
+        producer_idempotency_key: {type: string}
+        atomic_task_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true}
+        application_run_id: {type: string, nullable: true}
+        canvas_run_id: {type: string, nullable: true}
+        node_run_id: {type: string, nullable: true}
+        node_id: {type: string, nullable: true}
+        output_key: {type: string}
+        sequence: {type: integer, minimum: 0}
+        artifact_type: {type: string}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        save_policy: {type: string, enum: [transient, manual_save, auto_save]}
+        processing_profile_version: {type: string}
+        preview_available: {type: boolean}
+        preview_ref: {type: string, nullable: true, description: 受保护短期引用。}
+        thumbnail_ref: {type: string, nullable: true, description: 受保护短期引用。}
+        asset_id: {type: string, nullable: true}
+        asset_version_id: {type: string, nullable: true}
+        processing_error_code: {type: string, nullable: true}
+        registration_error_code: {type: string, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ArtifactListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/Artifact'}}
+    AssetVersion:
+      type: object
+      required: [id, asset_id, owner_user_id, version_no, status, source_type, profile_version, expected_count, completed_count, failed_count, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        asset_id: {type: string}
+        owner_user_id: {type: string}
+        version_no: {type: integer, minimum: 1}
+        status: {type: string, enum: [uploading, processing, ready, ready_with_warnings, failed]}
+        source_type: {type: string, enum: [upload, artifact, asset_edit, asset_conversion, external_import]}
+        source_ref_id: {type: string, nullable: true}
+        profile_version: {type: string}
+        expected_count: {type: integer, minimum: 0}
+        completed_count: {type: integer, minimum: 0}
+        failed_count: {type: integer, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AssetRepresentation:
+      type: object
+      required: [id, asset_version_id, representation_type, profile, profile_version, status, required, retry_count, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        asset_version_id: {type: string}
+        representation_type: {type: string, enum: [original, canonical, thumbnail, preview, playback, package, manifest]}
+        profile: {type: string}
+        profile_version: {type: string}
+        blob_id: {type: string, nullable: true}
+        status: {type: string, enum: [pending, processing, ready, failed, irreparable, deleted]}
+        required: {type: boolean}
+        retry_count: {type: integer, minimum: 0}
+        error_code: {type: string, nullable: true}
+        error_detail: {type: string, nullable: true}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    RegisterRepresentationRequest:
+      type: object
+      additionalProperties: false
+      required: [representation_type, profile, profile_version, status, required]
+      properties:
+        representation_type: {type: string, enum: [original, canonical, thumbnail, preview, playback, package, manifest]}
+        profile: {type: string, minLength: 1, maxLength: 128}
+        profile_version: {type: string, minLength: 1, maxLength: 128}
+        blob_id: {type: string, nullable: true}
+        content: {type: object, additionalProperties: true}
+        metadata: {type: object, additionalProperties: true}
+        status: {type: string, enum: [ready, failed, irreparable]}
+        required: {type: boolean}
+        error_code: {type: string, nullable: true}
+        error_detail: {type: string, nullable: true}
+    AssetVersionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AssetVersion'}}
+    AssetRepresentationListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AssetRepresentation'}}
     Labels:
       type: object
       description: |

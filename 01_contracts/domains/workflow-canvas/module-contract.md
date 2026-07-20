@@ -34,7 +34,7 @@
 
 - task-center 提供 DAGTaskGroup 创建、查询、取消、重跑、子 AtomicTask 和状态事件。
 - application-platform 提供已发布 ApplicationVersion 的可见性、输入输出 schema 和 `application.execute` functionRef 解析。
-- asset-library 提供 Asset 引用的可见性；application-platform 提供 Artifact 登记状态。
+- asset-library 提供 Artifact/Asset 引用可见性、处理和登记状态；application-platform 只提供 ApplicationRun 到 Artifact 的引用映射。
 - identity 提供调用主体、项目和命名空间授权。
 
 ## 5. 安全与限制

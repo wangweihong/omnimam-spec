@@ -58,7 +58,9 @@ AI Chat 单次生成的 token/delta 流属于 ai-chatting 请求协议，不是 
 | CanvasRun | 固定 CanvasVersion 和输入并关联一个 DAGTaskGroup 的运行视图 | workflow-canvas |
 | CanvasNodeRun | Canvas 节点到 AtomicTask 的只读运行映射 | workflow-canvas |
 | ApplicationNode | 画布中固定引用一个已发布 ApplicationVersion 的业务节点 | workflow-canvas |
-| Artifact | ApplicationRun 产生的标准输出；application-platform 维护其传输/处理状态与 UserAsset 登记投影 | application-platform |
-| Asset | 属于当前用户、由 asset-library 管理的素材身份、内容引用和 metadata | asset-library |
+| Artifact | 应用、画布或 AtomicTask 产生、尚未登记为正式素材的执行制品；asset-library 维护其受控内容、处理、保留和登记状态 | asset-library |
+| Asset | 属于当前用户、由 asset-library 管理的素材身份、版本、Representation 和 metadata；跨域语境中的 UserAsset 是其用户归属称谓 | asset-library |
+| AssetVersion | 同一 Asset 的不可变内容版本；处理状态由 expected AssetRepresentation 的完成情况汇总 | asset-library |
+| AssetRepresentation | AssetVersion 的 original、thumbnail、preview、playback、manifest 等技术表现形式 | asset-library |
 
-Artifact 的处理状态与登记状态独立；只有 asset-library 成功登记后才形成 UserAsset。AtomicTask 结果中的媒体和文件引用不替代 Asset。
+Artifact 的处理状态与登记状态独立；登记成功后形成或关联 Asset/AssetVersion。Task Center 只保存 Artifact、AssetVersion 和 AssetRepresentation 的小型引用，不保存媒体正文，也不从 AtomicTask 终态推断素材 ready。

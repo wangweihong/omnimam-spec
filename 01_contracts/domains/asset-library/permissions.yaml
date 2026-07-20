@@ -2,9 +2,53 @@ asset.artifact.register:
   module: artifact-registration
   resource: artifact_registration
   action: create
-  description: 将 application-platform 产生的 Artifact 幂等登记为运行发起用户的 UserAsset。
-  frontend_usage: 不作为普通前端按钮权限；由 application-platform 在输出登记流程中调用。
-  backend_enforcement: 必须校验调用来源、运行发起用户、Artifact owner、内容可读性和媒体信息；不得允许调用方指定其他 owner。
+  description: 将 ready Artifact 幂等登记为当前 owner 的 Asset/AssetVersion。
+  frontend_usage: 手动保存制品时控制登记动作；auto_save 由受信 producer 使用同一后端校验。
+  backend_enforcement: 必须校验 Artifact owner、ready 状态、内容可读性和媒体信息；不得允许调用方指定其他 owner。
   default_roles: []
-  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-62, BR-USER-ASSET-63]
-  related_user_stories: [US-USER-ASSET-41]
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-69]
+  related_user_stories: [US-USER-ASSET-41, US-USER-ASSET-43]
+
+asset.artifact.create:
+  module: artifact
+  resource: artifact
+  action: create
+  description: 允许受信 ApplicationExecutor、画布执行器或 AtomicTask Worker 幂等创建并上传当前用户 Artifact。
+  frontend_usage: 不直接授予普通页面；通过受信执行链路调用。
+  backend_enforcement: owner 必须从受信上下文解析；拒绝客户端指定其他用户、Provider 凭证、任意 URL、私网地址或原始响应。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-68]
+  related_user_stories: [US-USER-ASSET-42]
+
+asset.artifact.read:
+  module: artifact
+  resource: artifact
+  action: read
+  description: 查看当前用户自己的 Artifact 和受控状态投影。
+  frontend_usage: 控制任务制品列表、详情、预览和登记入口。
+  backend_enforcement: 必须按已认证 owner 过滤；不得通过来源 ID 或任务关联绕过所有权。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66]
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+
+asset.representation.read:
+  module: representation
+  resource: asset_representation
+  action: read
+  description: 查看当前用户 AssetVersion 及其 Representation 状态和受控引用。
+  frontend_usage: 控制素材版本、处理状态和派生内容展示。
+  backend_enforcement: 必须通过 Asset owner 校验；任务关联不授予额外可见性。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-70, BR-USER-ASSET-77]
+  related_user_stories: [US-USER-ASSET-43, US-USER-ASSET-45]
+
+asset.representation.write:
+  module: representation
+  resource: asset_representation
+  action: create
+  description: 允许已注册 Representation Worker 幂等登记生成结果。
+  frontend_usage: 不作为前端权限。
+  backend_enforcement: 必须校验 Worker 身份、AssetVersion owner、requested type/profile 和 Blob 归属；不得改变未请求的 Representation。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-67, BR-USER-ASSET-70, BR-USER-ASSET-71, BR-USER-ASSET-74]
+  related_user_stories: [US-USER-ASSET-43, US-USER-ASSET-44]

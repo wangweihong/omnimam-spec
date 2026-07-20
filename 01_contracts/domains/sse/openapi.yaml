@@ -210,6 +210,11 @@ components:
         - artifact.registration_succeeded
         - artifact.registration_failed
         - artifact.deleted
+        - asset_version.processing_started
+        - asset_version.processing_progressed
+        - asset_version.ready
+        - asset_version.ready_with_warnings
+        - asset_version.processing_failed
 
     UserEventEnvelope:
       type: object
@@ -231,12 +236,15 @@ components:
         atomic_task_id: {type: string, nullable: true}
         task_attempt_id: {type: string, nullable: true}
         artifact_id: {type: string, nullable: true}
+        asset_id: {type: string, nullable: true}
+        asset_version_id: {type: string, nullable: true}
         payload:
           oneOf:
             - $ref: '#/components/schemas/AtomicTaskEventPayload'
             - $ref: '#/components/schemas/TaskAttemptEventPayload'
             - $ref: '#/components/schemas/TaskGroupEventPayload'
             - $ref: '#/components/schemas/ArtifactEventPayload'
+            - $ref: '#/components/schemas/AssetVersionEventPayload'
 
     AtomicTaskEventPayload:
       type: object
@@ -303,6 +311,20 @@ components:
         registration_error_code: {type: string, nullable: true}
         registration_retryable: {type: boolean, nullable: true}
         ready_at: {type: string, format: date-time, nullable: true}
+
+    AssetVersionEventPayload:
+      type: object
+      required: [asset_id, asset_version_id, status, expected_count, completed_count, failed_count]
+      properties:
+        asset_id: {type: string}
+        asset_version_id: {type: string}
+        status: {type: string, enum: [processing, ready, ready_with_warnings, failed]}
+        expected_count: {type: integer, minimum: 0}
+        completed_count: {type: integer, minimum: 0}
+        failed_count: {type: integer, minimum: 0}
+        task_group_id: {type: string, nullable: true}
+        atomic_task_id: {type: string, nullable: true}
+        error_code: {type: string, nullable: true}
 
     UserEventListResponse:
       type: object

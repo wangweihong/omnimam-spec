@@ -2300,9 +2300,8 @@ components:
         message: {type: string}
         current_value: {$ref: '#/components/schemas/RuntimeValue'}
     RuntimeValue:
-      nullable: true
       oneOf:
-        - {type: string}
+        - {type: string, nullable: true}
         - {type: number}
         - {type: boolean}
         - {type: object, additionalProperties: true}
@@ -2340,7 +2339,7 @@ components:
         task_status_projection: {type: string, nullable: true}
         task_resource_version: {type: integer, minimum: 0}
         output_values: {type: array, items: {type: object, additionalProperties: true}}
-        artifacts: {type: array, items: {$ref: '#/components/schemas/ApplicationArtifact'}}
+        artifacts: {type: array, items: {$ref: '#/components/schemas/ApplicationArtifactRef'}}
         failure_summary: {type: string}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
@@ -2352,37 +2351,25 @@ components:
         - required: [workflow_contract_revision]
           properties:
             capability_source_type: {enum: [comfyui_workflow]}
-    ApplicationArtifact:
+    ApplicationArtifactRef:
       type: object
-      required: [id, application_run_id, output_key, owner_user_id, media_type, processing_status, processing_retryable, preview_available, registration_status, registration_retryable, created_at, updated_at, resource_version]
+      required: [id, application_run_id, artifact_id, output_key, sequence, media_type, artifact_processing_status, artifact_registration_status, artifact_resource_version, created_at, updated_at, resource_version]
       x-s1-refs:
         user_stories: [US-AIAPP-043, US-AIAPP-050]
-        business_rules: [BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179, BR-AIAPP-180]
+        business_rules: [BR-AIAPP-150, BR-AIAPP-181, BR-AIAPP-182, BR-AIAPP-184]
       properties:
         id: {type: string}
         application_run_id: {type: string}
+        artifact_id: {type: string}
         output_key: {type: string}
-        owner_user_id: {type: string}
-        media_type: {type: string, enum: [image, video, audio, text, pdf, other]}
-        source_ref: {type: string, nullable: true}
-        content_ref: {type: string, nullable: true}
-        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
-        processing_progress: {type: number, format: float, minimum: 0, maximum: 1, nullable: true}
-        processing_phase: {type: string}
-        preview_available: {type: boolean}
-        preview_ref: {type: string, nullable: true, description: 受保护资源引用，不得是长期公开 URL。}
-        thumbnail_ref: {type: string, nullable: true, description: 受保护资源引用，不得是长期公开 URL。}
-        size_bytes: {type: integer, format: int64, minimum: 0, nullable: true}
-        processing_error_code: {type: string, nullable: true}
-        processing_failure_detail: {type: string, nullable: true}
-        processing_retryable: {type: boolean}
-        ready_at: {type: string, format: date-time, nullable: true}
-        deleted_at: {type: string, format: date-time, nullable: true}
-        registration_status: {type: string, enum: [pending, registered, failed]}
+        sequence: {type: integer, minimum: 0}
+        media_type: {type: string, enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]}
+        artifact_processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        artifact_registration_status: {type: string, enum: [pending, registered, failed]}
         asset_id: {type: string, nullable: true}
-        registration_error_code: {type: string, nullable: true}
-        registration_failure_detail: {type: string, nullable: true}
-        registration_retryable: {type: boolean}
+        asset_version_id: {type: string, nullable: true}
+        artifact_resource_version: {type: integer, minimum: 0}
+        last_error_code: {type: string, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}

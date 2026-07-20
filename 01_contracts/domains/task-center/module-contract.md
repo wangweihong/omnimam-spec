@@ -35,6 +35,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Group/DAG 创建时在一个业务事务中写根资源和全部静态 AtomicTask；运行时启动失败保留可恢复投影，不切换到本地 Dispatcher。
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
+- Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
 
 ## 4. 调度与巡检契约
 
@@ -69,10 +70,13 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - application-platform 创建 `application.execute` AtomicTask，并在 ApplicationRun 保存 `atomic_task_id` 与只读状态投影。
 - SSE 领域消费 Task Center 可靠事件，建立当前用户的短期可重放投影；SSE 不得成为任务事实源，也不得直接消费 Conductor 原生事件。
-- asset-library 在上传事务写 outbox；task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建 AtomicTask。
+- asset-library 在上传或 Artifact 登记事务写 `asset_version_representation_requested`；task-center 按 `asset-representations:<asset_version_id>:<profile_version>` 幂等创建 Representation build DAGTaskGroup。
+- asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`；task-center 按 `artifact-process:<artifact_id>:<processing_profile_version>` 幂等创建 `asset-library.artifact.process` AtomicTask。
+- build DAG 只能使用 asset-library 提供的计划和已注册 `asset-library.representation.*` functionRef；生成节点使用稳定 `representation_type + profile` childKey，只返回 Representation/Blob 引用。
+- asset-library 注册 `asset-library.representation-backfill` ReconcileHandler。Task Center 以同名 system_key 原子确保唯一 SYSTEM RECONCILE 计划，默认 `03:30 UTC`，只为缺失、可重试或可重建项创建 `asset-library.representation.generate` AtomicTask。
 - application-platform 注册 `application-platform.engine-health` ReconcileHandler。其 SYSTEM TaskSchedule 直接分批探测 EngineInstance，不创建 Planner DAGTaskGroup 或健康 AtomicTask；状态变化由 application-platform 在同一事务中更新投影并写 outbox。
 - workflow-canvas 发布 CanvasVersion 后注册不可变 DAG 定义；CanvasRun 绑定 `dag_task_group_id`，CanvasNodeRun 绑定 `atomic_task_id`。
-- 大型输出先由 application-platform 形成 Artifact，再由 asset-library 登记 Asset；任务中心只保存引用。
+- 大型输出由受信 Worker/ApplicationExecutor 交付 asset-library 形成 Artifact；Task Center 只保存引用。自动 Attempt 重试复用同一 producer key，手动重试创建新 AtomicTask 并可形成新 Artifact。
 - ComfyUIWorkflowTestRun 创建 `comfyui.submit -> comfyui.poll -> comfyui.collect_preview` DAG；poll handler 可返回 IN_PROGRESS 和 callbackAfterSeconds，延迟回调属于同一 Attempt。
 
 ## 7. 安全与限制

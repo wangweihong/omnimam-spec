@@ -15,8 +15,8 @@
 | `identity` | 统一认证、会话、Token、RBAC、权限资源、审计 | 已有 S1，S2 待补 |
 | `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
-| `asset-library` | 用户素材、上传会话、预览、处理任务、画布输出资产和 Application Artifact 登记 | 已有 S1/S2，部分普通素材 API 待补 |
-| `application-platform` | Runtime Registry、ProviderCapability、模板/应用版本、Engine、ApplicationRun 与 Artifact | 已有 S1/S2 |
+| `asset-library` | Artifact、用户素材、AssetVersion、Representation、存储、派生任务与周期补全 | 已有 S1/S2，部分普通素材 API 待补 |
+| `application-platform` | Runtime Registry、ProviderCapability、模板/应用版本、Engine、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
@@ -28,7 +28,7 @@ graph TD
   Identity["identity<br/>认证、会话、权限"]
   Model["model-management<br/>用户模型能力"]
   Chat["ai-chatting<br/>对话与生成"]
-  Asset["asset-library<br/>素材与预览"]
+  Asset["asset-library<br/>Artifact / Asset / Representation"]
   App["application-platform<br/>Adapter、模板、应用与 AppEngine"]
   Task["task-center<br/>业务任务与 Conductor 适配"]
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
@@ -58,11 +58,11 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义只读 Runtime Registry、ProviderCapability、模板/应用版本、Engine 路由、ApplicationRun 投影和 Artifact；EngineInstance 只表达运行实例配置和状态。
+- `application-platform` 定义只读 Runtime Registry、ProviderCapability、模板/应用版本、Engine 路由、ApplicationRun 投影和 Artifact 引用；EngineInstance 只表达运行实例配置和状态。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `workflow-canvas` 发布不可变 CanvasVersion，并通过 task-center DAGTaskGroup 执行；节点运行映射到 AtomicTask。
-- `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
-- `sse` 只投影 task-center 任务事件、application-platform Artifact 处理事件和 UserAsset 登记结果；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
+- `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
+- `sse` 只投影 task-center 任务事件、asset-library Artifact/AssetVersion 事件和 ApplicationRun 引用关联；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
 
 ## 4. 运行链路
 
@@ -105,10 +105,10 @@ sequenceDiagram
   Adapter->>Engine: 调用平台 endpoint
   Worker->>Task: 上报进度和结果
   Task-->>App: 带 application_run_id + resourceVersion 的状态事件
-  App->>App: 标准输出形成 Artifact
+  App->>Asset: 受控交付标准输出形成 Artifact
   App->>Asset: 幂等登记 UserAsset
   Task-->>SSE: AtomicTask / Attempt / Group 可靠事件
-  App-->>SSE: Artifact 处理与登记可靠事件
+  Asset-->>SSE: Artifact、登记与 AssetVersion 可靠事件
   SSE-->>User: 用户级实时事件
   App-->>User: HTTP 事实查询与重同步
 ```
@@ -123,5 +123,5 @@ sequenceDiagram
 ## 6. 当前架构缺口
 
 - `identity` 只有 S1，尚缺 S2 契约，其他领域的权限集成只能按 S1 语义描述。
-- `asset-library` 的素材列表、批量打标和 Artifact 登记已有 S2；上传、预览、下载、重命名、删除与完整分组 API 仍待补。
+- `asset-library` 的素材列表、批量打标、Artifact、AssetVersion 和 Representation 已有 S2；普通素材上传、下载、重命名、删除与完整分组 API 仍待补。
 - workflow-canvas V1 的拓扑分层编译优先保证任意 DAG 正确性，后续可在不改变依赖语义时优化节点最早释放。

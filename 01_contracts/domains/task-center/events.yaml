@@ -121,6 +121,61 @@ task_schedule_execution_recorded:
   related_user_stories: [US-TASK-011, US-TASK-013, US-TASK-017]
   related_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-114]
 
+representation_build_requested:
+  producer: asset-library.asset-version
+  consumers: [task-center.orchestration]
+  trigger_condition: asset-library 写入 asset_version_representation_requested outbox。
+  payload:
+    asset_version_id: string
+    asset_id: string
+    owner_user_id: string
+    profile_version: string
+    requested_representations: array<object>
+    idempotency_key: string
+    occurred_at: string(date-time)
+  idempotency_key: asset_version_id:profile_version:representation-build
+  retry_policy: 由 outbox 重试；Task Center 返回同一 DAGTaskGroup。
+  failure_policy: 不保存媒体正文；创建失败保留可恢复请求，backfill 负责补偿。
+  related_user_stories: [US-TASK-019, US-USER-ASSET-43]
+  related_rules: [BR-TASK-123, BR-USER-ASSET-69, BR-USER-ASSET-71]
+
+artifact_processing_requested:
+  producer: asset-library.artifact
+  consumers: [task-center.atomic-task]
+  trigger_condition: asset-library 发布 artifact_content_completed。
+  payload:
+    artifact_id: string
+    owner_user_id: string
+    project_id: string
+    namespace: string
+    processing_profile_version: string
+    idempotency_key: string
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:processing_profile_version:process
+  retry_policy: 由 outbox 重试；Task Center 返回同一 asset-library.artifact.process AtomicTask。
+  failure_policy: 不保存内容；创建失败保留可重放请求，Artifact 不伪造 ready。
+  related_user_stories: [US-TASK-021, US-USER-ASSET-46]
+  related_rules: [BR-TASK-121, BR-TASK-127, BR-USER-ASSET-79]
+
+representation_backfill_action_created:
+  producer: asset-library.representation-backfill
+  consumers: [operations-monitor, asset-library]
+  trigger_condition: RECONCILE 发现缺失、可重试或可重建 Representation 并创建 AtomicTask action。
+  payload:
+    schedule_id: string
+    schedule_execution_id: string
+    asset_version_id: string
+    representation_type: string
+    profile_version: string
+    atomic_task_id: string
+    idempotency_key: string
+    occurred_at: string(date-time)
+  idempotency_key: asset_version_id:representation_type:profile_version:action-created
+  retry_policy: 由 Task Center outbox 重试；相同 action 幂等。
+  failure_policy: action 创建失败计入 reconcile deferred/failed 摘要，不回滚 AssetVersion。
+  related_user_stories: [US-TASK-020, US-USER-ASSET-44]
+  related_rules: [BR-TASK-124, BR-TASK-125]
+
 task_runtime_projection_reconciled:
   producer: runtime-reconciler
   consumers: [operations-monitor, audit-service]

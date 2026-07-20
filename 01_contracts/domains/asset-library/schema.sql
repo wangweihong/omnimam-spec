@@ -2,7 +2,7 @@
 -- Product source: 00_product/domains/asset-library/product-spec.md
 -- 本文件是设计态 schema，不是实际数据库 migration。
 
--- S1 refs: US-USER-ASSET-01..US-USER-ASSET-04, US-USER-ASSET-09..US-USER-ASSET-18, US-USER-ASSET-40;
+-- S1 refs: US-USER-ASSET-01..US-USER-ASSET-04, US-USER-ASSET-09..US-USER-ASSET-18, US-USER-ASSET-40, US-USER-ASSET-43;
 -- BR-USER-ASSET-02..BR-USER-ASSET-10, BR-USER-ASSET-18..BR-USER-ASSET-34, BR-USER-ASSET-57..BR-USER-ASSET-58.
 CREATE TABLE user_assets (
   id TEXT PRIMARY KEY,
@@ -15,14 +15,15 @@ CREATE TABLE user_assets (
   owner_user_id TEXT NOT NULL,
   display_name TEXT NOT NULL,
   original_name TEXT DEFAULT '',
-  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'document', 'model_3d', 'prompt', 'prompt_template', 'pdf', 'other')),
   format TEXT DEFAULT '',
   size_bytes BIGINT NOT NULL,
   width INTEGER DEFAULT 0,
   height INTEGER DEFAULT 0,
   duration_seconds REAL DEFAULT 0,
   source_type TEXT NOT NULL CHECK (source_type IN ('upload', 'canvas_output', 'application_output')),
-  object_path TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')),
+  current_version_id TEXT,
   thumbnail_status TEXT NOT NULL CHECK (thumbnail_status IN ('none', 'pending', 'ready', 'failed')),
   preview_status TEXT NOT NULL DEFAULT 'none' CHECK (preview_status IN ('none', 'pending', 'ready', 'failed')),
   sha256 TEXT DEFAULT '',
@@ -43,8 +44,171 @@ CREATE INDEX idx_user_assets_display_name ON user_assets(owner_user_id, display_
 CREATE INDEX idx_user_assets_original_name ON user_assets(owner_user_id, original_name);
 CREATE UNIQUE INDEX idx_user_assets_owner_id_unique ON user_assets(owner_user_id, id);
 
--- S1 refs: US-USER-ASSET-41; BR-USER-ASSET-59..BR-USER-ASSET-63.
--- 仅保存成功登记映射；失败原因由 application-platform 的 Artifact 记录。
+-- S1 refs: US-USER-ASSET-42..US-USER-ASSET-44; BR-USER-ASSET-64..BR-USER-ASSET-78.
+CREATE TABLE storage_backends (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  backend_type TEXT NOT NULL CHECK (backend_type IN ('local', 's3', 'minio', 'oss', 'cos', 'azure_blob')),
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  config_ref TEXT NOT NULL
+);
+
+CREATE TABLE blobs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  storage_backend_id TEXT NOT NULL REFERENCES storage_backends(id),
+  object_key TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  size_bytes BIGINT NOT NULL CHECK (size_bytes >= 0),
+  mime_type TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'available', 'corrupted', 'missing', 'deleting', 'deleted')),
+  UNIQUE (storage_backend_id, object_key)
+);
+
+CREATE INDEX idx_blobs_sha256 ON blobs(sha256);
+CREATE INDEX idx_blobs_status ON blobs(status);
+
+-- Artifact is owned by asset-library; provider credentials and arbitrary URLs are forbidden.
+-- S1 refs: US-USER-ASSET-42, US-USER-ASSET-45; BR-USER-ASSET-64..BR-USER-ASSET-68, BR-USER-ASSET-76..BR-USER-ASSET-78.
+CREATE TABLE artifacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  owner_user_id TEXT NOT NULL,
+  artifact_type TEXT NOT NULL,
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'document', 'model_3d', 'prompt', 'prompt_template', 'pdf', 'other')),
+  producer_type TEXT NOT NULL CHECK (producer_type IN ('application_run', 'canvas_run', 'atomic_task')),
+  producer_id TEXT NOT NULL,
+  producer_idempotency_key TEXT NOT NULL,
+  atomic_task_id TEXT,
+  task_attempt_id TEXT,
+  application_run_id TEXT,
+  canvas_run_id TEXT,
+  node_run_id TEXT,
+  node_id TEXT,
+  output_key TEXT NOT NULL,
+  sequence INTEGER NOT NULL DEFAULT 0 CHECK (sequence >= 0),
+  blob_id TEXT REFERENCES blobs(id),
+  content_json TEXT NOT NULL DEFAULT '{}',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  processing_status TEXT NOT NULL CHECK (processing_status IN ('created', 'transferring', 'processing', 'ready', 'failed', 'deleted')),
+  registration_status TEXT NOT NULL CHECK (registration_status IN ('pending', 'registered', 'failed')),
+  save_policy TEXT NOT NULL CHECK (save_policy IN ('transient', 'manual_save', 'auto_save')),
+  processing_profile_version TEXT NOT NULL,
+  preview_available BOOLEAN NOT NULL DEFAULT FALSE,
+  preview_ref TEXT,
+  thumbnail_ref TEXT,
+  processing_error_code TEXT,
+  processing_error_detail TEXT,
+  registration_error_code TEXT,
+  registration_error_detail TEXT,
+  asset_id TEXT,
+  asset_version_id TEXT,
+  expires_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  UNIQUE (owner_user_id, producer_type, producer_idempotency_key)
+);
+
+CREATE INDEX idx_artifacts_owner_created ON artifacts(owner_user_id, created_at);
+CREATE INDEX idx_artifacts_atomic_task ON artifacts(atomic_task_id);
+CREATE INDEX idx_artifacts_application_run ON artifacts(application_run_id);
+CREATE INDEX idx_artifacts_processing_status ON artifacts(owner_user_id, processing_status);
+CREATE INDEX idx_artifacts_expires_at ON artifacts(expires_at) WHERE registration_status <> 'registered' AND deleted_at IS NULL;
+
+-- S1 refs: US-USER-ASSET-43..US-USER-ASSET-45; BR-USER-ASSET-69..BR-USER-ASSET-77.
+CREATE TABLE asset_versions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  asset_id TEXT NOT NULL REFERENCES user_assets(id),
+  owner_user_id TEXT NOT NULL,
+  version_no INTEGER NOT NULL CHECK (version_no > 0),
+  status TEXT NOT NULL CHECK (status IN ('uploading', 'processing', 'ready', 'ready_with_warnings', 'failed')),
+  source_type TEXT NOT NULL CHECK (source_type IN ('upload', 'artifact', 'asset_edit', 'asset_conversion', 'external_import')),
+  source_ref_id TEXT,
+  content_json TEXT NOT NULL DEFAULT '{}',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  version_note TEXT DEFAULT '',
+  processing_error_json TEXT NOT NULL DEFAULT '{}',
+  profile_version TEXT NOT NULL,
+  expected_count INTEGER NOT NULL DEFAULT 0,
+  completed_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  deleted_at TIMESTAMPTZ,
+  UNIQUE (asset_id, version_no)
+);
+
+CREATE INDEX idx_asset_versions_owner_status ON asset_versions(owner_user_id, status);
+CREATE INDEX idx_asset_versions_asset ON asset_versions(asset_id, version_no);
+
+CREATE TABLE asset_representations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  asset_version_id TEXT NOT NULL REFERENCES asset_versions(id),
+  owner_user_id TEXT NOT NULL,
+  representation_type TEXT NOT NULL CHECK (representation_type IN ('original', 'canonical', 'thumbnail', 'preview', 'playback', 'package', 'manifest')),
+  profile TEXT NOT NULL DEFAULT 'default',
+  profile_version TEXT NOT NULL,
+  blob_id TEXT REFERENCES blobs(id),
+  content_json TEXT NOT NULL DEFAULT '{}',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'ready', 'failed', 'irreparable', 'deleted')),
+  required BOOLEAN NOT NULL DEFAULT FALSE,
+  retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+  retry_after TIMESTAMPTZ,
+  error_code TEXT,
+  error_detail TEXT,
+  deleted_at TIMESTAMPTZ,
+  UNIQUE (asset_version_id, representation_type, profile, profile_version)
+);
+
+CREATE INDEX idx_asset_representations_version ON asset_representations(asset_version_id);
+CREATE INDEX idx_asset_representations_missing ON asset_representations(status, retry_after) WHERE status IN ('failed', 'irreparable');
+
+CREATE TABLE representation_build_requests (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT DEFAULT '',
+  extend_shadow TEXT DEFAULT '',
+  resource_version INTEGER DEFAULT 0,
+  asset_version_id TEXT NOT NULL REFERENCES asset_versions(id),
+  owner_user_id TEXT NOT NULL,
+  profile_version TEXT NOT NULL,
+  dag_task_group_id TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'submitted', 'running', 'completed', 'failed')),
+  requested_types_json TEXT NOT NULL DEFAULT '[]',
+  idempotency_key TEXT NOT NULL UNIQUE,
+  last_error TEXT
+);
+
+CREATE UNIQUE INDEX idx_representation_build_version_profile ON representation_build_requests(asset_version_id, profile_version);
+
+-- S1 refs: US-USER-ASSET-41..US-USER-ASSET-43; BR-USER-ASSET-64..BR-USER-ASSET-72.
 CREATE TABLE artifact_asset_registrations (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -53,18 +217,21 @@ CREATE TABLE artifact_asset_registrations (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
-  artifact_id TEXT NOT NULL,
-  application_run_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL REFERENCES artifacts(id),
+  application_run_id TEXT,
   owner_user_id TEXT NOT NULL,
   asset_id TEXT NOT NULL,
-  content_ref TEXT NOT NULL,
-  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
+  asset_version_id TEXT NOT NULL REFERENCES asset_versions(id),
+  registration_mode TEXT NOT NULL CHECK (registration_mode IN ('create_asset', 'append_version')),
+  registration_result TEXT NOT NULL CHECK (registration_result IN ('created', 'already_registered')),
+  media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'document', 'model_3d', 'prompt', 'prompt_template', 'pdf', 'other')),
   FOREIGN KEY (owner_user_id, asset_id) REFERENCES user_assets(owner_user_id, id)
 );
 
 CREATE UNIQUE INDEX idx_artifact_asset_registrations_artifact ON artifact_asset_registrations(artifact_id);
 CREATE INDEX idx_artifact_asset_registrations_run ON artifact_asset_registrations(application_run_id);
 CREATE INDEX idx_artifact_asset_registrations_asset ON artifact_asset_registrations(asset_id);
+CREATE UNIQUE INDEX idx_artifact_asset_registrations_version ON artifact_asset_registrations(asset_version_id);
 
 -- 模糊搜索索引建议：生产部署可在启用 PostgreSQL pg_trgm 后，为 display_name、original_name、
 -- description 分别建立包含 owner_user_id 过滤条件的 GIN trigram 索引。扩展安装与实际 migration

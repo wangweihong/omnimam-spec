@@ -1,35 +1,148 @@
-asset_uploaded:
-  producer: asset-library.upload-session
+artifact_created:
+  producer: asset-library.artifact
+  consumers: [sse.event-projector, application-platform.application-run]
+  trigger_condition: 受信 producer 首次幂等创建 Artifact。
+  payload:
+    artifact_id: string
+    owner_user_id: string
+    producer_type: string
+    producer_id: string
+    atomic_task_id: string|null
+    application_run_id: string|null
+    output_key: string
+    sequence: integer
+    processing_status: string
+    registration_status: string
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:resource_version:created
+  retry_policy: Artifact 事务 outbox 持续重试；消费者丢弃相同或更低 resource_version。
+  failure_policy: artifacts 表是事实源；发布失败不回滚 Artifact，不向事件写入正文、凭证或任意 URL。
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-76]
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+
+artifact_processing_changed:
+  producer: asset-library.artifact
+  consumers: [sse.event-projector, application-platform.application-run]
+  trigger_condition: Artifact 进入 transferring、processing、preview_ready、ready、failed 或 deleted。
+  payload:
+    artifact_id: string
+    owner_user_id: string
+    atomic_task_id: string|null
+    application_run_id: string|null
+    change_type: string(transferring|processing|preview_ready|ready|failed|deleted)
+    processing_status: string(created|transferring|processing|ready|failed|deleted)
+    progress: number|null
+    preview_available: boolean
+    preview_ref: string|null
+    thumbnail_ref: string|null
+    error_code: string|null
+    retryable: boolean
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:resource_version:change_type
+  retry_policy: Artifact 事务 outbox 持续重试；消费者按 resource_version 幂等。
+  failure_policy: 事件失败不回滚 Artifact 或已终态 AtomicTask；受保护引用不得是长期公开 URL。
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-68, BR-USER-ASSET-76]
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+
+artifact_content_completed:
+  producer: asset-library.artifact
   consumers: [task-center]
-  trigger_condition: 素材二进制和 UserAsset 在同一上传完成事务中持久化成功。
+  trigger_condition: Artifact 受控内容完成、Blob 可用且内容摘要校验通过。
+  payload:
+    artifact_id: string
+    owner_user_id: string
+    project_id: string
+    namespace: string
+    processing_profile_version: string
+    idempotency_key: string
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:processing_profile_version:content_completed
+  retry_policy: outbox 持续重试；Task Center 返回同一 AtomicTask。
+  failure_policy: Artifact 保持 created/transferring，事件失败不丢内容，由 outbox 重放。
+  related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-67, BR-USER-ASSET-79]
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-46]
+
+artifact_registration_changed:
+  producer: asset-library.artifact-registration
+  consumers: [sse.event-projector, application-platform.application-run, audit-service]
+  trigger_condition: Artifact registration_status 进入 registered 或 failed。
+  payload:
+    artifact_id: string
+    owner_user_id: string
+    application_run_id: string|null
+    registration_status: string(registered|failed)
+    registration_result: string(created|already_registered)|null
+    asset_id: string|null
+    asset_version_id: string|null
+    error_code: string|null
+    retryable: boolean
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: artifact_id:resource_version:registration_status
+  retry_policy: Artifact 事务 outbox 持续重试；登记幂等键不得重新创建 AssetVersion。
+  failure_policy: Artifact、AssetVersion 和登记映射是事实源；事件失败不改变 AtomicTask 终态。
+  related_rules: [BR-USER-ASSET-65, BR-USER-ASSET-67, BR-USER-ASSET-69, BR-USER-ASSET-76]
+  related_user_stories: [US-USER-ASSET-41, US-USER-ASSET-43, US-USER-ASSET-45]
+
+asset_version_representation_requested:
+  producer: asset-library.asset-version
+  consumers: [task-center.representation-orchestrator]
+  trigger_condition: 上传完成或 Artifact 登记事务创建 AssetVersion、original Representation 和 expected Representation 计划。
   payload:
     asset_id: string
+    asset_version_id: string
     owner_user_id: string
     project_id: string
     namespace: string
     media_type: string
-    content_ref: string
+    profile_version: string
+    requested_representations: array<object>
+    idempotency_key: string
+    occurred_at: string(date-time)
+  idempotency_key: asset_version_id:profile_version:representation_requested
+  retry_policy: outbox 持续重试；Task Center 使用 payload idempotency_key 返回同一 DAGTaskGroup。
+  failure_policy: 发布失败不回滚 original；AssetVersion 保持 processing 并由 backfill RECONCILE 修复。
+  related_rules: [BR-USER-ASSET-19, BR-USER-ASSET-69, BR-USER-ASSET-70, BR-USER-ASSET-71]
+  related_user_stories: [US-USER-ASSET-09, US-USER-ASSET-43]
+
+asset_version_processing_changed:
+  producer: asset-library.asset-version
+  consumers: [sse.event-projector]
+  trigger_condition: AssetVersion 进入 processing、产生可推送进度，或进入 ready、ready_with_warnings、failed。
+  payload:
+    asset_id: string
+    asset_version_id: string
+    owner_user_id: string
+    status: string(processing|ready|ready_with_warnings|failed)
+    expected_count: integer
+    completed_count: integer
+    failed_count: integer
+    task_group_id: string|null
+    atomic_task_id: string|null
+    resource_version: integer
+    error_code: string|null
+    occurred_at: string(date-time)
+  idempotency_key: asset_version_id:resource_version:status
+  retry_policy: AssetVersion 事务 outbox 持续重试；消费者按 aggregate_version 幂等。
+  failure_policy: AssetVersion 是素材处理事实源；事件失败不回滚 Representation，也不改变 AtomicTask。
+  related_rules: [BR-USER-ASSET-72, BR-USER-ASSET-76, BR-USER-ASSET-77]
+  related_user_stories: [US-USER-ASSET-43, US-USER-ASSET-44, US-USER-ASSET-45]
+
+asset_uploaded:
+  producer: asset-library.upload-session
+  consumers: [task-center.representation-orchestrator]
+  trigger_condition: 兼容旧消费者；上传事务已创建 AssetVersion 和 original Representation。
+  payload:
+    asset_id: string
+    asset_version_id: string
+    owner_user_id: string
     profile_version: string
     occurred_at: string(date-time)
-  idempotency_key: asset_id:uploaded
-  retry_policy: PostgreSQL outbox 通过 Watermill 持续重试并支持人工重放。
-  failure_policy: 发布失败不回滚素材；task-center 使用 thumbnail:asset_id:profile_version 幂等消费。
+  idempotency_key: asset_version_id:uploaded
+  retry_policy: outbox 持续重试。
+  failure_policy: 兼容事件失败不回滚上传；新消费者应使用 asset_version_representation_requested。
+  deprecated: true
   related_rules: [BR-USER-ASSET-19]
   related_user_stories: [US-USER-ASSET-09]
-
-artifact_registered:
-  producer: asset-library.artifact-registration
-  consumers: [application-platform.application-run, audit-service]
-  trigger_condition: Artifact 首次成功登记为 UserAsset，或幂等请求命中既有登记结果。
-  payload:
-    artifact_id: string
-    application_run_id: string
-    owner_user_id: string
-    asset_id: string
-    registration_result: string
-    occurred_at: string(date-time)
-  idempotency_key: artifact_id:asset_id
-  retry_policy: 发布失败后重试相同事件；不得重新创建 UserAsset。
-  failure_policy: artifact_asset_registrations 与 user_assets 是成功登记事实源；事件失败不回滚素材，也不改变 AtomicTask 终态。
-  related_rules: [BR-USER-ASSET-59, BR-USER-ASSET-60, BR-USER-ASSET-61, BR-USER-ASSET-63]
-  related_user_stories: [US-USER-ASSET-41]

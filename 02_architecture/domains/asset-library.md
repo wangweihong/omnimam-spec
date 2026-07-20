@@ -20,7 +20,9 @@
 | `preview` | 维护缩略图、预览派生物和预览失败信息 | `user_asset_previews` |
 | `processing-task` | 表达上传后异步处理任务，如缩略图、预览派生物和 SHA256 补算 | `user_asset_processing_tasks` |
 | `canvas-output` | 登记画布输出资产包与关联素材 | `canvas_asset_outputs` |
-| `artifact-registration` | 校验 ApplicationRun Artifact 并幂等登记 UserAsset | `artifact_asset_registrations`、`user_assets` |
+| `artifact` | 管理跨应用、画布和 AtomicTask 的 Artifact 身份、受控内容、处理、保留与登记状态 | `artifacts`、`blobs` |
+| `artifact-registration` | 将 ready Artifact 幂等登记为 Asset/AssetVersion，并复用 Blob 创建 original Representation | `artifact_asset_registrations`、`asset_versions`、`asset_representations` |
+| `representation` | 管理 expected policy、派生 Representation、build request、状态汇总与周期补全 | `asset_representations`、`representation_build_requests` |
 
 ## 3. 外部依赖
 
@@ -31,7 +33,7 @@
 - 三视图模式属于前端本地呈现偏好，不进入服务端 S2；素材分组是用户范围内的逻辑关联，不是存储目录。
 - 画布等外部模块可以通过回调或等价协作方式维护素材的轻量引用摘要，用于前端提示。
 - 自然语言解析可依赖独立模型或索引服务，但输出必须再次通过 `selector-parser` 校验；依赖异常不得触发关键词降级。
-- application-platform 拥有 Artifact 和登记失败状态；asset-library 只拥有成功登记映射与 UserAsset，不改写 AtomicTask 终态。
+- asset-library 拥有 Artifact、Asset、AssetVersion、AssetRepresentation 和登记失败状态；application-platform 只拥有 ApplicationRun 输出引用投影，Task Center 只拥有任务状态。
 
 ## 4. 核心链路
 
@@ -144,13 +146,37 @@ sequenceDiagram
   Label-->>User: total/success/fail/results
 ```
 
+## 4.6 Artifact 登记与 Representation build
+
+```mermaid
+sequenceDiagram
+  participant Exec as ApplicationExecutor/Worker
+  participant Artifact as Asset Library Artifact
+  participant Outbox as PostgreSQL Outbox
+  participant Task as Task Center
+  participant Rep as Representation Worker
+  Exec->>Artifact: 幂等创建并受控上传 Artifact
+  Artifact->>Artifact: processing_status=ready
+  Exec->>Artifact: register(create_asset/append_version)
+  Artifact->>Artifact: 创建 AssetVersion + original Representation
+  Artifact->>Outbox: asset_version_representation_requested
+  Outbox->>Task: 幂等创建 representation.build DAG
+  Task->>Rep: inspect + generate nodes
+  Rep->>Artifact: 幂等登记 Representation
+  Artifact->>Artifact: finalize ready/warnings/failed
+```
+
+## 4.7 Representation backfill
+
+`asset-library.representation-backfill` 是唯一 SYSTEM RECONCILE 计划。它按 AssetVersion ID checkpoint 扫描 expected set，只为缺失、可重试或可重建项创建 `asset-library.representation.generate` AtomicTask；健康项不物化任务，不可恢复项记录稳定原因和摘要。
+
 ## 5. 状态与一致性
 
 - 上传会话状态为 `initialized`、`uploading`、`completed`、`cancelled`、`failed`。
 - 素材预览与缩略图状态为 `none`、`pending`、`ready`、`failed`。
 - 处理任务状态为 `pending`、`processing`、`completed`、`failed`。
 - `user_assets` 是素材事实源；预览和处理任务失败不应导致素材基础记录丢失。
-- Artifact 登记以 artifact_id 幂等；首次成功创建 `application_output` UserAsset，重复请求返回同一素材，非法请求不创建空素材。
+- Artifact 以 producer key 幂等；登记以 artifact_id 幂等创建或返回同一 AssetVersion，非法请求不创建空素材。
 - `sha256_backfill` 失败不应影响素材可见性，应通过处理任务状态或结果摘要表达失败。
 - `user_asset_groups` 与 `user_asset_group_memberships` 只表达逻辑分组；删除分组或关联不应删除 `user_assets`。
 - 同一素材可关联多个分组，同一素材在同一分组内只保留一条有效关联。

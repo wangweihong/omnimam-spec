@@ -1,6 +1,6 @@
 -- Design-time schema only. This file is not a migration.
 
--- s1_refs: US-SSE-001..005; BR-SSE-003..012, BR-SSE-014..016.
+-- s1_refs: US-SSE-001..005; BR-SSE-003..012, BR-SSE-014..018.
 CREATE TABLE sse_user_events (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -24,6 +24,8 @@ CREATE TABLE sse_user_events (
   atomic_task_id TEXT,
   task_attempt_id TEXT,
   artifact_id TEXT,
+  asset_id TEXT,
+  asset_version_id TEXT,
   payload_json TEXT NOT NULL,
   source_domain TEXT NOT NULL,
   source_event_id TEXT NOT NULL,

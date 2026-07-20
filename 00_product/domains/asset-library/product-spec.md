@@ -1,1098 +1,2630 @@
-# 用户素材管理产品规格
-> 本文档是 S1 产品事实源，用于定义 AI 聊天特性的产品语义、领域模型、业务规则、用户故事和端呈现策略。
->
-> 本文档中的 Mermaid 图用于辅助理解复杂流程、状态变化、角色可见性和交互时序。图与文字描述应被视为同一事实集合；若存在不一致，应修正文档后再进入实现。
+# OmniMAM 素材管理产品规格
 
----
-## 1. 功能说明
-
-用户素材管理用于维护当前用户个人范围内的素材资产。用户可以上传、浏览、过滤、预览、下载、重命名和删除自己的素材，也可以将画布节点输出登记为自己的素材资产。
-
-本功能的核心事实是：素材资产属于当前用户个人范围，不是平台级共享素材库。一个用户的素材、上传会话、缩略图、原始内容和画布输出资产不得被其他用户读取、复用、修改或删除。
-
-
-页面需要支持个人素材列表、素材过滤、自然语言搜索、普通上传、分片上传、上传停止、素材详情、素材预览、素材下载、素材重命名、素材删除和画布输出资产登记。
-
----
-
-## 2. Mermaid 可视化说明
-
-本文档中的 Mermaid 图用于辅助理解页面结构、用户故事、状态变化和业务流程。
-
-```text
-Mermaid 图是对对应文字描述的可视化补充。
-若图与文字描述冲突，以文字描述为准。
-但二者应被视为同一事实，冲突需修正，不能长期并存。
+```yaml
+document_name: product-spec.md
+domain_id: asset-library
+domain_name: 素材管理
+product: OmniMAM
+version: 0.2.0-draft
+status: Draft
+updated_at: 2026-07-20
 ```
 
-实现阶段可以参考 Mermaid 图快速理解流程，但不能只看图实现。实现仍必须以本文档中的文字描述、业务规则和用户故事为准。
+---
+
+## 1. 文档目的
+
+本文档定义 OmniMAM 素材管理领域的产品能力、核心对象、业务规则、存储抽象、接口语义，以及与应用中心、画布和任务中心之间的协作方式。
+
+本文中的“素材”包括：
+
+* 图片。
+* 视频。
+* 音频。
+* 文本。
+* 文档。
+* 3D 模型文件。
+* 提示词。
+* 提示词模板。
+* 其他需要被画布或应用引用的文件型内容。
+
+第一阶段目标是建立一套稳定、可追踪、可复用的素材管理基础，不在第一阶段实现完整数字资产管理系统的全部高级能力。
 
 ---
 
-## 3. 核心数据模型
+## 2. 产品目标
 
-本文档中的数据模型是 S1 领域模型，仅表达产品语义和逻辑字段，不等同于 OpenAPI DTO、SQL schema 或后端 ORM。
+素材管理需要解决以下问题：
 
-### UserAsset（用户素材）
+1. 统一管理不同媒体类型的素材。
+2. 将业务素材与物理文件分离。
+3. 支持素材历史版本。
+4. 支持素材分类、标签和逻辑分组。
+5. 统一接收和管理应用运行、画布运行和 AtomicTask 产生的制品。
+6. 让画布、应用和任务稳定引用具体素材版本。
+7. 追踪素材的生成来源和使用位置。
+8. 支持本地磁盘存储。
+9. 预留 S3、MinIO 等存储后端适配能力。
+10. 为后续智能标签、语义检索和 Agent 自动整理提供稳定基础。
 
-| 字段              | 类型                | 必填 | 说明                                       |
-| --------------- | ----------------- | -- | ---------------------------------------- |
-| id              | string            | 是  | 当前用户范围内的素材唯一标识                           |
-| ownerUserId     | string            | 是  | 素材所属用户 ID                                |
-| displayName     | string            | 是  | 素材显示名称                                   |
-| originalName    | string            | 否  | 原始文件名                                    |
-| mediaType       | enum              | 是  | 媒体类型，例如 image、video、audio、text、pdf、other |
-| format          | string            | 否  | 文件格式或扩展名                                 |
-| sizeBytes       | integer           | 是  | 文件大小                                     |
-| width           | integer           | 否  | 图片或视频宽度                                  |
-| height          | integer           | 否  | 图片或视频高度                                  |
-| durationSeconds | number            | 否  | 音频或视频时长                                  |
-| sourceType      | enum              | 是  | 来源类型，例如 upload、canvas_output             |
-| objectPath      | string            | 是  | 当前用户素材内容的对象路径或存储引用                       |
-| thumbnailStatus | enum              | 是  | 缩略图状态：none、pending、ready、failed          |
-| previewStatus   | enum              | 否  | 派生预览状态：none、pending、ready、failed         |
-| sha256          | string            | 否  | 原始内容 SHA256 checksum                     |
-| referenceCount  | integer           | 否  | 轻量引用计数，用于提示当前素材被多少外部对象引用             |
-| referenceSources | array of object  | 否  | 轻量引用来源摘要，例如来自 canvas 的引用统计             |
-| labels          | map[string]string | 否  | 结构化键值对属性标签，如 `media=image`、`style=anime`、`project=mybot` |
-| tags            | array of string   | 否  | 自由分类标签，如 `人物`、`汽车`、`双人`，去重且无序 |
-| labelSources    | map[string, enum] | 否  | 与 labels key 对应的来源：manual、auto |
-| tagSources      | map[string, enum] | 否  | 与 tags 值对应的来源：manual、auto |
-| createdAt       | string(date-time) | 是  | 创建时间                                     |
-| updatedAt       | string(date-time) | 是  | 更新时间                                     |
+---
 
-### UserAssetUploadSession（用户素材上传会话）
+## 3. 非目标
 
-| 字段             | 类型                | 必填 | 说明                                                    |
-| -------------- | ----------------- | -- | ----------------------------------------------------- |
-| id             | string            | 是  | 上传会话唯一标识                                              |
-| ownerUserId    | string            | 是  | 上传会话所属用户 ID                                           |
-| checksum       | string            | 是  | 文件 SHA256 checksum                                    |
-| fileName       | string            | 是  | 上传文件名                                                 |
-| sizeBytes      | integer           | 是  | 文件大小                                                  |
-| chunkSizeBytes | integer           | 否  | 分片大小                                                  |
-| uploadedParts  | array of integer  | 否  | 已上传分片序号                                               |
-| status         | enum              | 是  | 上传状态：initialized、uploading、completed、cancelled、failed |
-| labels         | map[string]string | 否  | 上传时设置的结构化键值对属性标签                                      |
-| tags           | array of string   | 否  | 上传时设置的自由分类标签，去重且无序                                    |
-| createdAt      | string(date-time) | 是  | 创建时间                                                  |
-| updatedAt      | string(date-time) | 是  | 更新时间                                                  |
+第一阶段不实现以下能力：
 
-### AssetGroup（素材分组）
+* 租户。
+* 工作区。
+* 每个素材独立配置的复杂 ACL。
+* 素材市场。
+* 外部公开分享。
+* S3 存储实现。
+* MinIO 存储实现。
+* 多存储副本。
+* 存储自动分层。
+* 跨存储后端迁移。
+* AI 自动打标。
+* AI 自动分类。
+* 向量检索。
+* 以图搜图。
+* 视频镜头自动分析。
+* 音频自动转录。
+* 文档自动理解。
+* Agent 自动整理素材。
+* Agent 自动创建 Collection。
+* Agent 自动为画布选择素材。
 
-| 字段          | 类型                | 必填 | 说明                         |
-| ----------- | ----------------- | -- | -------------------------- |
-| id          | string            | 是  | 当前用户范围内的分组唯一标识            |
-| ownerUserId | string            | 是  | 分组所属用户 ID                  |
-| name        | string            | 是  | 分组名称，同一用户范围内 trim 后唯一     |
-| color       | string            | 否  | 分组颜色标记，用于与标签颜色体系区分       |
-| sortOrder   | integer           | 否  | 分组在侧边栏中的排序值               |
-| assetCount  | integer           | 否  | 当前分组关联素材数量，用于列表展示         |
-| createdAt   | string(date-time) | 是  | 创建时间                       |
-| updatedAt   | string(date-time) | 是  | 更新时间                       |
+上述能力统一作为后续阶段实现。
 
-### AssetGroupMembership（素材分组关联）
+---
 
-| 字段          | 类型                | 必填 | 说明                         |
-| ----------- | ----------------- | -- | -------------------------- |
-| id          | string            | 是  | 分组关联唯一标识                   |
-| ownerUserId | string            | 是  | 所属用户 ID                    |
-| groupId     | string            | 是  | 关联分组 ID                    |
-| assetId     | string            | 是  | 关联素材 ID                    |
-| joinedAt    | string(date-time) | 是  | 素材加入该分组的时间                 |
-| sortOrder   | integer           | 否  | 素材在该分组内的手动排序值              |
-| createdAt   | string(date-time) | 是  | 创建时间                       |
-| updatedAt   | string(date-time) | 是  | 更新时间                       |
+# 4. 核心语义
 
-### UserAssetPreview（用户素材预览）
+## 4.1 Asset
 
-| 字段            | 类型                | 必填 | 说明                                             |
-| ------------- | ----------------- | -- | ---------------------------------------------- |
-| assetId       | string            | 是  | 关联素材 ID                                        |
-| ownerUserId   | string            | 是  | 所属用户 ID                                        |
-| thumbnailPath | string            | 否  | 缩略图路径或引用                                       |
-| previewPath   | string            | 否  | 派生预览路径或引用                                      |
-| previewType   | enum              | 否  | 预览类型：image、video、audio、text、pdf、embed、fallback |
-| status        | enum              | 是  | 预览状态：none、pending、ready、failed                 |
-| reason        | string            | 否  | 预览失败原因                                         |
-| updatedAt     | string(date-time) | 是  | 更新时间                                           |
+`Asset` 表示一个可以被独立管理、搜索、分类、引用和复用的业务素材。
 
-### Labels 与 Tags 使用边界
-
-Labels 用于可枚举、可结构化查询的属性，例如：
+例如：
 
 ```text
-media=image
-style=anime
-dimension=portrait
-project=mybot
+女主角正面参考图
+第一幕视频片段
+第一章剧本
+夜景环境音
+角色肖像提示词
+女主角 3D 模型
 ```
 
-Tags 用于大量描述性分类，例如：
+Asset 是素材的业务身份，不等于某个文件路径。
+
+一个 Asset 不应该被设计成一组相关素材的集合。
+
+例如以下内容应该是多个 Asset：
 
 ```text
-人物
-汽车
-飞机
-双人
-提示词
+第一幕视频
+第一幕字幕
+第一幕配音
+第一幕剧本
+第一幕分镜图
 ```
 
-同一素材可以同时拥有 Labels 和 Tags。例如一张动漫竖屏图片可以有 `style=anime`、`dimension=portrait`，同时拥有 `人物`、`汽车` 两个 Tags。
+它们可以通过关系进行关联，但不应该全部放入一个 Asset 内部。
 
-### 系统推荐标签
+---
 
-系统提供推荐 Labels 键值和推荐 Tags，用于自动补全、自动打标、自动建议和过滤面板提示。推荐内容不限制用户创建自定义 Labels 或 Tags。
+## 4.2 AssetVersion
 
-推荐 Labels：
+`AssetVersion` 表示同一个 Asset 的一个不可变内容版本。
 
-| 键        | 常用值示例                                | 自动提取 |
-| --------- | ------------------------------------- | ---- |
-| media     | image、video、audio、text、pdf、other  | 是，根据媒体类型自动设置 |
-| format    | jpg、png、mp4、json、yaml、txt         | 是，根据扩展名自动设置 |
-| style     | anime、realistic、3d、sketch           | 可选 AI 提取 |
-| dimension | portrait、landscape、square            | 是，按宽高比计算 |
-| duration  | short、medium、long                    | 是，按时长分类 |
-| source    | upload、canvas                         | 是，根据素材来源自动设置 |
-
-推荐 Tags：
-
-| 类型 | 示例 |
-| --- | --- |
-| 图像类 | 人物、动物、汽车、飞机、建筑、食物、风景、双人、多人 |
-| 文本类 | 提示词、模板、小说、对话、配置 |
-| 通用 | 重要、待处理、已归档 |
-
-自动标签与来源策略：
+例如：
 
 ```text
-上传或画布输出登记完成后，系统自动添加 media、format、source、dimension、duration 等可计算 Labels。
-系统可以基于内容识别自动建议 Tags，例如 建筑、夜晚。
-自动生成或自动建议的 Labels/Tags 在产品语义上标记为 source: auto。
-用户手动添加的 Labels/Tags 在产品语义上标记为 source: manual。
-用户可以在素材详情或列表中修改、删除任何 Labels/Tags，包括自动生成内容。
-系统保留在后续编辑或校验时自动修复关键 Labels 的能力，例如 media，以降低素材 metadata 不一致风险。
-当用户手动修正自动 Labels 或 Tags 后，系统不应在无明确原因时覆盖用户修正结果。
+Asset：女主角正面参考图
+
+├── v1：首次生成
+├── v2：修复手部
+└── v3：调整服装颜色
 ```
 
-### UserAssetProcessingTask（用户素材处理任务）
+AssetVersion 用于：
 
-| 字段          | 类型                | 必填 | 说明                                       |
-| ----------- | ----------------- | -- | ---------------------------------------- |
-| id          | string            | 是  | 任务唯一标识                                   |
-| ownerUserId | string            | 是  | 所属用户 ID                                  |
-| assetId     | string            | 是  | 关联素材 ID                                  |
-| taskType    | enum              | 是  | 任务类型，例如 thumbnail、preview_derivative、sha256_backfill |
-| status      | enum              | 是  | 任务状态：pending、processing、completed、failed |
-| reason      | string            | 否  | 失败原因                                     |
-| createdAt   | string(date-time) | 是  | 创建时间                                     |
-| updatedAt   | string(date-time) | 是  | 更新时间                                     |
+* 保留历史内容。
+* 支持版本回退。
+* 保证画布运行可复现。
+* 记录素材的生成来源。
+* 固定应用或画布使用的具体内容。
 
-### CanvasAssetOutput（画布输出资产）
-
-| 字段          | 类型                | 必填 | 说明          |
-| ----------- | ----------------- | -- | ----------- |
-| id          | string            | 是  | 画布输出资产标识    |
-| ownerUserId | string            | 是  | 所属用户 ID     |
-| canvasId    | string            | 是  | 来源画布 ID     |
-| nodeId      | string            | 是  | 来源节点 ID     |
-| assetId     | string            | 是  | 登记后的用户素材 ID |
-| createdAt   | string(date-time) | 是  | 创建时间        |
+Asset 通过 `current_version_id` 指向当前默认版本。
 
 ---
 
-## 4. 业务规则
+## 4.3 AssetRepresentation
 
-* **BR-USER-ASSET-01** 访问 `/assets` 依赖系统基础登录态。
-* **BR-USER-ASSET-02** 素材、上传会话、缩略图、派生预览、原始内容和画布输出资产均属于当前用户个人范围。
-* **BR-USER-ASSET-03** 用户只能读取、上传、修改、下载和删除自己的素材。
-* **BR-USER-ASSET-04** 一个用户的素材不得被其他用户读取、复用、修改、下载或删除。
-* **BR-USER-ASSET-05** 素材列表只展示当前用户自己的素材。
-* **BR-USER-ASSET-06** 列表展示素材名称、大小、创建时间、媒体类型、尺寸、时长、格式、来源、标签和 thumbnail 状态等 metadata。
-* **BR-USER-ASSET-07** 列表不直接渲染原始 heavy asset；图片、视频、音频、PDF、文本等预览需要通过 thumbnail、派生预览或显式 content 读取。
-* **BR-USER-ASSET-08** 精确过滤支持 media_type、format、source_type、width、height、labels 和 tags；标签过滤使用统一选择器表达式。
-* **BR-USER-ASSET-09** 自然语言搜索需要优先解析为统一选择器或其他结构化查询，再按当前用户范围查询素材。
-* **BR-USER-ASSET-10** 自然语言被明确判定为无结构化意图时，可以降级为对素材显示名、原始文件名和描述的关键词模糊搜索；解析服务超时或异常、解析结果生成非法选择器、无法降级或查询执行失败时展示错误，不执行不受控查询，也不能返回其他用户素材作为 fallback。
-* **BR-USER-ASSET-11** 用户可以一次选择多个文件上传。
-* **BR-USER-ASSET-12** 上传时可设置 labels 键值对和 tags 自由分类，并写入当前用户上传的素材。
-* **BR-USER-ASSET-13** 小文件使用普通上传。
-* **BR-USER-ASSET-14** 超过阈值的文件使用分片上传。
-* **BR-USER-ASSET-15** 分片上传流程包括计算 SHA256 checksum、初始化上传会话、逐片上传、完成上传。
-* **BR-USER-ASSET-16** 用户可停止进行中的分片上传。
-* **BR-USER-ASSET-17** 停止上传时，如果存在当前上传会话 checksum，需要取消当前用户自己的上传会话，并清理上传状态。
-* **BR-USER-ASSET-18** 上传完成后需要刷新当前用户素材列表。
-* **BR-USER-ASSET-19** 上传完成事务必须写 `asset_uploaded` outbox；task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建缩略图 AtomicTask。重复事件不得重复执行，任务失败不回滚素材或阻塞列表。
-* **BR-USER-ASSET-20** 素材详情展示当前素材 metadata、对象路径、preview 状态和 SHA256 checksum。
-* **BR-USER-ASSET-21** 预览图片、视频、音频、文本和 PDF 时，必须通过当前用户有权访问的 content endpoint 或等价内容读取能力。
-* **BR-USER-ASSET-22** 下载只能下载当前用户自己的素材原始内容。
-* **BR-USER-ASSET-23** 列表、悬停、预览和下载都不得绕过当前用户所有权校验。
-* **BR-USER-ASSET-24** 重命名只修改当前用户自己的素材显示名。
-* **BR-USER-ASSET-25** 删除需要用户确认，只删除当前用户自己的素材。
-* **BR-USER-ASSET-26** 删除后刷新当前用户素材列表。
-* **BR-USER-ASSET-27** 视频和 GIF 可在前端抽帧生成悬停预览；已有服务端 thumbnail 时优先使用服务端 thumbnail。
-* **BR-USER-ASSET-28** thumbnail 或前端抽帧失败时使用占位图标，不阻塞列表浏览。
-* **BR-USER-ASSET-29** 画布节点输出可注册为当前用户素材。
-* **BR-USER-ASSET-30** 画布资产包下载只包含当前用户有权访问的素材。
-* **BR-USER-ASSET-31** 画布输出资产不进入平台共享素材库。
-* **BR-USER-ASSET-32** canWrite=false 时，页面可展示当前用户已有素材，但禁用上传、重命名、删除等写操作。
-* **BR-USER-ASSET-33** 用户级素材管理不引入 platform.manage 或平台管理员共享素材语义。
-* **BR-USER-ASSET-34** 禁用菜单项，例如素材分享、复制文件、移动文件、全选，不应作为正式可用能力展示给用户。
-* **BR-USER-ASSET-35** Labels 与 Tags 是两类独立标签。Labels 以 `key=value` 键值对形式存储，键名和值 trim 后分别限制为 1-63 和 0-63 个 Unicode code point；键名不得包含空白、控制字符或选择器保留字符 `,;()=!"#@`。Tags trim 后限制为 1-64 个 Unicode code point。Label key/value 与 Tag 均区分大小写，不做大小写折叠；同一 Label key 后写覆盖前写，Tags 按 trim 后原文去重且无序。每个素材最多 20 个 Labels 和 30 个 Tags。
-* **BR-USER-ASSET-36** 用户可添加、修改或删除 Labels，也可添加或删除 Tags。自动生成或自动建议的 Labels/Tags 在产品语义上标记为 `source: auto`，用户手动添加或覆盖的标记为 `source: manual`；用户删除自动内容时需要提示删除可能影响过滤准确性。
-* **BR-USER-ASSET-37** 素材列表支持统一选择器查询。Labels 支持 `key=value`、`key!=value`、`key`、`!key`、`key in (v1, v2)`、`key notin (v1, v2)`；Tags 支持 `#tag` 表示拥有指定 Tag，`#-tag` 表示不拥有指定 Tag；分组使用保留谓词 `@group=<分组名>`，因此 `group` 仍可作为普通 Label key。Labels、Tags 和分组条件同级，`,` 表示 AND，`;` 表示 OR，AND 优先于 OR，括号可以覆盖优先级。空 Label value 只使用 `key=""`；包含空白或保留字符的 value、Tag 和分组名使用 JSON 风格双引号及转义。选择器最多嵌套 8 层、包含 100 个谓词，单个 `in/notin` 最多包含 100 个非空值。
-* **BR-USER-ASSET-38** Labels 输入时提示当前用户已使用的键、系统推荐键、当前键下已使用的值和系统推荐值；Tags 输入时提示当前用户已使用的 Tags 和系统推荐 Tags。用户可直接输入任意新 Labels 或 Tags。
-* **BR-USER-ASSET-39** 过滤 UI 提供可视化控件快速构建统一选择器，并允许直接输入表达式。过滤面板区分“属性 Labels”和“分类 Tags”两个子面板，视觉上明确区分，但可以混合构建查询表达式。
-* **BR-USER-ASSET-40** 用户可选中多个素材批量添加或覆盖 Labels，也可批量添加或删除 Tags。批量写入的 Labels/Tags 标记为 `source: manual`，Label 同 key 覆盖、Tag 添加和删除均为幂等操作。批量操作仍必须限制在当前用户自己的素材范围内，并逐项返回成功或失败；单个素材失败不影响其他合法素材提交。
-* **BR-USER-ASSET-41** 素材上传前需要计算原始内容 SHA256 checksum。本仓库内提到的 shasum 均按现有 `sha256` 语义表达，不新增独立 shasum 字段。
-* **BR-USER-ASSET-42** 上传前如果命中可返回的已存在素材且 `sha256` 相同，系统跳过二进制上传并返回该已存在素材；`sha256` 为空的素材不参与重复命中判断。
-* **BR-USER-ASSET-43** 系统需要通过 `sha256_backfill` 内部处理任务，为历史或异常情况下缺失 `sha256` 的素材补算 SHA256 checksum 并更新素材 metadata。补算失败不影响素材继续可见，但需要记录失败原因或处理状态。
-* **BR-USER-ASSET-44** 用户可在素材列表页切换三种视图：列表视图、小图标视图、大图标视图。视图偏好仅在本地记忆，不同设备独立，不跨端同步。
-* **BR-USER-ASSET-45** 列表视图以表格形式展示素材，每行展示缩略图、名称、大小、类型、日期、标签摘要等信息，并支持列排序，适合快速浏览 metadata 和批量操作。
-* **BR-USER-ASSET-46** 小图标视图以固定尺寸方形缩略图网格展示素材，下方展示名称和少量标签，适合快速视觉扫描。
-* **BR-USER-ASSET-47** 大图标视图以较大缩略图卡片展示素材，卡片内可展示更多信息，例如完整标签列表、尺寸、时长等，适合仔细查看图片、视频等视觉内容。
-* **BR-USER-ASSET-48** 三种视图下，过滤、搜索、排序、多选、拖拽上传等操作能力保持一致，仅呈现形式不同。
-* **BR-USER-ASSET-49** 素材分组完全属于当前用户，不可被其他用户访问或共享。
-* **BR-USER-ASSET-50** 用户可以创建、重命名、删除分组，也可以调整分组排序。删除分组时，系统提示“仅删除分组，素材不会被删除”，确认后仅删除分组及关联关系，素材保留。
-* **BR-USER-ASSET-51** 素材可以关联到任意多个分组。从某个分组中移除素材时，仅删除关联记录，素材本身不受影响。
-* **BR-USER-ASSET-52** 素材列表页支持按分组筛选。用户选择一个分组后，列表仅展示该分组下的素材；统一选择器支持 `@group=<分组名>`，并可与 Labels/Tags 混合查询，例如 `@group=项目A, #人物`。
-* **BR-USER-ASSET-53** 分组内素材默认按加入时间倒序展示；用户可手动拖拽调整排序，手动排序写入分组关联关系的排序字段。
-* **BR-USER-ASSET-54** 将素材添加到分组时，如果该素材已在该分组中，则忽略重复添加。
-* **BR-USER-ASSET-55** 分组名称支持自动补全；创建新分组即时生效。同一用户范围内分组名称按 trim 后唯一。
-* **BR-USER-ASSET-56** 素材详情页展示当前素材已关联的所有分组，并允许在详情页快速添加或移除分组关联。
-* **BR-USER-ASSET-57** 素材可以维护轻量引用摘要，包括 `referenceCount` 和 `referenceSources`。该摘要用于列表、卡片和详情的引用提示，不作为强一致权限判断或完整依赖图事实源。
-* **BR-USER-ASSET-58** 画布等外部模块可以通过回调或等价协作方式维护素材引用摘要。引用摘要允许最终一致；当引用数量大于 0 时，前端可在素材卡片上展示角标，例如“被 2 个画布引用”。
-* **BR-USER-ASSET-59** application-platform 的 Artifact 是待登记输出引用，不是 Asset；只有素材库完成所有权、内容引用和媒体信息校验并成功登记后，才产生 UserAsset。
-* **BR-USER-ASSET-60** ApplicationRun 输出登记必须使用运行发起用户作为 owner；不得把输出登记到 Worker、EngineInstance、管理员或其他用户名下。
-* **BR-USER-ASSET-61** 同一 Artifact 的重复登记必须幂等返回同一 UserAsset，或者明确返回已登记结果，不得产生重复素材。
-* **BR-USER-ASSET-62** Artifact 内容缺失、不可读取、所有权不一致或媒体信息不合法时，登记整体失败，不创建空 UserAsset；失败结果由 application-platform 记录在 Artifact 上。
-* **BR-USER-ASSET-63** 素材库负责 UserAsset 身份、内容引用和后续生命周期；application-platform 负责 Artifact、ApplicationRun 输出名及两者关联，双方不得互相改写对方状态事实。
+`AssetRepresentation` 表示一个 AssetVersion 的某种技术表现形式。
+
+它解决的是：
+
+> 同一份素材内容应当如何存储、预览、播放或展示。
+
+例如同一段视频的：
+
+```text
+原始视频
+浏览器兼容播放视频
+素材列表缩略图
+```
+
+可以属于同一个 AssetVersion 的不同 AssetRepresentation。
+
+但是以下内容不属于视频的 Representation：
+
+```text
+字幕
+剧本
+独立音轨
+深度视频
+遮罩视频
+```
+
+这些内容具有独立业务价值，应创建新的 Asset。
 
 ---
 
-## 5. 用户故事
+## 4.4 Blob
 
-### US-USER-ASSET-01 查看个人素材列表
+`Blob` 表示实际存储的二进制内容。
 
-用户可以进入 `/assets` 查看自己的素材列表。
+Blob 负责记录：
 
-列表展示当前用户自己的素材，并展示名称、大小、创建时间、媒体类型、尺寸、时长、格式、来源、标签和 thumbnail 状态等 metadata。
+* 文件实际位于哪个存储后端。
+* 对象键或相对路径。
+* 文件大小。
+* MIME 类型。
+* 内容摘要。
+* 文件是否可用。
 
-### US-USER-ASSET-02 空素材列表
+Blob 不负责表达：
 
-当当前用户没有素材时，页面显示明确空状态，引导用户上传素材。
+* 文件叫什么素材。
+* 文件是缩略图还是原始视频。
+* 文件属于哪个项目。
+* 文件被哪个画布使用。
 
-### US-USER-ASSET-03 素材精确过滤
-
-用户可以按 media_type、format、source_type、width、height、labels 和 tags 过滤自己的素材。
-
-标签过滤使用统一选择器表达式，例如 `media=image, style!=anime`、`#人物` 或 `media=image, #人物`。
-
-过滤结果只返回当前用户自己的素材。
-
-### US-USER-ASSET-04 自然语言搜索素材
-
-用户可以输入自然语言搜索文本，由系统优先解析为统一选择器或其他结构化素材查询条件后返回当前用户自己的匹配素材。
-
-如果自然语言被明确判定为无结构化意图，可以降级为对素材显示名、原始文件名和描述的关键词模糊搜索，但仍必须限制在当前用户自己的素材范围内。
-
-如果解析服务超时或异常、生成非法选择器或查询失败，需要展示错误，不允许执行不受控查询，也不允许返回其他用户素材作为 fallback。
-
-### US-USER-ASSET-05 多文件上传
-
-用户可以一次选择多个文件上传，并为上传素材设置 labels 键值对和 tags 自由分类。
-
-上传时设置的 labels 和 tags 写入当前用户上传的素材，并可与系统自动标签共同存在。
-
-### US-USER-ASSET-06 普通上传
-
-小文件使用普通上传。上传前系统先计算 SHA256 checksum；上传成功后素材进入当前用户素材集合，并刷新素材列表。
-
-### US-USER-ASSET-07 分片上传
-
-超过阈值的文件使用分片上传。
-
-分片上传流程包括计算 SHA256 checksum、初始化上传会话、逐片上传、完成上传。
-
-### US-USER-ASSET-08 停止分片上传
-
-用户可以停止进行中的分片上传。
-
-停止上传时，如果存在当前上传会话 checksum，需要取消当前用户自己的上传会话，并清理上传状态。
-
-### US-USER-ASSET-09 上传后异步处理
-
-上传完成后，系统可以创建异步任务处理缩略图或派生预览。
-
-异步处理任务不阻塞用户继续浏览素材列表。
-
-### US-USER-ASSET-10 查看素材详情
-
-用户可以查看自己的素材详情。
-
-详情弹窗展示显示名、大小、类型、修改时间、来源、对象路径、preview 状态和 SHA256 checksum。
-
-### US-USER-ASSET-11 素材悬停预览
-
-用户在素材列表中悬停素材时，可以看到 thumbnail、前端抽帧预览或 fallback icon。
-
-视频和 GIF 可在前端抽帧生成悬停预览；已有服务端 thumbnail 时优先使用服务端 thumbnail。
-
-### US-USER-ASSET-12 双击预览素材内容
-
-用户可以双击素材预览自己的图片、视频、音频、文本、PDF 或其他可嵌入内容。
-
-预览必须通过当前用户有权访问的 content endpoint 或等价内容读取能力。
-
-### US-USER-ASSET-13 下载素材
-
-用户可以下载自己的素材原始内容。
-
-下载不得绕过当前用户所有权校验。
-
-### US-USER-ASSET-14 重命名素材
-
-用户可以重命名自己的素材。
-
-重命名只修改当前用户自己的素材显示名。
-
-### US-USER-ASSET-15 删除素材
-
-用户可以删除自己的素材。
-
-删除必须经过用户确认，只删除当前用户自己的素材，并在删除后刷新素材列表。
-
-### US-USER-ASSET-16 登记画布输出资产
-
-画布节点输出可以注册为当前用户素材。
-
-登记后的画布输出资产只进入当前用户素材集合，不进入平台共享素材库。
-
-### US-USER-ASSET-17 下载画布资产包
-
-用户可以下载当前用户范围内的画布资产包。
-
-画布资产包只能包含当前用户有权访问的素材。
-
-### US-USER-ASSET-18 只读状态下查看素材
-
-当 canWrite=false 时，用户可以查看当前用户已有素材，但上传、重命名、删除等写操作需要禁用。
-
-### US-USER-ASSET-19 自由键值标签
-
-用户在素材详情页的“属性”区域输入 `project=mybot` 并回车后，Label 立即保存到当前用户自己的素材上，无需预先定义标签键或标签值。
-
-### US-USER-ASSET-20 统一选择器搜索
-
-用户在搜索框输入 `media=image, style!=anime` 后，列表实时过滤出当前用户自己的非动漫风格图片；输入 `#人物` 后，列表实时过滤出拥有“人物”Tag 的素材。
-
-用户输入 `@group=项目A` 时按分组筛选；输入 `group=项目A` 时查询名为 `group` 的普通 Label，不产生歧义。
-
-### US-USER-ASSET-21 智能补全创建
-
-用户准备添加 Label 时输入 `fram`，系统提示当前用户已使用的键和系统推荐键，例如 `format`、`frame_count`。用户选择 `frame_count` 后可手动输入值 `high`。用户准备添加 Tag 时输入 `人`，系统提示当前用户已使用的 Tags 和系统推荐 Tags。
-
-### US-USER-ASSET-22 可视化过滤构造器
-
-用户打开高级过滤面板，在“属性”子面板勾选 `media=image`，再在“分类”子面板选择 `#人物`，页面自动生成统一选择器表达式并展示当前用户自己的匹配素材。
-
-### US-USER-ASSET-23 批量打标
-
-用户勾选多个提示词素材，选择批量打标，输入 Label `usage=prompt` 或 Tag `提示词` 后，所有选中且属于当前用户的素材增加或覆盖对应标签。若部分素材不存在或不可写，其他合法素材仍然提交，页面逐项展示成功或失败结果。
-
-### US-USER-ASSET-24 OR 组合查询
-
-用户想查看所有图片或视频素材时，输入 `media=image; media=video`，列表返回当前用户自己的两类素材。用户也可以输入 `#人物; #动物` 查看拥有任一 Tag 的素材。
-
-### US-USER-ASSET-25 自动标签修正
-
-系统因扩展名缺失将某个图片素材标记为 `media=other` 时，用户可手动改为 `media=image`。系统自动建议 `建筑`、`夜晚` 等 Tags 后，用户可采纳或忽略。用户修正或忽略后，系统不应在无明确原因时覆盖该结果。
-
-### US-USER-ASSET-26 为图片添加描述分类
-
-用户上传一张包含人物和汽车的图片，在“分类”输入框中输入 `人物,汽车` 并确认后，素材即被打上 `人物` 和 `汽车` 两个 Tags。
-
-### US-USER-ASSET-27 按自由标签过滤
-
-用户在搜索框输入 `#人物`，列表仅显示当前用户自己的、被打上 `人物` Tag 的素材。
-
-### US-USER-ASSET-28 混合条件查询
-
-用户输入 `media=image, #人物, #-汽车`，列表返回当前用户自己的所有“有人物但没有汽车”的图片。
-
-### US-USER-ASSET-29 大量描述标签的管理
-
-用户为一张复杂图片依次添加 `人物`、`汽车`、`飞机`、`双人`、`风景` 等多个 Tags，每个 Tag 以彩色块展示，并可单独删除。
-
-### US-USER-ASSET-30 系统自动建议描述标签
-
-上传图片后，系统基于内容识别自动建议 Tags，例如 `建筑`、`夜晚`。用户可一键采纳建议，也可忽略建议。
-
-### US-USER-ASSET-31 重复素材上传返回已有素材
-
-用户选择上传素材后，系统先计算 SHA256 checksum。如果命中可返回的已存在素材且 `sha256` 相同，系统不再上传二进制内容，而是直接返回已存在素材并刷新列表。
-
-### US-USER-ASSET-32 补算缺失 SHA256
-
-系统周期性触发 `sha256_backfill` 内部处理任务，扫描缺失 `sha256` 的素材，读取素材内容并计算 SHA256 checksum，成功后更新素材 metadata。
-
-### US-USER-ASSET-33 视图模式切换
-
-用户可以在素材列表页顶部工具栏点击视图切换按钮，在列表视图、小图标视图和大图标视图之间实时切换。用户偏好会在本地记住，下次访问同一设备时保持。
-
-### US-USER-ASSET-34 创建与管理分组
-
-用户点击侧边栏“分组”区域的新建分组入口，输入名称并可选颜色后，分组出现在列表中。分组支持重命名、删除和排序；删除时需要确认“素材不会被删除”。
-
-### US-USER-ASSET-35 将素材加入分组
-
-用户在素材列表或详情中选择一个或多个素材，点击“添加到分组”，在已有分组列表中搜索、选择或新建分组，确认后素材与分组建立关联。同一个素材可以同时加入多个分组。
-
-### US-USER-ASSET-36 按分组浏览素材
-
-用户点击侧边栏某个分组名称后，主视图区仅显示属于该分组的素材。分组名称高亮；用户再次点击“所有素材”可返回总览。
-
-### US-USER-ASSET-37 从分组中移除素材
-
-用户在分组视图中选中素材并点击“从分组移除”，确认后仅删除该素材与当前分组的关联，素材仍存在于“所有素材”中。
-
-### US-USER-ASSET-38 分组与标签组合筛选
-
-用户在分组 A 下继续使用搜索栏输入 `#人物`，列表显示分组 A 中同时包含 `人物` Tag 的素材。用户也可以直接输入 `@group=项目A, #人物` 获得相同筛选语义。
-
-### US-USER-ASSET-39 素材详情中的分组管理
-
-用户打开素材详情弹窗，底部展示“所属分组”区块，以分组标记形式列出当前素材已关联的所有分组，并提供添加到分组和移除分组入口。
-
-### US-USER-ASSET-40 素材引用角标提示
-
-用户浏览素材卡片时，如果某个素材被画布引用，卡片上展示轻量角标，例如“被 2 个画布引用”。用户打开详情时，可以看到引用来源摘要。
-
-### US-USER-ASSET-41 登记应用运行输出
-
-作为应用运行发起用户，我希望媒体或文件输出在执行成功后登记为自己的素材，并能从运行结果进入素材详情。
-
-系统必须先校验 Artifact 内容引用和用户归属；重复请求保持幂等。校验或登记失败时不创建空素材，并由 application-platform 展示失败原因。
+这些业务语义由 Asset、AssetVersion 和 AssetRepresentation 表达。
 
 ---
 
-## 6. 页面结构
+## 4.5 StorageBackend
+
+`StorageBackend` 表示一个物理存储后端配置。
+
+第一阶段只实现：
+
+```text
+local
+```
+
+后续阶段可以实现：
+
+```text
+s3
+minio
+oss
+cos
+azure_blob
+```
+
+第一阶段虽然只实现本地存储，但业务代码必须通过统一存储适配接口访问文件，不得直接依赖本地磁盘路径。
+
+---
+
+## 4.6 Artifact
+
+`Artifact` 表示应用、画布或 AtomicTask 产生、尚未登记为正式素材的执行制品。
+
+例如：
+
+* 生图任务产生的图片。
+* 视频生成任务产生的视频。
+* LLM 产生的文本。
+* 音频生成任务产生的音频。
+* 图像放大任务产生的图片。
+
+Artifact 不等于 Asset。
+
+Artifact 可以是临时结果，也可以被登记为 Asset。Artifact 的身份、受控内容引用、处理状态、保留策略和登记结果由 asset-library 维护；Task Center 只保存 Artifact 引用，ApplicationPlatform 只保存 ApplicationRun 输出到 Artifact 的映射。
+
+---
+
+## 4.7 Collection
+
+`Collection` 表示多个 Asset 的逻辑集合。
+
+例如：
+
+```text
+Collection：第一集制作素材
+
+├── 第一集剧本
+├── 女主角参考图
+├── 街道场景图
+├── 女主角配音
+├── 背景音乐
+├── 第一集字幕
+└── 第一集成片
+```
+
+Collection 不对应物理目录。
+
+一个 Asset 可以同时属于多个 Collection。
+
+---
+
+# 5. 核心对象关系
 
 ```mermaid
-flowchart TD
-  entry["/assets 素材"] --> toolbar["过滤与自然语言搜索"]
-  entry --> sidebar["分组侧边栏"]
-  entry --> upload["上传入口"]
-  entry --> list["个人素材列表"]
+erDiagram
+    Asset ||--o{ AssetVersion : has
+    Asset ||--o| AssetVersion : current_version
+    AssetVersion ||--o{ AssetRepresentation : represented_by
+    AssetRepresentation }o--|| Blob : references
+    StorageBackend ||--o{ Blob : stores
+    Artifact }o--o| Blob : controlled_content
+    Artifact o|--o| AssetVersion : registered_as
 
-  toolbar --> viewMode["视图切换器：列表 / 小图标 / 大图标"]
-  toolbar --> selector["统一选择器表达式"]
-  toolbar --> filters["media_type、format、source_type、width、height、labels、tags、group"]
-  toolbar --> builder["高级过滤构造器"]
-  toolbar --> parse["自然语言优先解析为结构化查询"]
+    Collection ||--o{ CollectionItem : contains
+    Asset ||--o{ CollectionItem : joined_by
 
-  sidebar --> allAssets["所有素材"]
-  sidebar --> groups["用户自定义分组"]
-  groups --> groupFilter["按分组筛选"]
-  groups --> groupManage["新建 / 重命名 / 删除 / 排序"]
+    Asset ||--o{ AssetLabel : labeled_by
+    Asset ||--o{ AssetTag : tagged_by
+    Tag ||--o{ AssetTag : assigned_to
 
-  upload --> simple["普通上传"]
-  upload --> chunk["分片上传"]
-  upload --> shaCheck["上传前计算 SHA256"]
-  shaCheck --> duplicate["重复命中返回已有素材"]
-  chunk --> stop["停止上传"]
-  upload --> labelTagInput["上传 labels / tags"]
-  upload --> tasks["异步处理任务提示"]
-  tasks --> shaBackfill["sha256_backfill 补算任务"]
+    Asset ||--o{ AssetRelation : related
+    Asset ||--o{ AssetReference : referenced
+```
 
-  list --> thumb["thumbnail / fallback icon"]
-  list --> labelView["Labels 属性展示"]
-  list --> tagView["Tags 分类展示"]
-  list --> groupView["所属分组展示"]
-  list --> referenceBadge["引用角标提示"]
-  list --> hover["悬停预览"]
-  list --> context["右键菜单"]
-  context --> info["详情"]
-  context --> download["下载"]
-  context --> rename["重命名"]
-  context --> delete["删除"]
-  context --> addGroup["添加到分组"]
-  context --> removeGroup["从分组移除"]
-  list --> preview["双击预览 content"]
+最简语义为：
 
-  preview --> image["图片"]
-  preview --> video["视频"]
-  preview --> audio["音频"]
-  preview --> text["文本"]
-  preview --> embed["PDF 或 iframe"]
+```text
+Asset
+= 这是什么素材
+
+AssetVersion
+= 这个素材的哪个版本
+
+AssetRepresentation
+= 这个版本如何存储、播放或展示
+
+Blob
+= 真正的文件内容
+
+StorageBackend
+= 文件实际存放在哪里
+
+Collection
+= 哪些素材被组织到一起
 ```
 
 ---
 
-## 7. 关键流程图
+# 6. 产品不变量
 
-### 7.1 分片上传流程
+以下规则不得被实现破坏。
+
+1. Asset 必须是可以独立管理和使用的素材。
+2. Asset 不得被当作相关文件的小型集合。
+3. AssetVersion 只表示同一素材的内容历史。
+4. AssetRepresentation 只表示同一内容的技术表现形式。
+5. 可独立搜索、编辑、标记或作为画布输入的内容应创建独立 Asset。
+6. Collection 才负责组织多个 Asset。
+7. AssetVersion 的原始内容不可覆盖。
+8. 修改原始内容必须创建新的 AssetVersion。
+9. 缩略图不创建独立 Asset。
+10. 浏览器兼容转码文件不创建独立 Asset。
+11. 字幕、音轨、剧本、遮罩和深度图原则上应创建独立 Asset。
+12. 画布和应用不得保存本地文件路径。
+13. 画布和应用不得保存永久下载 URL。
+14. 正式运行必须记录解析后的 AssetVersion。
+15. Artifact 不自动等同于 Asset。
+16. 任务状态以 Task Center 的 AtomicTask 为事实源，TaskAttempt 只表示一次自动执行尝试。
+17. 删除 Asset 不等于立即删除 Blob。
+18. 第一阶段业务代码不得直接调用本地文件系统。
+19. 第一阶段必须通过 StorageAdapter 使用本地存储。
+20. 后续 S3 和 MinIO 实现不得改变 Asset、AssetVersion 和 AssetRepresentation 的业务结构。
+
+---
+
+# 7. 素材类型
+
+第一阶段支持以下 Asset 类型：
+
+```text
+image
+video
+audio
+text
+document
+model_3d
+prompt
+prompt_template
+other
+```
+
+---
+
+# 8. 第一阶段 AssetRepresentation 类型
+
+第一阶段只支持正常上传、展示、预览和运行所必需的 Representation 类型。
+
+统一支持以下类型：
+
+```text
+original
+canonical
+thumbnail
+preview
+playback
+package
+manifest
+```
+
+不是每个素材类型都支持全部类型。
+
+---
+
+## 8.1 original
+
+表示用户上传或任务生成的原始文件。
+
+适用于：
+
+* 图片。
+* 视频。
+* 音频。
+* 文档。
+* 3D 模型。
+* 其他文件型素材。
+
+文件型素材的每个 AssetVersion 至少需要一个 `original`，但以下情况例外：
+
+* 纯文本内容直接存储在 AssetVersion.content。
+* Prompt 直接存储在 AssetVersion.content。
+* PromptTemplate 直接存储在 AssetVersion.content。
+
+---
+
+## 8.2 canonical
+
+表示系统内部使用的标准内容形式。
+
+第一阶段主要用于：
+
+* text。
+* prompt。
+* prompt_template。
+
+Canonical 可以直接存放在 `AssetVersion.content` 中，不一定对应 Blob。
+
+例如：
+
+```json
+{
+  "format": "plain_text",
+  "text": "深夜，女人独自坐在沙发上。"
+}
+```
+
+或：
+
+```json
+{
+  "positive_prompt": "cinematic portrait...",
+  "negative_prompt": "low quality...",
+  "prompt_type": "image_generation",
+  "language": "en"
+}
+```
+
+第一阶段不要求把图片、视频或音频统一转为 canonical 文件。
+
+---
+
+## 8.3 thumbnail
+
+表示素材列表、素材选择器和详情页使用的小尺寸静态缩略图。
+
+第一阶段适用于：
+
+* image。
+* video。
+* document。
+* model_3d。
+
+缩略图不是独立素材。
+
+第一阶段建议统一生成 WebP 或 JPEG。
+
+对于不支持生成缩略图的素材，可以使用系统内置类型图标，不要求创建 thumbnail Representation。
+
+---
+
+## 8.4 preview
+
+表示用户在浏览器中查看素材时使用的预览形式。
+
+第一阶段适用于：
+
+* document。
+* model_3d。
+* 原始格式无法由浏览器直接显示的图片。
+
+示例：
+
+```text
+DOCX → PDF 或首页图片预览
+BLEND → 静态渲染图片
+TIFF → 浏览器兼容图片
+```
+
+对于浏览器可以直接显示的 JPG、PNG、WebP，原始文件可以直接承担预览职责，不强制生成 preview。
+
+第一阶段不为视频单独生成 preview，视频使用 playback。
+
+---
+
+## 8.5 playback
+
+表示浏览器或普通终端可以直接播放的媒体文件。
+
+第一阶段适用于：
+
+* video。
+* audio。
+
+如果 original 已经满足浏览器播放要求，可以：
+
+* 不额外创建 playback；
+* 或创建一个引用同一 Blob 的 playback Representation。
+
+如果 original 不兼容浏览器，可以通过任务中心生成 playback 文件。
+
+第一阶段每个视频或音频版本最多维护一个主 playback，不实现多清晰度播放集合。
+
+---
+
+## 8.6 package
+
+表示由多个相关物理文件共同组成的一个技术素材包。
+
+第一阶段主要用于多文件 3D 素材。
+
+例如：
+
+```text
+model.obj
+model.mtl
+textures/body.png
+textures/clothes.png
+```
+
+这些文件共同组成一个 3D 模型，不是多个业务 Asset。
+
+第一阶段推荐将多文件素材打包成 ZIP 或 TAR，并由一个 Blob 保存完整包。
+
+不在第一阶段实现复杂的 RepresentationComponent 文件树。
+
+---
+
+## 8.7 manifest
+
+表示复合文件包的内容清单。
+
+第一阶段主要与 package 配合使用。
+
+示例：
+
+```json
+{
+  "format": "obj-package",
+  "entry_file": "model.obj",
+  "files": [
+    {
+      "path": "model.obj",
+      "role": "model"
+    },
+    {
+      "path": "model.mtl",
+      "role": "material"
+    },
+    {
+      "path": "textures/body.png",
+      "role": "texture"
+    }
+  ]
+}
+```
+
+Manifest 可以：
+
+* 直接存储在 AssetRepresentation.metadata。
+* 或作为 JSON Blob 保存。
+
+第一阶段优先存储在 metadata 中。
+
+---
+
+# 9. 各素材类型的 Representation
+
+## 9.1 图片
+
+第一阶段支持：
+
+```text
+original
+thumbnail
+preview
+```
+
+### 必需规则
+
+* `original`：必需。
+* `thumbnail`：建议自动生成。
+* `preview`：仅在原始格式不适合浏览器展示时生成。
+
+示例：
+
+```text
+Asset：城市夜景原画
+└── AssetVersion v1
+    ├── original
+    │   └── city-night.tiff
+    ├── preview
+    │   └── city-night.webp
+    └── thumbnail
+        └── city-night-512.webp
+```
+
+如果原始文件是浏览器兼容的 PNG：
+
+```text
+Asset：角色参考图
+└── AssetVersion v1
+    ├── original
+    │   └── character.png
+    └── thumbnail
+        └── character-512.webp
+```
+
+### 应创建独立 Asset 的图片内容
+
+以下内容不属于原图的 Representation：
+
+* 遮罩图。
+* 深度图。
+* 法线图。
+* 姿态图。
+* 边缘图。
+* 分割图。
+* 去背景后的图。
+* 风格化图片。
+* 放大后的最终图片。
+
+这些内容应创建新的 image Asset，并通过 AssetRelation 关联。
+
+---
+
+## 9.2 视频
+
+第一阶段支持：
+
+```text
+original
+playback
+thumbnail
+```
+
+### 必需规则
+
+* `original`：必需。
+* `playback`：原始视频无法在浏览器正常播放时生成。
+* `thumbnail`：建议自动生成。
+
+示例：
+
+```text
+Asset：第一幕视频
+└── AssetVersion v1
+    ├── original
+    │   └── scene-01-prores.mov
+    ├── playback
+    │   └── scene-01-h264.mp4
+    └── thumbnail
+        └── scene-01-512.webp
+```
+
+第一阶段不生成：
+
+* 多清晰度播放文件。
+* 编辑代理文件。
+* 中间母版。
+* 动态预览。
+* Storyboard Sheet。
+* 多张关键帧预览。
+* 独立 poster 类型。
+
+视频缩略图可以同时承担播放器初始封面。
+
+### 应创建独立 Asset 的视频相关内容
+
+以下内容不属于视频 Representation：
+
+* 字幕。
+* 转录文本。
+* 独立音轨。
+* 背景音乐。
+* 配音。
+* 剧本。
+* 深度视频。
+* Alpha 视频。
+* 遮罩视频。
+* 摄像机轨迹。
+* 光流数据。
+* 提取后可独立使用的关键帧。
+
+---
+
+## 9.3 音频
+
+第一阶段支持：
+
+```text
+original
+playback
+```
+
+### 必需规则
+
+* `original`：必需。
+* `playback`：原始音频无法在浏览器播放时生成。
+
+示例：
+
+```text
+Asset：女主角对白
+└── AssetVersion v1
+    ├── original
+    │   └── dialogue-96k.wav
+    └── playback
+        └── dialogue.mp3
+```
+
+第一阶段不生成：
+
+* 波形文件。
+* 频谱图。
+* 试听片段。
+* 多码率播放版本。
+* 音频代理文件。
+
+前端需要展示波形时，可以在后续阶段增加 `waveform` Representation。
+
+### 应创建独立 Asset 的音频相关内容
+
+以下内容不属于 Representation：
+
+* 音频转录文本。
+* 字幕。
+* 分离后的人声。
+* 分离后的背景音乐。
+* 翻译配音。
+* 变声后的音频。
+* 降噪后被用户视为新成果的音频。
+
+---
+
+## 9.4 文本
+
+第一阶段支持：
+
+```text
+canonical
+original
+```
+
+### 必需规则
+
+系统创建的文本优先使用：
+
+```text
+canonical
+```
+
+内容存储在：
+
+```text
+AssetVersion.content
+```
+
+用户上传 TXT 或 Markdown 文件时可以保留：
+
+```text
+original
+```
+
+示例：
+
+```text
+Asset：第一章剧本
+└── AssetVersion v1
+    ├── canonical
+    │   └── AssetVersion.content
+    └── original
+        └── chapter-01.md
+```
+
+第一阶段不生成：
+
+* HTML 渲染版。
+* PDF 渲染版。
+* 文本摘要。
+* 翻译结果。
+* 多种导出文件。
+
+内容发生改写、翻译、摘要或裁剪时，根据业务语义创建：
+
+* 同一 Asset 的新版本；
+* 或新的 text Asset。
+
+---
+
+## 9.5 文档
+
+第一阶段支持：
+
+```text
+original
+preview
+thumbnail
+```
+
+### 必需规则
+
+* `original`：必需。
+* `preview`：文档格式无法直接在线展示时生成。
+* `thumbnail`：能够生成时建议生成。
+
+示例：
+
+```text
+Asset：产品需求文档
+└── AssetVersion v1
+    ├── original
+    │   └── product-spec.docx
+    ├── preview
+    │   └── product-spec.pdf
+    └── thumbnail
+        └── product-spec-first-page.webp
+```
+
+第一阶段不生成：
+
+* HTML 版本。
+* 每页图片。
+* 文本提取 Asset。
+* 多种导出格式。
+* 文档语义索引。
+
+用于搜索的文本提取结果属于内部索引数据，不作为普通 AssetRepresentation 暴露。
+
+---
+
+## 9.6 3D 模型
+
+第一阶段支持：
+
+```text
+original
+package
+manifest
+preview
+thumbnail
+```
+
+### 单文件 3D 格式
+
+例如 GLB、BLEND：
+
+```text
+Asset：女主角 3D 模型
+└── AssetVersion v1
+    ├── original
+    │   └── character.glb
+    ├── preview
+    │   └── character-preview.png
+    └── thumbnail
+        └── character-thumbnail.webp
+```
+
+### 多文件 3D 格式
+
+例如 OBJ、MTL 和贴图：
+
+```text
+Asset：建筑模型
+└── AssetVersion v1
+    ├── package
+    │   └── building-model.zip
+    ├── manifest
+    │   └── AssetRepresentation.metadata
+    ├── preview
+    │   └── building-preview.png
+    └── thumbnail
+        └── building-thumbnail.webp
+```
+
+第一阶段不实现：
+
+* 自动 GLB 转换。
+* Web 优化模型。
+* Draco 压缩。
+* LOD。
+* 低面代理模型。
+* 转台视频。
+* 线框预览。
+* 复合文件逐文件存储。
+* 可复用材质系统。
+* 独立动作和骨骼管理。
+
+独立动作、材质、HDRI、摄像机数据等后续可以建模为独立 Asset。
+
+---
+
+## 9.7 Prompt
+
+第一阶段支持：
+
+```text
+canonical
+```
+
+内容存储在 `AssetVersion.content`：
+
+```json
+{
+  "positive_prompt": "cinematic portrait...",
+  "negative_prompt": "low quality...",
+  "language": "en",
+  "prompt_type": "image_generation"
+}
+```
+
+第一阶段不生成：
+
+* TXT 导出文件。
+* JSON 导出文件。
+* 模型专用变体。
+* 自动翻译版本。
+* 自动扩写版本。
+
+---
+
+## 9.8 PromptTemplate
+
+第一阶段支持：
+
+```text
+canonical
+```
+
+内容示例：
+
+```json
+{
+  "template": "A cinematic portrait of {{character}} in {{scene}}",
+  "variables": [
+    {
+      "name": "character",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "scene",
+      "type": "string",
+      "required": true
+    }
+  ]
+}
+```
+
+第一阶段不生成：
+
+* YAML 导出。
+* Markdown 导出。
+* 模板预览文件。
+* 自动变量推断。
+* 自动变量填充。
+
+---
+
+# 10. 后续阶段 Representation 类型
+
+以下 Representation 类型不在第一阶段实现。
+
+## 10.1 图片
+
+```text
+web_optimized
+tiles
+```
+
+用途包括：
+
+* 浏览器优化图。
+* 超大图片分块浏览。
+* 多级缩放。
+
+## 10.2 视频
+
+```text
+proxy
+mezzanine
+poster
+animated_preview
+storyboard_sheet
+```
+
+用途包括：
+
+* 剪辑代理。
+* 高质量中间母版。
+* 独立播放器海报。
+* 动态预览。
+* 多帧故事板。
+
+## 10.3 音频
+
+```text
+waveform
+spectrogram
+preview
+proxy
+```
+
+用途包括：
+
+* 波形显示。
+* 频谱显示。
+* 试听片段。
+* 低码率代理。
+
+## 10.4 文本和文档
+
+```text
+rendered
+web_view
+export
+page_image
+```
+
+用途包括：
+
+* HTML 渲染。
+* PDF 渲染。
+* 多格式导出。
+* 文档逐页图片。
+
+## 10.5 3D 模型
+
+```text
+canonical
+web_view
+proxy
+lod
+wireframe_preview
+turntable_preview
+```
+
+用途包括：
+
+* 标准化 GLB。
+* 浏览器优化模型。
+* 低面代理。
+* 多级细节。
+* 线框预览。
+* 转台视频。
+
+---
+
+# 11. Asset 与 Artifact
+
+## 11.1 Artifact 创建
+
+受信任的 ApplicationExecutor、画布执行器或 AtomicTask Worker 在输出端口产生文件或结构化结果时，通过 asset-library 创建 Artifact。调用方负责外部 Provider 协议、轮询、鉴权和下载，不得把 Provider 凭证、任意 URL、私网地址或原始响应交给 asset-library。
+
+调用方只能通过受控字节流、上传会话或 asset-library 可验证的可信存储引用交付内容。Task Center 不创建 Artifact 业务事实，只保存 Artifact ID 等小型结果引用。
+
+Artifact 至少记录：
+
+```text
+id
+artifact_type
+owner_user_id
+producer_type
+producer_id
+producer_idempotency_key
+atomic_task_id
+task_attempt_id
+application_run_id
+canvas_run_id
+node_run_id
+node_id
+output_key
+sequence
+blob_id
+content
+metadata
+processing_status
+registration_status
+save_policy
+asset_id
+asset_version_id
+resource_version
+expires_at
+created_at
+updated_at
+```
+
+不适用字段允许为空。
+
+同一逻辑输出使用稳定 producer key 幂等创建。任务输出的默认逻辑键为：
+
+```text
+atomic_task_id + output_key + sequence
+```
+
+同一个 AtomicTask 的自动 TaskAttempt 重试复用同一键；手动重试会创建新的 AtomicTask，因此可以形成新的 Artifact。
+
+Artifact 受控内容完成上传时，asset-library 在同一事务写 `artifact_content_completed` outbox。Task Center 按以下幂等键创建 `asset-library.artifact.process` AtomicTask：
+
+```text
+artifact-process:<artifact_id>:<processing_profile_version>
+```
+
+该任务负责内容校验、媒体信息提取、可选临时预览和安全检查，并通过 asset-library 受控写入更新 Artifact；任务只返回 `artifact_id` 等小型引用。必需处理成功后 Artifact 进入 `ready`，失败进入 `failed`。
+
+---
+
+## 11.2 Artifact 保存策略
+
+支持：
+
+```text
+transient
+manual_save
+auto_save
+```
+
+### transient
+
+只作为临时运行结果。
+
+### manual_save
+
+用户手动保存到素材库。
+
+### auto_save
+
+节点或应用配置为自动保存最终输出。
+
+`save_policy` 只表达调用方的登记意图，不是 Artifact 状态。Artifact 的两个独立状态维度为：
+
+```text
+processing_status:
+  created -> transferring -> processing -> ready | failed -> deleted
+
+registration_status:
+  pending -> registered | failed
+```
+
+`preview_ready` 是 processing 期间的独立事实，不代表 Artifact 已 ready。只有 `processing_status=ready` 才能登记为 Asset；登记失败不修改 AtomicTask 终态。
+
+---
+
+## 11.3 Artifact 保存为 Asset
+
+Artifact 可以：
+
+1. 创建新的 Asset。
+2. 追加为已有 Asset 的新版本。
+
+```http
+POST /api/v1/artifacts/{artifact_id}/register
+```
+
+创建新素材：
+
+```json
+{
+  "mode": "create_asset",
+  "name": "女主角参考图",
+  "asset_type": "image",
+  "collection_ids": [
+    "collection-001"
+  ],
+  "tags": [
+    "角色参考"
+  ],
+  "labels": {
+    "character.name": "alice"
+  }
+}
+```
+
+登记必须在一个 asset-library 事务中完成：
+
+1. 校验 Artifact owner、ready 状态、内容可读性和媒体信息。
+2. 创建或命中当前用户的 Asset。
+3. 创建 AssetVersion，并复用 Artifact Blob 创建 `original` AssetRepresentation，不复制二进制内容。
+4. 更新 Artifact 的 `registration_status`、`asset_id`、`asset_version_id` 和 `resource_version`。
+5. 写入 Artifact 登记事件和 `asset_version_representation_requested` outbox。
+
+同一 Artifact 重复登记必须返回同一 Asset/AssetVersion。不同 owner、内容或登记目标使用同一 Artifact ID 时返回幂等冲突。
+
+---
+
+## 11.4 AssetRepresentation 首次生成任务
+
+`original` 在登记事务中同步创建。纯文本、Prompt 和 PromptTemplate 的 canonical 内容可以同步写入 AssetVersion。thumbnail、preview、playback 和 manifest 等派生 Representation 通过 Task Center 异步生成。
+
+```text
+asset_version_representation_requested
+  -> asset-library.representation.build DAGTaskGroup
+  -> asset-library.representation.inspect
+  -> asset-library.representation.thumbnail.generate
+  -> asset-library.representation.preview.generate
+  -> asset-library.representation.playback.generate
+  -> asset-library.representation.manifest.generate
+  -> asset-library.representation.finalize
+```
+
+asset-library 根据媒体类型、当前 Representation policy 和 `profile_version` 决定实际节点；不需要的节点不创建。多个派生节点在 inspect 成功后可以并行执行，finalize 在所有已创建节点终态后汇总。
+
+DAG 幂等键为：
+
+```text
+asset-representations:<asset_version_id>:<profile_version>
+```
+
+每个生成节点以 `representation_type + profile` 作为稳定 childKey。Worker 通过 asset-library 受控写入能力幂等登记 Blob 和 AssetRepresentation，向 Task Center 只返回 `asset_version_id`、`representation_id` 和 `blob_id` 等小型引用。
+
+必需 original 或 metadata 校验失败时 AssetVersion 进入 `failed`；可选 thumbnail、preview 或 playback 失败时进入 `ready_with_warnings`；所有必需项成功后进入 `ready`。
+
+---
+
+## 11.5 缺失 Representation 周期补全
+
+事件驱动生成是主链路。Task Center 还必须维护唯一 SYSTEM RECONCILE 计划作为修复兜底：
+
+```text
+systemKey: asset-library.representation-backfill
+reconcileRef: asset-library.representation-backfill
+executionMode: RECONCILE
+default cron: 0 30 3 * * *
+timezone: UTC
+overlapPolicy: SKIP
+```
+
+巡检器按稳定 `asset_version_id` checkpoint 分块扫描，使用当前 policy/profile 计算 expected Representation 集合，只为以下缺口创建修复动作：
+
+* 缺少必需或建议生成的 Representation。
+* 已失败且仍可重试的 Representation。
+* Blob missing/corrupted 且 original/canonical 仍可用于重建。
+* policy/profile 升级后缺少新 profile。
+
+每个缺失项创建独立 AtomicTask：
+
+```text
+functionRef: asset-library.representation.generate
+idempotency_key: asset-representation:<asset_version_id>:<representation_type>:<profile_version>
+```
+
+健康 AssetVersion 不创建任务；同一缺失项只允许一个非终态修复任务。删除中的 Asset、transient Artifact 和源内容不可恢复的条目不创建任务；不可恢复条目标记稳定 `irreparable` 原因。巡检必须限制单轮扫描数、修复动作数和并发，并使用失败退避防止无限重建。
+
+巡检摘要至少包含：
+
+```text
+scanned
+missing
+actions_created
+deferred
+irreparable
+repaired
+```
+
+checkpoint 只在完整分块完成后推进。修复成功后重新计算 AssetVersion 状态，`ready_with_warnings` 可以提升为 `ready`。
+
+追加新版本：
+
+```json
+{
+  "mode": "append_version",
+  "asset_id": "asset-001",
+  "version_note": "修复手部后的版本"
+}
+```
+
+---
+
+# 12. AssetVersion 规则
+
+## 12.1 创建新版本
+
+以下情况创建新 AssetVersion：
+
+* 替换了素材原始内容。
+* 修正了同一图片。
+* 修改了同一文本。
+* 修改了同一提示词。
+* 修改了同一文档。
+* 用户明确把 Artifact 追加到已有 Asset。
+
+## 12.2 创建新 Asset
+
+以下情况创建独立 Asset：
+
+* 图片生成视频。
+* 视频提取音频。
+* 小说改编成剧本。
+* 图片生成深度图。
+* 图片生成遮罩。
+* 视频生成字幕。
+* 视频生成转录文本。
+* 角色图生成姿态图。
+* 原始图片生成风格化作品。
+
+## 12.3 版本不可变
+
+AssetVersion 创建后，不允许修改：
+
+* 原始 Blob。
+* canonical 内容。
+* 版本号。
+* 创建来源。
+* 创建时间。
+
+允许补充：
+
+* thumbnail。
+* preview。
+* playback。
+* package manifest。
+* 技术元数据。
+* 处理错误。
+* 处理记录。
+
+---
+
+# 13. Collection
+
+## 13.1 Collection 语义
+
+Collection 是多个 Asset 的逻辑集合。
+
+Collection 不：
+
+* 创建文件副本。
+* 修改素材存储位置。
+* 改变 Asset 所有权。
+* 自动固定具体版本。
+
+## 13.2 Collection 层级
+
+支持父子层级。
+
+```text
+项目 A
+├── 角色
+│   ├── 女主角
+│   └── 男主角
+├── 场景
+├── 音频
+└── 成片
+```
+
+第一阶段建议最大深度为 8。
+
+## 13.3 CollectionItem
+
+```text
+CollectionItem
+├── id
+├── collection_id
+├── asset_id
+├── pinned_version_id
+├── role
+├── sort_order
+├── metadata
+├── created_by
+└── created_at
+```
+
+`pinned_version_id` 可为空：
+
+* 为空：显示 Asset 当前版本。
+* 非空：固定指定 AssetVersion。
+
+---
+
+# 14. Label 和 Tag
+
+## 14.1 Label
+
+Label 是结构化键值标签。
+
+示例：
+
+```text
+media.type=image
+visual.style=anime
+character.name=alice
+quality.level=approved
+project.code=demo-001
+```
+
+字段：
+
+```text
+AssetLabel
+├── id
+├── asset_id
+├── key
+├── value
+├── source
+├── locked
+├── created_by
+├── created_at
+└── updated_at
+```
+
+第一阶段 `source` 支持：
+
+```text
+user
+system
+import
+```
+
+不包含 AI 或 Agent 来源。
+
+## 14.2 Tag
+
+Tag 是用户自由输入的描述标签。
+
+例如：
+
+```text
+夜景
+女主角
+候选素材
+需要修复
+镜头感好
+```
+
+## 14.3 三者区别
+
+```text
+Label
+= 结构化事实
+
+Tag
+= 自由描述
+
+Collection
+= 素材分组
+```
+
+---
+
+# 15. 素材关系
+
+## 15.1 AssetRelation
+
+AssetRelation 用于表达独立 Asset 之间的业务关系。
+
+```text
+AssetRelation
+├── id
+├── source_asset_id
+├── source_version_id
+├── relation_type
+├── target_asset_id
+├── target_version_id
+├── atomic_task_id
+├── task_attempt_id
+├── application_run_id
+├── canvas_run_id
+├── metadata
+└── created_at
+```
+
+第一阶段支持：
+
+```text
+derived_from
+generated_from
+edited_from
+upscaled_from
+extracted_from
+converted_from
+uses_reference
+paired_with
+caption_of
+audio_of
+subtitle_of
+transcript_of
+```
+
+示例：
+
+```text
+字幕 subtitle_of 视频
+音频 extracted_from 视频
+深度图 generated_from 原图
+放大图 upscaled_from 原图
+视频 uses_reference 角色参考图
+```
+
+---
+
+# 16. 画布和应用引用
+
+画布节点不得保存：
+
+```text
+/data/assets/image.png
+https://storage.example.com/file.png
+```
+
+节点保存：
+
+```json
+{
+  "asset_id": "asset-001",
+  "version_policy": "pinned",
+  "asset_version_id": "asset-version-003"
+}
+```
+
+支持：
+
+```text
+latest
+pinned
+```
+
+## 16.1 latest
+
+运行时解析 Asset 当前版本。
+
+## 16.2 pinned
+
+固定使用指定 AssetVersion。
+
+## 16.3 运行记录
+
+无论使用哪种策略，AtomicTask 或所属运行投影都必须记录：
+
+```json
+{
+  "asset_id": "asset-001",
+  "version_policy": "latest",
+  "resolved_asset_version_id": "asset-version-005",
+  "atomic_task_id": "atomic-task-001",
+  "blob_sha256": "sha256-value"
+}
+```
+
+---
+
+# 17. 数据模型
+
+## 17.1 Asset
+
+```text
+Asset
+├── id: UUID
+├── owner_user_id: UUID
+├── asset_type: VARCHAR
+├── name: VARCHAR
+├── description: TEXT
+├── status: VARCHAR
+├── current_version_id: UUID
+├── cover_representation_id: UUID
+├── visibility: VARCHAR
+├── created_by: UUID
+├── created_at: TIMESTAMPTZ
+├── updated_at: TIMESTAMPTZ
+└── deleted_at: TIMESTAMPTZ
+```
+
+第一阶段 visibility：
+
+```text
+private
+```
+
+---
+
+## 17.2 AssetVersion
+
+```text
+AssetVersion
+├── id: UUID
+├── asset_id: UUID
+├── version_no: INTEGER
+├── status: VARCHAR
+├── source_type: VARCHAR
+├── source_ref_id: UUID
+├── content: JSONB
+├── metadata: JSONB
+├── version_note: TEXT
+├── processing_error: JSONB
+├── created_by: UUID
+└── created_at: TIMESTAMPTZ
+```
+
+`source_type`：
+
+```text
+upload
+artifact
+asset_edit
+asset_conversion
+external_import
+```
+
+---
+
+## 17.3 AssetRepresentation
+
+```text
+AssetRepresentation
+├── id: UUID
+├── asset_version_id: UUID
+├── representation_type: VARCHAR
+├── profile: VARCHAR
+├── blob_id: UUID
+├── format: VARCHAR
+├── mime_type: VARCHAR
+├── is_primary: BOOLEAN
+├── metadata: JSONB
+├── generation_source: VARCHAR
+└── created_at: TIMESTAMPTZ
+```
+
+`generation_source`：
+
+```text
+upload
+task_output
+generated
+converted
+rendered
+```
+
+对于 canonical 内容直接存储在 AssetVersion.content 的情况，允许不存在 Blob 和 AssetRepresentation 数据行。
+
+## 17.4 唯一约束
+
+建议：
+
+```text
+UNIQUE (
+  asset_version_id,
+  representation_type,
+  profile
+)
+```
+
+同一个版本原则上只允许一个主 original：
+
+```text
+asset_version_id + representation_type=original + is_primary=true
+```
+
+---
+
+## 17.5 Blob
+
+```text
+Blob
+├── id: UUID
+├── storage_backend_id: UUID
+├── object_key: VARCHAR
+├── sha256: VARCHAR
+├── size_bytes: BIGINT
+├── mime_type: VARCHAR
+├── state: VARCHAR
+├── created_at: TIMESTAMPTZ
+└── deleted_at: TIMESTAMPTZ
+```
+
+---
+
+## 17.6 StorageBackend
+
+```text
+StorageBackend
+├── id: UUID
+├── name: VARCHAR
+├── backend_type: VARCHAR
+├── config_ref: VARCHAR
+├── status: VARCHAR
+├── priority: INTEGER
+├── created_at: TIMESTAMPTZ
+└── updated_at: TIMESTAMPTZ
+```
+
+第一阶段只有：
+
+```text
+backend_type=local
+```
+
+S3 和 MinIO 可以预先作为枚举保留，但不得在第一阶段界面中创建或启用。
+
+---
+
+# 18. 存储适配层
+
+## 18.1 设计原则
+
+素材领域不得直接依赖：
+
+* `os.Open`。
+* `os.WriteFile`。
+* 本地绝对路径。
+* S3 SDK。
+* MinIO SDK。
+
+所有存储操作必须通过 `StorageAdapter`。
+
+## 18.2 StorageAdapter 接口
+
+建议后端定义类似接口：
+
+```go
+type StorageAdapter interface {
+    Put(
+        ctx context.Context,
+        request PutObjectRequest,
+    ) (*StoredObject, error)
+
+    Open(
+        ctx context.Context,
+        objectKey string,
+    ) (io.ReadCloser, error)
+
+    Stat(
+        ctx context.Context,
+        objectKey string,
+    ) (*ObjectInfo, error)
+
+    Delete(
+        ctx context.Context,
+        objectKey string,
+    ) error
+
+    Exists(
+        ctx context.Context,
+        objectKey string,
+    ) (bool, error)
+
+    CreateAccessURL(
+        ctx context.Context,
+        request AccessURLRequest,
+    ) (*AccessURL, error)
+}
+```
+
+建议请求结构：
+
+```go
+type PutObjectRequest struct {
+    ObjectKey  string
+    Reader     io.Reader
+    Size       int64
+    MIMEType   string
+    SHA256     string
+}
+
+type StoredObject struct {
+    ObjectKey  string
+    Size       int64
+    MIMEType   string
+    SHA256     string
+}
+
+type AccessURLRequest struct {
+    ObjectKey  string
+    Operation  string
+    ExpiresIn  time.Duration
+}
+```
+
+## 18.3 LocalStorageAdapter
+
+第一阶段实现：
+
+```text
+LocalStorageAdapter
+```
+
+职责：
+
+* 将 object_key 映射到本地根目录。
+* 防止路径穿越。
+* 创建必要目录。
+* 使用临时文件完成原子写入。
+* 校验文件大小和 SHA-256。
+* 提供 API 代理访问地址。
+* 删除无引用文件。
+
+本地存储配置示例：
+
+```yaml
+storage:
+  default_backend: local-main
+
+  backends:
+    - id: local-main
+      type: local
+      root_path: /var/lib/omnimam/assets
+```
+
+业务数据库只保存：
+
+```text
+storage_backend_id=local-main
+object_key=blobs/8f/8f74ab...
+```
+
+不得保存：
+
+```text
+/var/lib/omnimam/assets/blobs/8f/8f74ab...
+```
+
+## 18.4 S3StorageAdapter
+
+后续阶段实现：
+
+```text
+S3StorageAdapter
+```
+
+其实现应遵守同一个 StorageAdapter 接口。
+
+后续可以增加：
+
+* 分片上传。
+* Presigned URL。
+* Bucket 配置。
+* Endpoint 配置。
+* Region 配置。
+* Path Style 配置。
+* 服务端加密。
+* 对象版本。
+* 生命周期策略。
+
+## 18.5 MinIOStorageAdapter
+
+后续阶段实现：
+
+```text
+MinIOStorageAdapter
+```
+
+MinIO 可以复用 S3 协议实现，也可以使用独立 Adapter。
+
+无论采用哪种实现方式，都不得改变上层 Asset、AssetVersion、AssetRepresentation 和 Blob 结构。
+
+---
+
+# 19. 上传流程
 
 ```mermaid
 sequenceDiagram
-  actor U as 用户
-  participant UI as /assets
-  participant API as 后端 API
-  participant Store as 用户素材存储
-
-  U->>UI: 选择大文件
-  UI->>UI: 计算 SHA256 checksum
-  UI->>API: 查询是否存在相同 SHA256 的可返回素材
-  alt 命中已存在素材
-    API-->>UI: 返回已存在素材
-    UI-->>U: 刷新当前用户素材列表
-  else 未命中
-    UI->>API: 初始化上传会话
-    API-->>UI: 返回上传会话
-    loop 逐片上传
-      UI->>API: 上传分片
-      API->>Store: 写入当前用户上传分片
-      Store-->>API: 写入结果
-      API-->>UI: 返回分片上传状态
-    end
-    UI->>API: 完成上传
-    API->>Store: 合并或登记当前用户素材
-    API-->>UI: 返回素材信息
-    UI-->>U: 刷新当前用户素材列表
-  end
-```
-
-### 7.2 SHA256 补算任务
-
-> ⚠️ 本图是对 US-USER-ASSET-32 和 BR-USER-ASSET-43 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
-
-```mermaid
-sequenceDiagram
-  participant Task as 任务中心
-  participant Asset as 素材库
-  participant Store as 用户素材存储
-
-  Task->>Asset: 触发 asset.sha256_backfill
-  Asset->>Asset: 查询缺失 sha256 的素材
-  loop 每个待补算素材
-    Asset->>Store: 读取素材原始内容
-    Store-->>Asset: 返回内容流或存储引用
-    Asset->>Asset: 计算 SHA256 checksum
-    Asset->>Asset: 更新素材 sha256
-  end
-  Asset-->>Task: 返回补算数量与失败摘要
-```
-
-### 7.3 停止分片上传
-
-```mermaid
-flowchart TD
-  A["用户点击停止上传"] --> B{"是否存在当前上传会话 checksum"}
-  B -->|否| C["清理前端上传状态"]
-  B -->|是| D["取消当前用户上传会话"]
-  D --> E["清理上传状态"]
-  E --> F["展示 asset_upload_stopped"]
-```
-
-### 7.4 自然语言搜索
-
-```mermaid
-flowchart TD
-  A["用户输入自然语言搜索"] --> B["优先解析为统一选择器或结构化查询条件"]
-  B --> C{"解析是否成功"}
-  C -->|无结构化意图| D["按显示名、原始文件名和描述降级为关键词模糊搜索"]
-  C -->|解析异常或非法结果| G["展示 asset_search_parse_failed"]
-  C -->|是| E["按当前用户范围查询素材"]
-  D --> E
-  E --> F{"查询是否成功"}
-  F -->|否| G["展示 asset_list_failed"]
-  F -->|是| H["展示当前用户匹配素材"]
-```
-
-### 7.5 统一选择器搜索与过滤构造器
-
-> ⚠️ 本图是对 US-USER-ASSET-20、US-USER-ASSET-22 和 BR-USER-ASSET-37、BR-USER-ASSET-39 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
-
-```mermaid
-sequenceDiagram
-    actor U as 用户
     participant UI as 前端
-    participant BE as 后端
+    participant API as Asset API
+    participant Storage as StorageAdapter
+    participant Task as 任务中心
 
-    U->>UI: 在搜索框输入 "@group=项目A, #人物"
-    UI->>UI: 解析为分组与 Tags 混合 AND 条件并校验语法
-    UI->>BE: 按统一选择器查询当前用户素材
-    BE-->>UI: 返回匹配的素材列表
-    UI->>U: 渲染结果
-
-    U->>UI: 点击高级过滤
-    UI->>U: 展示可视化构造器
-    U->>UI: 选择分组 项目A；选择 Tags 中的 #人物
-    UI->>UI: 自动生成 "@group=项目A, #人物"
-    UI->>BE: 重新查询当前用户素材
-    BE-->>UI: 返回新结果
-    UI->>U: 渲染结果
+    UI->>API: 创建上传会话
+    API-->>UI: upload_id 和上传方式
+    UI->>API: 上传文件数据
+    API->>Storage: Put
+    Storage-->>API: StoredObject
+    API->>API: 创建 Blob
+    API->>API: 创建 Asset 和 AssetVersion
+    API->>API: 创建 original Representation
+    API->>API: 同事务写 asset_version_representation_requested outbox
+    API-->>UI: 返回素材和 processing 状态
+    API->>Task: 幂等触发 Representation build DAG
+    Task->>Task: inspect、元数据、缩略图、预览或兼容格式处理
+    Task-->>API: 通过受控写入登记 Representation
+    API-->>UI: 通过 SSE 投影 AssetVersion ready
 ```
 
-### 7.6 素材预览
+第一阶段上传经过 Asset API，不实现客户端直接上传 S3 或 MinIO。
 
-```mermaid
-flowchart TD
-  A["用户双击素材"] --> B{"素材是否属于当前用户"}
-  B -->|否| C["拒绝访问 content"]
-  B -->|是| D{"是否有可用 thumbnail 或派生预览"}
-  D -->|是| E["展示预览"]
-  D -->|否| F{"是否可显式读取 content"}
-  F -->|是| G["通过 content 读取并预览"]
-  F -->|否| H["展示 fallback icon"]
+---
+
+# 20. 素材处理
+
+素材处理复用任务中心。
+
+## 20.1 图片
+
+```text
+calculate-checksum
+validate-image
+extract-image-metadata
+generate-thumbnail
+generate-preview-if-needed
 ```
 
-### 7.7 画布输出登记
+## 20.2 视频
 
-```mermaid
-flowchart TD
-  A["画布节点产生输出"] --> B["登记为当前用户素材"]
-  B --> C["写入当前用户素材集合"]
-  C --> D["可在 /assets 中浏览"]
-  C --> E["可用于当前用户画布资产包下载"]
+```text
+calculate-checksum
+validate-video
+extract-video-metadata
+generate-thumbnail
+generate-playback-if-needed
 ```
 
-### 7.8 分组管理与关联
+## 20.3 音频
 
-> ⚠️ 本图是对 US-USER-ASSET-34、US-USER-ASSET-35、US-USER-ASSET-37 和 BR-USER-ASSET-50、BR-USER-ASSET-51 的可视化补充；若与文字冲突，以文字为准，但二者应视为同一事实，冲突必须修正。
+```text
+calculate-checksum
+validate-audio
+extract-audio-metadata
+generate-playback-if-needed
+```
 
-```mermaid
-flowchart TD
-  A["用户创建分组"] --> B["分组出现在侧边栏"]
-  B --> C["用户将素材添加到分组"]
-  C --> D{"素材是否已在该分组"}
-  D -->|是| E["忽略重复添加"]
-  D -->|否| F["创建分组关联"]
-  F --> G["分组视图可展示该素材"]
-  G --> H["用户从分组移除素材"]
-  H --> I["删除关联记录"]
-  I --> J["素材仍存在于所有素材"]
-  B --> K["用户删除分组"]
-  K --> L["提示素材不会被删除"]
-  L --> M["删除分组及关联关系"]
-  M --> J
+## 20.4 文档
+
+```text
+calculate-checksum
+validate-document
+extract-document-metadata
+generate-preview
+generate-thumbnail
+```
+
+## 20.5 3D 模型
+
+```text
+calculate-checksum
+validate-3d-file-or-package
+extract-3d-metadata
+generate-preview-if-supported
+generate-thumbnail-if-supported
+```
+
+预览处理失败不应导致原始素材不可使用。
+
+---
+
+# 21. 状态
+
+## 21.1 Asset
+
+```text
+active
+archived
+deleted
+```
+
+## 21.2 AssetVersion
+
+```text
+uploading
+processing
+ready
+ready_with_warnings
+failed
+```
+
+## 21.3 Blob
+
+```text
+pending
+available
+corrupted
+missing
+deleting
+deleted
+```
+
+## 21.4 Artifact 状态
+
+```text
+processing_status:
+  created
+  transferring
+  processing
+  ready
+  failed
+  deleted
+
+registration_status:
+  pending
+  registered
+  failed
+```
+
+临时保留由 `save_policy=transient` 和 `expires_at` 表达，不引入 `promoting/promoted` 业务状态。
+
+---
+
+# 22. 搜索与筛选
+
+第一阶段使用 PostgreSQL。
+
+支持搜索：
+
+* Asset 名称。
+* Asset 描述。
+* Tag。
+* Label。
+* 文件名。
+* 文本内容。
+* Prompt 内容。
+* PromptTemplate 内容。
+
+支持筛选：
+
+* asset_type。
+* status。
+* collection_id。
+* created_at。
+* updated_at。
+* 文件格式。
+* MIME 类型。
+* 文件大小。
+* 图片宽高。
+* 视频时长。
+* 音频时长。
+* Label。
+* Tag。
+* 来源类型。
+
+后续阶段再增加：
+
+* Elasticsearch。
+* pgvector。
+* 图片语义搜索。
+* 文本语义搜索。
+* 以图搜图。
+* 自然语言查询。
+* Agent 素材选择。
+
+---
+
+# 23. API
+
+统一前缀：
+
+```text
+/api/v1
+```
+
+## 23.1 Asset
+
+```http
+POST   /api/v1/assets
+GET    /api/v1/assets
+GET    /api/v1/assets/{asset_id}
+PATCH  /api/v1/assets/{asset_id}
+DELETE /api/v1/assets/{asset_id}
+POST   /api/v1/assets/{asset_id}/restore
+DELETE /api/v1/assets/{asset_id}/permanent
+```
+
+## 23.2 AssetVersion
+
+```http
+GET  /api/v1/assets/{asset_id}/versions
+POST /api/v1/assets/{asset_id}/versions
+GET  /api/v1/asset-versions/{version_id}
+POST /api/v1/assets/{asset_id}/versions/{version_id}/set-current
+```
+
+## 23.3 上传
+
+```http
+POST   /api/v1/asset-uploads
+POST   /api/v1/asset-uploads/{upload_id}/content
+POST   /api/v1/asset-uploads/{upload_id}/complete
+DELETE /api/v1/asset-uploads/{upload_id}
+```
+
+后续 S3 或 MinIO 阶段可以增加：
+
+```http
+POST /api/v1/asset-uploads/{upload_id}/parts
+POST /api/v1/asset-uploads/{upload_id}/presign
+```
+
+第一阶段不实现。
+
+## 23.4 Representation
+
+```http
+GET /api/v1/asset-representations/{representation_id}
+GET /api/v1/asset-representations/{representation_id}/content
+GET /api/v1/asset-representations/{representation_id}/access-url
+```
+
+## 23.5 Collection
+
+```http
+POST   /api/v1/collections
+GET    /api/v1/collections
+GET    /api/v1/collections/{collection_id}
+PATCH  /api/v1/collections/{collection_id}
+DELETE /api/v1/collections/{collection_id}
+```
+
+```http
+POST   /api/v1/collections/{collection_id}/items
+PATCH  /api/v1/collections/{collection_id}/items/{item_id}
+DELETE /api/v1/collections/{collection_id}/items/{item_id}
+```
+
+## 23.6 Label 和 Tag
+
+```http
+PUT    /api/v1/assets/{asset_id}/labels
+DELETE /api/v1/assets/{asset_id}/labels/{label_id}
+
+POST   /api/v1/assets/{asset_id}/tags
+DELETE /api/v1/assets/{asset_id}/tags/{tag_id}
+```
+
+## 23.7 Artifact
+
+```http
+POST /api/v1/artifacts
+GET  /api/v1/artifacts
+GET  /api/v1/artifacts/{artifact_id}
+POST /api/v1/artifacts/{artifact_id}/content
+POST /api/v1/artifacts/{artifact_id}/complete
+POST /api/v1/artifacts/{artifact_id}/register
+DELETE /api/v1/artifacts/{artifact_id}
+```
+
+## 23.8 来源和引用
+
+```http
+GET /api/v1/assets/{asset_id}/relations
+GET /api/v1/assets/{asset_id}/lineage
+GET /api/v1/assets/{asset_id}/references
+GET /api/v1/assets/{asset_id}/usages
 ```
 
 ---
 
-## 8. 功能适配矩阵
+# 24. SSE 事件
 
-| 功能                  | Web |
-| ------------------- | --- |
-| 查看个人素材列表            | ✅   |
-| 空列表提示               | ✅   |
-| 三视图切换               | ✅   |
-| 按 metadata 精确过滤     | ✅   |
-| 统一选择器搜索             | ✅   |
-| 按分组筛选               | ✅   |
-| 分组与标签组合筛选           | ✅   |
-| 标签智能补全              | ✅   |
-| 可视化过滤构造器            | ✅   |
-| 标签批量应用              | ✅   |
-| 创建与管理分组             | ✅   |
-| 素材加入多个分组            | ✅   |
-| 从分组移除素材             | ✅   |
-| 素材引用角标提示            | ✅   |
-| Tags 自由分类             | ✅   |
-| 系统自动建议 Tags          | ✅   |
-| 自然语言搜索素材            | ✅   |
-| 多文件上传               | ✅   |
-| SHA256 重复上传返回已有素材  | ✅   |
-| 普通上传                | ✅   |
-| 分片上传                | ✅   |
-| 缺失 SHA256 后台补算       | ✅   |
-| 停止分片上传              | ✅   |
-| 上传后刷新列表             | ✅   |
-| 上传后异步处理提示           | ✅   |
-| 查看素材详情              | ✅   |
-| 悬停预览                | ✅   |
-| 双击预览                | ✅   |
-| 下载素材                | ✅   |
-| 重命名素材               | ✅   |
-| 删除素材                | ✅   |
-| 登记画布输出资产            | ✅   |
-| 下载画布资产包             | ✅   |
-| canWrite=false 只读展示 | ✅   |
+第一阶段素材处理通过 SSE 通知前端。
+
+## 24.1 artifact.ready
+
+```text
+event: artifact.ready
+```
+
+```json
+{
+  "artifact_id": "artifact-101",
+  "atomic_task_id": "atomic-task-001",
+  "node_run_id": "node-run-008",
+  "node_id": "generate-image-1",
+  "output_port": "images",
+  "sequence": 0,
+  "artifact_type": "image",
+  "persistence_state": "transient"
+}
+```
+
+## 24.2 artifact.registration_succeeded
+
+```text
+event: artifact.registration_succeeded
+```
+
+```json
+{
+  "artifact_id": "artifact-101",
+  "asset_id": "asset-501",
+  "asset_version_id": "asset-version-501-1"
+}
+```
+
+## 24.3 artifact.registration_failed
+
+```text
+event: artifact.registration_failed
+```
+
+## 24.4 asset_version.processing_started
+
+```text
+event: asset_version.processing_started
+```
+
+## 24.5 asset_version.processing_progressed
+
+```text
+event: asset_version.processing_progressed
+```
+
+## 24.6 asset_version.ready
+
+```text
+event: asset_version.ready
+```
+
+## 24.7 asset_version.ready_with_warnings
+
+```text
+event: asset_version.ready_with_warnings
+```
+
+## 24.8 asset_version.processing_failed
+
+```text
+event: asset_version.processing_failed
+```
+
+Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `resource_version` 和当前用户路由。Task Center 同时发布 AtomicTask 事件，但前端不得以 AtomicTask 成功直接推断 Artifact 或 AssetVersion ready；不同聚合之间不保证严格顺序。
 
 ---
 
-## 9. Web 端呈现策略
-
-### 9.1 页面入口
-
-页面入口为 `/assets`，通过主应用导航或素材入口进入。
-
-页面主区域包含：
-
-```text
-过滤与自然语言搜索
-统一选择器搜索栏
-高级过滤面板
-视图切换器
-分组侧边栏
-上传入口
-个人素材列表
-素材详情弹窗
-素材预览区域或预览弹窗
-右键菜单
-```
-
-### 9.2 素材列表
-
-素材列表只展示当前用户自己的素材。
-
-素材列表支持三种视图模式：
-
-```text
-列表视图：表格形式，每行展示缩略图、名称、大小、类型、日期、标签摘要等，支持列排序
-小图标视图：固定尺寸方形缩略图网格，下方显示名称和少量标签
-大图标视图：较大缩略图卡片，可展示完整标签列表、尺寸、时长等更多信息
-```
-
-视图切换器位于素材列表上方工具栏右侧，使用列表、小网格、大网格图标表达三种模式，当前选中态高亮。视图偏好只在本地记忆，不跨设备同步。
-
-每个素材条目展示：
-
-```text
-素材名称
-文件大小
-创建时间
-媒体类型
-尺寸
-时长
-格式
-来源
-labels
-tags
-所属分组摘要
-引用角标
-thumbnail 状态
-thumbnail 或默认文件图标
-```
-
-列表不直接渲染原始 heavy asset。
-
-图片、视频、音频、PDF、文本等预览需要通过 thumbnail、派生预览或显式 content 读取。
-
-### 9.3 空状态
-
-当素材列表为空时，展示明确空状态，并引导用户上传素材。
-
-### 9.4 搜索与过滤
-
-页面提供精确过滤、统一选择器搜索、自然语言搜索和高级过滤面板。
-
-精确过滤支持：
-
-```text
-media_type
-format
-source_type
-width
-height
-labels
-tags
-group
-```
-
-统一选择器搜索栏支持用户直接输入表达式，例如：
-
-```text
-media=image
-media=image, style=anime
-media=image; media=video
-style in (anime, realistic)
-format notin (jpg, png)
-#人物
-#-汽车
-media=image, #人物, #-汽车
-#人物; #动物
-@group=项目A
-@group=项目A, #人物
-group=项目A
-```
-
-搜索栏需要对表达式错误进行高亮或提示，并提供语法帮助入口。
-
-自然语言搜索需要优先解析为统一选择器或其他结构化查询条件，再按当前用户范围查询素材。明确判定为无结构化意图时，可以降级为对显示名、原始文件名和描述的关键词模糊搜索。例如“包含人物的动漫图片”可解析为 `#人物, style=anime`。
-
-解析服务超时或异常、生成非法选择器或查询执行失败时展示错误，不执行不受控查询，不返回其他用户素材作为 fallback。
-
-高级过滤面板提供简易模式和表达式模式：
-
-```text
-简易模式使用下拉、勾选等控件构造统一选择器
-表达式模式允许直接输入统一选择器
-简易模式与表达式模式需要保持表达式同步
-属性子面板展示 Labels 条件，例如 media、style、dimension
-分类子面板展示 Tags 条件，例如 #人物、#汽车、#提示词
-分组子面板展示用户分组条件，例如 @group=项目A
-当前选中 media=image 时，优先展示 style、dimension 等图片相关 Labels 和图像类 Tags
-当前选中 media=text 时，优先展示 format 等文本相关 Labels 和文本类 Tags
-```
-
-当选中某个分组时，页面显示面包屑：
-
-```text
-所有素材 > 分组名称
-```
-
-用户点击“所有素材”可返回总览。
-
-### 9.5 分组侧边栏
-
-页面左侧提供可折叠分组侧边栏。
-
-侧边栏包含：
-
-```text
-所有素材
-用户自定义分组列表
-新建分组入口
-分组素材数量
-分组颜色标记
-```
-
-分组支持拖拽排序。分组颜色使用名称前的颜色圆点展示，并与 Labels/Tags 的颜色体系区分。
-
-用户可以通过以下方式将素材加入分组：
-
-```text
-拖拽素材卡片到侧边栏分组条目
-右键菜单选择添加到分组
-多选后使用工具栏添加到分组
-素材详情中添加到分组
-```
-
-### 9.6 标签展示与编辑
-
-素材卡片和素材详情区分展示 Labels 与 Tags。
-
-Labels 以 `key: value` 格式展示，例如：
-
-```text
-media: image
-style: anime
-project: my-ai-chat
-```
-
-Tags 以前面带 `#` 的彩色圆角块展示，例如：
-
-```text
-#人物
-#汽车
-#双人
-```
-
-自动生成或自动建议的 Labels/Tags 使用不同样式提示；如果需要表达来源，可在呈现语义中标记为 `source: auto` 或 `source: manual`。用户手动添加的 Labels/Tags 可直接删除。
-
-详情标签编辑区分两个区域：
-
-```text
-属性区域为键值对表格编辑，每行一个 Label
-分类区域为 Tags 输入器，支持回车或逗号分隔添加
-分类区域支持批量粘贴多个 Tags
-输入 Label 键时补全当前用户已使用的键和系统推荐键
-选择 Label 键后补全该键下当前用户已使用的值和系统推荐值
-输入 Tag 时补全当前用户已使用的 Tags 和系统推荐 Tags
-点击 Labels 或 Tags 的删除入口删除单项
-删除 source: auto 的 Labels 或 Tags 时提示可能影响过滤准确性
-```
-
-用户可以直接输入任意新 Labels 或 Tags，新建标签无需管理员预先定义。
-
-### 9.7 上传入口
-
-用户可以一次选择多个文件上传。
-
-上传时可以设置 labels 键值对和 tags 自由分类。
-
-上传前需要计算 SHA256 checksum。若命中可返回的已存在素材且 `sha256` 相同，页面不再继续上传二进制内容，直接使用返回的已存在素材刷新列表。
-
-小文件使用普通上传。
-
-大文件使用分片上传。分片上传需要展示上传进度，并允许用户停止上传。
-
-停止上传后需要清理当前用户自己的上传会话和前端上传状态。
-
-### 9.8 上传后处理提示
-
-上传完成后由事务 outbox 可靠触发异步处理任务，例如：
-
-```text
-缩略图生成
-派生预览生成
-缺失 SHA256 补算
-```
-
-缩略图使用 `asset_id + profile_version` 形成稳定幂等键；异步处理任务不阻塞用户浏览素材列表，失败也不回滚已上传素材。
-
-页面可以展示处理状态或提示用户稍后刷新预览。
-
-### 9.9 素材详情
-
-用户可以通过右键菜单或详情入口查看素材详情。
-
-详情展示：
-
-```text
-显示名
-大小
-媒体类型
-格式
-修改时间
-来源
-对象路径
-preview 状态
-SHA256 checksum
-labels
-tags
-所属分组
-引用来源摘要
-```
-
-详情中的“所属分组”区块以分组标记形式列出当前素材已关联分组，每个分组可移除，并提供添加到分组入口。
-
-详情中的引用来源摘要用于展示当前素材被哪些来源引用，例如被几个画布引用。该摘要只做提示，不替代引用方自己的事实源。
-
-### 9.10 素材预览
-
-用户可以预览自己的图片、视频、音频、文本、PDF 或其他可嵌入内容。
-
-预览要求：
-
-```text
-必须通过当前用户有权访问的 content endpoint 或等价内容读取能力
-不得绕过当前用户所有权校验
-thumbnail 或前端抽帧失败时使用占位图标
-```
-
-视频和 GIF 可在前端抽帧生成悬停预览。已有服务端 thumbnail 时优先使用服务端 thumbnail。
-
-### 9.11 右键菜单
-
-素材右键菜单包含：
-
-```text
-详情
-下载
-重命名
-删除
-添加到分组
-从分组移除
-```
-
-不应展示或启用以下正式能力：
-
-```text
-分享
-复制文件
-移动文件
-全选
-跨用户复用
-```
-
-### 9.12 标签批量应用
-
-用户可以在素材列表中选择多个素材，为选中素材批量添加或覆盖 Labels，也可以批量添加或删除 Tags。
-
-批量标签操作必须遵守当前用户素材范围；不属于当前用户或当前用户不可写的素材不得被修改。批量操作逐项返回成功或失败，单项失败不回滚其他合法素材的标签变更。
-
-### 9.13 分组管理
-
-用户可以创建、重命名、删除和排序自己的分组。
-
-删除分组前必须展示确认提示：
-
-```text
-仅删除分组，素材不会被删除
-```
-
-确认后仅删除分组及分组关联关系，素材仍保留在“所有素材”中。
-
-### 9.14 下载
-
-用户可以下载自己的素材原始内容。
-
-下载只能下载当前用户自己的素材，不得绕过所有权校验。
-
-### 9.15 重命名与删除
-
-重命名只修改当前用户自己的素材显示名。
-
-删除必须经过确认，只删除当前用户自己的素材。删除后刷新当前用户素材列表。
-
-### 9.16 画布输出资产
-
-画布节点输出可以登记为当前用户素材。
-
-登记后的画布输出资产：
-
-```text
-进入当前用户素材集合
-可在 /assets 中浏览
-可包含在当前用户画布资产包下载中
-不进入平台共享素材库
-```
-
-ApplicationRun 产生的 Artifact 使用同一用户素材登记边界：application-platform 提供运行发起用户、输出名、媒体类型和内容引用；素材库负责校验并创建或返回幂等命中的 UserAsset。Artifact 在登记成功前不得被称为 Asset，登记失败不改变 ApplicationRun 的 AtomicTask 终态，但必须保留独立的输出登记失败结果。
-
-### 9.17 只读状态
-
-当 canWrite=false 时，页面可以展示当前用户已有素材，但以下操作需要禁用：
-
-```text
-上传
-停止上传
-重命名
-删除
-登记画布输出资产
-标签新增、修改、删除和批量应用
-分组创建、重命名、删除、排序和分组关联变更
-```
-
-下载是否可用取决于当前用户是否仍具备读取当前素材内容的能力。
+# 25. 删除与回收站
+
+删除 Asset 时：
+
+1. 将状态设为 deleted。
+2. 设置 deleted_at。
+3. 从正常素材列表隐藏。
+4. 保留 AssetVersion。
+5. 保留 AssetRepresentation。
+6. 保留 Blob。
+7. 保留来源关系和引用关系。
+
+永久删除前必须检查：
+
+* 是否被画布引用。
+* 是否被应用版本引用。
+* 是否被 AtomicTask、ApplicationRun 或 CanvasRun 引用。
+* 是否被 Collection 固定版本引用。
+* 是否被其他 AssetRelation 引用。
+* Blob 是否仍被其他 Representation 或 Artifact 使用。
+
+只有 Blob 不再被任何对象引用时，才可以物理删除。
 
 ---
 
-## 10. 状态与异常
+# 26. 前端功能
 
-| 状态/异常                     | 说明                               |
-| ------------------------- | -------------------------------- |
-| asset_list_failed         | 列表或过滤查询失败时展示错误                   |
-| asset_search_parse_failed | 自然语言无法形成合法结构化条件或生成非法选择器时展示错误，不执行关键词降级或不受控查询 |
-| asset_search_dependency_failed | 自然语言解析依赖超时、异常或不可用时展示错误，不执行关键词降级或不受控查询 |
-| asset_selector_invalid | 统一选择器表达式语法错误时展示错误高亮或提示 |
-| asset_selector_too_complex | 统一选择器超过嵌套、谓词或集合值限制时提示用户简化条件 |
-| asset_label_invalid | Label key/value 不满足 trim、长度或字符约束时拒绝写入 |
-| asset_tag_invalid | Tag 不满足 trim、长度或去重约束时拒绝写入 |
-| asset_label_limit_exceeded | 标签变更后 Labels 超过 20 个时拒绝该素材的变更 |
-| asset_tag_limit_exceeded | 标签变更后 Tags 超过 30 个时拒绝该素材的变更 |
-| asset_batch_label_request_invalid | 批量请求为空、素材 ID 重复或 Tag 添加/删除集合冲突时拒绝整个请求 |
-| asset_not_found_or_not_writable | 批量项对应素材不存在、不属于当前用户、已删除或不可写时仅标记该项失败 |
-| asset_upload_failed       | 普通上传或分片上传失败时展示错误                 |
-| asset_upload_stopped      | 用户停止上传时清理上传状态，并取消当前用户上传会话        |
-| asset_upload_duplicate    | 上传前 SHA256 命中已存在素材，跳过上传并返回已有素材   |
-| asset_sha256_backfill_failed | 缺失 SHA256 补算失败，记录失败原因但不影响素材可见性 |
-| asset_not_found           | 素材不存在或不属于当前用户时给出业务错误             |
-| asset_content_forbidden   | 当前用户无权访问 content 或 thumbnail 时拒绝 |
-| asset_preview_unavailable | thumbnail 或前端抽帧失败时使用占位图标，不阻塞列表浏览 |
-| asset_delete_confirmed    | 删除必须经过确认                         |
-| artifact_registration_failed | ApplicationRun Artifact 因内容、所有权或媒体信息校验失败而未登记为 UserAsset |
-| artifact_already_registered | 重复登记同一 Artifact 时返回既有 UserAsset，不创建重复素材 |
+## 26.1 素材库首页
+
+支持：
+
+* 网格视图。
+* 列表视图。
+* 类型筛选。
+* Collection 筛选。
+* Label 筛选。
+* Tag 筛选。
+* 来源筛选。
+* 创建时间筛选。
+* 批量上传。
+* 批量加入 Collection。
+* 批量设置 Label。
+* 批量添加 Tag。
+* 批量归档。
+* 批量删除。
+
+## 26.2 素材详情
+
+标签页：
+
+```text
+概览
+版本
+来源关系
+使用位置
+技术信息
+处理记录
+```
+
+## 26.3 任务制品区
+
+每个 Artifact 支持：
+
+* 预览。
+* 下载。
+* 保存为新 Asset。
+* 追加为已有 AssetVersion。
+* 加入 Collection。
+* 作为画布输入。
+* 查看来源任务和节点。
+* 删除临时结果。
+
+## 26.4 画布素材选择器
+
+支持：
+
+* 按名称搜索。
+* 按素材类型过滤。
+* 按 Collection 过滤。
+* 按 Label 过滤。
+* 按 Tag 过滤。
+* 选择当前版本。
+* 固定历史版本。
 
 ---
 
-## 11. 跨域验收标准
+# 27. 第一阶段范围
 
-### AC-USER-ASSET-41-01
+第一阶段实现：
 
-当 ApplicationRun 已产生属于运行发起用户、内容可读取且媒体信息合法的 Artifact 时，首次登记创建归属于该用户的 UserAsset；重复登记返回同一 UserAsset，不产生重复记录。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59～63。
+1. Asset。
+2. AssetVersion。
+3. AssetRepresentation。
+4. Blob。
+5. StorageBackend。
+6. StorageAdapter 接口。
+7. LocalStorageAdapter。
+8. 图片素材。
+9. 视频素材。
+10. 音频素材。
+11. 文本素材。
+12. 文档素材。
+13. 3D 模型素材。
+14. Prompt。
+15. PromptTemplate。
+16. 本地文件上传。
+17. 批量上传。
+18. 基础元数据提取。
+19. 必要缩略图生成。
+20. 必要预览文件生成。
+21. 必要播放兼容文件生成。
+22. 3D 多文件 package。
+23. package manifest。
+24. Collection。
+25. Label。
+26. Tag。
+27. PostgreSQL 基础搜索。
+28. Artifact 受控上传、处理和临时保留。
+29. Artifact 手动或自动登记。
+30. Artifact 创建新 Asset 或追加为新版本。
+31. AssetRelation。
+32. AssetReference。
+33. latest 和 pinned 引用。
+34. 来源链。
+35. 使用位置。
+36. 回收站。
+37. Blob 引用检查。
+38. Artifact 与 AssetVersion SSE 进度通知。
+39. 与任务中心 Representation build DAG 和 backfill RECONCILE 集成。
 
-### AC-USER-ASSET-41-02
+---
 
-当 Artifact 内容缺失、不可读取、所有者不一致或媒体信息非法时，素材库拒绝登记且不创建空 UserAsset；application-platform 保留登记失败原因；素材库不得改写 AtomicTask 历史状态。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59、BR-USER-ASSET-62～63。
+# 28. 后续阶段范围
+
+后续阶段实现：
+
+## 28.1 存储
+
+* S3StorageAdapter。
+* MinIOStorageAdapter。
+* 客户端直传。
+* Presigned URL。
+* 分片上传。
+* 跨存储迁移。
+* 多副本。
+* 冷热分层。
+* 生命周期管理。
+
+## 28.2 Representation
+
+* 图片 Web 优化。
+* 超大图分块。
+* 视频多清晰度播放。
+* 视频代理文件。
+* 视频中间母版。
+* 动态预览。
+* Storyboard Sheet。
+* 音频波形。
+* 音频频谱。
+* 文档 HTML 渲染。
+* 文档逐页图片。
+* 文本和 Prompt 多格式导出。
+* 3D GLB 标准化。
+* 3D Web 优化。
+* 3D LOD。
+* 3D 转台预览。
+* 3D 线框预览。
+* 复合 RepresentationComponent。
+
+## 28.3 智能能力
+
+* AI 自动标签。
+* AI 自动分类。
+* 图片向量。
+* 文本向量。
+* 以图搜图。
+* 自然语言检索。
+* 视频镜头识别。
+* 音频自动转录。
+* 文档内容理解。
+
+## 28.4 Agent
+
+* 自动创建 Collection。
+* 自动整理项目素材。
+* 自动推荐 Label 和 Tag。
+* 自动查找角色参考图。
+* 自动为画布选择输入素材。
+* 自动建立素材来源关系。
+* 自动识别重复素材。
+* 自动推荐归档和清理。
+
+---
+
+# 29. 第一阶段验收标准
+
+## 29.1 上传
+
+* 用户可以上传支持的素材文件。
+* 上传内容通过 LocalStorageAdapter 写入本地存储。
+* 业务代码不直接依赖绝对路径。
+* 上传完成后创建 Asset、AssetVersion、Blob 和 original Representation。
+* 文本和 Prompt 可以使用 canonical 内容创建。
+
+## 29.2 Representation
+
+* 图片能够生成 thumbnail。
+* 不兼容浏览器的图片能够生成 preview。
+* 视频能够在必要时生成 playback。
+* 视频能够生成 thumbnail。
+* 音频能够在必要时生成 playback。
+* 文档能够生成 preview 和 thumbnail。
+* 3D 模型能够保留 original 或 package。
+* package 能够记录 manifest。
+* 非必要 Representation 不在第一阶段生成。
+
+## 29.3 版本
+
+* 修改素材内容会创建新 AssetVersion。
+* 历史版本可查看。
+* 历史版本不会被覆盖。
+* Asset 可以切换 current_version_id。
+* 正式运行记录具体 AssetVersion。
+
+## 29.4 Artifact
+
+* 受信任的 ApplicationExecutor、画布执行器或 AtomicTask Worker 可以幂等创建 Artifact。
+* Artifact 可以保持临时状态。
+* Artifact 可以保存为新 Asset。
+* Artifact 可以追加为已有 Asset 的新版本。
+* 保存后保留 AtomicTask、TaskAttempt、ApplicationRun、CanvasRun 和节点来源。
+* Artifact 受控内容不包含 Provider 凭证、任意 URL 或原始响应。
+* Artifact 登记后同步创建 original Representation，并异步补齐需要的派生 Representation。
+
+## 29.5 Collection 和标签
+
+* Asset 可以加入多个 Collection。
+* Collection 删除不删除 Asset。
+* 用户可以维护 Label。
+* 用户可以维护 Tag。
+* 用户可以批量加入 Collection、设置 Label 和 Tag。
+
+## 29.6 画布和应用
+
+* 画布节点引用 Asset，而不是路径。
+* 节点支持 latest 和 pinned。
+* AtomicTask 或所属运行投影记录 resolved_asset_version_id。
+* 素材详情能够查看使用位置。
+
+## 29.7 删除
+
+* Asset 可以移入回收站。
+* Asset 可以恢复。
+* 永久删除前执行引用检查。
+* Blob 仍被引用时不会物理删除。
+
+## 29.8 存储扩展性
+
+* 所有文件访问经过 StorageAdapter。
+* LocalStorageAdapter 可以独立替换。
+* StorageBackend 数据模型不绑定本地磁盘字段。
+* 后续增加 S3 或 MinIO 不需要修改 Asset 领域模型。
+
+---
+
+# 30. 稳定业务规则编号
+
+以下编号来自已发布的用户素材 S1，继续保持稳定。新模型中的 `Asset` 即当前用户范围内的 UserAsset。
+
+1. `BR-USER-ASSET-01`：访问 `/assets` 依赖系统基础登录态。
+2. `BR-USER-ASSET-02`：素材、上传会话、派生内容和运行输出均属于当前用户个人范围。
+3. `BR-USER-ASSET-03`：用户只能读取、上传、修改、下载和删除自己的素材。
+4. `BR-USER-ASSET-04`：一个用户的素材不得被其他用户读取、复用、修改、下载或删除。
+5. `BR-USER-ASSET-05`：素材列表只展示当前用户自己的素材。
+6. `BR-USER-ASSET-06`：列表展示名称、大小、时间、媒体类型、尺寸、格式、来源、标签和处理状态等 metadata。
+7. `BR-USER-ASSET-07`：列表不直接渲染原始大型内容，预览使用受控 Representation 或显式内容读取。
+8. `BR-USER-ASSET-08`：精确过滤支持 media_type、format、source_type、尺寸、labels 和 tags。
+9. `BR-USER-ASSET-09`：自然语言搜索优先解析为统一选择器或结构化条件，并限制在当前用户范围。
+10. `BR-USER-ASSET-10`：只有明确无结构化意图时才能关键词降级；解析或查询异常不得执行不受控查询。
+11. `BR-USER-ASSET-11`：用户可以一次选择多个文件上传。
+12. `BR-USER-ASSET-12`：上传时可以设置 Labels 和 Tags。
+13. `BR-USER-ASSET-13`：小文件使用普通上传。
+14. `BR-USER-ASSET-14`：超过阈值的文件使用分片上传。
+15. `BR-USER-ASSET-15`：分片上传包含 checksum、初始化、逐片上传和完成阶段。
+16. `BR-USER-ASSET-16`：用户可停止进行中的分片上传。
+17. `BR-USER-ASSET-17`：停止上传时取消当前用户会话并清理临时状态。
+18. `BR-USER-ASSET-18`：上传完成后刷新当前用户素材列表。
+19. `BR-USER-ASSET-19`：上传或版本登记事务必须写 Representation 请求 outbox；重复事件不得创建重复任务，派生失败不回滚原始内容。
+20. `BR-USER-ASSET-20`：素材详情展示 metadata、版本、Representation、处理状态和 SHA256。
+21. `BR-USER-ASSET-21`：预览必须通过当前用户有权访问的内容读取能力。
+22. `BR-USER-ASSET-22`：下载只能读取当前用户自己的素材内容。
+23. `BR-USER-ASSET-23`：列表、预览和下载均不得绕过所有权校验。
+24. `BR-USER-ASSET-24`：重命名只修改当前用户自己的素材名称。
+25. `BR-USER-ASSET-25`：删除需要用户确认，只删除当前用户自己的素材。
+26. `BR-USER-ASSET-26`：删除后刷新当前用户素材列表。
+27. `BR-USER-ASSET-27`：已有服务端 thumbnail 时优先使用服务端 thumbnail。
+28. `BR-USER-ASSET-28`：可选 thumbnail/preview 失败时使用占位，不阻塞素材浏览。
+29. `BR-USER-ASSET-29`：画布节点输出可登记为当前用户素材。
+30. `BR-USER-ASSET-30`：画布资产包只包含当前用户有权访问的素材。
+31. `BR-USER-ASSET-31`：画布输出不进入平台共享素材库。
+32. `BR-USER-ASSET-32`：canWrite=false 时只读展示并禁用写操作。
+33. `BR-USER-ASSET-33`：第一阶段不引入平台管理员共享素材语义。
+34. `BR-USER-ASSET-34`：未实现的分享、复制和移动能力不得显示为可用。
+35. `BR-USER-ASSET-35`：Labels/Tags 保持已发布的 trim、长度、保留字符、大小写、去重和数量上限规则。
+36. `BR-USER-ASSET-36`：用户可维护 Labels/Tags，并区分 manual 与 auto 来源。
+37. `BR-USER-ASSET-37`：统一选择器支持 Label、Tag、分组、AND/OR、括号和已发布复杂度上限。
+38. `BR-USER-ASSET-38`：Labels/Tags 输入支持当前用户数据和系统推荐值补全。
+39. `BR-USER-ASSET-39`：过滤 UI 可以构建和编辑统一选择器。
+40. `BR-USER-ASSET-40`：批量 Labels/Tags 逐项提交，单项失败不回滚其他项。
+41. `BR-USER-ASSET-41`：上传前计算原始内容 SHA256，不新增同义 shasum 字段。
+42. `BR-USER-ASSET-42`：相同 SHA256 命中可见既有素材时可跳过二进制上传。
+43. `BR-USER-ASSET-43`：周期任务为缺失 SHA256 的历史素材补算 checksum，失败不影响可见性。
+44. `BR-USER-ASSET-44`：素材列表支持三种视图，偏好只在本地记忆。
+45. `BR-USER-ASSET-45`：列表视图使用可排序表格展示 metadata。
+46. `BR-USER-ASSET-46`：小图标视图用于快速视觉扫描。
+47. `BR-USER-ASSET-47`：大图标视图展示更多视觉内容和 metadata。
+48. `BR-USER-ASSET-48`：三种视图只改变呈现，不改变查询和批量能力。
+49. `BR-USER-ASSET-49`：素材分组属于当前用户，不跨用户共享。
+50. `BR-USER-ASSET-50`：删除分组不删除素材。
+51. `BR-USER-ASSET-51`：素材与分组是多对多关系，移除关联不删除素材。
+52. `BR-USER-ASSET-52`：分组条件可以与 Labels/Tags 统一组合查询。
+53. `BR-USER-ASSET-53`：分组内默认按加入时间排序，并支持手动排序。
+54. `BR-USER-ASSET-54`：重复加入同一分组是幂等操作。
+55. `BR-USER-ASSET-55`：同一用户范围内分组名 trim 后唯一。
+56. `BR-USER-ASSET-56`：素材详情可以添加或移除分组关联。
+57. `BR-USER-ASSET-57`：引用摘要只用于提示，不是强一致权限或依赖图事实源。
+58. `BR-USER-ASSET-58`：外部领域可以最终一致地维护素材引用摘要。
+59. `BR-USER-ASSET-59`（deprecated，由 `BR-USER-ASSET-64`、`BR-USER-ASSET-65` 替代）：旧规则将 Artifact 定义为 application-platform 持有的待登记输出。
+60. `BR-USER-ASSET-60`（deprecated，由 `BR-USER-ASSET-66` 替代）：旧规则只允许 ApplicationRun 发起用户成为 Artifact 登记 owner。
+61. `BR-USER-ASSET-61`（deprecated，由 `BR-USER-ASSET-67` 替代）：旧规则只定义同一 Artifact 的 UserAsset 登记幂等。
+62. `BR-USER-ASSET-62`（deprecated，由 `BR-USER-ASSET-68` 替代）：旧规则要求登记失败由 application-platform Artifact 保存。
+63. `BR-USER-ASSET-63`（deprecated，由 `BR-USER-ASSET-64` 替代）：旧规则将 Artifact 状态事实归 application-platform。
+64. `BR-USER-ASSET-64`：asset-library 是 Artifact 身份、受控内容、处理、保留、登记状态和事件的唯一事实源；ApplicationPlatform、画布和 Task Center 只保存引用或只读投影。
+65. `BR-USER-ASSET-65`：Artifact 处理状态与登记状态独立；只有 ready Artifact 可登记，登记失败不得修改 AtomicTask 终态。
+66. `BR-USER-ASSET-66`：Artifact owner 来自受信 producer 对应的当前用户或 AtomicTask 创建用户，不得归属 Worker、EngineInstance、管理员或其他用户。
+67. `BR-USER-ASSET-67`：Artifact producer key、登记和 Representation 写入均必须幂等；自动 TaskAttempt 重试不得创建重复逻辑制品。
+68. `BR-USER-ASSET-68`：Artifact 内容必须通过受控上传交付，不得保存 Provider 凭证、任意 URL、私网地址或原始响应。
+69. `BR-USER-ASSET-69`：Artifact 登记事务复用 Blob 创建 original Representation，并写可靠 Representation 请求 outbox。
+70. `BR-USER-ASSET-70`：asset-library 根据媒体类型、policy 和 profile version 决定 expected Representation；Task Center 不发明媒体处理策略。
+71. `BR-USER-ASSET-71`：首次派生使用幂等 DAGTaskGroup，生成节点使用稳定 childKey，Task Center 只保存小型结果引用。
+72. `BR-USER-ASSET-72`：必需派生失败使 AssetVersion failed，可选派生失败使其 ready_with_warnings，必需项完成使其 ready。
+73. `BR-USER-ASSET-73`：系统必须维护唯一 `asset-library.representation-backfill` SYSTEM RECONCILE 计划，健康项不物化任务。
+74. `BR-USER-ASSET-74`：backfill 按稳定 checkpoint 分块扫描 expected set，只为缺失、可重试或可重建项创建幂等 AtomicTask。
+75. `BR-USER-ASSET-75`：不可恢复条目标记稳定原因，巡检使用 action 上限、退避和最大重试防止无限重建。
+76. `BR-USER-ASSET-76`：Artifact 和 AssetVersion 状态变化递增 resource_version 并同事务写 outbox；不同聚合不保证严格顺序。
+77. `BR-USER-ASSET-77`：素材 UI 以 AssetVersion 事实和事件判断 ready，不得以 AtomicTask 成功直接推断。
+78. `BR-USER-ASSET-78`：transient Artifact 不生成 AssetRepresentation；临时预览必须作为 Artifact preview 独立表达。
+79. `BR-USER-ASSET-79`：Artifact 内容完成事务必须可靠触发幂等 `asset-library.artifact.process` AtomicTask；Task Center 不直接读写 Artifact 内容或状态。
+
+# 31. 稳定用户故事编号
+
+| 编号 | 用户故事 |
+| --- | --- |
+| `US-USER-ASSET-01` | 查看个人素材列表 |
+| `US-USER-ASSET-02` | 查看空素材列表 |
+| `US-USER-ASSET-03` | 按精确条件过滤素材 |
+| `US-USER-ASSET-04` | 使用自然语言搜索素材 |
+| `US-USER-ASSET-05` | 多文件上传 |
+| `US-USER-ASSET-06` | 普通上传 |
+| `US-USER-ASSET-07` | 分片上传 |
+| `US-USER-ASSET-08` | 停止分片上传 |
+| `US-USER-ASSET-09` | 上传后异步处理且不阻塞浏览 |
+| `US-USER-ASSET-10` | 查看素材详情 |
+| `US-USER-ASSET-11` | 素材悬停预览 |
+| `US-USER-ASSET-12` | 双击预览素材内容 |
+| `US-USER-ASSET-13` | 下载自己的素材 |
+| `US-USER-ASSET-14` | 重命名自己的素材 |
+| `US-USER-ASSET-15` | 删除自己的素材 |
+| `US-USER-ASSET-16` | 登记画布输出素材 |
+| `US-USER-ASSET-17` | 下载有权访问的画布资产包 |
+| `US-USER-ASSET-18` | 只读状态查看素材 |
+| `US-USER-ASSET-19` | 维护自由键值 Labels |
+| `US-USER-ASSET-20` | 使用统一选择器搜索 |
+| `US-USER-ASSET-21` | 使用标签智能补全 |
+| `US-USER-ASSET-22` | 使用可视化过滤构造器 |
+| `US-USER-ASSET-23` | 批量打标并查看逐项结果 |
+| `US-USER-ASSET-24` | 使用 OR 组合查询 |
+| `US-USER-ASSET-25` | 修正自动标签 |
+| `US-USER-ASSET-26` | 为图片添加描述分类 |
+| `US-USER-ASSET-27` | 按自由 Tag 过滤 |
+| `US-USER-ASSET-28` | 混合 Label、Tag 和排除条件查询 |
+| `US-USER-ASSET-29` | 管理大量描述 Tags |
+| `US-USER-ASSET-30` | 获取系统推荐 Tags |
+| `US-USER-ASSET-31` | 重复上传返回已有素材 |
+| `US-USER-ASSET-32` | 周期补算缺失 SHA256 |
+| `US-USER-ASSET-33` | 切换列表视图模式 |
+| `US-USER-ASSET-34` | 创建与管理分组 |
+| `US-USER-ASSET-35` | 将素材加入分组 |
+| `US-USER-ASSET-36` | 按分组浏览素材 |
+| `US-USER-ASSET-37` | 从分组移除素材 |
+| `US-USER-ASSET-38` | 分组与标签组合筛选 |
+| `US-USER-ASSET-39` | 在素材详情管理分组 |
+| `US-USER-ASSET-40` | 查看素材引用摘要 |
+| `US-USER-ASSET-41` | 将应用运行输出登记为当前用户素材 |
+
+## US-USER-ASSET-42 管理任务制品
+
+作为运行发起用户，我希望应用、画布或 AtomicTask 产生的多个 Artifact 能够独立上传、查看、处理和过期，并保持与来源运行的追溯关系。
+
+- Artifact 使用稳定 producer key 幂等创建。
+- 自动重试不创建重复制品，手动重试可以形成新制品。
+- 任何制品访问都限制在 owner 范围，内容交付不暴露 Provider 凭证或任意 URL。
+
+## US-USER-ASSET-43 自动生成素材表现形式
+
+作为素材用户，我希望 Artifact 登记为 AssetVersion 后自动生成适用的 thumbnail、preview、playback 或 manifest，并能区分完整成功和带警告可用。
+
+- original 在登记事务中复用 Blob 创建。
+- 派生任务按媒体策略组成幂等 DAG，重复事件不产生重复 Representation。
+- 必需项和可选项按业务规则汇总 AssetVersion 状态。
+
+## US-USER-ASSET-44 自动补全缺失表现形式
+
+作为系统管理员，我希望系统周期扫描缺失或损坏的 AssetRepresentation，只为可修复缺口创建任务，并可查看巡检摘要。
+
+- SYSTEM RECONCILE 使用稳定 checkpoint、禁止重叠并限制每轮扫描和修复动作。
+- 健康素材不创建任务，不可恢复项不会无限重试。
+- 修复成功后 AssetVersion 可以从 ready_with_warnings 提升为 ready。
+
+## US-USER-ASSET-45 实时查看制品和素材处理
+
+作为素材用户，我希望 Artifact 与 AssetVersion 状态实时更新，同时任务事件和素材事实乱序到达时页面仍保持正确。
+
+- Artifact 与 AssetVersion 分别按 resource_version 幂等投影。
+- 页面不通过 AtomicTask 成功推断素材 ready。
+
+## US-USER-ASSET-46 自动处理上传制品
+
+作为运行发起用户，我希望 Artifact 完成受控上传后自动校验、提取媒体信息并进入 ready 或 failed，使制品可以安全预览和登记。
+
+- 重复 complete 事件返回同一处理 AtomicTask。
+- Artifact 处理任务只返回引用，不向 Task Center 写入媒体正文。
+- Artifact 状态由 asset-library 按 resource_version 单调更新。

@@ -501,8 +501,8 @@
   owning_module: application-run
   range: 130800-130999
   retryable: true
-  deprecated: false
-  related_rules: [BR-AIAPP-150]
+  deprecated: true
+  related_rules: [BR-AIAPP-150, BR-AIAPP-181, BR-AIAPP-184]
   related_user_stories: [US-AIAPP-043]
 
 - code: ERR_AIAPP_PERMISSION_DENIED
@@ -851,8 +851,8 @@
   owning_module: application-run
   range: 130800-130999
   retryable: true
-  deprecated: false
-  related_rules: [BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-180]
+  deprecated: true
+  related_rules: [BR-AIAPP-177, BR-AIAPP-181]
   related_user_stories: [US-AIAPP-050]
 
 - code: ERR_AIAPP_ARTIFACT_STATE_INVALID
@@ -864,6 +864,6 @@
   owning_module: application-run
   range: 130800-130999
   retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-177, BR-AIAPP-178]
+  deprecated: true
+  related_rules: [BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-181]
   related_user_stories: [US-AIAPP-050]

@@ -6,7 +6,7 @@
 
 | 模块 | 职责 | 不负责 | S1 引用 |
 | --- | --- | --- | --- |
-| source-consumer | 消费 task-center 与 application-platform 可靠事件，校验所有者、版本和必需字段 | 不直接读 Conductor 或 Provider 事件 | BR-SSE-009..012；US-SSE-002、003 |
+| source-consumer | 消费 task-center、asset-library 与 application-platform 可靠事件，校验所有者、版本和必需字段 | 不直接读 Conductor 或 Provider 事件 | BR-SSE-009..012、017、018；US-SSE-002、003 |
 | event-projector | 将上游事件映射为稳定客户端 event_type 和统一信封 | 不创造业务状态或改写上游资源 | BR-SSE-004、006、010、011、015 |
 | user-event-store | 按用户持久短期可重放 UserEvent，分配有序 event_id，执行保留清理 | 不保存长期业务历史或正文 | BR-SSE-005..008、012 |
 | event-gateway | 鉴权、建立 SSE、心跳、格式化、连接限制、慢客户端和实例排空 | 不执行业务命令，不为单个资源创建专属连接 | BR-SSE-001..003、013、014 |
@@ -23,8 +23,9 @@ SSE 只消费以下已持久业务事实的可靠事件：
 | task-center | `atomic_task_status_changed` | 生成 AtomicTask 状态、进度和终态事件 |
 | task-center | `task_attempt_status_changed` | 生成 TaskAttempt 创建、开始和终态事件 |
 | task-center | `task_group_status_changed` | 按 `group_type` 生成 TaskGroup 或 DAGTaskGroup 事件 |
-| application-platform | `application_artifact_processing_changed` | 生成 Artifact 创建、传输、处理、预览、ready、失败和删除事件 |
-| application-platform | `application_artifact_registration_changed` | 生成 Artifact 登记成功或失败事件 |
+| asset-library | `artifact_created`、`artifact_processing_changed` | 生成 Artifact 创建、传输、处理、预览、ready、失败和删除事件 |
+| asset-library | `artifact_registration_changed` | 生成 Artifact 登记成功或失败事件 |
+| asset-library | `asset_version_processing_changed` | 生成 AssetVersion processing、ready、ready_with_warnings 和 failed 事件 |
 
 上游事件必须提供稳定 source_event_id、所有者、聚合 ID、`resource_version`、发生时间和受控 payload。缺少必需字段的事件进入可观测错误与重试/死信边界，不允许猜测所有者。
 
@@ -35,6 +36,7 @@ SSE 只消费以下已持久业务事实的可靠事件：
 - `event_sequence` 只是当前用户事件流的恢复顺序，不表示跨聚合业务因果顺序。
 - 投影与 UserEvent 写入必须原子完成；实时广播失败后仍可从 UserEvent 重放。
 - Artifact 处理与登记使用同一 Artifact `resource_version` 序列，但客户端独立更新 processing/registration 字段；`preview_ready` 不提前设置 processing_status=ready。
+- AssetVersion 使用独立 `resource_version`；Artifact、AssetVersion 与 AtomicTask 不同聚合间不保证严格顺序，前端不得从任务终态推断素材 ready。
 
 ## 4. SSE 输出
 
@@ -61,7 +63,7 @@ SSE 只消费以下已持久业务事实的可靠事件：
 ## 7. 跨域边界
 
 - task-center 拥有 AtomicTask、TaskAttempt、TaskGroup 和 DAGTaskGroup；SSE 只消费 S2 事件，不读运行时数据库或 API。
-- application-platform 拥有 Artifact 处理状态；asset-library 拥有 UserAsset 与登记成功事实。
+- asset-library 拥有 Artifact、Asset、AssetVersion、AssetRepresentation 和对应生命周期事件；application-platform 只拥有 ApplicationRun 的 Artifact 引用投影。
 - identity 提供认证主体和权限校验；SSE 不维护用户、租户或工作区生命周期。
 - 业务命令和完整资源查询回到所属领域 HTTP API；SSE 不定义取消、重试、登记、下载或删除命令。
 

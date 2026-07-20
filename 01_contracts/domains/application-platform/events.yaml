@@ -109,34 +109,27 @@ application_run_projection_changed:
   related_rules: [BR-AIAPP-143]
   related_user_stories: [US-AIAPP-043]
 
-application_artifact_processing_changed:
-  producer: application-platform.artifact-processor
-  consumers: [application-platform.application-run-view, sse-event-projector, audit-service]
-  trigger_condition: Artifact 已创建，处理状态变化，预览首次就绪，或 Artifact 进入 deleted。
+application_run_artifact_ref_changed:
+  producer: application-platform.application-run
+  consumers: [application-platform.application-run-view, audit-service]
+  trigger_condition: ApplicationRun 首次绑定 Artifact，或消费 asset-library 更高 resource_version 后更新只读引用投影。
   payload:
     artifact_id: string
     application_run_id: string
     atomic_task_id: string
-    owner_user_id: string
     output_key: string
-    change_type: string(created|transferring|processing|preview_ready|ready|failed|deleted)
-    processing_status: string(created|transferring|processing|ready|failed|deleted)
-    registration_status: string(pending|registered|failed)
-    processing_progress: number|null
-    processing_phase: string|null
-    preview_available: boolean
-    preview_ref: string|null
-    thumbnail_ref: string|null
+    sequence: integer
     media_type: string
-    size_bytes: integer|null
-    processing_error_code: string|null
-    processing_retryable: boolean
-    resource_version: integer
+    artifact_processing_status: string(created|transferring|processing|ready|failed|deleted)
+    artifact_registration_status: string(pending|registered|failed)
+    asset_id: string|null
+    asset_version_id: string|null
+    artifact_resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: artifact_id:resource_version:change_type
-  retry_policy: 由 Artifact 事务 outbox 持续重试，消费者丢弃相同或更低 resource_version。
-  failure_policy: Artifact 表是处理事实源；发布失败不回滚 Artifact 或已终态 AtomicTask，不在事件中携带正文、凭证或长期公开 URL。
-  related_rules: [BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179, BR-AIAPP-180]
+  idempotency_key: application_run_id:artifact_id:artifact_resource_version
+  retry_policy: application-platform outbox 重试；消费者按 artifact_resource_version 幂等。
+  failure_policy: 此事件只表达 ApplicationRun 输出关联，不是 Artifact 生命周期事实；失败可从 asset-library 事件重建，不向 SSE 转发竞争状态。
+  related_rules: [BR-AIAPP-181, BR-AIAPP-182, BR-AIAPP-184]
   related_user_stories: [US-AIAPP-050]
 
 provider_capability_correction_required:
@@ -157,29 +150,6 @@ provider_capability_correction_required:
   failure_policy: 运行按外部平台失败结束；维护人员核实文档并通过新 revision 与重启修正。
   related_rules: [BR-AIAPP-130, BR-AIAPP-138]
   related_user_stories: [US-AIAPP-039, US-AIAPP-043]
-
-application_artifact_registration_changed:
-  producer: application-platform.application-run
-  consumers: [application-platform.application-run-view, sse-event-projector, audit-service]
-  trigger_condition: Artifact 的 UserAsset 登记状态变为 registered 或 failed。
-  payload:
-    artifact_id: string
-    application_run_id: string
-    atomic_task_id: string
-    owner_user_id: string
-    output_key: string
-    processing_status: string(ready|deleted)
-    registration_status: string
-    asset_id: string|null
-    registration_error_code: string|null
-    registration_retryable: boolean
-    resource_version: integer
-    occurred_at: string(date-time)
-  idempotency_key: artifact_id:registration_status:resource_version
-  retry_policy: 事件失败后按 Artifact resource_version 重试。
-  failure_policy: Artifact 表是登记状态事实源；事件失败不改变 AtomicTask 终态，也不重复创建 UserAsset。
-  related_rules: [BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-180]
-  related_user_stories: [US-AIAPP-043, US-AIAPP-050]
 
 comfyui_workflow_api_converted:
   producer: application-platform.comfyui-workflow

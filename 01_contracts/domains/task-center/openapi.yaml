@@ -495,7 +495,7 @@ components:
             progress: {type: number, minimum: 0, maximum: 1}
             resource_version: {type: integer, minimum: 0}
             current_attempt: {type: integer, minimum: 0}
-            output: {type: object, additionalProperties: true}
+            output: {$ref: '#/components/schemas/TaskOutput'}
             last_error: {$ref: '#/components/schemas/TaskError'}
             retry_of_task_id: {type: string}
             root_task_id: {type: string}
@@ -518,6 +518,32 @@ components:
       properties:
         total: {type: integer}
         items: {type: array, items: {$ref: '#/components/schemas/AtomicTask'}}
+    ArtifactRef:
+      type: object
+      additionalProperties: false
+      required: [artifact_id, output_key, sequence]
+      properties:
+        artifact_id: {type: string}
+        output_key: {type: string}
+        sequence: {type: integer, minimum: 0}
+    RepresentationRef:
+      type: object
+      additionalProperties: false
+      required: [asset_version_id, representation_id, representation_type, profile_version]
+      properties:
+        asset_version_id: {type: string}
+        representation_id: {type: string}
+        blob_id: {type: string, nullable: true}
+        representation_type: {type: string}
+        profile: {type: string}
+        profile_version: {type: string}
+    TaskOutput:
+      type: object
+      description: 只允许结构化摘要和小型引用，不得包含媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
+      properties:
+        artifact_refs: {type: array, items: {$ref: '#/components/schemas/ArtifactRef'}}
+        representation_refs: {type: array, items: {$ref: '#/components/schemas/RepresentationRef'}}
+        result: {type: object, additionalProperties: true}
     TaskAttempt:
       type: object
       required: [id, atomic_task_id, attempt_no, status, retryable, resource_version, created_at, updated_at]
@@ -807,6 +833,8 @@ components:
         findings: {type: integer, minimum: 0}
         actions_created: {type: integer, minimum: 0}
         deferred: {type: integer, minimum: 0}
+        irreparable: {type: integer, minimum: 0}
+        repaired: {type: integer, minimum: 0}
         duration_ms: {type: integer, minimum: 0}
         checkpoint_advanced: {type: boolean}
         cycle_completed: {type: boolean}

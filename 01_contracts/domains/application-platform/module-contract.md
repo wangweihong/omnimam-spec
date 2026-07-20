@@ -15,7 +15,7 @@
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
 | application | 管理 private/global Application、独立能力开关与不可变语义版本 | 不原地修改已发布版本，普通用户不得设置 global | US-AIAPP-042；BR-AIAPP-142、147、148 |
 | runtime-form | 按联合能力来源计算 ApplicationVersion、Engine 约束和权限的字段交集、修正与违规 | 不持久化 RuntimeFormSchema，不信任前端选项范围 | US-AIAPP-043；BR-AIAPP-135、137、142、145、146 |
-| application-run | 创建不可变执行快照、幂等创建 AtomicTask、维护状态投影、Artifact 处理生命周期和登记状态 | 不拥有 AtomicTask 状态机、Attempt 或重试；不拥有 UserAsset | US-AIAPP-043、050；BR-AIAPP-138、143、149、150、177..180 |
+| application-run | 创建不可变执行快照、幂等创建 AtomicTask、维护状态投影和 ApplicationRun 输出到 Artifact 的引用映射 | 不拥有 AtomicTask 状态机、Artifact 内容/生命周期、Asset 或 Representation | US-AIAPP-043、050；BR-AIAPP-138、143、149、150、181..184 |
 
 ## 2. ProviderCapability 启动契约
 
@@ -66,9 +66,9 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - ApplicationRun 固定联合能力来源 revision、EngineInstance、模板版本、输入和输出映射快照；ProviderCapability 字段只在 provider_capability 分支存在。
 - AtomicTask 是执行状态事实源，ApplicationRun 只接受更高 `task_resource_version` 的投影。
 - ApplicationRun 先以 `task_creation_status=pending` 保存，再使用 `application_run_id + idempotency_key` 调用 task-center；成功绑定唯一 AtomicTask，失败保留快照并可恢复。
-- Artifact 由 application-platform 按 `application_run_id + output_key` 唯一保存；处理状态为 `created/transferring/processing/ready/failed/deleted`，预览就绪独立记录，只有 ready 且有 `content_ref` 时可请求登记。
-- asset-library 只负责将 ready Artifact 幂等登记为 UserAsset；登记失败不改变 AtomicTask 终态，Artifact 删除不级联删除 UserAsset。
-- Artifact 每次处理、预览或登记变化与 outbox 同事务提交；SSE 投影按 `artifact_id + resource_version` 幂等，事件不携带正文、凭证或长期公开 URL。
+- Artifact 由 asset-library 按稳定 producer key 保存；application-platform 只维护 `application_run_id + output_key + sequence -> artifact_id` 引用和更高 resource_version 的只读投影。
+- ApplicationExecutor 负责 Provider 交互和下载，只能向 asset-library 交付字节流、受控上传会话或可信存储引用；不得交付凭证、任意 URL、私网地址或原始响应。
+- Artifact 每次处理、预览或登记变化由 asset-library 同事务写 outbox；application-platform 不向 SSE 发布竞争性的 Artifact 生命周期事件。
 
 ## 5. 权限边界
 
@@ -85,10 +85,10 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 ## 6. 跨域与事件边界
 
 - task-center 拥有 AtomicTask、TaskAttempt、重试、取消和最终执行状态；application-platform 调用 `POST /api/v1/atomic-tasks` 时传递 `application_run_id` 与幂等键，task-center 的后续事件必须回传 application_run_id。
-- asset-library 拥有 UserAsset；application-platform 输出并保存 Artifact，通过 `POST /api/v1/artifact-registrations` 幂等登记，登记成功后才形成 UserAsset。
+- asset-library 拥有 Artifact、Asset、AssetVersion 和 Representation；application-platform 输出并保存 Artifact 引用，通过 canonical Artifact API 受控交付内容，兼容期可使用旧登记入口。
 - workflow-canvas 固定引用已发布 ApplicationVersion，不保存 ProviderCapability 可变副本。
 - ProviderCapability 加载仅是进程内启动步骤，不发布 `catalog_changed` 事件；运行中不存在目录变化事件。
-- 对外事件包括 Engine 健康、工作流转换、应用版本发布、ApplicationRun/AtomicTask 协作、Artifact 处理/登记变化、状态投影和平台能力纠正事项。工作流转换事务提交后通过 outbox 发布 `comfyui_workflow_converted`；object-info 刷新不发布目录正文事件，事件失败不回滚转换事实。
+- 对外事件包括 Engine 健康、工作流转换、应用版本发布、ApplicationRun/AtomicTask 协作、ApplicationRun Artifact 引用映射、状态投影和平台能力纠正事项。Artifact 处理/登记事件由 asset-library 发布。工作流转换事务提交后通过 outbox 发布 `comfyui_workflow_converted`；object-info 刷新不发布目录正文事件。
 - WorkflowTestRun 只向 Task Center 提交已注册的 comfyui.submit、comfyui.poll、comfyui.collect_preview，任务参数只携带 test_run_id 和父节点输出映射。Application Platform 保存不可变的 EngineInstance 非敏感快照与参数覆盖快照；列表可按 detail=false 省略复杂快照、步骤和输出，但不得通过逐行查询 EngineInstance 拼装历史名称。
 
 ## 7. 非目标

@@ -43,8 +43,8 @@ flowchart LR
     OI --> AR
     E --> AR
     AR --> TR["AtomicTask / task-center"]
-    AR --> AF["Artifact"]
-    AF --> AL["UserAsset / asset-library"]
+    AR --> AF["Artifact Ref"]
+    AF --> AL["Artifact / Asset / Representation / asset-library"]
     TR --> W["Worker"]
     W --> O
     O --> A
@@ -107,7 +107,7 @@ OperationExecutor 负责具体 Operation：
 - 标准输入与 ProviderCapability Variant 的双重校验；
 - 供应商请求转换；
 - 同步或异步提交、查询、取消和恢复；
-- 输出提取、Artifact 生成和供应商错误归一化。
+- 输出提取、向 asset-library 受控交付 Artifact 内容和供应商错误归一化。
 
 YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 
@@ -127,8 +127,8 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 | ApplicationVersion | application-platform 数据库 | 是 |
 | RuntimeFormSchema | 请求时计算结果 | 否 |
 | ApplicationRun | application-platform 数据库 | 是 |
-| Artifact | application-platform 数据库 | 是，处理状态与登记状态独立 |
-| UserAsset / Artifact 登记映射 | asset-library 数据库 | 是 |
+| ApplicationRun Artifact Ref | application-platform 数据库 | 是，可由 asset-library 事件重建 |
+| Artifact / Asset / AssetVersion / Representation | asset-library 数据库 | 是 |
 | AtomicTask / Attempt / Group / Schedule | task-center | 是 |
 
 Binding 中的 ProviderCapability ID 没有数据库外键，创建、解析和运行时通过注册表校验。ApplicationRun 按能力来源保存 ProviderCapability revision 或 ComfyUI API Workflow、模板 revision 与实际参数执行快照，但不保存 object_info；ComfyUI 运行可执行性始终按所选实例当前目录重新判断。
@@ -220,12 +220,13 @@ sequenceDiagram
     Provider-->>Exec: 任务或结果
     Exec-->>Task: 状态、进度、标准输出
     Task-->>App: resource_version 投影事件
-    App->>App: 标准输出形成 Artifact
-    App->>App: 传输、处理、预览并进入 ready
-    App->>Asset: 以 artifact_id 幂等登记 UserAsset
+    App->>Asset: 受控交付标准输出并幂等形成 Artifact
+    Asset-->>App: 返回 artifact_id
+    App->>Asset: 以 artifact_id 幂等登记 AssetVersion
+    Asset->>Task: Representation build DAG / backfill actions
 ```
 
-Artifact 处理事实以 application-platform 为准，状态为 `created/transferring/processing/ready/failed/deleted`；预览就绪是独立事实。处理、预览或登记变化通过 outbox 发布给 SSE 等投影消费者，投影失败不回滚 Artifact、UserAsset 或已终态 AtomicTask。
+Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/processing/ready/failed/deleted`；预览就绪是独立事实。ApplicationPlatform 只保存 Artifact 引用和只读版本投影，不发布竞争性的 Artifact 生命周期事件。
 
 ## 10. 失败隔离
 
@@ -268,4 +269,4 @@ Application Platform 注册 `application-platform.comfyui-object-info-refresh` R
 - ComfyUIWorkflow 始终为 owner 私有资源，不存在 global 或跨用户共享；管理员代管记录 actor 与 owner。
 - 管理员跨所有者读取或操作必须写入 identity 安全审计，至少记录 action、actor、owner、workflow、结果和时间。
 - object_info 只能由服务端刷新到 EngineInstance 当前目录，客户端不能注入；工作流、校验、模板和运行 API 不重复内嵌目录正文，所有 API 均不返回 Engine 凭证。
-- workflow-canvas 拥有 Canvas、不可变版本、DAG 编译和运行视图；application-platform 只提供已发布 ApplicationVersion 与 ApplicationRun/Artifact 协作。
+- workflow-canvas 拥有 Canvas、不可变版本、DAG 编译和运行视图；application-platform 只提供已发布 ApplicationVersion、ApplicationRun 和 Artifact 引用协作。

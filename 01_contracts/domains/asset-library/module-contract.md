@@ -9,8 +9,10 @@
 | `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
 | `group` | 维护素材分组、分组排序、素材与分组的多对多关联 | `US-USER-ASSET-34`..`US-USER-ASSET-39`、`BR-USER-ASSET-49`..`BR-USER-ASSET-56` |
-| `processing-task` | 维护缩略图、派生预览和 `sha256_backfill` 的业务结果；执行由 task-center AtomicTask 完成 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`BR-USER-ASSET-19`、`BR-USER-ASSET-43` |
-| `artifact-registration` | 校验 application-platform Artifact 并幂等登记 UserAsset | `US-USER-ASSET-41`、`BR-USER-ASSET-59`..`BR-USER-ASSET-63` |
+| `artifact` | 维护跨应用、画布和 AtomicTask 的 Artifact 身份、owner、受控内容、处理、保留、登记状态与源事件 | `US-USER-ASSET-42`、`US-USER-ASSET-45`、`BR-USER-ASSET-64`..`BR-USER-ASSET-68`、`BR-USER-ASSET-76`..`BR-USER-ASSET-78` |
+| `artifact-registration` | 在同一事务中将 ready Artifact 登记为 Asset/AssetVersion，复用 Blob 创建 original Representation | `US-USER-ASSET-41`、`US-USER-ASSET-43`、`BR-USER-ASSET-65`..`BR-USER-ASSET-69` |
+| `representation` | 维护 expected policy、AssetRepresentation、build request、状态汇总和 backfill 缺口 | `US-USER-ASSET-43`..`US-USER-ASSET-45`、`BR-USER-ASSET-69`..`BR-USER-ASSET-77` |
+| `processing-task` | 解释 Representation build、backfill 和 `sha256_backfill` 的业务语义；执行由 Task Center 完成 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`US-USER-ASSET-43`、`US-USER-ASSET-44` |
 
 ## 2. SHA256 计算与去重
 
@@ -26,10 +28,10 @@
 
 ## 3.1 上传派生任务协作
 
-- 素材上传完成事务必须同时写 `asset_uploaded` outbox 记录，事务回滚时不得发布事件。
-- task-center 消费事件并按 `thumbnail:<asset_id>:<profile_version>` 幂等创建 `asset.thumbnail.generate` AtomicTask。
-- 重复投递不得创建重复 AtomicTask；缩略图失败不回滚素材上传，也不阻塞素材列表。
-- AtomicTask 只保存 asset/profile 输入和结果引用，缩略图事实仍由 `preview` 模块拥有。
+- 素材上传或 Artifact 登记事务必须同步创建 original Representation，并写 `asset_version_representation_requested` outbox；事务回滚时不得发布事件。
+- Task Center 按 `asset-representations:<asset_version_id>:<profile_version>` 幂等创建 Representation build DAGTaskGroup。
+- inspect 后只创建 asset-library 计划中需要的 generate 节点；节点使用 `representation_type + profile` 稳定 childKey。
+- AtomicTask 只保存 AssetVersion/Representation/Blob 引用，Representation 事实由 asset-library 拥有。
 
 ## 4. 素材分组
 
@@ -78,20 +80,37 @@
 - Label upsert、Tag add/remove 均为幂等写入；单项提交后递增该素材 `resource_version`，返回完整标签结果。
 - 单项失败仅回滚该素材事务并写入对应 result.error，不影响其他素材；不得通过错误差异泄露其他用户素材是否存在。
 
-## 10. Application Artifact 登记
+## 10. Artifact 与 Asset 登记
 
-- `POST /api/v1/artifact-registrations` 仅接收 application-platform 产生的 Artifact，并要求 Artifact、ApplicationRun、运行发起用户、输出名、媒体类型和内容引用完整。
-- 素材库校验 owner、内容可读性和媒体信息后，在同一事务内创建 `source_type=application_output` 的 UserAsset 与 `artifact_asset_registrations` 成功映射。
-- `artifact_id` 全局唯一；完全相同的重复请求返回既有 UserAsset，内容、owner 或 ApplicationRun 不一致时返回幂等冲突。
-- 校验失败不创建 UserAsset 或成功映射；失败原因由 application-platform Artifact 保存，且不得改变 AtomicTask 终态。
-- UserAsset 和成功登记映射归 asset-library 所有；Artifact、ApplicationRun、AtomicTask 状态归各自领域所有，素材库不得反向改写。
+- 受信 ApplicationExecutor、画布执行器或 Worker 通过 `POST /api/v1/artifacts` 和受控内容上传端点创建 Artifact；owner 由服务端上下文解析。
+- Artifact producer key 在 owner 范围唯一；同一 AtomicTask 自动 Attempt 重试复用同一 Artifact，冲突内容返回稳定幂等错误。
+- ApplicationExecutor 负责 Provider 协议和下载，只能推送字节流、受控上传会话或可信存储引用，不得传递凭证、任意 URL、私网地址或原始响应。
+- `POST /api/v1/artifacts/{artifact_id}/register` 只接受 ready Artifact；同一事务创建或命中 Asset/AssetVersion、复用 Blob 创建 original Representation、更新登记状态并写 outbox。
+- 登记失败由 asset-library Artifact 保存；不得创建空 AssetVersion，也不得改变 AtomicTask 终态。
+- `POST /api/v1/artifact-registrations` 是兼容入口，行为和事实源与 canonical register 动作相同。
+- Artifact complete 事务写 `artifact_content_completed`；Task Center 按 `artifact-process:<artifact_id>:<processing_profile_version>` 幂等创建 `asset-library.artifact.process` AtomicTask。handler 只接收 Artifact/profile 引用，并通过 asset-library 受控能力读写内容和状态。
+
+## 10.1 Representation Build
+
+- asset-library 根据媒体类型、policy 和 profile version 形成 expected set；Task Center 不得自行增加或删除派生类型。
+- 首次生成使用 DAGTaskGroup，周期补全使用相同 `asset-library.representation.generate` handler 的独立 AtomicTask。
+- Worker 只能通过 `asset.representation.write` 幂等写入所请求的 type/profile；相同键不同 Blob 返回冲突。
+- 必需项失败使 AssetVersion failed；可选项失败使其 ready_with_warnings；缺口补齐后允许提升为 ready。
+
+## 10.2 Representation Backfill
+
+- asset-library 向 Task Center ReconcileRegistry 注册 `asset-library.representation-backfill`，Task Center 以同名 system_key 创建唯一 SYSTEM RECONCILE TaskSchedule。
+- 默认每日 `03:30 UTC`，按稳定 AssetVersion ID checkpoint 分块扫描；健康项不创建任务，重叠轮次跳过。
+- 缺失、可重试或可重建项返回 `asset-library.representation.generate` AtomicTask 动作，幂等键为 `asset-representation:<asset_version_id>:<representation_type>:<profile_version>`。
+- 删除中、transient 或源内容不可恢复的条目不创建任务；不可恢复项记录稳定原因。巡检限制扫描、action、并发和失败退避。
+- 摘要包含 scanned、missing、actions_created、deferred、irreparable、repaired；checkpoint 只在完整分块完成后推进。
 
 ## 11. 兼容与迁移边界
 
 - `schema.sql` 只表达目标设计，不是实际 migration。实现从旧标签 JSON 切换时，必须先 trim、校验并回填到规范化表，再切换读写，最后停止读取旧字段。
 - 回填遇到大小写不同的 Label key 或 Tag 时必须保留为不同值；超出数量上限或字段约束的数据进入迁移异常报告，不得静默丢弃或折叠。
-- 素材查询与标签操作继续沿用当前登录用户、所有权和 `canWrite` 语义；Artifact 登记使用 `asset.artifact.register` 跨域权限并发布 `artifact_registered` 事件。
+- 素材查询与标签操作继续沿用当前登录用户、所有权和 `canWrite` 语义；Artifact 创建、登记和 Representation 写入分别使用受控权限并发布 asset-library 源事件。
 
 ## 12. S2 最小契约说明
 
-本次 OpenAPI 覆盖素材列表查询、批量打标和 Application Artifact 登记；上传、预览、下载、重命名、删除及完整分组管理 API 仍是后续 S2 缺口。
+本次 OpenAPI 覆盖素材列表、批量打标、Artifact 创建/上传/登记、AssetVersion 查询和 Representation 受控写入；素材上传、下载、重命名、删除及完整分组管理 API 仍需后续补齐。
