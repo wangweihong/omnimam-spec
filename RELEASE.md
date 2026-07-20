@@ -1,5 +1,54 @@
 # Release Records
 
+## spec-v1.5.0
+
+- commit: ecd9381adb1afff5dd5acaf3d705814acd43ca8c
+- status: released
+- confirmed_by: user（2026-07-20 明确要求推送并发布 Artifact-to-asset-library coordinated release）
+- allowed_as_formal_implementation_basis: true
+- implementation_gate: 正式服务端切换前必须完成 Artifact/Representation 数据回填、领域源事件切换、ApplicationPlatform 引用投影重建、兼容消费者验证和旧处理路径退役方案。
+- domains:
+  - asset-library
+  - task-center
+  - application-platform
+  - sse
+  - workflow-canvas
+- S1:
+  - 00_product/domains/asset-library/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/application-platform/product-spec.md
+  - 00_product/domains/sse/product-spec.md
+  - 00_product/glossary.md
+- S2:
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/schema.sql
+  - 01_contracts/domains/asset-library/errors.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/events.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/events.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/events.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/sse/openapi.yaml
+  - 01_contracts/domains/sse/schema.sql
+  - 01_contracts/domains/sse/events.yaml
+  - 01_contracts/domains/sse/module-contract.md
+  - 01_contracts/domains/workflow-canvas/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/asset-library.md
+  - 02_architecture/domains/task-center.md
+  - 02_architecture/domains/application-platform.md
+  - 02_architecture/domains/sse.md
+  - 02_architecture/domains/workflow-canvas.md
+  - 02_architecture/global-architecture.md
+
 ## spec-v1.4.0
 
 - commit: 9819f0e6eebbd06ae04a8c81393bf63bedad21a8

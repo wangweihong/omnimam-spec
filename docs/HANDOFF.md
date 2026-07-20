@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-完成 Artifact 到 `asset-library` 的跨域迁移，使 Artifact、Asset、AssetVersion、Blob 与 AssetRepresentation 的所有权、Task Center 任务编排和 SSE 用户事件形成一致的 S1/S2 契约。本轮仍为未 release 的破坏性草案。
+完成 Artifact 到 `asset-library` 的跨域迁移，使 Artifact、Asset、AssetVersion、Blob 与 AssetRepresentation 的所有权、Task Center 任务编排和 SSE 用户事件形成一致的 S1/S2 契约。规格提交 `ecd9381adb1afff5dd5acaf3d705814acd43ca8c` 已由用户确认为 `spec-v1.5.0` 正式实现依据。
 
 ## 本次完成
 
@@ -55,7 +55,7 @@
 - Task Center 输出增加 `artifact_refs`、`representation_refs`，并定义首次 build、Artifact processing 和 backfill action 协作事件。
 - asset-library 源事件包括 `artifact_created`、`artifact_processing_changed`、`artifact_content_completed`、`artifact_registration_changed`、`asset_version_representation_requested`、`asset_version_processing_changed`。
 - SSE 客户端继续使用 `artifact.*`，并增加 `asset_version.*` 状态事件。
-- `RELEASE.md` 未修改。
+- `RELEASE.md` 已登记 `spec-v1.5.0`，并保留数据回填、事件切换、投影重建和旧路径退役的实现门禁。
 
 ## 验证结果
 
@@ -74,7 +74,7 @@
 
 ## 待办、风险与技术债
 
-- 本轮是跨域破坏性草案，未经用户明确 release，不得作为正式实现、合并或验收依据。
+- `spec-v1.5.0` 已 release，可作为正式实现、合并和验收依据；但 release 不代表服务端、数据库或事件消费者已完成切换。
 - Redocly 的 ApplicationPlatform `oneOf.required` 警告和未使用组件为既有结构问题，不由 Artifact 迁移引入；后续可单独整理。
 - asset-library 仍保留旧 `asset_uploaded` 兼容源事件和历史 `user_asset_processing_tasks` 设计；已明确兼容/旧处理语义，后续迁移实现应制定停用窗口。
 - `schema.sql` 是目标设计，不是实际 migration；实现迁移需要另行设计数据回填、双读切换和旧表退役步骤。
@@ -82,10 +82,10 @@
 
 ## 推荐下一任务
 
-对迁移后的跨域 S1/S2 做用户评审，确认破坏性边界和兼容窗口；确认后再决定 coordinated release 版本，并在实现仓库设计实际数据迁移与事件切换方案。
+依据 `spec-v1.5.0` 在实现仓库设计并执行实际数据迁移与事件切换：先完成数据盘点和回填校验，再切换领域源事件与 ApplicationPlatform 引用投影，最后验证兼容消费者并退役旧处理路径。
 
 ## Next Prompt
 
 ```text
-读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，评审已完成的 Artifact-to-asset-library 跨域迁移。重点核对 asset_uploaded 与 user_asset_processing_tasks 的兼容停用策略、ApplicationPlatform 引用投影重建、Artifact/Representation 数据回填、事件切换顺序和回滚边界。不要修改 RELEASE.md，除非我明确确认 coordinated release。发现问题时先修 S1，再同步 S2、架构、CHANGELOG 和 HANDOFF，并复跑现有全部校验。
+读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，以已发布的 spec-v1.5.0 为正式实现依据，设计 Artifact-to-asset-library 的实现迁移计划。重点覆盖 asset_uploaded 与 user_asset_processing_tasks 的兼容停用、ApplicationPlatform 引用投影重建、Artifact/Representation 数据回填、领域源事件切换顺序、消费者兼容验证、观测指标和回滚边界。不要修改已发布规格语义；如发现真实 S1/S2 冲突，先在规格仓库修正并重新 release。
 ```

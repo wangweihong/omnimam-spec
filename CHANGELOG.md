@@ -13,7 +13,15 @@
 - 扩展 application-platform Artifact S1/S2，新增 `BR-AIAPP-177..180`、`US-AIAPP-050`、处理/预览字段、错误码和可靠源事件。
 - 扩展 task-center S1/S2，新增 `BR-TASK-120`、`US-TASK-018` 和独立 TaskAttempt 变化事件，任务事件携带所有者、项目、命名空间与 `resource_version`。
 - 生成 SSE OpenAPI、设计态 schema、错误码、权限、事件目录、模块契约和领域架构参考，登记 `170200-170999` 错误码区间。
-- 本次 SSE 与跨域修订仍为未 release 草案，未写入 `RELEASE.md`。
+- 上述 SSE 与 Artifact 跨域修订已由用户确认为 `spec-v1.5.0`，允许作为正式实现依据；实际服务切换仍受数据回填、事件切换和兼容退役门禁约束。
+
+## spec-v1.5.0
+
+- 将 Artifact、Blob、AssetVersion 和 AssetRepresentation 的事实源统一迁移到 asset-library，ApplicationPlatform 仅保留可重建的 ApplicationRun 输出引用投影。
+- 以 `artifact_content_completed` 和 `asset_version_representation_requested` 建立 Artifact 处理、original Representation 与首次 Representation build DAG 的可靠任务链路。
+- 增加 `asset-library.representation-backfill` SYSTEM RECONCILE 周期补全，仅为真实缺口创建幂等修复 AtomicTask。
+- 对齐 Task Center 的引用输出和自动重试幂等语义，并由 asset-library 向 SSE 提供 Artifact 与 AssetVersion 状态事实。
+- 本版本为跨域 coordinated release；正式实现前仍需完成数据迁移、事件消费者切换、投影重建与旧路径退役验证。
 
 ## spec-v1.4.0
 
