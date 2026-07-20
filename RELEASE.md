@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.5.1
+
+- commit: 069a43778d82de87ab69b0885148f74c177a85ee
+- status: released
+- confirmed_by: user（2026-07-20 明确要求提交代码、发布小版本并推送）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - asset-library
+- S1:
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/schema.sql
+  - 01_contracts/domains/asset-library/errors.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/events.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+  - 01_contracts/error-code-index.md
+
 ## spec-v1.5.0
 
 - commit: ecd9381adb1afff5dd5acaf3d705814acd43ca8c

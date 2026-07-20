@@ -6,7 +6,7 @@
 
 ## 本次完成
 
-2026-07-20 完成 asset-library S2 补齐草案：
+2026-07-20 完成并发布 asset-library S2 补齐：
 
 - OpenAPI 从 12 个扩展不完整 operation 增至 45 个 operation，完整覆盖 S1 第 23 章 41 个显式 endpoint，并保留批量标签、Representation 列表/Worker 登记和 Artifact 兼容登记 4 个扩展入口。
 - 补齐 Asset canonical 创建、详情、重命名/描述/归档、软删除、恢复、永久删除与引用阻塞结果。
@@ -16,6 +16,7 @@
 - 补齐 Label/Tag 单项操作、Artifact 删除、关系、来源链、引用摘要和使用位置。
 - 为全部 operation 绑定已定义的 `x-permission` 和 `x-s1-refs`。
 - 新增上传、Collection、Asset 访问/版本/内容/永久删除错误，并登记 `151200-151399`、`151400-151599` 区间。
+- 规格提交 `069a43778d82de87ab69b0885148f74c177a85ee` 已由用户确认为 `spec-v1.5.1` 正式实现依据。
 
 ## 文件变化
 
@@ -28,7 +29,7 @@
 - `CHANGELOG.md`
 - `docs/HANDOFF.md`
 
-未修改 S1、事件、架构参考或 `RELEASE.md`。工作区仍有用户原有的 `AGENTS.md` 修改，未回退或改动。
+未修改 S1、事件或架构参考。`RELEASE.md` 已登记 `spec-v1.5.1`。工作区仍有用户原有的 `AGENTS.md` 修改，未回退或改动。
 
 ## 关键设计决策
 
@@ -60,7 +61,7 @@
 
 ## 待办、风险与技术债
 
-- 本轮是对已发布 `spec-v1.5.0` 的未 Release 修订，尚不能作为正式实现、合并或验收依据。
+- `spec-v1.5.1` 已 release，可作为正式实现、合并和验收依据；release 不代表实现仓库已完成 migration 或接口实现。
 - 实现仓库需要为上传 session 字段和 Collection 层级/成员字段设计实际 migration；本仓 `schema.sql` 不是 migration。
 - 来源、引用与使用位置 API 包含跨领域聚合；实现必须从各事实源读取并过滤可见性，不能把轻量摘要升级为强一致事实源。
 - S3/MinIO presign、分片直传仍属于后续阶段，不应因本轮 chunked 本地上传而提前启用。
@@ -68,10 +69,10 @@
 
 ## 推荐下一任务
 
-评审本轮 S2 草案的 DTO 和权限粒度；确认后提交并发布新的 spec 版本，再在实现仓库设计 migration、接口实现顺序与端到端验收。
+依据 `spec-v1.5.1` 在实现仓库设计 migration、接口实现顺序与端到端验收，优先完成普通上传、详情/内容读取、Collection 和回收站主链路。
 
 ## Next Prompt
 
 ```text
-读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，评审 asset-library 本轮 S2 补齐草案。重点核对 45 个 OpenAPI operation 的请求/响应、普通与分片上传状态、Collection 对外术语与表映射、永久删除强引用检查、16 项权限粒度和 43 个错误码。运行完整 YAML/OpenAPI/S1 引用/错误码/schema 校验；发现问题直接修正并更新 CHANGELOG 与 HANDOFF。完成后汇报差异，但未经我明确确认不要写 RELEASE.md 或声明新 release。
+读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，以已发布 `spec-v1.5.1` 为正式实现依据，在实现仓库设计并实现 asset-library API。优先覆盖普通/分片上传、Asset 详情与 Representation 内容读取、Collection 和回收站；为设计态 schema 变化编写实际 migration，落实 owner/canWrite/权限校验、上传幂等、永久删除强引用检查和端到端测试。不要修改已发布规格语义；发现真实冲突时先回规格仓库修正并重新 release。
 ```

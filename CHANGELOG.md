@@ -4,7 +4,8 @@
 
 - 补齐 asset-library S1 第 23 章全部 41 个显式 endpoint 的 OpenAPI 覆盖：新增普通/分片/批量上传、Asset 详情与版本操作、Representation 内容读取、Collection、Label/Tag 单项管理、Artifact 删除、来源/引用/使用位置和完整回收站契约；保留 4 个既有扩展 operation。
 - 为 asset-library 全部 45 个 operation 绑定可追溯权限，新增 Asset、内容读取、上传、Collection、标签、引用和 Artifact 删除权限；新增 upload、collection 错误码区间，并补充素材访问、版本、内容与永久删除错误。
-- 对齐设计态 schema：上传会话统一使用 `sha256` 并记录模式、目标 Asset 与版本信息；Collection 表补充父子层级，成员关系补充 pinned version、role、metadata 与 created_by。本轮为未 Release 草稿，不修改 `RELEASE.md`。
+- 对齐设计态 schema：上传会话统一使用 `sha256` 并记录模式、目标 Asset 与版本信息；Collection 表补充父子层级，成员关系补充 pinned version、role、metadata 与 created_by。
+- 上述 asset-library S2 补齐已由用户确认为 `spec-v1.5.1`，允许作为正式实现依据。
 - 将 Artifact、Blob、AssetVersion 与 AssetRepresentation 的事实源从 application-platform 迁移到 asset-library；application-platform 仅保留 ApplicationRun 输出引用投影，Task Center 仅保留任务与小型制品引用。
 - 为 Artifact 受控内容完成增加幂等 `asset-library.artifact.process` AtomicTask；登记事务复用 Blob 同步创建 original Representation，并以 `asset_version_representation_requested` 触发 Representation build DAG。
 - 增加 `asset-library.representation-backfill` SYSTEM RECONCILE 周期巡检，只为缺失、可重试或可重建的 Representation 创建幂等 `asset-library.representation.generate` AtomicTask，健康 AssetVersion 不物化任务。
