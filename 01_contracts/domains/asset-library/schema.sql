@@ -129,7 +129,7 @@ CREATE INDEX idx_artifacts_application_run ON artifacts(application_run_id);
 CREATE INDEX idx_artifacts_processing_status ON artifacts(owner_user_id, processing_status);
 CREATE INDEX idx_artifacts_expires_at ON artifacts(expires_at) WHERE registration_status <> 'registered' AND deleted_at IS NULL;
 
--- S1 refs: US-USER-ASSET-43..US-USER-ASSET-45; BR-USER-ASSET-69..BR-USER-ASSET-77.
+-- S1 refs: US-USER-ASSET-10, US-USER-ASSET-43..US-USER-ASSET-45; BR-USER-ASSET-19..BR-USER-ASSET-20, BR-USER-ASSET-69..BR-USER-ASSET-77.
 CREATE TABLE asset_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -306,18 +306,26 @@ CREATE TABLE user_asset_upload_sessions (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
-  checksum TEXT NOT NULL,
+  client_upload_key TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
   file_name TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
   size_bytes BIGINT NOT NULL,
+  target_asset_id TEXT REFERENCES user_assets(id),
+  version_note TEXT DEFAULT '',
+  profile_version TEXT NOT NULL,
+  upload_mode TEXT NOT NULL CHECK (upload_mode IN ('single', 'chunked')),
   chunk_size_bytes BIGINT DEFAULT 0,
   uploaded_parts_json TEXT NOT NULL DEFAULT '[]',
   status TEXT NOT NULL CHECK (status IN ('initialized', 'uploading', 'completed', 'cancelled', 'failed')),
   pending_labels_payload TEXT NOT NULL DEFAULT '{}',
-  pending_tags_payload TEXT NOT NULL DEFAULT '[]'
+  pending_tags_payload TEXT NOT NULL DEFAULT '[]',
+  UNIQUE (owner_user_id, client_upload_key)
 );
 
 CREATE INDEX idx_user_asset_upload_sessions_owner ON user_asset_upload_sessions(owner_user_id);
-CREATE INDEX idx_user_asset_upload_sessions_checksum ON user_asset_upload_sessions(owner_user_id, checksum);
+CREATE INDEX idx_user_asset_upload_sessions_sha256 ON user_asset_upload_sessions(owner_user_id, sha256);
 CREATE INDEX idx_user_asset_upload_sessions_status ON user_asset_upload_sessions(owner_user_id, status);
 
 -- S1 refs: US-USER-ASSET-34, US-USER-ASSET-36, US-USER-ASSET-38, US-USER-ASSET-39;
@@ -331,12 +339,14 @@ CREATE TABLE user_asset_groups (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
+  parent_group_id TEXT REFERENCES user_asset_groups(id),
   color TEXT DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
   deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_user_asset_groups_owner ON user_asset_groups(owner_user_id);
+CREATE INDEX idx_user_asset_groups_parent ON user_asset_groups(owner_user_id, parent_group_id);
 CREATE INDEX idx_user_asset_groups_sort ON user_asset_groups(owner_user_id, sort_order);
 CREATE UNIQUE INDEX idx_user_asset_groups_owner_name_unique ON user_asset_groups(owner_user_id, lower(trim(name))) WHERE deleted_at IS NULL;
 
@@ -353,6 +363,10 @@ CREATE TABLE user_asset_group_memberships (
   owner_user_id TEXT NOT NULL,
   group_id TEXT NOT NULL REFERENCES user_asset_groups(id),
   asset_id TEXT NOT NULL REFERENCES user_assets(id),
+  pinned_version_id TEXT REFERENCES asset_versions(id),
+  role TEXT NOT NULL DEFAULT '',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_by TEXT NOT NULL,
   joined_at TIMESTAMPTZ NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   deleted_at TIMESTAMPTZ

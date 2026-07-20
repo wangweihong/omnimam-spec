@@ -5,6 +5,8 @@
 | 模块 | 职责 | S1 来源 |
 | --- | --- | --- |
 | `asset` | 维护用户素材 metadata、`sha256`、上传去重命中、轻量引用摘要和素材返回 | `US-USER-ASSET-31`、`US-USER-ASSET-40`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42`、`BR-USER-ASSET-57`、`BR-USER-ASSET-58` |
+| `upload` | 维护普通/分片上传会话、分片校验、StorageAdapter 写入、完成事务和取消清理 | `US-USER-ASSET-05`..`US-USER-ASSET-09`、`US-USER-ASSET-31`、`BR-USER-ASSET-11`..`BR-USER-ASSET-19`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42` |
+| `content-access` | 沿 Representation 所属链路执行所有权校验，提供受控读取、下载和短期访问地址 | `US-USER-ASSET-11`..`US-USER-ASSET-13`、`BR-USER-ASSET-07`、`BR-USER-ASSET-21`..`BR-USER-ASSET-23`、`BR-USER-ASSET-27` |
 | `labeling` | 维护素材 Labels/Tags、来源、字段约束、数量上限和逐项批量写入 | `US-USER-ASSET-19`..`US-USER-ASSET-30`、`BR-USER-ASSET-35`、`BR-USER-ASSET-36`、`BR-USER-ASSET-40` |
 | `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
@@ -28,6 +30,9 @@
 
 ## 3.1 上传派生任务协作
 
+- `POST /api/v1/asset-uploads` 每个 item 独立创建会话或返回当前用户可见的 SHA256 去重命中；客户端不得指定 owner。
+- `single` 与 `chunked` 共用 `/asset-uploads/{upload_id}/content`。chunked 写入必须校验 part_number、Content-Range、分片 SHA256、完整大小和最终 SHA256；第一阶段不启用 S3/MinIO presign。
+- 上传取消只清理当前用户会话和未登记临时内容；完成后会话不可取消，重复 complete 必须幂等返回同一 Asset/AssetVersion。
 - 素材上传或 Artifact 登记事务必须同步创建 original Representation，并写 `asset_version_representation_requested` outbox；事务回滚时不得发布事件。
 - Task Center 按 `asset-representations:<asset_version_id>:<profile_version>` 幂等创建 Representation build DAGTaskGroup。
 - inspect 后只创建 asset-library 计划中需要的 generate 节点；节点使用 `representation_type + profile` 稳定 childKey。
@@ -35,10 +40,12 @@
 
 ## 4. 素材分组
 
+- 对外 API 使用 S1 术语 `Collection`/`CollectionItem`；设计态表沿用 `user_asset_groups`/`user_asset_group_memberships`，两者是同一产品对象，不得形成两套事实源。
 - `group` 模块负责创建、重命名、删除和排序当前用户自己的素材分组。
 - `group` 模块负责维护素材与分组的关联关系；同一素材可加入多个分组，同一素材重复加入同一分组时忽略重复添加。
 - 删除分组只删除分组及其关联关系，不删除 `user_assets` 中的素材本体。
 - 分组内素材默认按加入时间倒序展示；手动排序写入 `user_asset_group_memberships.sort_order`。
+- 父子层级最大深度为 8，不允许环或跨用户父节点；`pinned_version_id` 必须属于同一成员 Asset。
 - 视图模式偏好属于前端本地呈现状态，不进入服务端 S2 契约。
 
 ## 5. 轻量引用摘要
@@ -46,6 +53,13 @@
 - `asset` 模块负责保存素材的 `reference_count` 和 `reference_sources_json`。
 - 画布等外部模块可以通过回调或等价协作方式维护引用摘要。
 - 引用摘要用于前端提示和详情展示，不作为强一致权限判断、删除保护或完整依赖图事实源。
+
+## 5.1 删除与回收站
+
+- `DELETE /api/v1/assets/{asset_id}` 只设置 `status=deleted` 与 `deleted_at`，保留 AssetVersion、Representation、Blob、来源和引用。
+- `POST /api/v1/assets/{asset_id}/restore` 只恢复当前用户已软删除素材；不得借恢复绕过所有权或 canWrite 校验。
+- 永久删除先向画布、应用、Task Center、Collection 和素材关系的事实源执行强引用检查；`reference_count` 与 `reference_sources_json` 仅用于提示，不能单独授权删除。
+- 只有未被任何 Representation 或 Artifact 引用的 Blob 才物理删除；部分 Blob 仍被共享时返回 retained_blob_ids。
 
 ## 6. 标签数据归属与约束
 
@@ -109,8 +123,9 @@
 
 - `schema.sql` 只表达目标设计，不是实际 migration。实现从旧标签 JSON 切换时，必须先 trim、校验并回填到规范化表，再切换读写，最后停止读取旧字段。
 - 回填遇到大小写不同的 Label key 或 Tag 时必须保留为不同值；超出数量上限或字段约束的数据进入迁移异常报告，不得静默丢弃或折叠。
-- 素材查询与标签操作继续沿用当前登录用户、所有权和 `canWrite` 语义；Artifact 创建、登记和 Representation 写入分别使用受控权限并发布 asset-library 源事件。
+- 普通素材读取、创建、更新、删除、内容读取、上传、Collection、标签和引用摘要分别使用 `asset.*` 权限；所有后端操作仍必须执行 owner 与 `canWrite` 校验，前端隐藏不替代鉴权。
+- Artifact 创建、登记、删除和 Representation 写入分别使用受控权限并发布 asset-library 源事件。
 
 ## 12. S2 最小契约说明
 
-本次 OpenAPI 覆盖素材列表、批量打标、Artifact 创建/上传/登记、AssetVersion 查询和 Representation 受控写入；素材上传、下载、重命名、删除及完整分组管理 API 仍需后续补齐。
+OpenAPI 覆盖 S1 第 23 章全部 41 个显式 endpoint，并保留批量打标、Representation 列表/Worker 登记和 Artifact 兼容登记扩展入口。所有 operation 必须包含 `x-permission` 与 `x-s1-refs`；未 release 的本轮修订不得作为正式实现依据。

@@ -2,90 +2,76 @@
 
 ## 当前项目目标
 
-完成 Artifact 到 `asset-library` 的跨域迁移，使 Artifact、Asset、AssetVersion、Blob 与 AssetRepresentation 的所有权、Task Center 任务编排和 SSE 用户事件形成一致的 S1/S2 契约。规格提交 `ecd9381adb1afff5dd5acaf3d705814acd43ca8c` 已由用户确认为 `spec-v1.5.0` 正式实现依据。
+补齐 asset-library 已发布 S1 对应的可实现 S2，使普通用户上传、素材读取与管理、Collection 和回收站能力形成 OpenAPI、权限、错误码、设计态 schema 与模块边界闭环。
 
 ## 本次完成
 
-2026-07-20 已完成以下工作：
+2026-07-20 完成 asset-library S2 补齐草案：
 
-- 将 Artifact 的身份、受控内容、处理、保留、登记状态和源事件事实源迁移到 `asset-library`。
-- 将 ApplicationPlatform 收敛为 ApplicationRun 输出到 Artifact 的引用映射和只读投影；Provider 调用、轮询、凭证使用和下载仍由 ApplicationExecutor/Worker 负责。
-- 明确 Task Center 只拥有 AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、TaskSchedule 等任务事实，只保存 `artifact_refs`、`representation_refs` 等小型引用。
-- 增加 `artifact_content_completed` 源事件和幂等 `asset-library.artifact.process` AtomicTask。
-- Artifact 登记事务复用 Blob 同步创建 original Representation，并写 `asset_version_representation_requested` 源事件。
-- 增加 `asset-library.representation.build` DAGTaskGroup，以及 inspect、thumbnail、preview、playback、manifest、finalize functionRef。
-- 增加 `asset-library.representation-backfill` SYSTEM RECONCILE 周期巡检；只为缺失、可重试或可重建项创建幂等 `asset-library.representation.generate` AtomicTask，健康 AssetVersion 不物化任务。
-- SSE Artifact 生命周期事件改由 asset-library 源事件投影；新增 `asset_version.processing_started`、`processing_progressed`、`ready`、`ready_with_warnings`、`processing_failed`。
-- 统一命名边界：领域源事件使用下划线，SSE 客户端事件使用点号。
-- 同步更新 S1、S2、glossary、错误码索引、模块契约、架构参考和 `CHANGELOG.md`。
+- OpenAPI 从 12 个扩展不完整 operation 增至 45 个 operation，完整覆盖 S1 第 23 章 41 个显式 endpoint，并保留批量标签、Representation 列表/Worker 登记和 Artifact 兼容登记 4 个扩展入口。
+- 补齐 Asset canonical 创建、详情、重命名/描述/归档、软删除、恢复、永久删除与引用阻塞结果。
+- 补齐普通/分片/多文件上传会话、逐文件 SHA256 去重、内容写入、完成事务与取消。
+- 补齐 AssetVersion canonical 创建、详情和 current version 切换；补齐 Representation 单项详情、内容读取/下载与短期访问地址。
+- 补齐 Collection CRUD、层级、批量加入、固定版本、角色、metadata、排序与移除。
+- 补齐 Label/Tag 单项操作、Artifact 删除、关系、来源链、引用摘要和使用位置。
+- 为全部 operation 绑定已定义的 `x-permission` 和 `x-s1-refs`。
+- 新增上传、Collection、Asset 访问/版本/内容/永久删除错误，并登记 `151200-151399`、`151400-151599` 区间。
 
 ## 文件变化
 
-本轮修改覆盖：
-
-- `00_product/domains/asset-library/product-spec.md`
-- `00_product/domains/task-center/product-spec.md`
-- `00_product/domains/application-platform/product-spec.md`
-- `00_product/domains/sse/product-spec.md`
-- `00_product/glossary.md`
-- 上述四个领域的 `01_contracts/domains/*` S2 契约
+- `01_contracts/domains/asset-library/openapi.yaml`
+- `01_contracts/domains/asset-library/permissions.yaml`
+- `01_contracts/domains/asset-library/errors.yaml`
+- `01_contracts/domains/asset-library/schema.sql`
+- `01_contracts/domains/asset-library/module-contract.md`
 - `01_contracts/error-code-index.md`
-- 相关 `02_architecture/` 领域与全局架构参考
 - `CHANGELOG.md`
 - `docs/HANDOFF.md`
 
-工作区还包含用户原有修改：`AGENTS.md` 已修改，`00_product/domains/asset-library/backup/统一资产设计.md` 已删除。这些变更未被回退。
+未修改 S1、事件、架构参考或 `RELEASE.md`。工作区仍有用户原有的 `AGENTS.md` 修改，未回退或改动。
 
 ## 关键设计决策
 
-- Artifact、Asset、AssetVersion、Blob 和 AssetRepresentation 归 `asset-library`。
-- Artifact 使用独立 `processing_status` 与 `registration_status`；AtomicTask 成功不代表 Artifact 或 AssetVersion ready。
-- Artifact producer key 在 owner 范围稳定；自动 TaskAttempt 重试复用同一键，手动重试创建新 AtomicTask。
-- asset-library 只接受字节流、受控上传会话或可信存储引用，不接受 Provider 凭证、任意 URL、私网地址或原始响应。
-- `original` Representation 在登记事务中复用 Artifact Blob；其他派生 Representation 异步生成。
-- required Representation 失败使 AssetVersion failed；optional 失败使其 ready_with_warnings；修复后可提升为 ready。
-- 周期 backfill 是首次事件驱动生成的兜底，不替代主链路，不产生专用用户 SSE 事件。
-- ApplicationPlatform 的 Artifact 投影可由 asset-library 更高 `resource_version` 事件重建，不是竞争事实源。
+- 普通用户二进制上传使用 AssetUpload；Artifact 上传继续只服务受信 producer，二者不互相替代。
+- `POST /api/v1/assets` 和 `POST /api/v1/assets/{asset_id}/versions` 只处理 text、prompt、prompt_template canonical 内容；二进制新素材/版本统一经过 AssetUpload。
+- single 与 chunked 共用 `/asset-uploads/{upload_id}/content`；chunked 使用 part_number、content_range 和 part_sha256，不启用已延期的 S3/MinIO parts/presign 路径。
+- 对外使用 `Collection`/`CollectionItem`，设计态表沿用 `user_asset_groups`/`user_asset_group_memberships`；它们是同一对象，不形成双事实源。
+- 回收站软删除保留版本、Representation、Blob 和引用；永久删除必须执行强引用检查，轻量 reference summary 不能授权删除。
+- Bearer 认证不替代 operation 权限；前端隐藏操作也不替代 owner、canWrite 和状态校验。
 
-## API、Schema 与事件变化
+## API、Schema 与配置变化
 
-- asset-library 增加 Artifact 创建、受控内容写入、complete、register、AssetVersion/Representation 查询与受控 Representation 写入契约。
-- asset-library 设计态 schema 增加 `artifacts`、`asset_versions`、`asset_representations`、`representation_build_requests` 和 `artifact_asset_registrations`。
-- ApplicationPlatform 原 Artifact 表替换为 `aiapp_application_artifact_refs` 引用投影。
-- Task Center 输出增加 `artifact_refs`、`representation_refs`，并定义首次 build、Artifact processing 和 backfill action 协作事件。
-- asset-library 源事件包括 `artifact_created`、`artifact_processing_changed`、`artifact_content_completed`、`artifact_registration_changed`、`asset_version_representation_requested`、`asset_version_processing_changed`。
-- SSE 客户端继续使用 `artifact.*`，并增加 `asset_version.*` 状态事件。
-- `RELEASE.md` 已登记 `spec-v1.5.0`，并保留数据回填、事件切换、投影重建和旧路径退役的实现门禁。
+- OpenAPI 版本更新为 `0.3.0-draft`，共 34 个 path、45 个 operation、67 个 schema。
+- 权限从 5 项扩展为 16 项，新增 `asset.read/create/update/delete/content.read/upload/collection.read/collection.manage/label.manage/reference.read` 和 `asset.artifact.delete`。
+- asset-library 错误从 23 项扩展为 43 项；全仓错误码共 179 个，code/value 全局唯一。
+- `user_asset_upload_sessions.checksum` 收敛为 `sha256`，新增 client key、MIME、目标 Asset、版本说明、profile 和 upload_mode。
+- Collection 设计态表新增父节点；成员新增 pinned version、role、metadata 和 created_by。
+- 未新增事件或运行时配置。
 
 ## 验证结果
 
-2026-07-20 已通过：
-
-- `git diff --check`。
-- 32/32 份 YAML 契约解析。
-- Redocly 校验四份 OpenAPI，均为 valid、0 error；仅有仓库既有 license、4XX 风格警告及 ApplicationPlatform 组合 schema/未使用组件警告。
-- OpenAPI 本地引用：asset-library 75、task-center 137、application-platform 283、sse 27，全部可解析。
-- 159 个错误码的 code/value 全局唯一。
-- S2/架构引用的 BR/US 在 S1 中均存在。
-- 七个领域 SQL schema 未发现重复列、缺失本地引用表或后定义外键目标。
-- Artifact、Artifact registration、AssetVersion 与 Representation 关键状态枚举在 asset-library OpenAPI/schema 中一致。
-- 主动搜索未发现有效的 `aiapp_artifacts`、`artifact.promoted`、`asset.processing.*` 或 ApplicationPlatform Artifact 生命周期源事件残留。
-- `TaskRun` 仅出现在明确的历史/废弃语义与 deprecated 错误码中。
+- 29 份 S2 YAML 全部可解析。
+- Redocly：asset-library OpenAPI valid、0 error；仅有既有 license 和 4XX 通用规则警告，业务错误按仓库规则继续使用 HTTP 200。
+- 45 个 operation 均有唯一 operationId、有效权限和有效 S1 引用。
+- 67 个 schema 的本地 `$ref` 全部可解析，所有 path template 参数均已声明。
+- 新增 BR/US 引用均在 asset-library S1 中存在。
+- 179 个全仓错误码的 code/value 全局唯一；asset-library 43 个错误全部落入登记区间并使用允许的 HTTP 状态码。
+- `git diff --check` 通过。
 
 ## 待办、风险与技术债
 
-- `spec-v1.5.0` 已 release，可作为正式实现、合并和验收依据；但 release 不代表服务端、数据库或事件消费者已完成切换。
-- Redocly 的 ApplicationPlatform `oneOf.required` 警告和未使用组件为既有结构问题，不由 Artifact 迁移引入；后续可单独整理。
-- asset-library 仍保留旧 `asset_uploaded` 兼容源事件和历史 `user_asset_processing_tasks` 设计；已明确兼容/旧处理语义，后续迁移实现应制定停用窗口。
-- `schema.sql` 是目标设计，不是实际 migration；实现迁移需要另行设计数据回填、双读切换和旧表退役步骤。
-- 本轮规格迁移提交后，工作区仍保留用户原有的 `AGENTS.md` 未提交修改。
+- 本轮是对已发布 `spec-v1.5.0` 的未 Release 修订，尚不能作为正式实现、合并或验收依据。
+- 实现仓库需要为上传 session 字段和 Collection 层级/成员字段设计实际 migration；本仓 `schema.sql` 不是 migration。
+- 来源、引用与使用位置 API 包含跨领域聚合；实现必须从各事实源读取并过滤可见性，不能把轻量摘要升级为强一致事实源。
+- S3/MinIO presign、分片直传仍属于后续阶段，不应因本轮 chunked 本地上传而提前启用。
+- Redocly 的 4XX 警告与仓库 HTTP 200 业务错误规范冲突，属于预期警告。
 
 ## 推荐下一任务
 
-依据 `spec-v1.5.0` 在实现仓库设计并执行实际数据迁移与事件切换：先完成数据盘点和回填校验，再切换领域源事件与 ApplicationPlatform 引用投影，最后验证兼容消费者并退役旧处理路径。
+评审本轮 S2 草案的 DTO 和权限粒度；确认后提交并发布新的 spec 版本，再在实现仓库设计 migration、接口实现顺序与端到端验收。
 
 ## Next Prompt
 
 ```text
-读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，以已发布的 spec-v1.5.0 为正式实现依据，设计 Artifact-to-asset-library 的实现迁移计划。重点覆盖 asset_uploaded 与 user_asset_processing_tasks 的兼容停用、ApplicationPlatform 引用投影重建、Artifact/Representation 数据回填、领域源事件切换顺序、消费者兼容验证、观测指标和回滚边界。不要修改已发布规格语义；如发现真实 S1/S2 冲突，先在规格仓库修正并重新 release。
+读取 AGENTS.md、skills/spec-workflow/SKILL.md 和 docs/HANDOFF.md，评审 asset-library 本轮 S2 补齐草案。重点核对 45 个 OpenAPI operation 的请求/响应、普通与分片上传状态、Collection 对外术语与表映射、永久删除强引用检查、16 项权限粒度和 43 个错误码。运行完整 YAML/OpenAPI/S1 引用/错误码/schema 校验；发现问题直接修正并更新 CHANGELOG 与 HANDOFF。完成后汇报差异，但未经我明确确认不要写 RELEASE.md 或声明新 release。
 ```

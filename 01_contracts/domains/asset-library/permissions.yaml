@@ -1,3 +1,113 @@
+asset.read:
+  module: asset
+  resource: asset
+  action: read
+  description: 查看当前用户自己的素材列表、详情、版本与回收站。
+  frontend_usage: 控制素材库、素材详情、版本历史和回收站读取入口。
+  backend_enforcement: 必须从认证上下文注入 owner_user_id；普通列表默认排除 deleted，回收站查询只返回当前用户 deleted 素材。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-01, BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-05, BR-USER-ASSET-20, BR-USER-ASSET-23]
+  related_user_stories: [US-USER-ASSET-01, US-USER-ASSET-10, US-USER-ASSET-18]
+
+asset.create:
+  module: asset
+  resource: asset
+  action: create
+  description: 创建当前用户 text、prompt 或 prompt_template canonical 素材。
+  frontend_usage: 控制无需二进制上传的素材创建入口。
+  backend_enforcement: owner 只能来自认证上下文；二进制内容不得绕过 AssetUpload 进入本权限入口。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-19]
+  related_user_stories: [US-USER-ASSET-06]
+
+asset.update:
+  module: asset
+  resource: asset
+  action: update
+  description: 更新当前用户素材 metadata、创建 canonical 新版本或切换当前版本。
+  frontend_usage: 控制重命名、描述、归档状态和版本操作。
+  backend_enforcement: 必须校验当前用户所有权、canWrite、软删除状态和可选 resource_version；不得覆盖已有 AssetVersion 内容。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-20, BR-USER-ASSET-24, BR-USER-ASSET-32]
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-14, US-USER-ASSET-18]
+
+asset.delete:
+  module: asset
+  resource: asset
+  action: delete
+  description: 将当前用户素材移入回收站、恢复或在引用检查后永久删除。
+  frontend_usage: 控制删除确认、回收站恢复和永久删除入口。
+  backend_enforcement: 软删除保留版本、Representation、Blob 与引用；永久删除必须执行强引用检查且只物理删除无引用 Blob。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26, BR-USER-ASSET-57, BR-USER-ASSET-58]
+  related_user_stories: [US-USER-ASSET-15, US-USER-ASSET-40]
+
+asset.content.read:
+  module: representation
+  resource: asset_content
+  action: read
+  description: 读取、预览或下载当前用户有权访问的 Representation 内容。
+  frontend_usage: 控制悬停预览、详情预览、下载和短期访问地址。
+  backend_enforcement: 必须沿 Representation → AssetVersion → Asset 校验当前用户所有权；地址必须短期有效，不得返回永久存储 URL。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-07, BR-USER-ASSET-21, BR-USER-ASSET-22, BR-USER-ASSET-23, BR-USER-ASSET-27]
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13]
+
+asset.upload:
+  module: upload
+  resource: asset_upload
+  action: manage
+  description: 初始化、传输、完成或取消当前用户素材上传会话。
+  frontend_usage: 控制普通上传、分片上传、多文件上传和停止上传。
+  backend_enforcement: owner 必须来自认证上下文；逐文件校验 SHA256、分片范围和目标 Asset 所有权，完成事务写 Representation 请求 outbox。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-11, BR-USER-ASSET-12, BR-USER-ASSET-13, BR-USER-ASSET-14, BR-USER-ASSET-15, BR-USER-ASSET-16, BR-USER-ASSET-17, BR-USER-ASSET-19, BR-USER-ASSET-41, BR-USER-ASSET-42]
+  related_user_stories: [US-USER-ASSET-05, US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-08, US-USER-ASSET-09, US-USER-ASSET-31]
+
+asset.collection.read:
+  module: collection
+  resource: collection
+  action: read
+  description: 查看当前用户自己的 Collection、层级和成员。
+  frontend_usage: 控制 Collection 列表、详情、筛选和素材详情中的分组关联展示。
+  backend_enforcement: Collection、成员和返回 Asset 必须同时限制在当前用户范围。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-52, BR-USER-ASSET-53]
+  related_user_stories: [US-USER-ASSET-34, US-USER-ASSET-36, US-USER-ASSET-38, US-USER-ASSET-39]
+
+asset.collection.manage:
+  module: collection
+  resource: collection
+  action: manage
+  description: 创建、更新、删除当前用户 Collection 并维护成员关系。
+  frontend_usage: 控制 Collection 编辑、批量加入、移除、固定版本和手动排序。
+  backend_enforcement: 必须校验同用户所有权、名称唯一、最大层级 8、固定版本归属；删除 Collection 不得删除 Asset。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-50, BR-USER-ASSET-51, BR-USER-ASSET-53, BR-USER-ASSET-54, BR-USER-ASSET-55, BR-USER-ASSET-56]
+  related_user_stories: [US-USER-ASSET-34, US-USER-ASSET-35, US-USER-ASSET-37, US-USER-ASSET-39]
+
+asset.label.manage:
+  module: labeling
+  resource: asset_label
+  action: manage
+  description: 维护当前用户素材的 Labels 与 Tags。
+  frontend_usage: 控制单项与批量标签编辑、自动标签修正和自由 Tag 管理。
+  backend_enforcement: 必须校验当前用户所有权、canWrite、trim/字符/数量约束；批量操作逐素材独立事务。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-32, BR-USER-ASSET-35, BR-USER-ASSET-36, BR-USER-ASSET-40]
+  related_user_stories: [US-USER-ASSET-19, US-USER-ASSET-23, US-USER-ASSET-25, US-USER-ASSET-26, US-USER-ASSET-27, US-USER-ASSET-29]
+
+asset.reference.read:
+  module: asset
+  resource: asset_reference
+  action: read
+  description: 查看当前用户素材的关系、来源链、轻量引用摘要和使用位置。
+  frontend_usage: 控制素材详情中的来源关系与使用位置标签页。
+  backend_enforcement: 必须校验素材所有权并过滤不可见来源；轻量摘要不得替代永久删除前的强引用检查。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-23, BR-USER-ASSET-57, BR-USER-ASSET-58]
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-40]
+
 asset.artifact.register:
   module: artifact-registration
   resource: artifact_registration
@@ -30,6 +140,17 @@ asset.artifact.read:
   default_roles: []
   related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66]
   related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+
+asset.artifact.delete:
+  module: artifact
+  resource: artifact
+  action: delete
+  description: 删除当前用户临时 Artifact 投影。
+  frontend_usage: 控制任务制品区删除临时结果入口。
+  backend_enforcement: 必须按 owner 校验；已登记 Artifact 不得级联删除 Asset、AssetVersion、Representation 或仍被引用的 Blob。
+  default_roles: []
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-66, BR-USER-ASSET-78]
+  related_user_stories: [US-USER-ASSET-42]
 
 asset.representation.read:
   module: representation

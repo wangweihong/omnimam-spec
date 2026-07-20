@@ -10,7 +10,7 @@
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
 | application-platform | `01_contracts/domains/application-platform/errors.yaml` | ProviderCapability 启动加载、引擎与绑定、ComfyUI 工作流、应用契约、运行和访问错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | AtomicTask、Group/DAG、Schedule、运行时、Attempt 与权限错误码 |
-| asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、标签写入、Artifact、AssetVersion 与 Representation 错误码 |
+| asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、访问、标签、上传、Collection、Artifact、AssetVersion 与 Representation 错误码 |
 | workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | Canvas、不可变版本、运行、节点引用和访问错误码 |
 | sse | `01_contracts/domains/sse/errors.yaml` | 实时连接、游标重放、事件投影和访问错误码 |
 
@@ -48,6 +48,8 @@
 | 150600-150799 | asset-library | access | 素材所有权、删除状态与可写性错误 |
 | 150800-150999 | asset-library | artifact-registration | Artifact 所有权、受控内容、状态与幂等登记错误 |
 | 151000-151199 | asset-library | representation | AssetRepresentation 计划、写入、不可恢复与 backfill 错误 |
+| 151200-151399 | asset-library | upload | 普通/分片上传会话、内容校验与 StorageAdapter 错误 |
+| 151400-151599 | asset-library | collection | Collection 层级、名称、成员与固定版本错误 |
 | 160200-160399 | workflow-canvas | canvas | Canvas 草稿、图、引用和规模错误 |
 | 160400-160599 | workflow-canvas | version | CanvasVersion 查询、编译和发布错误 |
 | 160600-160799 | workflow-canvas | run | CanvasRun 状态、幂等和可见性错误 |

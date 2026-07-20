@@ -1,15 +1,21 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Asset Library API
-  version: 0.2.0-draft
-  description: 素材、Artifact、AssetVersion、AssetRepresentation、标签查询与周期修复协作契约。
+  version: 0.3.0-draft
+  description: 素材、上传、Collection、Artifact、AssetVersion、AssetRepresentation、内容访问与周期修复协作契约。
 servers:
   - url: /api/v1
 security:
   - bearer_auth: []
 tags:
   - name: assets
-    description: 当前用户素材查询与标签操作。
+    description: 当前用户素材创建、查询、更新、回收站与引用聚合。
+  - name: asset-uploads
+    description: 当前用户普通或分片素材上传会话。
+  - name: collections
+    description: 当前用户 Collection 与成员关系。
+  - name: labeling
+    description: 当前用户素材 Label 与 Tag。
   - name: artifact-registrations
     description: Artifact 到 Asset/AssetVersion 的幂等登记。
   - name: artifacts
@@ -23,6 +29,7 @@ paths:
       tags: [assets]
       summary: 查询当前用户素材列表
       operationId: list_assets
+      x-permission: asset.read
       description: |
         所有条件均在当前 Bearer Token 对应的用户范围内执行。`selector` 与
         `natural_language_query` 互斥；`keyword` 可以与 selector 和精确过滤条件组合，
@@ -60,6 +67,10 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/SourceType"
+        - name: status
+          in: query
+          description: 默认查询 active,archived；显式 deleted 用于回收站。
+          schema: {type: string, enum: [active, archived, deleted]}
         - name: width
           in: query
           schema: { type: integer, minimum: 0 }
@@ -88,12 +99,143 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/AssetListResponse"
                   - $ref: "#/components/schemas/BusinessError"
+    post:
+      tags: [assets]
+      summary: 创建 canonical 内容素材
+      operationId: create_asset
+      description: 二进制素材必须使用 AssetUpload；本入口只创建 text、prompt 或 prompt_template canonical 内容。
+      x-permission: asset.create
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-06]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-19]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCanonicalAssetRequest'}
+      responses:
+        '200':
+          description: 已创建素材详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetDetail'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}:
+    get:
+      tags: [assets]
+      summary: 查询素材详情
+      operationId: get_asset
+      x-permission: asset.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10, US-USER-ASSET-18]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-20, BR-USER-ASSET-23]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 素材详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetDetail'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    patch:
+      tags: [assets]
+      summary: 更新素材名称、描述或归档状态
+      operationId: update_asset
+      x-permission: asset.update
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-14]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-24, BR-USER-ASSET-32]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateAssetRequest'}
+      responses:
+        '200':
+          description: 更新后的素材或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/UserAsset'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    delete:
+      tags: [assets]
+      summary: 将素材移入回收站
+      operationId: delete_asset
+      x-permission: asset.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-15]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 已软删除素材或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/UserAsset'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/restore:
+    post:
+      tags: [assets]
+      summary: 从回收站恢复素材
+      operationId: restore_asset
+      x-permission: asset.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-15]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 已恢复素材或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/UserAsset'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/permanent:
+    delete:
+      tags: [assets]
+      summary: 永久删除回收站素材
+      operationId: permanently_delete_asset
+      description: 执行画布、应用、运行、Collection、AssetRelation、Representation、Artifact 与 Blob 强引用检查；存在阻塞引用时不删除任何事实。
+      x-permission: asset.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-15, US-USER-ASSET-40]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-57, BR-USER-ASSET-58]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 永久删除结果、阻塞引用错误或其他业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/PermanentDeleteResult'}
+                  - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/assets/batch-labels:
     post:
       tags: [assets]
       summary: 批量应用 Labels 与 Tags
       operationId: batch_apply_asset_labels
+      x-permission: asset.label.manage
       description: |
         每个素材独立校验并提交，单项失败不回滚其他合法项。请求中的 Label upsert、
         Tag 添加和 Tag 删除均按 trim 后的区分大小写原文处理；写入来源统一为 manual。
@@ -116,6 +258,395 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/BatchLabelResponse"
                   - $ref: "#/components/schemas/BusinessError"
+
+  /api/v1/asset-uploads:
+    post:
+      tags: [asset-uploads]
+      summary: 批量初始化用户素材上传会话
+      operationId: create_asset_uploads
+      description: 服务端按文件大小返回 single 或 chunked；SHA256 命中当前用户可见素材时返回 existing_asset 并跳过二进制上传。
+      x-permission: asset.upload
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-05, US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-31]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-11, BR-USER-ASSET-12, BR-USER-ASSET-13, BR-USER-ASSET-14, BR-USER-ASSET-15, BR-USER-ASSET-41, BR-USER-ASSET-42]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateAssetUploadsRequest'}
+      responses:
+        '200':
+          description: 逐文件初始化或去重结果，或请求级业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CreateAssetUploadsResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-uploads/{upload_id}/content:
+    post:
+      tags: [asset-uploads]
+      summary: 上传单文件或一个分片的内容
+      operationId: upload_asset_content
+      description: single 会话不得提交 part_number；chunked 会话必须提交从 1 开始的 part_number、part_sha256 与 content_range。
+      x-permission: asset.upload
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-06, US-USER-ASSET-07]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-13, BR-USER-ASSET-14, BR-USER-ASSET-15, BR-USER-ASSET-41]
+      parameters:
+        - {name: upload_id, in: path, required: true, schema: {type: string}}
+        - {name: part_number, in: query, required: false, schema: {type: integer, minimum: 1}}
+        - {name: part_sha256, in: header, required: false, schema: {type: string, pattern: '^[a-fA-F0-9]{64}$'}}
+        - {name: content_range, in: header, required: false, schema: {type: string, pattern: '^bytes [0-9]+-[0-9]+/[0-9]+$'}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          description: 更新后的上传会话或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetUploadSession'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-uploads/{upload_id}/complete:
+    post:
+      tags: [asset-uploads]
+      summary: 完成上传并创建素材版本
+      operationId: complete_asset_upload
+      description: 校验完整 SHA256 后，在事务中创建或追加 AssetVersion、Blob、original Representation，并写 Representation 请求 outbox。
+      x-permission: asset.upload
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-09, US-USER-ASSET-31]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-15, BR-USER-ASSET-18, BR-USER-ASSET-19, BR-USER-ASSET-41, BR-USER-ASSET-42]
+      parameters:
+        - {name: upload_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CompleteAssetUploadRequest'}
+      responses:
+        '200':
+          description: 上传完成结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CompleteAssetUploadResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-uploads/{upload_id}:
+    delete:
+      tags: [asset-uploads]
+      summary: 取消上传会话
+      operationId: cancel_asset_upload
+      x-permission: asset.upload
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-08]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-16, BR-USER-ASSET-17]
+      parameters:
+        - {name: upload_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 已取消会话或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetUploadSession'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/collections:
+    get:
+      tags: [collections]
+      summary: 查询当前用户 Collection
+      operationId: list_collections
+      x-permission: asset.collection.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-34, US-USER-ASSET-36]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-52, BR-USER-ASSET-53, BR-USER-ASSET-55]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {name: keyword, in: query, description: 按 Collection name、description 模糊搜索。, schema: {type: string, maxLength: 256, default: ''}}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: parent_collection_id, in: query, schema: {type: string}}
+        - {name: sort_field, in: query, schema: {type: string, enum: [name, sort_order, created_at, updated_at], default: sort_order}}
+        - {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+      responses:
+        '200':
+          description: Collection 列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CollectionListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    post:
+      tags: [collections]
+      summary: 创建 Collection
+      operationId: create_collection
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-34]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-55]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCollectionRequest'}
+      responses:
+        '200':
+          description: 已创建 Collection 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Collection'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/collections/{collection_id}:
+    get:
+      tags: [collections]
+      summary: 查询 Collection 详情与成员
+      operationId: get_collection
+      x-permission: asset.collection.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-34, US-USER-ASSET-36]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-53]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200':
+          description: Collection 详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CollectionDetail'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    patch:
+      tags: [collections]
+      summary: 更新 Collection
+      operationId: update_collection
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-34]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-53, BR-USER-ASSET-55]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateCollectionRequest'}
+      responses:
+        '200':
+          description: 更新后的 Collection 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Collection'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    delete:
+      tags: [collections]
+      summary: 删除 Collection 及成员关系
+      operationId: delete_collection
+      description: 只删除 Collection 与成员关系，不删除任何 Asset。
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-34]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-50, BR-USER-ASSET-51]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 删除结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/DeleteResult'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/collections/{collection_id}/items:
+    post:
+      tags: [collections]
+      summary: 批量加入 Collection
+      operationId: add_collection_items
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-35, US-USER-ASSET-39]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-54, BR-USER-ASSET-56]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AddCollectionItemsRequest'}
+      responses:
+        '200':
+          description: 逐项添加结果或请求级业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CollectionItemBatchResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/collections/{collection_id}/items/{item_id}:
+    patch:
+      tags: [collections]
+      summary: 更新 Collection 成员固定版本、角色或排序
+      operationId: update_collection_item
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-35, US-USER-ASSET-39]
+        business_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-53, BR-USER-ASSET-56]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+        - {name: item_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateCollectionItemRequest'}
+      responses:
+        '200':
+          description: 更新后的成员或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CollectionItem'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    delete:
+      tags: [collections]
+      summary: 从 Collection 移除素材
+      operationId: delete_collection_item
+      x-permission: asset.collection.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-37, US-USER-ASSET-39]
+        business_rules: [BR-USER-ASSET-50, BR-USER-ASSET-51, BR-USER-ASSET-56]
+      parameters:
+        - {name: collection_id, in: path, required: true, schema: {type: string}}
+        - {name: item_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 移除结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/DeleteResult'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/labels:
+    put:
+      tags: [labeling]
+      summary: 整体保存素材 Labels
+      operationId: replace_asset_labels
+      x-permission: asset.label.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-19, US-USER-ASSET-25, US-USER-ASSET-26]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-35, BR-USER-ASSET-36]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplaceLabelsRequest'}
+      responses:
+        '200':
+          description: 完整标签结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchLabelData'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/labels/{label_id}:
+    delete:
+      tags: [labeling]
+      summary: 删除一个素材 Label
+      operationId: delete_asset_label
+      x-permission: asset.label.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-19, US-USER-ASSET-25]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-35, BR-USER-ASSET-36]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {name: label_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 完整标签结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchLabelData'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/tags:
+    post:
+      tags: [labeling]
+      summary: 添加素材 Tags
+      operationId: add_asset_tags
+      x-permission: asset.label.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-27, US-USER-ASSET-29]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-35, BR-USER-ASSET-36]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AddTagsRequest'}
+      responses:
+        '200':
+          description: 完整标签结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchLabelData'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/tags/{tag_id}:
+    delete:
+      tags: [labeling]
+      summary: 删除一个素材 Tag
+      operationId: delete_asset_tag
+      x-permission: asset.label.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-27, US-USER-ASSET-29]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-35, BR-USER-ASSET-36]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {name: tag_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 完整标签结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchLabelData'}
+                  - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/artifacts:
     get:
@@ -180,6 +711,26 @@ paths:
       responses:
         '200':
           description: Artifact 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Artifact'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    delete:
+      tags: [artifacts]
+      summary: 删除当前用户临时 Artifact
+      operationId: delete_artifact
+      description: 已登记为 AssetVersion 的 Artifact 只删除临时投影，不删除 Asset、AssetVersion 或共享 Blob。
+      x-permission: asset.artifact.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-42]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-65, BR-USER-ASSET-66, BR-USER-ASSET-78]
+      parameters:
+        - {name: artifact_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 已删除 Artifact 或业务错误。
           content:
             application/json:
               schema:
@@ -314,6 +865,74 @@ paths:
                 oneOf:
                   - {$ref: '#/components/schemas/AssetVersionListResponse'}
                   - {$ref: '#/components/schemas/BusinessError'}
+    post:
+      tags: [representations]
+      summary: 为 canonical 素材创建不可变新版本
+      operationId: create_asset_version
+      description: 本入口仅用于 text、prompt、prompt_template 的 canonical 内容；二进制新版本通过 AssetUpload 的 target_asset_id 创建。
+      x-permission: asset.update
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-19, BR-USER-ASSET-20]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCanonicalVersionRequest'}
+      responses:
+        '200':
+          description: 已创建版本或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetVersion'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-versions/{version_id}:
+    get:
+      tags: [representations]
+      summary: 查询 AssetVersion 详情
+      operationId: get_asset_version
+      x-permission: asset.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-20, BR-USER-ASSET-23]
+      parameters:
+        - {name: version_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 版本详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetVersionDetail'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/versions/{version_id}/set-current:
+    post:
+      tags: [representations]
+      summary: 切换 Asset 当前版本
+      operationId: set_current_asset_version
+      x-permission: asset.update
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-20]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {name: version_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 更新后的素材或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/UserAsset'}
+                  - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/asset-versions/{asset_version_id}/representations:
     get:
@@ -358,6 +977,166 @@ paths:
               schema:
                 oneOf:
                   - {$ref: '#/components/schemas/AssetRepresentation'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-representations/{representation_id}:
+    get:
+      tags: [representations]
+      summary: 查询 AssetRepresentation 详情
+      operationId: get_asset_representation
+      x-permission: asset.content.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10, US-USER-ASSET-11, US-USER-ASSET-12]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-20, BR-USER-ASSET-21, BR-USER-ASSET-23, BR-USER-ASSET-27]
+      parameters:
+        - {name: representation_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Representation 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetRepresentation'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-representations/{representation_id}/content:
+    get:
+      tags: [representations]
+      summary: 读取或下载受控 Representation 内容
+      operationId: read_asset_representation_content
+      x-permission: asset.content.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-07, BR-USER-ASSET-21, BR-USER-ASSET-22, BR-USER-ASSET-23]
+      parameters:
+        - {name: representation_id, in: path, required: true, schema: {type: string}}
+        - {name: disposition, in: query, schema: {type: string, enum: [inline, attachment], default: inline}}
+      responses:
+        '200':
+          description: 受控二进制/文本内容或 JSON 业务错误。
+          headers:
+            Content-Type: {schema: {type: string}}
+            Content-Length: {schema: {type: integer, format: int64}}
+            Content-Disposition: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+            application/json:
+              schema: {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/asset-representations/{representation_id}/access-url:
+    get:
+      tags: [representations]
+      summary: 获取短期受控内容访问地址
+      operationId: get_asset_representation_access_url
+      description: 返回当前用户范围、短时有效且不可持久化的访问地址；第一阶段可指向本服务 content endpoint。
+      x-permission: asset.content.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-21, BR-USER-ASSET-22, BR-USER-ASSET-23]
+      parameters:
+        - {name: representation_id, in: path, required: true, schema: {type: string}}
+        - {name: disposition, in: query, schema: {type: string, enum: [inline, attachment], default: inline}}
+      responses:
+        '200':
+          description: 短期访问地址或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/RepresentationAccess'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/relations:
+    get:
+      tags: [assets]
+      summary: 查询素材关系
+      operationId: list_asset_relations
+      x-permission: asset.reference.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10, US-USER-ASSET-40]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-23, BR-USER-ASSET-57, BR-USER-ASSET-58]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200':
+          description: 素材关系列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetRelationListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/lineage:
+    get:
+      tags: [assets]
+      summary: 查询素材来源链
+      operationId: get_asset_lineage
+      x-permission: asset.reference.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10, US-USER-ASSET-40]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-23, BR-USER-ASSET-57, BR-USER-ASSET-58]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: 来源链或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetLineage'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/references:
+    get:
+      tags: [assets]
+      summary: 查询素材轻量引用摘要
+      operationId: list_asset_references
+      x-permission: asset.reference.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-40]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-23, BR-USER-ASSET-57, BR-USER-ASSET-58]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200':
+          description: 引用摘要列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetReferenceListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/{asset_id}/usages:
+    get:
+      tags: [assets]
+      summary: 查询素材使用位置
+      operationId: list_asset_usages
+      x-permission: asset.reference.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-10, US-USER-ASSET-40]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-23, BR-USER-ASSET-57, BR-USER-ASSET-58]
+      parameters:
+        - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200':
+          description: 使用位置列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetUsageListResponse'}
                   - {$ref: '#/components/schemas/BusinessError'}
 
 components:
@@ -463,6 +1242,8 @@ components:
         preview_status:
           type: string
           enum: [none, pending, ready, failed]
+        sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$', nullable: true}
+        reference_count: {type: integer, minimum: 0, default: 0}
         labels:
           $ref: "#/components/schemas/Labels"
         tags:
@@ -474,6 +1255,7 @@ components:
         resource_version: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        deleted_at: {type: string, format: date-time, nullable: true}
     ArtifactRegistrationRequest:
       allOf:
         - {$ref: '#/components/schemas/RegisterArtifactRequest'}
@@ -582,6 +1364,9 @@ components:
         status: {type: string, enum: [uploading, processing, ready, ready_with_warnings, failed]}
         source_type: {type: string, enum: [upload, artifact, asset_edit, asset_conversion, external_import]}
         source_ref_id: {type: string, nullable: true}
+        content: {type: object, additionalProperties: true, description: canonical 内容；二进制版本为空对象。}
+        metadata: {type: object, additionalProperties: true}
+        version_note: {type: string}
         profile_version: {type: string}
         expected_count: {type: integer, minimum: 0}
         completed_count: {type: integer, minimum: 0}
@@ -599,6 +1384,9 @@ components:
         profile: {type: string}
         profile_version: {type: string}
         blob_id: {type: string, nullable: true}
+        format: {type: string}
+        mime_type: {type: string}
+        metadata: {type: object, additionalProperties: true}
         status: {type: string, enum: [pending, processing, ready, failed, irreparable, deleted]}
         required: {type: boolean}
         retry_count: {type: integer, minimum: 0}
@@ -712,6 +1500,339 @@ components:
         tag_sources:
           $ref: "#/components/schemas/TagSources"
         resource_version: { type: integer, minimum: 0 }
+    CreateCanonicalAssetRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name, media_type, canonical_content]
+      properties:
+        display_name: {type: string, minLength: 1, maxLength: 255}
+        description: {type: string, maxLength: 2000, default: ''}
+        media_type: {type: string, enum: [text, prompt, prompt_template]}
+        canonical_content: {type: object, additionalProperties: true}
+        labels: {$ref: '#/components/schemas/Labels'}
+        tags: {$ref: '#/components/schemas/Tags'}
+        profile_version: {type: string, minLength: 1, maxLength: 128, default: canonical-v1}
+    UpdateAssetRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        display_name: {type: string, minLength: 1, maxLength: 255}
+        description: {type: string, maxLength: 2000}
+        status: {type: string, enum: [active, archived]}
+        resource_version: {type: integer, minimum: 0, description: 可选乐观并发版本；冲突时不更新。}
+    AssetDetail:
+      type: object
+      required: [asset, versions, representations, collections, reference_summary]
+      properties:
+        asset: {$ref: '#/components/schemas/UserAsset'}
+        current_version: {$ref: '#/components/schemas/AssetVersion', nullable: true}
+        versions: {type: array, items: {$ref: '#/components/schemas/AssetVersion'}}
+        representations: {type: array, items: {$ref: '#/components/schemas/AssetRepresentation'}}
+        collections: {type: array, items: {$ref: '#/components/schemas/Collection'}}
+        reference_summary: {$ref: '#/components/schemas/ReferenceSummary'}
+    DeleteResult:
+      type: object
+      required: [id, deleted]
+      properties:
+        id: {type: string}
+        deleted: {type: boolean}
+    PermanentDeleteResult:
+      type: object
+      required: [asset_id, deleted, deleted_blob_ids, retained_blob_ids]
+      properties:
+        asset_id: {type: string}
+        deleted: {type: boolean}
+        deleted_blob_ids: {type: array, items: {type: string}}
+        retained_blob_ids: {type: array, items: {type: string}, description: 仍被其他 Representation 或 Artifact 引用的 Blob。}
+    CreateCanonicalVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [canonical_content, profile_version]
+      properties:
+        canonical_content: {type: object, additionalProperties: true}
+        version_note: {type: string, maxLength: 1000, default: ''}
+        profile_version: {type: string, minLength: 1, maxLength: 128}
+    AssetVersionDetail:
+      type: object
+      required: [version, representations]
+      properties:
+        version: {$ref: '#/components/schemas/AssetVersion'}
+        representations: {type: array, items: {$ref: '#/components/schemas/AssetRepresentation'}}
+    AssetUploadItemRequest:
+      type: object
+      additionalProperties: false
+      required: [client_upload_key, file_name, size_bytes, sha256, mime_type]
+      properties:
+        client_upload_key: {type: string, minLength: 1, maxLength: 128}
+        file_name: {type: string, minLength: 1, maxLength: 512}
+        display_name: {type: string, minLength: 1, maxLength: 255}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+        mime_type: {type: string, minLength: 1, maxLength: 255}
+        target_asset_id: {type: string, nullable: true, description: 非空时向当前用户已有 Asset 追加新版本。}
+        version_note: {type: string, maxLength: 1000}
+        labels: {$ref: '#/components/schemas/Labels'}
+        tags: {$ref: '#/components/schemas/Tags'}
+        profile_version: {type: string, minLength: 1, maxLength: 128, default: default-v1}
+    CreateAssetUploadsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: {$ref: '#/components/schemas/AssetUploadItemRequest'}
+    UploadedPart:
+      type: object
+      required: [part_number, size_bytes, sha256]
+      properties:
+        part_number: {type: integer, minimum: 1}
+        size_bytes: {type: integer, format: int64, minimum: 1}
+        sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+    AssetUploadSession:
+      type: object
+      required: [id, client_upload_key, file_name, size_bytes, sha256, mime_type, upload_mode, chunk_size_bytes, uploaded_parts, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        client_upload_key: {type: string}
+        file_name: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+        mime_type: {type: string}
+        target_asset_id: {type: string, nullable: true}
+        upload_mode: {type: string, enum: [single, chunked]}
+        chunk_size_bytes: {type: integer, format: int64, minimum: 0}
+        uploaded_parts: {type: array, items: {$ref: '#/components/schemas/UploadedPart'}}
+        status: {type: string, enum: [initialized, uploading, completed, cancelled, failed]}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AssetUploadInitResult:
+      type: object
+      required: [client_upload_key, deduplicated]
+      properties:
+        client_upload_key: {type: string}
+        deduplicated: {type: boolean}
+        upload: {$ref: '#/components/schemas/AssetUploadSession'}
+        existing_asset: {$ref: '#/components/schemas/UserAsset'}
+        error: {$ref: '#/components/schemas/BusinessError'}
+    CreateAssetUploadsResponse:
+      type: object
+      required: [total, success, fail, results]
+      properties:
+        total: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        results: {type: array, items: {$ref: '#/components/schemas/AssetUploadInitResult'}}
+    CompleteAssetUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [sha256]
+      properties:
+        sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+        parts: {type: array, items: {$ref: '#/components/schemas/UploadedPart'}, description: chunked 会话必填且 part_number 不得重复。}
+    CompleteAssetUploadResponse:
+      type: object
+      required: [upload, asset, asset_version, original_representation, deduplicated]
+      properties:
+        upload: {$ref: '#/components/schemas/AssetUploadSession'}
+        asset: {$ref: '#/components/schemas/UserAsset'}
+        asset_version: {$ref: '#/components/schemas/AssetVersion'}
+        original_representation: {$ref: '#/components/schemas/AssetRepresentation'}
+        deduplicated: {type: boolean}
+    Collection:
+      type: object
+      required: [id, name, description, color, sort_order, depth, item_count, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        parent_collection_id: {type: string, nullable: true}
+        color: {type: string}
+        sort_order: {type: integer}
+        depth: {type: integer, minimum: 0, maximum: 8}
+        item_count: {type: integer, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CollectionItem:
+      type: object
+      required: [id, collection_id, asset_id, role, sort_order, metadata, created_at, updated_at]
+      properties:
+        id: {type: string}
+        collection_id: {type: string}
+        asset_id: {type: string}
+        pinned_version_id: {type: string, nullable: true}
+        role: {type: string, maxLength: 128}
+        sort_order: {type: integer}
+        metadata: {type: object, additionalProperties: true}
+        asset: {$ref: '#/components/schemas/UserAsset'}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CollectionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/Collection'}}
+    CollectionDetail:
+      type: object
+      required: [collection, total, items]
+      properties:
+        collection: {$ref: '#/components/schemas/Collection'}
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CollectionItem'}}
+    CreateCollectionRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 255}
+        description: {type: string, maxLength: 2000, default: ''}
+        parent_collection_id: {type: string, nullable: true}
+        color: {type: string, maxLength: 64, default: ''}
+        sort_order: {type: integer, default: 0}
+    UpdateCollectionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 255}
+        description: {type: string, maxLength: 2000}
+        parent_collection_id: {type: string, nullable: true}
+        color: {type: string, maxLength: 64}
+        sort_order: {type: integer}
+        resource_version: {type: integer, minimum: 0}
+    AddCollectionItem:
+      type: object
+      additionalProperties: false
+      required: [asset_id]
+      properties:
+        asset_id: {type: string}
+        pinned_version_id: {type: string, nullable: true}
+        role: {type: string, maxLength: 128, default: ''}
+        sort_order: {type: integer, default: 0}
+        metadata: {type: object, additionalProperties: true}
+    AddCollectionItemsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/AddCollectionItem'}}
+    UpdateCollectionItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        pinned_version_id: {type: string, nullable: true}
+        role: {type: string, maxLength: 128}
+        sort_order: {type: integer}
+        metadata: {type: object, additionalProperties: true}
+    CollectionItemResult:
+      type: object
+      required: [asset_id, success]
+      properties:
+        asset_id: {type: string}
+        success: {type: boolean}
+        data: {$ref: '#/components/schemas/CollectionItem'}
+        error: {$ref: '#/components/schemas/BusinessError'}
+    CollectionItemBatchResponse:
+      type: object
+      required: [total, success, fail, results]
+      properties:
+        total: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        results: {type: array, items: {$ref: '#/components/schemas/CollectionItemResult'}}
+    ReplaceLabelsRequest:
+      type: object
+      additionalProperties: false
+      required: [labels]
+      properties:
+        labels: {$ref: '#/components/schemas/Labels'}
+    AddTagsRequest:
+      type: object
+      additionalProperties: false
+      required: [tags]
+      properties:
+        tags: {$ref: '#/components/schemas/Tags'}
+    RepresentationAccess:
+      type: object
+      required: [representation_id, access_url, expires_at]
+      properties:
+        representation_id: {type: string}
+        access_url: {type: string, format: uri}
+        expires_at: {type: string, format: date-time}
+    AssetRelation:
+      type: object
+      required: [id, source_asset_id, relation_type, target_asset_id, created_at]
+      properties:
+        id: {type: string}
+        source_asset_id: {type: string}
+        source_version_id: {type: string, nullable: true}
+        relation_type: {type: string, enum: [derived_from, generated_from, edited_from, upscaled_from, extracted_from, converted_from, uses_reference, paired_with, caption_of, audio_of, subtitle_of, transcript_of]}
+        target_asset_id: {type: string}
+        target_version_id: {type: string, nullable: true}
+        atomic_task_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true}
+        application_run_id: {type: string, nullable: true}
+        canvas_run_id: {type: string, nullable: true}
+        metadata: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+    AssetRelationListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AssetRelation'}}
+    AssetLineage:
+      type: object
+      required: [asset_id, nodes, edges]
+      properties:
+        asset_id: {type: string}
+        nodes: {type: array, items: {$ref: '#/components/schemas/UserAsset'}}
+        edges: {type: array, items: {$ref: '#/components/schemas/AssetRelation'}}
+    AssetReference:
+      type: object
+      required: [id, asset_id, source_type, source_id, version_policy, created_at]
+      properties:
+        id: {type: string}
+        asset_id: {type: string}
+        asset_version_id: {type: string, nullable: true}
+        source_type: {type: string, enum: [canvas, application, atomic_task, application_run, canvas_run, collection, asset_relation]}
+        source_id: {type: string}
+        source_label: {type: string}
+        version_policy: {type: string, enum: [latest, pinned]}
+        created_at: {type: string, format: date-time}
+    AssetReferenceListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AssetReference'}}
+    AssetUsage:
+      type: object
+      required: [source_type, source_id, source_label]
+      properties:
+        source_type: {type: string}
+        source_id: {type: string}
+        source_label: {type: string}
+        location: {type: object, additionalProperties: true}
+    AssetUsageListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AssetUsage'}}
+    ReferenceSummary:
+      type: object
+      required: [reference_count, sources]
+      properties:
+        reference_count: {type: integer, minimum: 0}
+        sources: {type: array, items: {$ref: '#/components/schemas/AssetReference'}}
     BusinessError:
       type: object
       required: [code, value, message, messages, retryable]

@@ -178,6 +178,141 @@ asset_not_found_or_not_writable:
   related_user_stories: [US-USER-ASSET-18, US-USER-ASSET-23]
   related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-32, BR-USER-ASSET-40]
 
+asset_not_found_or_not_visible:
+  code: asset_not_found_or_not_visible
+  value: 150601
+  cn: 素材不存在或不属于当前用户。
+  en: The asset does not exist or is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13, US-USER-ASSET-14, US-USER-ASSET-15, US-USER-ASSET-40]
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-23]
+
+asset_name_invalid:
+  code: asset_name_invalid
+  value: 150602
+  cn: 素材名称 trim 后为空或超过长度限制。
+  en: The asset name is empty after trimming or exceeds the length limit.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-14]
+  related_rules: [BR-USER-ASSET-24]
+
+asset_state_invalid:
+  code: asset_state_invalid
+  value: 150603
+  cn: 素材当前 active、archived 或 deleted 状态不允许该操作。
+  en: The current active, archived, or deleted asset state does not allow this operation.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-14, US-USER-ASSET-15, US-USER-ASSET-18]
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-32]
+
+asset_version_not_found_or_not_visible:
+  code: asset_version_not_found_or_not_visible
+  value: 150604
+  cn: 素材版本不存在、不属于目标素材或不属于当前用户。
+  en: The asset version does not exist, does not belong to the target asset, or is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-35]
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-20, BR-USER-ASSET-51]
+
+asset_representation_not_found_or_not_visible:
+  code: asset_representation_not_found_or_not_visible
+  value: 150605
+  cn: Representation 不存在或当前用户无权访问其所属素材。
+  en: The Representation does not exist or its asset is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-10, US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13]
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-04, BR-USER-ASSET-21, BR-USER-ASSET-22, BR-USER-ASSET-23]
+
+asset_content_unavailable:
+  code: asset_content_unavailable
+  value: 150606
+  cn: 素材内容尚未就绪、已损坏或暂时不可读取。
+  en: The asset content is not ready, is corrupted, or is temporarily unreadable.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-11, US-USER-ASSET-12, US-USER-ASSET-13]
+  related_rules: [BR-USER-ASSET-07, BR-USER-ASSET-21, BR-USER-ASSET-22, BR-USER-ASSET-27, BR-USER-ASSET-28]
+
+asset_permanent_delete_blocked:
+  code: asset_permanent_delete_blocked
+  value: 150607
+  cn: 素材仍被画布、应用、运行、Collection、素材关系或其他对象强引用，不能永久删除。
+  en: The asset is still strongly referenced by a canvas, application, run, Collection, asset relation, or another object and cannot be permanently deleted.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-15, US-USER-ASSET-40]
+  related_rules: [BR-USER-ASSET-25, BR-USER-ASSET-57, BR-USER-ASSET-58]
+
+asset_resource_version_conflict:
+  code: asset_resource_version_conflict
+  value: 150608
+  cn: 素材或 Collection 已被其他请求更新，请刷新后重试。
+  en: The asset or Collection was updated by another request; refresh and retry.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-14, US-USER-ASSET-34]
+  related_rules: [BR-USER-ASSET-24, BR-USER-ASSET-55]
+
+asset_version_content_invalid:
+  code: asset_version_content_invalid
+  value: 150609
+  cn: canonical 内容类型、结构或目标素材类型无效。
+  en: The canonical content type, structure, or target asset type is invalid.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-10]
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-19, BR-USER-ASSET-20]
+
 artifact_registration_invalid:
   code: artifact_registration_invalid
   value: 150800
@@ -342,3 +477,168 @@ representation_backfill_deferred:
   deprecated: false
   related_user_stories: [US-USER-ASSET-44]
   related_rules: [BR-USER-ASSET-73, BR-USER-ASSET-74, BR-USER-ASSET-75]
+
+asset_upload_request_invalid:
+  code: asset_upload_request_invalid
+  value: 151200
+  cn: 上传初始化请求为空、文件键重复或文件 metadata 无效。
+  en: The upload initialization request is empty, contains duplicate file keys, or has invalid file metadata.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-05, US-USER-ASSET-06, US-USER-ASSET-07]
+  related_rules: [BR-USER-ASSET-11, BR-USER-ASSET-12, BR-USER-ASSET-13, BR-USER-ASSET-14, BR-USER-ASSET-41]
+
+asset_upload_not_found_or_not_visible:
+  code: asset_upload_not_found_or_not_visible
+  value: 151201
+  cn: 上传会话不存在或不属于当前用户。
+  en: The upload session does not exist or is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-08]
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-03, BR-USER-ASSET-16, BR-USER-ASSET-17]
+
+asset_upload_state_invalid:
+  code: asset_upload_state_invalid
+  value: 151202
+  cn: 上传会话当前状态不允许写入、完成或取消。
+  en: The current upload session state does not allow content writes, completion, or cancellation.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-08]
+  related_rules: [BR-USER-ASSET-13, BR-USER-ASSET-15, BR-USER-ASSET-16, BR-USER-ASSET-17]
+
+asset_upload_part_invalid:
+  code: asset_upload_part_invalid
+  value: 151203
+  cn: 分片编号、范围、大小或分片 SHA256 与会话不一致。
+  en: The part number, range, size, or part SHA256 does not match the upload session.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-07]
+  related_rules: [BR-USER-ASSET-14, BR-USER-ASSET-15, BR-USER-ASSET-41]
+
+asset_upload_checksum_mismatch:
+  code: asset_upload_checksum_mismatch
+  value: 151204
+  cn: 上传完成后的完整内容 SHA256 与初始化声明不一致。
+  en: The completed content SHA256 does not match the value declared at initialization.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-07]
+  related_rules: [BR-USER-ASSET-15, BR-USER-ASSET-41]
+
+asset_upload_storage_failed:
+  code: asset_upload_storage_failed
+  value: 151205
+  cn: StorageAdapter 写入、合并或读取上传内容失败。
+  en: StorageAdapter failed to write, assemble, or read the uploaded content.
+  owning_domain: asset-library
+  owning_module: upload
+  range: 151200-151399
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-07, US-USER-ASSET-09]
+  related_rules: [BR-USER-ASSET-13, BR-USER-ASSET-15, BR-USER-ASSET-19]
+
+collection_not_found_or_not_visible:
+  code: collection_not_found_or_not_visible
+  value: 151400
+  cn: Collection 不存在或不属于当前用户。
+  en: The Collection does not exist or is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: collection
+  range: 151400-151599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-34, US-USER-ASSET-35, US-USER-ASSET-36, US-USER-ASSET-37, US-USER-ASSET-39]
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-56]
+
+collection_name_conflict:
+  code: collection_name_conflict
+  value: 151401
+  cn: 当前用户范围内已存在 trim 后同名 Collection。
+  en: A Collection with the same trimmed name already exists for the current user.
+  owning_domain: asset-library
+  owning_module: collection
+  range: 151400-151599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-34]
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-55]
+
+collection_hierarchy_invalid:
+  code: collection_hierarchy_invalid
+  value: 151402
+  cn: Collection 父子关系形成环、跨用户或超过最大深度 8。
+  en: The Collection hierarchy forms a cycle, crosses users, or exceeds the maximum depth of 8.
+  owning_domain: asset-library
+  owning_module: collection
+  range: 151400-151599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-34]
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-55]
+
+collection_item_invalid:
+  code: collection_item_invalid
+  value: 151403
+  cn: Collection 成员素材不存在、不属于当前用户或成员请求无效。
+  en: The Collection item asset does not exist, is not visible to the current user, or the item request is invalid.
+  owning_domain: asset-library
+  owning_module: collection
+  range: 151400-151599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-35, US-USER-ASSET-37, US-USER-ASSET-39]
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-54, BR-USER-ASSET-56]
+
+collection_pinned_version_invalid:
+  code: collection_pinned_version_invalid
+  value: 151404
+  cn: 固定版本不存在、不属于成员素材或不属于当前用户。
+  en: The pinned version does not exist, does not belong to the item asset, or is not visible to the current user.
+  owning_domain: asset-library
+  owning_module: collection
+  range: 151400-151599
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-35, US-USER-ASSET-39]
+  related_rules: [BR-USER-ASSET-49, BR-USER-ASSET-51, BR-USER-ASSET-56]
