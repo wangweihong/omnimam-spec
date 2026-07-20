@@ -1,0 +1,191 @@
+canvas_not_found:
+  code: ERR_CANVAS_NOT_FOUND
+  value: 160200
+  cn: Canvas 不存在或当前调用方不可见。
+  en: Canvas does not exist or is not visible to the caller.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-001]
+
+canvas_revision_conflict:
+  code: ERR_CANVAS_REVISION_CONFLICT
+  value: 160201
+  cn: Canvas 草稿 revision 已变化，请刷新后重试。
+  en: Canvas draft revision has changed; refresh before retrying.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-001]
+
+canvas_graph_invalid:
+  code: ERR_CANVAS_GRAPH_INVALID
+  value: 160202
+  cn: Canvas 图的节点、边、端口或输入绑定不合法。
+  en: Canvas graph nodes, edges, ports, or input bindings are invalid.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003]
+
+canvas_cycle_detected:
+  code: ERR_CANVAS_CYCLE_DETECTED
+  value: 160203
+  cn: Canvas 图存在环形依赖。
+  en: Canvas graph contains a cyclic dependency.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-002]
+
+canvas_limit_exceeded:
+  code: ERR_CANVAS_LIMIT_EXCEEDED
+  value: 160204
+  cn: Canvas 节点、边或动态展开上限超出允许范围。
+  en: Canvas node, edge, or dynamic expansion limit is exceeded.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-003]
+  related_rules: [BR-WORKFLOW-010, BR-WORKFLOW-011]
+
+canvas_node_reference_invalid:
+  code: ERR_CANVAS_NODE_REFERENCE_INVALID
+  value: 160205
+  cn: 节点引用的 ApplicationVersion 或 functionRef 不可用。
+  en: ApplicationVersion or functionRef referenced by the node is unavailable.
+  owning_domain: workflow-canvas
+  owning_module: canvas
+  range: 160200-160399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-004, BR-WORKFLOW-005]
+
+canvas_version_not_found:
+  code: ERR_CANVAS_VERSION_NOT_FOUND
+  value: 160400
+  cn: CanvasVersion 不存在或当前调用方不可见。
+  en: CanvasVersion does not exist or is not visible to the caller.
+  owning_domain: workflow-canvas
+  owning_module: version
+  range: 160400-160599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-002]
+  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-006]
+
+canvas_publish_failed:
+  code: ERR_CANVAS_PUBLISH_FAILED
+  value: 160401
+  cn: CanvasVersion 编译或运行时定义注册失败。
+  en: CanvasVersion compilation or runtime definition registration failed.
+  owning_domain: workflow-canvas
+  owning_module: version
+  range: 160400-160599
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001]
+  related_rules: [BR-WORKFLOW-002]
+
+canvas_run_not_found:
+  code: ERR_CANVAS_RUN_NOT_FOUND
+  value: 160600
+  cn: CanvasRun 不存在或当前调用方不可见。
+  en: CanvasRun does not exist or is not visible to the caller.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-002]
+  related_rules: [BR-WORKFLOW-006]
+
+canvas_run_state_blocked:
+  code: ERR_CANVAS_RUN_STATE_BLOCKED
+  value: 160601
+  cn: CanvasRun 当前状态不允许该操作。
+  en: Current CanvasRun status does not allow this operation.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-002]
+  related_rules: [BR-WORKFLOW-013]
+
+canvas_run_idempotency_conflict:
+  code: ERR_CANVAS_RUN_IDEMPOTENCY_CONFLICT
+  value: 160602
+  cn: CanvasRun 幂等键已用于不同的版本或输入。
+  en: CanvasRun idempotency key was used for a different version or input.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-007]
+
+canvas_permission_denied:
+  code: ERR_CANVAS_PERMISSION_DENIED
+  value: 160800
+  cn: 当前调用方缺少工作流画布操作权限。
+  en: Caller does not have the required workflow canvas permission.
+  owning_domain: workflow-canvas
+  owning_module: access
+  range: 160800-160999
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-002]
+  related_rules: [BR-WORKFLOW-004, BR-WORKFLOW-005]

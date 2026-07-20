@@ -1,1022 +1,832 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 0.1.0-draft
-  description: 任务中心 S2 API 契约，覆盖任务定义、运行实例、Worker 协议、Lease、故障排查与运维健康查询。
+  version: 1.0.0
+  description: AtomicTask、组合任务、DAG、Schedule、Attempt 与汇总查询契约。
 servers:
-  - url: /api/v1
+  - url: /
+security:
+  - bearerAuth: []
 tags:
-  - name: task-definitions
-    description: AtomicTask、TaskGroup、DAGFlowTask 定义管理。
-  - name: task-runs
-    description: TaskRun 查询、创建、取消和重试。
-  - name: worker-protocol
-    description: Worker 注册、心跳、领取任务、进度上报和完成回写。
-  - name: operations
-    description: 任务中心运维健康与异常扫描结果查询。
+  - {name: atomic-tasks, description: 唯一业务执行单元。}
+  - {name: task-groups, description: SERIAL/PARALLEL AtomicTask 组合。}
+  - {name: dag-task-groups, description: AtomicTask DAG 编排。}
+  - {name: task-schedules, description: 周期和单次调度。}
 
 paths:
-  /api/v1/task-definitions:
-    get:
-      tags: [task-definitions]
-      summary: 查询任务定义列表
-      operationId: list_task_definitions
-      x-s1-refs:
-        user_stories: [US-TASK-004, US-TASK-005, US-TASK-006]
-        business_rules: [BR-TASK-001, BR-TASK-002, BR-TASK-003]
-      parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - $ref: "#/components/parameters/keyword"
-        - name: definition_type
-          in: query
-          schema:
-            $ref: "#/components/schemas/TaskDefinitionType"
-        - name: project_id
-          in: query
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
-        - name: sort_field
-          in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, updated_at, definition_type, project_id, namespace]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
-      responses:
-        "200":
-          description: 任务定义列表。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskDefinitionListResponse"
   /api/v1/atomic-tasks:
-    post:
-      tags: [task-definitions]
-      summary: 创建 AtomicTask 定义
-      operationId: create_atomic_task
-      x-s1-refs:
-        user_stories: [US-TASK-001]
-        business_rules: [BR-TASK-001]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AtomicTaskCreateRequest"
-      responses:
-        "200":
-          description: AtomicTask 定义。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AtomicTask"
-  /api/v1/task-groups:
-    post:
-      tags: [task-definitions]
-      summary: 创建 TaskGroup 定义
-      operationId: create_task_group
-      x-s1-refs:
-        user_stories: [US-TASK-004, US-TASK-005]
-        business_rules: [BR-TASK-002, BR-TASK-004]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskGroupCreateRequest"
-      responses:
-        "200":
-          description: TaskGroup 定义。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskGroup"
-  /api/v1/dag-flow-tasks:
-    post:
-      tags: [task-definitions]
-      summary: 创建 DAGFlowTask 定义
-      operationId: create_dag_flow_task
-      x-s1-refs:
-        user_stories: [US-TASK-006]
-        business_rules: [BR-TASK-003, BR-TASK-005, BR-TASK-006]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DAGFlowTaskCreateRequest"
-      responses:
-        "200":
-          description: DAGFlowTask 定义。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DAGFlowTask"
-  /api/v1/task-runs:
     get:
-      tags: [task-runs]
-      summary: 查询 TaskRun 列表
-      operationId: list_task_runs
-      x-s1-refs:
-        user_stories: [US-TASK-001, US-TASK-003]
-        business_rules: [BR-TASK-007, BR-TASK-011]
+      tags: [atomic-tasks]
+      summary: 查询 AtomicTask 列表
+      operationId: list_atomic_tasks
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-011], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-103]}
       parameters:
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - $ref: "#/components/parameters/keyword"
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/status'}
+        - {$ref: '#/components/parameters/root_task_id'}
+        - {$ref: '#/components/parameters/owner_id'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200':
+          description: AtomicTask 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskListResponse'}}}
+    post:
+      tags: [atomic-tasks]
+      summary: 创建并启动 AtomicTask
+      operationId: create_atomic_task
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-100]}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskCreateRequest'}}}
+      responses:
+        '200':
+          description: AtomicTask。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTask'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}:
+    get:
+      tags: [atomic-tasks]
+      summary: 获取 AtomicTask 详情
+      operationId: get_atomic_task
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-075, BR-TASK-087]}
+      parameters: [{$ref: '#/components/parameters/atomic_task_id'}]
+      responses:
+        '200':
+          description: AtomicTask 详情。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTask'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}/attempts:
+    get:
+      tags: [atomic-tasks]
+      summary: 查询 AtomicTask 自动重试历史
+      operationId: list_atomic_task_attempts
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-014], business_rules: [BR-TASK-075, BR-TASK-077]}
+      parameters:
+        - {$ref: '#/components/parameters/atomic_task_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200':
+          description: Attempt 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskAttemptListResponse'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}/cancel:
+    post:
+      tags: [atomic-tasks]
+      summary: 请求取消 AtomicTask
+      operationId: cancel_atomic_task
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-098]}
+      parameters: [{$ref: '#/components/parameters/atomic_task_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionReason'}}}}
+      responses:
+        '200':
+          description: 取消请求后的 AtomicTask。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTask'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}/retry:
+    post:
+      tags: [atomic-tasks]
+      summary: 手动重试并创建新 AtomicTask
+      operationId: retry_atomic_task
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-076]}
+      parameters: [{$ref: '#/components/parameters/atomic_task_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionReason'}}}}
+      responses:
+        '200':
+          description: 新 AtomicTask。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTask'}}}
+
+  /api/v1/task-groups:
+    get:
+      tags: [task-groups]
+      summary: 查询 TaskGroup 列表
+      operationId: list_task_groups
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009, US-TASK-011], business_rules: [BR-TASK-078, BR-TASK-080, BR-TASK-103]}
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/status'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200':
+          description: TaskGroup 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroupListResponse'}}}
+    post:
+      tags: [task-groups]
+      summary: 创建并启动 TaskGroup
+      operationId: create_task_group
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-078, BR-TASK-079]}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroupCreateRequest'}}}
+      responses:
+        '200':
+          description: TaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroup'}}}
+  /api/v1/task-groups/{task_group_id}:
+    get:
+      tags: [task-groups]
+      summary: 获取 TaskGroup 汇总详情
+      operationId: get_task_group
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-080]}
+      parameters: [{$ref: '#/components/parameters/task_group_id'}]
+      responses:
+        '200':
+          description: TaskGroup 详情。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroup'}}}
+  /api/v1/task-groups/{task_group_id}/tasks:
+    get:
+      tags: [task-groups]
+      summary: 查询 TaskGroup 子 AtomicTask
+      operationId: list_task_group_tasks
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-080]}
+      parameters:
+        - {$ref: '#/components/parameters/task_group_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/status'}
+      responses:
+        '200':
+          description: 子任务列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskListResponse'}}}
+  /api/v1/task-groups/{task_group_id}/cancel:
+    post:
+      tags: [task-groups]
+      summary: 取消 TaskGroup 和未终态子任务
+      operationId: cancel_task_group
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-098]}
+      parameters: [{$ref: '#/components/parameters/task_group_id'}]
+      responses:
+        '200':
+          description: TaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroup'}}}
+  /api/v1/task-groups/{task_group_id}/retry:
+    post:
+      tags: [task-groups]
+      summary: 创建新的 TaskGroup 重跑资源
+      operationId: retry_task_group
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-009], business_rules: [BR-TASK-099]}
+      parameters: [{$ref: '#/components/parameters/task_group_id'}]
+      responses:
+        '200':
+          description: 新 TaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskGroup'}}}
+
+  /api/v1/dag-task-groups:
+    get:
+      tags: [dag-task-groups]
+      summary: 查询 DAGTaskGroup 列表
+      operationId: list_dag_task_groups
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010, US-TASK-011], business_rules: [BR-TASK-081, BR-TASK-082, BR-TASK-103]}
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/status'}
+      responses:
+        '200':
+          description: DAGTaskGroup 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroupListResponse'}}}
+    post:
+      tags: [dag-task-groups]
+      summary: 创建并启动 DAGTaskGroup
+      operationId: create_dag_task_group
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-081, BR-TASK-094, BR-TASK-097]}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroupCreateRequest'}}}
+      responses:
+        '200':
+          description: DAGTaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroup'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}:
+    get:
+      tags: [dag-task-groups]
+      summary: 获取 DAGTaskGroup 汇总详情
+      operationId: get_dag_task_group
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-080, BR-TASK-082]}
+      parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
+      responses:
+        '200':
+          description: DAGTaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroup'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}/tasks:
+    get:
+      tags: [dag-task-groups]
+      summary: 查询 DAGTaskGroup 节点 AtomicTask
+      operationId: list_dag_task_group_tasks
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-082]}
+      parameters:
+        - {$ref: '#/components/parameters/dag_task_group_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/status'}
+      responses:
+        '200':
+          description: 节点任务列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskListResponse'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}/cancel:
+    post:
+      tags: [dag-task-groups]
+      summary: 取消 DAGTaskGroup
+      operationId: cancel_dag_task_group
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-098]}
+      parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
+      responses:
+        '200':
+          description: DAGTaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroup'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}/retry:
+    post:
+      tags: [dag-task-groups]
+      summary: 创建新的 DAGTaskGroup 重跑资源
+      operationId: retry_dag_task_group
+      x-permission: task.dag.operate
+      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-099]}
+      parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
+      responses:
+        '200':
+          description: 新 DAGTaskGroup。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroup'}}}
+
+  /api/v1/task-schedules:
+    get:
+      tags: [task-schedules]
+      summary: 查询 TaskSchedule 列表
+      operationId: list_task_schedules
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-017], business_rules: [BR-TASK-083, BR-TASK-086, BR-TASK-102, BR-TASK-107, BR-TASK-112]}
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
         - name: status
           in: query
-          schema:
-            $ref: "#/components/schemas/TaskRunStatus"
-        - name: definition_type
+          schema: {$ref: '#/components/schemas/TaskScheduleStatus'}
+        - name: execution_mode
           in: query
-          schema:
-            $ref: "#/components/schemas/TaskDefinitionType"
-        - name: root_run_id
-          in: query
-          schema:
-            type: string
-        - name: project_id
-          in: query
-          schema:
-            type: string
-        - name: sort_field
-          in: query
-          description: 排序字段；默认按 created_at 排序。
-          schema:
-            type: string
-            enum: [name, created_at, started_at, completed_at, status, definition_type, project_id]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {$ref: '#/components/schemas/TaskScheduleExecutionMode'}
       responses:
-        "200":
-          description: TaskRun 列表。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRunListResponse"
+        '200':
+          description: Schedule 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskScheduleListResponse'}}}
     post:
-      tags: [task-runs]
-      summary: 创建 TaskRun
-      operationId: create_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-001, US-TASK-004, US-TASK-005, US-TASK-006]
-        business_rules: [BR-TASK-007, BR-TASK-025, BR-TASK-026, BR-TASK-053, BR-TASK-061, BR-TASK-062]
+      tags: [task-schedules]
+      summary: 创建 MATERIALIZED TaskSchedule
+      operationId: create_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-017], business_rules: [BR-TASK-083, BR-TASK-085, BR-TASK-107, BR-TASK-112]}
       requestBody:
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskRunCreateRequest"
+        content: {application/json: {schema: {$ref: '#/components/schemas/TaskScheduleCreateRequest'}}}
       responses:
-        "200":
-          description: TaskRun 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/task-runs/{run_id}:
+        '200':
+          description: TaskSchedule。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
+  /api/v1/task-schedules/{task_schedule_id}:
     get:
-      tags: [task-runs]
-      summary: 获取 TaskRun 详情
-      operationId: get_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-001, US-TASK-003, US-TASK-006]
-        business_rules: [BR-TASK-011, BR-TASK-012]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
+      tags: [task-schedules]
+      summary: 获取 TaskSchedule 及执行汇总
+      operationId: get_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-102]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
       responses:
-        "200":
-          description: TaskRun 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
+        '200':
+          description: TaskSchedule。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
+    patch:
+      tags: [task-schedules]
+      summary: 更新未来调度配置
+      operationId: update_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-017], business_rules: [BR-TASK-083, BR-TASK-086, BR-TASK-112, BR-TASK-118]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TaskScheduleUpdateRequest'}}}
+      responses:
+        '200':
+          description: TaskSchedule。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
     delete:
-      tags: [task-runs]
-      summary: 软删除终态 TaskRun
-      operationId: delete_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-001]
-        business_rules: [BR-TASK-041]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
+      tags: [task-schedules]
+      summary: 软删除 TaskSchedule
+      operationId: delete_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-017], business_rules: [BR-TASK-086, BR-TASK-112]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
       responses:
-        "200":
+        '200':
           description: 删除结果。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/task-runs/{run_id}/attempts:
+          content: {application/json: {schema: {$ref: '#/components/schemas/SuccessResponse'}}}
+  /api/v1/task-schedules/{task_schedule_id}/pause:
+    post:
+      tags: [task-schedules]
+      summary: 暂停未来触发
+      operationId: pause_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-086]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
+      responses:
+        '200':
+          description: TaskSchedule。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
+  /api/v1/task-schedules/{task_schedule_id}/resume:
+    post:
+      tags: [task-schedules]
+      summary: 恢复未来触发
+      operationId: resume_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011], business_rules: [BR-TASK-086]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
+      responses:
+        '200':
+          description: TaskSchedule。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
+  /api/v1/task-schedules/{task_schedule_id}/executions:
     get:
-      tags: [task-runs]
-      summary: 查询 TaskAttempt 历史
-      operationId: list_task_attempts
-      x-s1-refs:
-        user_stories: [US-TASK-003, US-TASK-007]
-        business_rules: [BR-TASK-008, BR-TASK-010, BR-TASK-012]
+      tags: [task-schedules]
+      summary: 查询全部调度执行历史
+      operationId: list_task_schedule_executions
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-011, US-TASK-013, US-TASK-017], business_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-092, BR-TASK-102, BR-TASK-104, BR-TASK-114, BR-TASK-115]}
       parameters:
-        - $ref: "#/components/parameters/run_id"
-        - $ref: "#/components/parameters/page_num"
-        - $ref: "#/components/parameters/page_size"
-        - name: sort_field
+        - {$ref: '#/components/parameters/task_schedule_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - name: status
           in: query
-          description: 排序字段；默认按 attempt_no 排序。
-          schema:
-            type: string
-            enum: [attempt_no, started_at, heartbeat_at, progress_at, completed_at, status, worker_id]
-        - name: sort_order
-          in: query
-          description: 排序方向。
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: asc
+          schema: {$ref: '#/components/schemas/ScheduleExecutionStatus'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
       responses:
-        "200":
-          description: TaskAttempt 列表。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskAttemptListResponse"
-  /api/v1/task-runs/{run_id}/cancel:
-    post:
-      tags: [task-runs]
-      summary: 请求取消 TaskRun
-      operationId: cancel_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-002]
-        business_rules:
-          [BR-TASK-037, BR-TASK-038, BR-TASK-039, BR-TASK-040, BR-TASK-041]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CancelTaskRunRequest"
-      responses:
-        "200":
-          description: 取消请求后的 TaskRun。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/task-runs/{run_id}/retry:
-    post:
-      tags: [task-runs]
-      summary: 请求重试 TaskRun
-      operationId: retry_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-003, US-TASK-007]
-        business_rules: [BR-TASK-009, BR-TASK-032, BR-TASK-033, BR-TASK-036]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RetryTaskRunRequest"
-      responses:
-        "200":
-          description: 重试请求后的 TaskRun。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/workers:
-    post:
-      tags: [worker-protocol]
-      summary: 注册 Worker
-      operationId: register_worker
-      x-s1-refs:
-        user_stories: [US-TASK-007]
-        business_rules: [BR-TASK-013, BR-TASK-014, BR-TASK-017]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/WorkerRegisterRequest"
-      responses:
-        "200":
-          description: Worker 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Worker"
-  /api/v1/workers/{worker_id}/heartbeat:
-    post:
-      tags: [worker-protocol]
-      summary: Worker 心跳
-      operationId: heartbeat_worker
-      x-s1-refs:
-        user_stories: [US-TASK-007]
-        business_rules: [BR-TASK-013, BR-TASK-017, BR-TASK-042]
-      parameters:
-        - $ref: "#/components/parameters/worker_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/WorkerHeartbeatRequest"
-      responses:
-        "200":
-          description: Worker 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Worker"
-  /api/v1/workers/{worker_id}/claim:
-    post:
-      tags: [worker-protocol]
-      summary: Worker 领取可执行 TaskRun
-      operationId: claim_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-001, US-TASK-007]
-        business_rules: [BR-TASK-014, BR-TASK-015, BR-TASK-027]
-      parameters:
-        - $ref: "#/components/parameters/worker_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ClaimTaskRunRequest"
-      responses:
-        "200":
-          description: 领取结果；无可领取任务时 `task_run` 为空。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ClaimTaskRunResponse"
-  /api/v1/task-runs/{run_id}/progress:
-    post:
-      tags: [worker-protocol]
-      summary: Worker 上报任务进度
-      operationId: update_task_run_progress
-      x-s1-refs:
-        user_stories: [US-TASK-001]
-        business_rules: [BR-TASK-016, BR-TASK-019]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProgressUpdateRequest"
-      responses:
-        "200":
-          description: TaskRun 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/task-runs/{run_id}/complete:
-    post:
-      tags: [worker-protocol]
-      summary: Worker 提交成功结果
-      operationId: complete_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-001]
-        business_rules: [BR-TASK-016, BR-TASK-025, BR-TASK-026, BR-TASK-028]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskRunCompleteRequest"
-      responses:
-        "200":
-          description: TaskRun 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/task-runs/{run_id}/fail:
-    post:
-      tags: [worker-protocol]
-      summary: Worker 提交失败结果
-      operationId: fail_task_run
-      x-s1-refs:
-        user_stories: [US-TASK-003, US-TASK-007]
-        business_rules: [BR-TASK-010, BR-TASK-011, BR-TASK-012, BR-TASK-032]
-      parameters:
-        - $ref: "#/components/parameters/run_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskRunFailRequest"
-      responses:
-        "200":
-          description: TaskRun 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskRun"
-  /api/v1/leases/{lease_id}/renew:
-    post:
-      tags: [worker-protocol]
-      summary: 续约 ExecutionLease
-      operationId: renew_execution_lease
-      x-s1-refs:
-        user_stories: [US-TASK-007]
-        business_rules: [BR-TASK-018, BR-TASK-029, BR-TASK-030]
-      parameters:
-        - $ref: "#/components/parameters/lease_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LeaseRenewRequest"
-      responses:
-        "200":
-          description: ExecutionLease 详情。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ExecutionLease"
-  /api/v1/task-center/health:
+        '200':
+          description: ScheduleExecution 列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/ScheduleExecutionListResponse'}}}
+  /api/v1/task-schedules/{task_schedule_id}/reconcile-state:
     get:
-      tags: [operations]
-      summary: 查询任务中心健康摘要
-      operationId: get_task_center_health
-      x-s1-refs:
-        user_stories: [US-TASK-007]
-        business_rules: [BR-TASK-042, BR-TASK-043, BR-TASK-044, BR-TASK-047]
+      tags: [task-schedules]
+      summary: 查询 RECONCILE 计划的当前轻量运行投影
+      operationId: get_task_schedule_reconcile_state
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-017], business_rules: [BR-TASK-108, BR-TASK-110, BR-TASK-113]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
       responses:
-        "200":
-          description: 健康摘要。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskCenterHealth"
+        '200':
+          description: 不暴露原始 checkpoint JSON 的巡检状态。
+          content: {application/json: {schema: {$ref: '#/components/schemas/ScheduleReconcileState'}}}
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
-    page_num:
-      name: page_num
-      in: query
-      schema:
-        type: integer
-        minimum: 0
-        default: 0
-    page_size:
-      name: page_size
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 200
-        default: 20
-    keyword:
-      name: keyword
-      in: query
-      schema:
-        type: string
-        default: ""
-    run_id:
-      name: run_id
-      in: path
-      required: true
-      schema:
-        type: string
-    worker_id:
-      name: worker_id
-      in: path
-      required: true
-      schema:
-        type: string
-    lease_id:
-      name: lease_id
-      in: path
-      required: true
-      schema:
-        type: string
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, maxLength: 256, default: ''}}
+    status: {name: status, in: query, schema: {$ref: '#/components/schemas/AtomicTaskStatus'}}
+    root_task_id: {name: root_task_id, in: query, schema: {type: string}}
+    owner_id: {name: owner_id, in: query, schema: {type: string}}
+    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
+    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
+    atomic_task_id: {name: atomic_task_id, in: path, required: true, schema: {type: string}}
+    task_group_id: {name: task_group_id, in: path, required: true, schema: {type: string}}
+    dag_task_group_id: {name: dag_task_group_id, in: path, required: true, schema: {type: string}}
+    task_schedule_id: {name: task_schedule_id, in: path, required: true, schema: {type: string}}
   schemas:
     SuccessResponse:
       type: object
       required: [success]
-      properties:
-        success:
-          type: boolean
-    TaskDefinitionType:
+      properties: {success: {type: boolean}}
+    ActionReason:
+      type: object
+      properties: {reason: {type: string, maxLength: 1024}}
+    AtomicTaskStatus:
       type: string
-      enum: [ATOMIC, TASK_GROUP, DAG_FLOW]
-    TaskGroupType:
+      enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, CANCEL_REQUESTED, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]
+    GroupStatus:
       type: string
-      enum: [SERIAL, PARALLEL]
-    TaskRunStatus:
+      enum: [PENDING, RUNNING, CANCEL_REQUESTED, SUCCESS, FAILED, CANCELED, TIMEOUT]
+    TaskScheduleStatus:
       type: string
-      enum:
-        [
-          PENDING,
-          READY,
-          CLAIMED,
-          RUNNING,
-          RETRYING,
-          CANCEL_REQUESTED,
-          PAUSED,
-          SUCCESS,
-          FAILED,
-          CANCELED,
-          TIMEOUT,
-          LOST,
-        ]
-    TaskAttemptStatus:
+      enum: [ACTIVE, PAUSED, COMPLETED, DELETED]
+    TaskScheduleExecutionMode:
       type: string
-      enum:
-        [
-          CLAIMED,
-          RUNNING,
-          SUCCESS,
-          FAILED,
-          TIMEOUT,
-          CANCELED,
-          WORKER_LOST,
-          LEASE_EXPIRED,
-          STALLED,
-        ]
-    WorkerStatus:
+      enum: [MATERIALIZED, RECONCILE]
+    TaskScheduleManagementMode:
       type: string
-      enum: [ONLINE, BUSY, DRAINING, OFFLINE, LOST, DISABLED]
-    LeaseStatus:
+      enum: [USER, SYSTEM]
+    ScheduleExecutionStatus:
       type: string
-      enum: [ACTIVE, RENEWED, EXPIRED, RELEASED, REVOKED]
-    FailureType:
-      type: string
-      enum:
-        [
-          FUNCTION_ERROR,
-          TIMEOUT,
-          CANCELED,
-          WORKER_LOST,
-          LEASE_EXPIRED,
-          EXTERNAL_EXECUTOR_ERROR,
-          SYSTEM_ERROR,
-          STALLED,
-        ]
+      enum: [TRIGGERED, RUNNING, SUCCESS, FAILED, CANCELED, SKIPPED_OVERLAP, TRIGGER_FAILED]
     RetryPolicy:
       type: object
       properties:
-        max_retries:
-          type: integer
-        retry_delay:
-          type: string
-        backoff_type:
-          type: string
-          enum: [FIXED, LINEAR, EXPONENTIAL]
-        max_retry_delay:
-          type: string
-        retryable_failure_types:
-          type: string
-          description: 逗号分隔的 FailureType 列表。
-        max_retry_duration:
-          type: string
+        max_attempts: {type: integer, minimum: 1, maximum: 100, default: 1}
+        retry_delay_seconds: {type: integer, minimum: 0}
+        backoff_type: {type: string, enum: [FIXED, LINEAR, EXPONENTIAL]}
+        max_retry_delay_seconds: {type: integer, minimum: 0}
     TimeoutPolicy:
       type: object
       properties:
-        per_attempt_timeout:
-          type: string
-        overall_timeout:
-          type: string
-    StrategyConfig:
+        per_attempt_timeout_seconds: {type: integer, minimum: 1}
+        overall_timeout_seconds: {type: integer, minimum: 1}
+    AtomicTaskTemplate:
       type: object
+      required: [key, function_ref]
       properties:
-        fail_fast:
-          type: boolean
-        cancel_on_failure:
-          type: boolean
-        max_parallelism:
-          type: integer
-        result_policy:
-          type: string
-        group_retry_mode:
-          type: string
-          enum: [FULL_RESTART, FAILED_ONLY, FROM_FAILED]
-    AtomicTask:
-      type: object
-      required: [id, name, definition_type, function_ref, created_at, updated_at]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        description: { type: string }
-        definition_type:
-          $ref: "#/components/schemas/TaskDefinitionType"
-        function_ref: { type: string }
-        app_id: { type: string }
-        engine_ref: { type: string }
-        default_arguments: { type: object, additionalProperties: true }
-        timeout_policy:
-          $ref: "#/components/schemas/TimeoutPolicy"
-        retry_policy:
-          $ref: "#/components/schemas/RetryPolicy"
-        cancel_policy: { type: object, additionalProperties: true }
-        required_capabilities: { type: string }
-        tags: { type: string }
-        project_id: { type: string }
-        namespace: { type: string }
-        created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        key: {type: string, minLength: 1, maxLength: 128}
+        name: {type: string, maxLength: 256}
+        function_ref: {type: string, minLength: 1, maxLength: 256}
+        arguments: {type: object, additionalProperties: true}
+        required_capabilities: {type: string, maxLength: 2048}
+        retry_policy: {$ref: '#/components/schemas/RetryPolicy'}
+        timeout_policy: {$ref: '#/components/schemas/TimeoutPolicy'}
     AtomicTaskCreateRequest:
       allOf:
-        - $ref: "#/components/schemas/AtomicTask"
-    TaskGroup:
-      type: object
-      required:
-        [id, name, definition_type, group_type, children, created_at, updated_at]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        description: { type: string }
-        definition_type:
-          $ref: "#/components/schemas/TaskDefinitionType"
-        group_type:
-          $ref: "#/components/schemas/TaskGroupType"
-        children:
-          type: array
-          items:
-            type: object
-            required: [definition_type, definition_id]
-            properties:
-              definition_type:
-                $ref: "#/components/schemas/TaskDefinitionType"
-              definition_id: { type: string }
-              sort_order: { type: integer }
-        strategy_config:
-          $ref: "#/components/schemas/StrategyConfig"
-        timeout_policy:
-          $ref: "#/components/schemas/TimeoutPolicy"
-        retry_policy:
-          $ref: "#/components/schemas/RetryPolicy"
-        tags: { type: string }
-        project_id: { type: string }
-        namespace: { type: string }
-        created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-    TaskGroupCreateRequest:
-      allOf:
-        - $ref: "#/components/schemas/TaskGroup"
-    DAGFlowTask:
-      type: object
-      required: [id, name, definition_type, nodes, edges, created_at, updated_at]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        description: { type: string }
-        definition_type:
-          $ref: "#/components/schemas/TaskDefinitionType"
-        nodes:
-          type: array
-          items:
-            $ref: "#/components/schemas/DAGNode"
-        edges:
-          type: array
-          items:
-            $ref: "#/components/schemas/DAGEdge"
-        input_mapping: { type: object, additionalProperties: true }
-        output_mapping: { type: object, additionalProperties: true }
-        strategy_config:
-          $ref: "#/components/schemas/StrategyConfig"
-        timeout_policy:
-          $ref: "#/components/schemas/TimeoutPolicy"
-        retry_policy:
-          $ref: "#/components/schemas/RetryPolicy"
-        tags: { type: string }
-        project_id: { type: string }
-        namespace: { type: string }
-        created_by: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-    DAGFlowTaskCreateRequest:
-      allOf:
-        - $ref: "#/components/schemas/DAGFlowTask"
-    DAGNode:
-      type: object
-      required: [node_id, name, task_ref]
-      properties:
-        node_id: { type: string }
-        name: { type: string }
-        task_ref:
-          type: object
-          required: [definition_type, definition_id]
+        - {$ref: '#/components/schemas/AtomicTaskTemplate'}
+        - type: object
+          required: [project_id, namespace]
           properties:
-            definition_type:
-              $ref: "#/components/schemas/TaskDefinitionType"
-            definition_id: { type: string }
-        input_mapping: { type: object, additionalProperties: true }
-        output_mapping: { type: object, additionalProperties: true }
-        timeout_policy:
-          $ref: "#/components/schemas/TimeoutPolicy"
-        retry_policy:
-          $ref: "#/components/schemas/RetryPolicy"
-    DAGEdge:
+            project_id: {type: string}
+            namespace: {type: string}
+            idempotency_scope: {type: string}
+            idempotency_key: {type: string}
+            application_run_id: {type: string}
+            canvas_run_id: {type: string}
+            canvas_node_run_id: {type: string}
+    TaskError:
       type: object
-      required: [from_node_id, to_node_id]
       properties:
-        from_node_id: { type: string }
-        to_node_id: { type: string }
-        condition: { type: string }
-        data_mapping: { type: object, additionalProperties: true }
-    TaskDefinitionListResponse:
-      type: object
-      required: [total, items]
-      properties:
-        total: { type: integer }
-        items:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
-    TaskRun:
-      type: object
-      required:
-        [
-          id,
-          definition_type,
-          definition_id,
-          status,
-          current_attempt,
-          max_attempts,
-          progress,
-          resource_version,
-          created_at,
-        ]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        description: { type: string }
-        definition_type:
-          $ref: "#/components/schemas/TaskDefinitionType"
-        definition_id: { type: string }
-        application_run_id: { type: string }
-        idempotency_key: { type: string }
-        parent_run_id: { type: string }
-        root_run_id: { type: string }
-        status:
-          $ref: "#/components/schemas/TaskRunStatus"
-        schedule_at: { type: string, format: date-time }
-        timeout_at: { type: string, format: date-time }
-        current_attempt: { type: integer }
-        max_attempts: { type: integer }
-        progress: { type: number, minimum: 0, maximum: 1 }
-        resource_version: { type: integer, minimum: 0 }
-        adapter_key: { type: string }
-        operation_key: { type: string }
-        operation_version: { type: string }
-        requested_engine_id: { type: string }
-        resolved_engine_id: { type: string }
-        input: { type: object, additionalProperties: true }
-        output: { type: object, additionalProperties: true }
-        last_error:
-          $ref: "#/components/schemas/TaskError"
-        created_at: { type: string, format: date-time }
-        started_at: { type: string, format: date-time }
-        completed_at: { type: string, format: date-time }
-        canceled_at: { type: string, format: date-time }
-        created_by: { type: string }
-        project_id: { type: string }
-        namespace: { type: string }
-        tags: { type: string }
-    TaskRunCreateRequest:
-      type: object
-      required: [definition_type, definition_id]
-      properties:
-        definition_type:
-          $ref: "#/components/schemas/TaskDefinitionType"
-        definition_id: { type: string }
-        application_run_id:
-          type: string
-          description: application.execute TaskRun 必填；非应用任务为空。
-        idempotency_key:
-          type: string
-          description: application.execute TaskRun 必填；与 application_run_id 共同保证创建幂等。
-        parent_run_id: { type: string }
-        root_run_id: { type: string }
-        schedule_at: { type: string, format: date-time }
-        adapter_key: { type: string }
-        operation_key: { type: string }
-        operation_version: { type: string }
-        requested_engine_id: { type: string }
-        resolved_engine_id: { type: string }
-        input: { type: object, additionalProperties: true }
-        timeout_policy:
-          $ref: "#/components/schemas/TimeoutPolicy"
-        retry_policy:
-          $ref: "#/components/schemas/RetryPolicy"
-        project_id: { type: string }
-        namespace: { type: string }
-        tags: { type: string }
-      oneOf:
-        - required: [application_run_id, idempotency_key]
-        - not:
-            anyOf:
-              - required: [application_run_id]
-              - required: [idempotency_key]
-    TaskRunListResponse:
+        code: {type: string}
+        message: {type: string}
+        detail: {type: string}
+        retryable: {type: boolean}
+        occurred_at: {type: string, format: date-time}
+    AtomicTask:
+      allOf:
+        - {$ref: '#/components/schemas/AtomicTaskTemplate'}
+        - type: object
+          required: [id, status, progress, resource_version, project_id, namespace, created_at, updated_at]
+          properties:
+            id: {type: string}
+            status: {$ref: '#/components/schemas/AtomicTaskStatus'}
+            progress: {type: number, minimum: 0, maximum: 1}
+            resource_version: {type: integer, minimum: 0}
+            current_attempt: {type: integer, minimum: 0}
+            output: {type: object, additionalProperties: true}
+            last_error: {$ref: '#/components/schemas/TaskError'}
+            retry_of_task_id: {type: string}
+            root_task_id: {type: string}
+            owner_type: {type: string, enum: ['', TASK_GROUP, DAG_TASK_GROUP, TASK_SCHEDULE]}
+            owner_id: {type: string}
+            child_key: {type: string}
+            runtime_execution_id: {type: string}
+            runtime_task_id: {type: string}
+            project_id: {type: string}
+            namespace: {type: string}
+            created_by: {type: string}
+            created_at: {type: string, format: date-time}
+            updated_at: {type: string, format: date-time}
+            started_at: {type: string, format: date-time}
+            completed_at: {type: string, format: date-time}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
+    AtomicTaskListResponse:
       type: object
       required: [total, items]
       properties:
-        total: { type: integer }
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/TaskRun"
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/AtomicTask'}}
     TaskAttempt:
       type: object
-      required: [id, run_id, attempt_no, status, started_at]
+      required: [id, atomic_task_id, attempt_no, status, created_at]
       properties:
-        id: { type: string }
-        run_id: { type: string }
-        attempt_no: { type: integer }
-        worker_id: { type: string }
-        lease_id: { type: string }
-        status:
-          $ref: "#/components/schemas/TaskAttemptStatus"
-        input_snapshot: { type: object, additionalProperties: true }
-        output_snapshot: { type: object, additionalProperties: true }
-        error:
-          $ref: "#/components/schemas/TaskError"
-        started_at: { type: string, format: date-time }
-        heartbeat_at: { type: string, format: date-time }
-        progress_at: { type: string, format: date-time }
-        completed_at: { type: string, format: date-time }
-        duration_ms: { type: integer }
-        retryable: { type: boolean }
-        failure_type:
-          $ref: "#/components/schemas/FailureType"
-        logs_ref: { type: string }
-        external_job_id: { type: string }
+        id: {type: string}
+        atomic_task_id: {type: string}
+        attempt_no: {type: integer}
+        runtime_task_id: {type: string}
+        status: {type: string, enum: [SCHEDULED, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]}
+        error: {$ref: '#/components/schemas/TaskError'}
+        external_job_id: {type: string}
+        logs_ref: {type: string}
+        started_at: {type: string, format: date-time}
+        completed_at: {type: string, format: date-time}
+        duration_ms: {type: integer}
+        created_at: {type: string, format: date-time}
     TaskAttemptListResponse:
       type: object
       required: [total, items]
       properties:
-        total: { type: integer }
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/TaskAttempt"
-    TaskError:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/TaskAttempt'}}
+    GroupStrategy:
       type: object
       properties:
-        code: { type: string }
-        message: { type: string }
-        failure_type:
-          $ref: "#/components/schemas/FailureType"
-        detail: { type: string }
-        retryable: { type: boolean }
-        occurred_at: { type: string, format: date-time }
-    CancelTaskRunRequest:
+        fail_fast: {type: boolean, default: true}
+        cancel_on_failure: {type: boolean, default: false}
+        max_parallelism: {type: integer, minimum: 0, maximum: 1000, default: 0}
+    TaskSummary:
       type: object
       properties:
-        reason: { type: string }
-    RetryTaskRunRequest:
+        total: {type: integer}
+        pending: {type: integer}
+        blocked: {type: integer}
+        running: {type: integer}
+        success: {type: integer}
+        failed: {type: integer}
+        canceled: {type: integer}
+        skipped: {type: integer}
+    TaskGroupCreateRequest:
+      type: object
+      required: [name, mode, tasks, project_id, namespace]
+      properties:
+        name: {type: string, maxLength: 256}
+        description: {type: string, maxLength: 2048}
+        mode: {type: string, enum: [SERIAL, PARALLEL]}
+        tasks: {type: array, minItems: 1, maxItems: 1000, items: {$ref: '#/components/schemas/AtomicTaskTemplate'}}
+        strategy: {$ref: '#/components/schemas/GroupStrategy'}
+        project_id: {type: string}
+        namespace: {type: string}
+        idempotency_scope: {type: string}
+        idempotency_key: {type: string}
+    TaskGroup:
+      allOf:
+        - {$ref: '#/components/schemas/TaskGroupCreateRequest'}
+        - type: object
+          required: [id, status, progress, summary, resource_version, created_at, updated_at]
+          properties:
+            id: {type: string}
+            status: {$ref: '#/components/schemas/GroupStatus'}
+            progress: {type: number, minimum: 0, maximum: 1}
+            summary: {$ref: '#/components/schemas/TaskSummary'}
+            result: {type: object, additionalProperties: true}
+            retry_of_id: {type: string}
+            runtime_execution_id: {type: string}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
+            resource_version: {type: integer}
+            created_at: {type: string, format: date-time}
+            updated_at: {type: string, format: date-time}
+    TaskGroupListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/TaskGroup'}}
+    DAGNode:
+      type: object
+      required: [key, task]
+      properties:
+        key: {type: string, minLength: 1, maxLength: 128}
+        task: {$ref: '#/components/schemas/AtomicTaskTemplate'}
+        input_mapping: {type: object, additionalProperties: true}
+        dynamic_fork: {type: boolean, default: false}
+        max_dynamic_tasks: {type: integer, minimum: 1, maximum: 1000}
+    DAGEdge:
+      type: object
+      required: [from_node, to_node]
+      properties:
+        from_node: {type: string}
+        to_node: {type: string}
+        data_mapping: {type: object, additionalProperties: true}
+    DAGTaskGroupCreateRequest:
+      type: object
+      required: [name, nodes, edges, project_id, namespace]
+      properties:
+        name: {type: string, maxLength: 256}
+        description: {type: string, maxLength: 2048}
+        nodes: {type: array, minItems: 1, maxItems: 1000, items: {$ref: '#/components/schemas/DAGNode'}}
+        edges: {type: array, maxItems: 5000, items: {$ref: '#/components/schemas/DAGEdge'}}
+        input: {type: object, additionalProperties: true}
+        output_mapping: {type: object, additionalProperties: true}
+        canvas_version_id: {type: string}
+        project_id: {type: string}
+        namespace: {type: string}
+        idempotency_scope: {type: string}
+        idempotency_key: {type: string}
+    DAGTaskGroup:
+      allOf:
+        - {$ref: '#/components/schemas/DAGTaskGroupCreateRequest'}
+        - type: object
+          required: [id, status, progress, summary, runtime_definition_name, runtime_definition_version, resource_version, created_at, updated_at]
+          properties:
+            id: {type: string}
+            status: {$ref: '#/components/schemas/GroupStatus'}
+            progress: {type: number, minimum: 0, maximum: 1}
+            summary: {$ref: '#/components/schemas/TaskSummary'}
+            result: {type: object, additionalProperties: true}
+            retry_of_id: {type: string}
+            runtime_execution_id: {type: string}
+            runtime_definition_name: {type: string}
+            runtime_definition_version: {type: integer}
+            runtime_definition_hash: {type: string}
+            schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
+            resource_version: {type: integer}
+            created_at: {type: string, format: date-time}
+            updated_at: {type: string, format: date-time}
+    DAGTaskGroupListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/DAGTaskGroup'}}
+    ScheduleTarget:
+      type: object
+      required: [type, template]
+      properties:
+        type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
+        template: {type: object, additionalProperties: true}
+    TaskTargetSummary:
+      type: object
+      required: [type, name]
+      properties:
+        type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string}
+        task_count: {type: integer, minimum: 0}
+        application_run_id: {type: string}
+        canvas_run_id: {type: string}
+        canvas_node_run_id: {type: string}
+    ScheduleSourceSummary:
+      type: object
+      required: [schedule_id, schedule_name, schedule_execution_id, scheduled_at]
+      properties:
+        schedule_id: {type: string}
+        schedule_name: {type: string}
+        schedule_execution_id: {type: string}
+        scheduled_at: {type: string, format: date-time}
+    ReconcileSpec:
+      type: object
+      required: [reconcile_ref, max_parallelism, max_items_per_run, per_item_timeout_seconds, overall_timeout_seconds]
+      properties:
+        reconcile_ref: {type: string, minLength: 1, maxLength: 256}
+        display_name: {type: string, maxLength: 256, readOnly: true}
+        config: {type: object, additionalProperties: true}
+        max_parallelism: {type: integer, minimum: 1, maximum: 64, default: 16}
+        max_items_per_run: {type: integer, minimum: 1, maximum: 1000, default: 1000}
+        per_item_timeout_seconds: {type: integer, minimum: 1, maximum: 30, default: 4}
+        overall_timeout_seconds: {type: integer, minimum: 1, maximum: 300, default: 5, description: 必须大于或等于 per_item_timeout_seconds。}
+    HistoryRetention:
+      type: object
+      required: [success_count, failure_count, failure_duration_seconds, skipped_count, runtime_retention_seconds]
+      properties:
+        success_count: {type: integer, minimum: 0, default: 4}
+        failure_count: {type: integer, minimum: 0, default: 20}
+        failure_duration_seconds: {type: integer, minimum: 0, default: 604800}
+        skipped_count: {type: integer, minimum: 0, default: 4}
+        runtime_retention_seconds: {type: integer, minimum: 0, default: 86400}
+    ReconcileSpecUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        config: {type: object, additionalProperties: true}
+        max_parallelism: {type: integer, minimum: 1, maximum: 64}
+        max_items_per_run: {type: integer, minimum: 1, maximum: 1000}
+        per_item_timeout_seconds: {type: integer, minimum: 1, maximum: 30}
+        overall_timeout_seconds: {type: integer, minimum: 1, maximum: 300, description: 更新后必须大于或等于 per_item_timeout_seconds。}
+    TaskScheduleCreateRequest:
+      type: object
+      required: [name, trigger_type, target, project_id, namespace]
+      properties:
+        name: {type: string, maxLength: 256}
+        description: {type: string, maxLength: 2048}
+        execution_mode: {type: string, enum: [MATERIALIZED], default: MATERIALIZED, description: 对外创建 API 仅允许 MATERIALIZED；SYSTEM RECONCILE 由后端注册。}
+        trigger_type: {type: string, enum: [CRON, RUN_AT]}
+        cron_expression: {type: string}
+        run_at: {type: string, format: date-time}
+        time_zone: {type: string, default: UTC}
+        target: {$ref: '#/components/schemas/ScheduleTarget'}
+        project_id: {type: string}
+        namespace: {type: string}
+    TaskScheduleUpdateRequest:
       type: object
       properties:
-        reason: { type: string }
-        retry_mode: { type: string }
-    WorkerRegisterRequest:
-      type: object
-      required: [worker_type, capabilities, max_concurrency]
-      properties:
-        worker_type: { type: string }
-        capabilities: { type: string }
-        labels: { type: string }
-        max_concurrency: { type: integer }
-    WorkerHeartbeatRequest:
-      type: object
-      properties:
-        status:
-          $ref: "#/components/schemas/WorkerStatus"
-        running_count: { type: integer }
-        observed_at: { type: string, format: date-time }
-    Worker:
-      type: object
-      required:
-        [
-          id,
-          worker_type,
-          status,
-          capabilities,
-          max_concurrency,
-          running_count,
-          heartbeat_at,
-        ]
-      properties:
-        id: { type: string }
-        worker_type: { type: string }
-        status:
-          $ref: "#/components/schemas/WorkerStatus"
-        capabilities: { type: string }
-        labels: { type: string }
-        max_concurrency: { type: integer }
-        running_count: { type: integer }
-        heartbeat_at: { type: string, format: date-time }
-        registered_at: { type: string, format: date-time }
-        last_seen_at: { type: string, format: date-time }
-    ClaimTaskRunRequest:
-      type: object
-      required: [capabilities, max_count]
-      properties:
-        capabilities: { type: string }
-        labels: { type: string }
-        max_count: { type: integer }
-    ClaimTaskRunResponse:
+        name: {type: string, maxLength: 256}
+        description: {type: string, maxLength: 2048}
+        cron_expression: {type: string}
+        run_at: {type: string, format: date-time}
+        time_zone: {type: string}
+        target: {$ref: '#/components/schemas/ScheduleTarget'}
+        reconcile_spec:
+          allOf:
+            - {$ref: '#/components/schemas/ReconcileSpecUpdate'}
+          description: SYSTEM RECONCILE 只允许修改 config、并发、单轮上限和超时，请求结构不接受 reconcile_ref。
+    ScheduleSummary:
       type: object
       properties:
-        task_run:
-          $ref: "#/components/schemas/TaskRun"
-        attempt:
-          $ref: "#/components/schemas/TaskAttempt"
-        lease:
-          $ref: "#/components/schemas/ExecutionLease"
-    ProgressUpdateRequest:
+        total_triggered: {type: integer}
+        running: {type: integer}
+        success: {type: integer}
+        failed: {type: integer}
+        canceled: {type: integer}
+        skipped_overlap: {type: integer}
+    TaskSchedule:
       type: object
-      required: [worker_id, attempt_id, lease_id, progress]
+      required: [id, name, execution_mode, management_mode, trigger_type, time_zone, status, summary, history_retention, project_id, namespace, resource_version, created_at, updated_at]
       properties:
-        worker_id: { type: string }
-        attempt_id: { type: string }
-        lease_id: { type: string }
-        progress: { type: number, minimum: 0, maximum: 1 }
-        output_snapshot: { type: object, additionalProperties: true }
-        external_job_id: { type: string }
-    TaskRunCompleteRequest:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        execution_mode: {$ref: '#/components/schemas/TaskScheduleExecutionMode'}
+        management_mode: {$ref: '#/components/schemas/TaskScheduleManagementMode'}
+        system_key: {type: string}
+        trigger_type: {type: string, enum: [CRON, RUN_AT]}
+        cron_expression: {type: string}
+        run_at: {type: string, format: date-time}
+        time_zone: {type: string}
+        target: {$ref: '#/components/schemas/ScheduleTarget'}
+        target_summary: {$ref: '#/components/schemas/TaskTargetSummary'}
+        reconcile_spec: {$ref: '#/components/schemas/ReconcileSpec'}
+        history_retention: {$ref: '#/components/schemas/HistoryRetention'}
+        status: {$ref: '#/components/schemas/TaskScheduleStatus'}
+        summary: {$ref: '#/components/schemas/ScheduleSummary'}
+        last_execution: {$ref: '#/components/schemas/ScheduleExecution'}
+        next_trigger_at: {type: string, format: date-time}
+        runtime_schedule_name: {type: string}
+        project_id: {type: string}
+        namespace: {type: string}
+        created_by: {type: string}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    TaskScheduleListResponse:
       type: object
-      required: [worker_id, attempt_id, lease_id, output]
+      required: [total, items]
       properties:
-        worker_id: { type: string }
-        attempt_id: { type: string }
-        lease_id: { type: string }
-        output: { type: object, additionalProperties: true }
-        external_job_id: { type: string }
-    TaskRunFailRequest:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/TaskSchedule'}}
+    ScheduleExecution:
       type: object
-      required: [worker_id, attempt_id, lease_id, error]
+      required: [id, schedule_id, execution_mode, scheduled_at, status, created_at]
       properties:
-        worker_id: { type: string }
-        attempt_id: { type: string }
-        lease_id: { type: string }
-        error:
-          $ref: "#/components/schemas/TaskError"
-        logs_ref: { type: string }
-        external_job_id: { type: string }
-    LeaseRenewRequest:
+        id: {type: string}
+        schedule_id: {type: string}
+        execution_mode: {$ref: '#/components/schemas/TaskScheduleExecutionMode'}
+        scheduled_at: {type: string, format: date-time}
+        triggered_at: {type: string, format: date-time}
+        target_type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}
+        target_id: {type: string}
+        target_summary: {$ref: '#/components/schemas/TaskTargetSummary'}
+        reconcile_summary: {$ref: '#/components/schemas/ReconcileSummary'}
+        runtime_execution_id: {type: string}
+        status: {$ref: '#/components/schemas/ScheduleExecutionStatus'}
+        reason: {type: string}
+        completed_at: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+    ReconcileSummary:
       type: object
-      required: [worker_id, attempt_id, run_id]
+      required: [scanned, findings, actions_created, deferred, duration_ms, checkpoint_advanced, cycle_completed]
       properties:
-        worker_id: { type: string }
-        attempt_id: { type: string }
-        run_id: { type: string }
-    ExecutionLease:
+        scanned: {type: integer, minimum: 0}
+        findings: {type: integer, minimum: 0}
+        actions_created: {type: integer, minimum: 0}
+        deferred: {type: integer, minimum: 0}
+        duration_ms: {type: integer, minimum: 0}
+        checkpoint_advanced: {type: boolean}
+        cycle_completed: {type: boolean}
+        summary: {type: object, additionalProperties: true}
+    ScheduleReconcileState:
       type: object
-      required:
-        [id, run_id, attempt_id, worker_id, acquired_at, expire_at, status]
+      required: [schedule_id, consecutive_failures, total_runs, total_scanned, total_findings, total_actions_created, resource_version, updated_at]
       properties:
-        id: { type: string }
-        run_id: { type: string }
-        attempt_id: { type: string }
-        worker_id: { type: string }
-        acquired_at: { type: string, format: date-time }
-        expire_at: { type: string, format: date-time }
-        renewed_at: { type: string, format: date-time }
-        status:
-          $ref: "#/components/schemas/LeaseStatus"
-    TaskCenterHealth:
+        schedule_id: {type: string}
+        last_started_at: {type: string, format: date-time}
+        last_completed_at: {type: string, format: date-time}
+        last_summary: {$ref: '#/components/schemas/ReconcileSummary'}
+        checkpoint_age_seconds: {type: integer, minimum: 0, description: 基于当前 checkpoint 更新时间计算，不返回原始 checkpoint JSON。}
+        consecutive_failures: {type: integer, minimum: 0}
+        total_runs: {type: integer, minimum: 0}
+        total_scanned: {type: integer, minimum: 0}
+        total_findings: {type: integer, minimum: 0}
+        total_actions_created: {type: integer, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        updated_at: {type: string, format: date-time}
+    ScheduleExecutionListResponse:
       type: object
+      required: [total, items]
       properties:
-        scheduler_status: { type: string }
-        worker_online_total: { type: integer }
-        worker_lost_total: { type: integer }
-        queue_ready_total: { type: integer }
-        task_running_total: { type: integer }
-        task_retrying_total: { type: integer }
-        lease_expired_total: { type: integer }
-        watchdog_status: { type: string }
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ScheduleExecution'}}

@@ -121,7 +121,7 @@ paths:
       description: >-
         仅接受 application-platform 按运行发起用户提交的 Artifact。首次成功登记创建
         UserAsset；同一 artifact_id 重复请求返回同一 UserAsset。校验失败不创建空素材，
-        也不改变 ApplicationRun 对应 TaskRun 的终态。
+        也不改变 ApplicationRun 对应 AtomicTask 的终态。
       x-permission: asset.artifact.register
       x-s1-refs:
         user_stories: [US-USER-ASSET-41]

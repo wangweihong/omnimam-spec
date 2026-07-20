@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Workflow Canvas API
+  version: spec-v1.0.0
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/canvases:
+    get:
+      operationId: list_canvases
+      summary: 查询可见 Canvas
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Canvas 列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasListResponse'}
+    post:
+      operationId: create_canvas
+      summary: 创建 Canvas 草稿
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCanvasRequest'}
+      responses:
+        '200':
+          description: 创建结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasResponse'}
+  /api/v1/canvases/{canvas_id}:
+    parameters:
+      - $ref: '#/components/parameters/CanvasId'
+    get:
+      operationId: get_canvas
+      summary: 查询 Canvas 与当前草稿
+      responses:
+        '200':
+          description: Canvas 详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasResponse'}
+    patch:
+      operationId: update_canvas_draft
+      summary: 更新 Canvas 信息和草稿图
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateCanvasRequest'}
+      responses:
+        '200':
+          description: 更新结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasResponse'}
+    delete:
+      operationId: delete_canvas
+      summary: 软删除 Canvas
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+  /api/v1/canvases/{canvas_id}/publish:
+    parameters:
+      - $ref: '#/components/parameters/CanvasId'
+    post:
+      operationId: publish_canvas
+      summary: 校验并发布不可变 CanvasVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [draft_revision]
+              properties:
+                draft_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: 发布结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasVersionResponse'}
+  /api/v1/canvases/{canvas_id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/CanvasId'
+    get:
+      operationId: list_canvas_versions
+      summary: 查询 CanvasVersion
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 版本列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasVersionListResponse'}
+  /api/v1/canvas-versions/{canvas_version_id}:
+    get:
+      operationId: get_canvasVersion
+      summary: 查询不可变 CanvasVersion
+      parameters:
+        - $ref: '#/components/parameters/CanvasVersionId'
+      responses:
+        '200':
+          description: 版本详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasVersionResponse'}
+  /api/v1/canvas-runs:
+    get:
+      operationId: list_canvas_runs
+      summary: 查询 CanvasRun
+      parameters:
+        - {name: canvas_id, in: query, schema: {type: string}}
+        - {name: canvas_version_id, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/CanvasRunStatus'}}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 运行列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasRunListResponse'}
+    post:
+      operationId: create_canvasRun
+      summary: 运行已发布 CanvasVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCanvasRunRequest'}
+      responses:
+        '200':
+          description: 创建或幂等命中的运行
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+  /api/v1/canvas-runs/{canvas_run_id}:
+    get:
+      operationId: get_canvasRun
+      summary: 查询 CanvasRun 详情和汇总
+      parameters:
+        - $ref: '#/components/parameters/CanvasRunId'
+      responses:
+        '200':
+          description: 运行详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+  /api/v1/canvas-runs/{canvas_run_id}/nodes:
+    get:
+      operationId: list_canvas_node_runs
+      summary: 查询 CanvasNodeRun
+      parameters:
+        - $ref: '#/components/parameters/CanvasRunId'
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/NodeRunStatus'}}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 节点运行列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasNodeRunListResponse'}
+  /api/v1/canvas-runs/{canvas_run_id}/cancel:
+    post:
+      operationId: cancel_canvas_run
+      summary: 通过 Task Center 取消运行
+      parameters:
+        - $ref: '#/components/parameters/CanvasRunId'
+      responses:
+        '200':
+          description: 取消后的运行
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+  /api/v1/canvas-runs/{canvas_run_id}/retry:
+    post:
+      operationId: retry_canvas_run
+      summary: 创建新的 CanvasRun 重跑
+      parameters:
+        - $ref: '#/components/parameters/CanvasRunId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotency_key]
+              properties:
+                idempotency_key: {type: string, minLength: 1, maxLength: 200}
+      responses:
+        '200':
+          description: 新运行
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CanvasId: {name: canvas_id, in: path, required: true, schema: {type: string}}
+    CanvasVersionId: {name: canvas_version_id, in: path, required: true, schema: {type: string}}
+    CanvasRunId: {name: canvas_run_id, in: path, required: true, schema: {type: string}}
+    Page: {name: page_num, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+  responses:
+    EmptySuccess:
+      description: 操作成功
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/EmptyResponse'}
+  schemas:
+    ResponseMeta:
+      type: object
+      required: [request_id]
+      properties:
+        request_id: {type: string}
+    EmptyResponse:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer, example: 0}
+        message: {type: string, example: success}
+        data: {type: object, nullable: true}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    Graph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          maxItems: 1000
+          items: {$ref: '#/components/schemas/CanvasNode'}
+        edges:
+          type: array
+          maxItems: 5000
+          items: {$ref: '#/components/schemas/CanvasEdge'}
+    CanvasNode:
+      type: object
+      required: [node_key, node_type, config, input_bindings]
+      properties:
+        node_key: {type: string, pattern: '^[a-z][a-z0-9_]{0,99}$'}
+        node_type: {type: string, enum: [APPLICATION, FUNCTION, DYNAMIC_FORK]}
+        config: {type: object, additionalProperties: true}
+        input_bindings: {type: object, additionalProperties: true}
+        position: {type: object, additionalProperties: true}
+        max_dynamic_tasks: {type: integer, minimum: 1, maximum: 1000, nullable: true}
+    CanvasEdge:
+      type: object
+      required: [from_node_key, from_output, to_node_key, to_input]
+      properties:
+        from_node_key: {type: string}
+        from_output: {type: string}
+        to_node_key: {type: string}
+        to_input: {type: string}
+    Canvas:
+      type: object
+      required: [canvas_id, name, visibility, draft_graph, draft_revision, latest_version, project_id, namespace, created_by, created_at, updated_at]
+      properties:
+        canvas_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        visibility: {type: string, enum: [PRIVATE, PROJECT]}
+        draft_graph: {$ref: '#/components/schemas/Graph'}
+        draft_revision: {type: integer, format: int64}
+        latest_version: {type: integer}
+        project_id: {type: string}
+        namespace: {type: string}
+        created_by: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CreateCanvasRequest:
+      type: object
+      required: [name, visibility]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        visibility: {type: string, enum: [PRIVATE, PROJECT]}
+        draft_graph: {$ref: '#/components/schemas/Graph'}
+    UpdateCanvasRequest:
+      type: object
+      required: [expected_draft_revision]
+      properties:
+        expected_draft_revision: {type: integer, format: int64, minimum: 1}
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        visibility: {type: string, enum: [PRIVATE, PROJECT]}
+        draft_graph: {$ref: '#/components/schemas/Graph'}
+    CanvasVersion:
+      type: object
+      required: [canvas_version_id, canvas_id, version, graph_snapshot, content_digest, compiled_definition_name, compiled_definition_version, published_by, published_at]
+      properties:
+        canvas_version_id: {type: string}
+        canvas_id: {type: string}
+        version: {type: integer}
+        graph_snapshot: {$ref: '#/components/schemas/Graph'}
+        input_schema: {type: object, additionalProperties: true}
+        output_schema: {type: object, additionalProperties: true}
+        content_digest: {type: string}
+        compiled_definition_name: {type: string}
+        compiled_definition_version: {type: integer}
+        published_by: {type: string}
+        published_at: {type: string, format: date-time}
+    CanvasRunStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]
+    NodeRunStatus:
+      type: string
+      enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]
+    CanvasRun:
+      type: object
+      required: [canvas_run_id, canvas_id, canvas_version_id, idempotency_key, input_snapshot, task_creation_status, status, progress, summary, output, task_resource_version, project_id, namespace, created_by, created_at, updated_at]
+      properties:
+        canvas_run_id: {type: string}
+        canvas_id: {type: string}
+        canvas_version_id: {type: string}
+        idempotency_key: {type: string}
+        input_snapshot: {type: object, additionalProperties: true}
+        dag_task_group_id: {type: string, nullable: true}
+        task_creation_status: {type: string, enum: [PENDING, CREATED, FAILED]}
+        status: {$ref: '#/components/schemas/CanvasRunStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        summary: {type: object, additionalProperties: true}
+        output: {type: object, additionalProperties: true}
+        last_error: {type: object, additionalProperties: true}
+        task_resource_version: {type: integer, format: int64}
+        retry_of_canvas_run_id: {type: string, nullable: true}
+        project_id: {type: string}
+        namespace: {type: string}
+        created_by: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+    CanvasNodeRun:
+      type: object
+      required: [canvas_node_run_id, canvas_run_id, node_key, node_type, status, progress, output, task_resource_version, created_at, updated_at]
+      properties:
+        canvas_node_run_id: {type: string}
+        canvas_run_id: {type: string}
+        node_key: {type: string}
+        node_type: {type: string, enum: [APPLICATION, FUNCTION, DYNAMIC_FORK]}
+        atomic_task_id: {type: string, nullable: true}
+        status: {$ref: '#/components/schemas/NodeRunStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        output: {type: object, additionalProperties: true}
+        last_error: {type: object, additionalProperties: true}
+        task_resource_version: {type: integer, format: int64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+    CreateCanvasRunRequest:
+      type: object
+      required: [canvas_version_id, idempotency_key, input]
+      properties:
+        canvas_version_id: {type: string}
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+        input: {type: object, additionalProperties: true}
+    CanvasResponse: {$ref: '#/components/schemas/CanvasEnvelope'}
+    CanvasVersionResponse: {$ref: '#/components/schemas/CanvasVersionEnvelope'}
+    CanvasRunResponse: {$ref: '#/components/schemas/CanvasRunEnvelope'}
+    CanvasEnvelope:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/Canvas'}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasVersionEnvelope:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/CanvasVersion'}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasRunEnvelope:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data: {$ref: '#/components/schemas/CanvasRun'}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasListResponse:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data:
+          type: object
+          required: [total, items]
+          properties:
+            total: {type: integer}
+            items: {type: array, items: {$ref: '#/components/schemas/Canvas'}}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasVersionListResponse:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data:
+          type: object
+          required: [total, items]
+          properties:
+            total: {type: integer}
+            items: {type: array, items: {$ref: '#/components/schemas/CanvasVersion'}}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasRunListResponse:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data:
+          type: object
+          required: [total, items]
+          properties:
+            total: {type: integer}
+            items: {type: array, items: {$ref: '#/components/schemas/CanvasRun'}}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}
+    CanvasNodeRunListResponse:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code: {type: integer}
+        message: {type: string}
+        data:
+          type: object
+          required: [total, items]
+          properties:
+            total: {type: integer}
+            items: {type: array, items: {$ref: '#/components/schemas/CanvasNodeRun'}}
+        meta: {$ref: '#/components/schemas/ResponseMeta'}

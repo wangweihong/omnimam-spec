@@ -221,7 +221,7 @@ Tags 用于大量描述性分类，例如：
 * **BR-USER-ASSET-16** 用户可停止进行中的分片上传。
 * **BR-USER-ASSET-17** 停止上传时，如果存在当前上传会话 checksum，需要取消当前用户自己的上传会话，并清理上传状态。
 * **BR-USER-ASSET-18** 上传完成后需要刷新当前用户素材列表。
-* **BR-USER-ASSET-19** 上传完成后可创建异步处理任务，例如缩略图或派生预览处理任务。
+* **BR-USER-ASSET-19** 上传完成事务必须写 `asset_uploaded` outbox；task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建缩略图 AtomicTask。重复事件不得重复执行，任务失败不回滚素材或阻塞列表。
 * **BR-USER-ASSET-20** 素材详情展示当前素材 metadata、对象路径、preview 状态和 SHA256 checksum。
 * **BR-USER-ASSET-21** 预览图片、视频、音频、文本和 PDF 时，必须通过当前用户有权访问的 content endpoint 或等价内容读取能力。
 * **BR-USER-ASSET-22** 下载只能下载当前用户自己的素材原始内容。
@@ -921,7 +921,7 @@ Tags 以前面带 `#` 的彩色圆角块展示，例如：
 
 ### 9.8 上传后处理提示
 
-上传完成后可以创建异步处理任务，例如：
+上传完成后由事务 outbox 可靠触发异步处理任务，例如：
 
 ```text
 缩略图生成
@@ -929,7 +929,7 @@ Tags 以前面带 `#` 的彩色圆角块展示，例如：
 缺失 SHA256 补算
 ```
 
-异步处理任务不阻塞用户浏览素材列表。
+缩略图使用 `asset_id + profile_version` 形成稳定幂等键；异步处理任务不阻塞用户浏览素材列表，失败也不回滚已上传素材。
 
 页面可以展示处理状态或提示用户稍后刷新预览。
 
@@ -1039,7 +1039,7 @@ thumbnail 或前端抽帧失败时使用占位图标
 不进入平台共享素材库
 ```
 
-ApplicationRun 产生的 Artifact 使用同一用户素材登记边界：application-platform 提供运行发起用户、输出名、媒体类型和内容引用；素材库负责校验并创建或返回幂等命中的 UserAsset。Artifact 在登记成功前不得被称为 Asset，登记失败不改变 ApplicationRun 的 TaskRun 终态，但必须保留独立的输出登记失败结果。
+ApplicationRun 产生的 Artifact 使用同一用户素材登记边界：application-platform 提供运行发起用户、输出名、媒体类型和内容引用；素材库负责校验并创建或返回幂等命中的 UserAsset。Artifact 在登记成功前不得被称为 Asset，登记失败不改变 ApplicationRun 的 AtomicTask 终态，但必须保留独立的输出登记失败结果。
 
 ### 9.17 只读状态
 
@@ -1095,4 +1095,4 @@ ApplicationRun 产生的 Artifact 使用同一用户素材登记边界：applica
 
 ### AC-USER-ASSET-41-02
 
-当 Artifact 内容缺失、不可读取、所有者不一致或媒体信息非法时，素材库拒绝登记且不创建空 UserAsset；application-platform 保留登记失败原因；素材库不得改写 TaskRun 历史状态。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59、BR-USER-ASSET-62～63。
+当 Artifact 内容缺失、不可读取、所有者不一致或媒体信息非法时，素材库拒绝登记且不创建空 UserAsset；application-platform 保留登记失败原因；素材库不得改写 AtomicTask 历史状态。适用端：Web 用户端、无限画布、Agent、Open API。相关规则：BR-USER-ASSET-59、BR-USER-ASSET-62～63。

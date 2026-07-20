@@ -1,7 +1,44 @@
 # Changelog
 
+## spec-v1.4.0
+
+- 将 ComfyUI `object_info` 所有权集中到 EngineInstance 一对一当前目录；目录随实例级联删除，不保存 checksum、历史、状态机或递增版本。
+- 新增每日 `application-platform.comfyui-object-info-refresh` SYSTEM RECONCILE 刷新和管理员手动刷新语义，只处理 enabled、online 的 ComfyUI 实例，失败保留最后成功目录。
+- 新增 EngineInstance 当前 object-info 读取与刷新 OpenAPI；原始 JSON 支持 gzip 内容协商，实例摘要返回 available、refreshed_at 和派生 stale。
+- Workflow、Validation、TemplateVersion、WorkflowTestRun 和 ApplicationRun 不再持久化或返回 object-info 正文/checksum；模板 revision 仅覆盖 API Workflow 与模板契约。
+- 保留 nodes、input-candidates、output-candidates 和 dependencies，四个接口改为必须指定 EngineInstance 并按其当前目录即时派生；移除工作流 archive/restore 与 lifecycle 契约。
+- 新增 `BR-AIAPP-169..176`、`US-AIAPP-049` 及验收标准，旧快照、归档和历史 compatible 权威规则显式 deprecated。
+
+## spec-v1.3.0
+
+- TaskSchedule 新增 MATERIALIZED/RECONCILE 执行模式、USER/SYSTEM 管理模式、ReconcileRegistry、ScheduleReconcileState、受控修复动作、轻量历史与运行时 retention 契约。
+- 新增 `US-TASK-017` 与 `BR-TASK-107..119`，扩展 TaskSchedule/OpenAPI/schema/错误码/权限/事件/模块契约，并明确 SYSTEM 计划的受限操作。
+- EngineInstance 周期健康检测迁移为 `application-platform.engine-health` RECONCILE 计划，不再为每轮创建 Planner DAGTaskGroup 或健康 AtomicTask。
+
+## spec-v1.2.0
+
+- WorkflowTestRun 新增 EngineInstance 非敏感快照、参数覆盖数量和可选完整参数快照。
+- 试运行列表支持 `detail=false` 轻量投影，历史详情支持使用原配置重新确认并创建独立任务。
+
+## 2026-07-18
+
+- 新增 ComfyUI 单文件双来源导入、visual Workflow 显式 API 转换、WorkflowTestRun、临时预览代理与三节点 Task Center DAG 契约，新增 BR-AIAPP-164..168、US-AIAPP-047..048、BR-TASK-105..106 和 US-TASK-016。
+- WorkflowRuntime 增加 `IN_PROGRESS + callbackAfterSeconds` 延迟回调语义，ComfyUI poll 等待期间不得占用 Worker；工作流试运行不登记 Artifact/Asset。
+- EngineInstance 列表摘要新增 `base_url`，使实例列表直接返回执行端点，同时继续禁止列表返回 `auth_config` 等鉴权信息。
+- 补充 TaskSchedule、ScheduleExecution 与实际 AtomicTask/TaskGroup/DAGTaskGroup 的双向可见关联：调度目标继承计划归属，计划与执行历史返回轻量目标摘要，全局运行列表返回来源计划摘要。
+- 明确执行历史按目标类型批量补充摘要，失败、重叠跳过或目标不可用时使用模板摘要降级；禁止逐行 N+1 查询、伪造 targetId 或复制大型输入输出。
+- 新增 `BR-TASK-101..104` 与 `AC-TASK-011-04..05`，同步更新 task-center OpenAPI、模块契约和架构参考。
+- 修正 AtomicTask owner/childKey 唯一索引范围：仅约束 TaskGroup/DAGTaskGroup 子任务，允许周期 Schedule 每轮复用同一模板 key。
+- 修正 `schedule_source` OpenAPI 所属，将其从 AtomicTask 创建请求移至只读 AtomicTask 响应。
+
 ## 2026-07-17
 
+- 发布 `spec-v1.0.0` 任务中心破坏性重构：AtomicTask 成为唯一执行单元，TaskGroup/DAGTaskGroup 只组合 AtomicTask，TaskSchedule 统一周期与单次触发，并以 TaskAttempt、ScheduleExecution 和汇总查询保留完整历史。
+- 引入 Conductor OSS 的 WorkflowRuntime 边界以及 Watermill + PostgreSQL outbox 可靠事件边界，删除新实现对 TaskRun、ExecutionLease、Worker claim、watchdog、自研 Dispatcher 和自研 DAG 状态机的依赖。
+- 新增 workflow-canvas S1/S2，定义 Canvas 草稿、不可变 CanvasVersion、CanvasRun、CanvasNodeRun、拓扑分层编译、Dynamic Fork、任意无环图校验和 SSRF/RCE 防护。
+- application-platform 的 ApplicationRun 绑定从 `task_run_id` 迁移为 `atomic_task_id`；Engine 健康检测改为 TaskSchedule → Planner DAGTaskGroup → Dynamic Fork，并记录重叠跳过。
+- asset-library 上传完成使用事务 outbox 发布 `asset_uploaded`，task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建缩略图 AtomicTask。
+- 新增 task-center Schedule 错误码区间与 workflow-canvas 全域错误码区间；旧 TaskRun/Lease 错误码保留并标记 deprecated。本次变更由用户于 2026-07-17 明确要求直接修改 SSOT 并发布。
 - 将 application-platform 升级为 v0.9.1，补充 EngineInstance 启动即检、默认 30 秒可配置周期、仅检测启用实例、并发 5 秒超时和多副本乐观锁尽力去重语义。
 - EngineInstance 列表摘要新增 `last_health_check_at` 与 `unhealthy_reason`；统一手动/周期检测的时间、状态、失败摘要持久化和返回规则，并明确敏感信息脱敏及 512 字符限制。
 - 新增 `BR-AIAPP-163` 与 `AC-AIAPP-041-04..06`，同步更新 OpenAPI、模块契约和领域架构；本次变更由用户于 2026-07-17 明确确认实施。
@@ -138,3 +175,10 @@
 - 调整 `application-platform` S1 产品规格中的角色语义，移除 `业务使用者`、`外部系统`、`应用创建者`、`平台管理员` 等旧角色表达，统一收敛为 `普通用户` 和 `系统管理员`。
 - 更新 `application-platform` 功能适配矩阵、用户故事、业务规则、系统呈现策略和待确认问题，避免旧四角色模型继续作为产品事实源。
 - 基于收敛后的 `application-platform` S1 生成 S2 契约草稿，新增 OpenAPI、设计态 SQL schema、错误码、权限码、事件和模块边界文档，并登记全局错误码区间。
+# spec-v0.9.2
+
+- 使用 Task Center 周期任务与 PARALLEL TaskGroup 执行 AppEngine 健康检测。
+- 补充动态 TaskGroup 展开、并发、聚合、取消、超时、重试和通用幂等契约。
+# spec-v0.9.3
+
+- 修正通用 `idempotency_scope` 与 TaskRun 数据库 CHECK 约束的一致性。

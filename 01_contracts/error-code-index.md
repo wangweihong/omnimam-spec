@@ -9,8 +9,9 @@
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
 | application-platform | `01_contracts/domains/application-platform/errors.yaml` | ProviderCapability 启动加载、引擎与绑定、ComfyUI 工作流、应用契约、运行和访问错误码 |
-| task-center | `01_contracts/domains/task-center/errors.yaml` | 任务中心任务定义、运行、Worker、Lease、Attempt 与权限相关错误码 |
+| task-center | `01_contracts/domains/task-center/errors.yaml` | AtomicTask、Group/DAG、Schedule、运行时、Attempt 与权限错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、标签写入、当前用户访问与 Artifact 登记错误码 |
+| workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | Canvas、不可变版本、运行、节点引用和访问错误码 |
 
 ## 2. 错误码区间分配
 
@@ -31,19 +32,24 @@
 | 130200-130399 | application-platform | provider-capability | 目录、YAML、Schema、重复 ID、执行依赖和能力可用性错误 |
 | 130400-130599 | application-platform | engine | EngineInstance、鉴权、Binding、限制与健康可用性错误 |
 | 130600-130799 | application-platform | application | 模板来源、不可变版本、RuntimeForm 和输入校验错误 |
-| 130800-130999 | application-platform | application-run | ApplicationRun、TaskRun 投影和平台能力不匹配错误 |
+| 130800-130999 | application-platform | application-run | ApplicationRun、AtomicTask 投影和平台能力不匹配错误 |
 | 131000-131199 | application-platform | access | 能力诊断、Engine、Application 和 Run 访问控制错误 |
 | 131200-131399 | application-platform | comfyui-workflow | ComfyUI 工作流导入、解析、实例校验、归档和模板转换错误 |
-| 140200-140399 | task-center | definition | 任务定义、TaskGroup 和 DAGFlowTask 校验错误 |
-| 140400-140599 | task-center | run | TaskRun 状态、取消、重试和可见性错误 |
-| 140600-140799 | task-center | worker | Worker 注册、心跳和能力匹配错误 |
-| 140800-140999 | task-center | lease | ExecutionLease 获取、续约、过期和归属错误 |
+| 140200-140399 | task-center | orchestration | functionRef、TaskGroup 和 DAGTaskGroup 校验错误 |
+| 140400-140599 | task-center | atomic-task | AtomicTask、Group/DAG 状态、幂等和可见性错误 |
+| 140600-140799 | task-center | runtime | WorkflowRuntime 可用性和请求错误；140600 保留旧 Worker 错误 |
+| 140800-140999 | task-center | legacy-lease | 已废弃 ExecutionLease 错误码保留区间 |
 | 141000-141199 | task-center | attempt | TaskAttempt 状态与结果回写错误 |
 | 141200-141399 | task-center | access | 任务中心权限与访问控制错误 |
+| 141400-141599 | task-center | schedule | TaskSchedule 校验、状态和可见性错误 |
 | 150200-150399 | asset-library | query | 统一选择器、自然语言解析与素材列表查询错误 |
 | 150400-150599 | asset-library | labeling | Label/Tag 校验、数量限制与批量打标错误 |
 | 150600-150799 | asset-library | access | 素材所有权、删除状态与可写性错误 |
 | 150800-150999 | asset-library | artifact-registration | ApplicationRun Artifact 所有权、内容、媒体与幂等登记错误 |
+| 160200-160399 | workflow-canvas | canvas | Canvas 草稿、图、引用和规模错误 |
+| 160400-160599 | workflow-canvas | version | CanvasVersion 查询、编译和发布错误 |
+| 160600-160799 | workflow-canvas | run | CanvasRun 状态、幂等和可见性错误 |
+| 160800-160999 | workflow-canvas | access | 工作流画布权限与访问控制错误 |
 
 ## 3. 分配规则
 

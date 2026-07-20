@@ -16,7 +16,7 @@
 - 不维护独立模型配置、模型提供商或模型清单。
 - 不创建独立模型配置表或同等模型事实源。
 - 不提供模型创建、同步、检测、默认模型保存等能力；这些能力属于 `model-management`。
-- 不创建 TaskRun，不依赖 `task-center` 实现后台完成提醒。
+- 不创建 AtomicTask，不依赖 `task-center` 实现后台完成提醒。
 - 不持久化图片附件原始媒体；图片附件仅作为请求输入和消息图标语义。
 
 ## 输入与输出
@@ -41,7 +41,7 @@
 - `modelId` 和 `suggestedModelId` 必须引用 `model-management.UserProviderModel.id`。
 - `modelSnapshot` 只记录生成或翻译当时的模型事实快照，不代表 ai-chatting 拥有模型配置。
 - 当前选中模型 unhealthy 时不得发送、重新生成、编辑后重生成或携带图片附件发送。
-- 后台完成提醒由 ai-chatting generation 状态和应用内 UI 提醒实现，不创建 task-center TaskRun。
+- 后台完成提醒由 ai-chatting generation 状态和应用内 UI 提醒实现，不创建 task-center AtomicTask。
 
 ## 数据归属与权限边界
 

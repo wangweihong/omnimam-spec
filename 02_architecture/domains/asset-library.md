@@ -27,11 +27,11 @@
 - 依赖 `identity` 提供当前用户身份、资源隔离和只读状态。
 - 被 `ai-chatting`、`application-platform` 和后续 `workflow-canvas` 引用，用于素材选择、生成产物登记和下载。
 - 若异步处理需要统一调度，可按 S2 最小模块契约与 `task-center` 协作。
-- SHA256 缺失补算由任务中心周期性调度 TaskRun，素材库负责实际扫描、读取内容、计算 checksum 和写回。
+- SHA256 缺失补算由任务中心周期性调度 AtomicTask，素材库负责实际扫描、读取内容、计算 checksum 和写回。
 - 三视图模式属于前端本地呈现偏好，不进入服务端 S2；素材分组是用户范围内的逻辑关联，不是存储目录。
 - 画布等外部模块可以通过回调或等价协作方式维护素材的轻量引用摘要，用于前端提示。
 - 自然语言解析可依赖独立模型或索引服务，但输出必须再次通过 `selector-parser` 校验；依赖异常不得触发关键词降级。
-- application-platform 拥有 Artifact 和登记失败状态；asset-library 只拥有成功登记映射与 UserAsset，不改写 TaskRun 终态。
+- application-platform 拥有 Artifact 和登记失败状态；asset-library 只拥有成功登记映射与 UserAsset，不改写 AtomicTask 终态。
 
 ## 4. 核心链路
 

@@ -30,7 +30,7 @@ comfyui_workflow_converted:
   idempotency_key: workflow_id:application_template_id
   retry_policy: 转换事务提交后通过 outbox 重试，消费者按 workflow_id 幂等处理。
   failure_policy: 事件发布失败不得回滚转换；数据库中的工作流转换关系和模板首版是事实源。
-  related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-161]
+  related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-173, BR-AIAPP-174]
   related_user_stories: [US-AIAPP-046]
 
 application_version_published:
@@ -69,43 +69,43 @@ application_run_created:
     task_creation_status: string
     occurred_at: string(date-time)
   idempotency_key: application_run_id:created
-  retry_policy: 事件发布失败后按 ApplicationRun ID 重试；TaskRun 创建由模块协作 API 的幂等键保证。
-  failure_policy: 事件失败不回滚 ApplicationRun 快照；未创建 TaskRun 时不得伪造执行状态。
+  retry_policy: 事件发布失败后按 ApplicationRun ID 重试；AtomicTask 创建由模块协作 API 的幂等键保证。
+  failure_policy: 事件失败不回滚 ApplicationRun 快照；未创建 AtomicTask 时不得伪造执行状态。
   related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149]
   related_user_stories: [US-AIAPP-043]
 
-application_run_task_bound:
+application_run_atomic_task_bound:
   producer: application-platform.application-run
   consumers: [application-platform.application-run-view, audit-service]
-  trigger_condition: task-center 使用 application_run_id 与幂等键创建或返回唯一 TaskRun，application-platform 成功绑定 task_run_id。
+  trigger_condition: task-center 使用 application_run_id 与幂等键创建或返回唯一 AtomicTask，application-platform 成功绑定 atomic_task_id。
   payload:
     application_run_id: string
-    task_run_id: string
+    atomic_task_id: string
     task_creation_status: string
     task_resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: application_run_id:task_run_id
+  idempotency_key: application_run_id:atomic_task_id
   retry_policy: 发布失败后重试相同绑定事件。
-  failure_policy: ApplicationRun 表中的绑定关系为事实源；事件失败不得重复创建 TaskRun。
+  failure_policy: ApplicationRun 表中的绑定关系为事实源；事件失败不得重复创建 AtomicTask。
   related_rules: [BR-AIAPP-143, BR-AIAPP-149]
   related_user_stories: [US-AIAPP-043]
 
 application_run_projection_changed:
   producer: application-platform.application-run
   consumers: [application-platform.application-run-view, workflow-canvas]
-  trigger_condition: 收到 resource_version 更高的 TaskRun 状态、进度或结果事件。
+  trigger_condition: 收到 resource_version 更高的 AtomicTask 状态、进度或结果事件。
   payload:
     application_run_id: string
-    task_run_id: string
+    atomic_task_id: string
     task_resource_version: integer
     task_status: string
     progress: object
     output_values: array
     failure_summary: string
     occurred_at: string(date-time)
-  idempotency_key: task_run_id:task_resource_version
+  idempotency_key: atomic_task_id:task_resource_version
   retry_policy: 失败后重试相同投影事件。
-  failure_policy: 旧 resource_version 不得覆盖新投影；TaskRun 始终是执行状态事实源。
+  failure_policy: 旧 resource_version 不得覆盖新投影；AtomicTask 始终是执行状态事实源。
   related_rules: [BR-AIAPP-143]
   related_user_stories: [US-AIAPP-043]
 
@@ -143,6 +143,40 @@ application_artifact_registration_changed:
     occurred_at: string(date-time)
   idempotency_key: artifact_id:registration_status:resource_version
   retry_policy: 事件失败后按 Artifact resource_version 重试。
-  failure_policy: Artifact 表是登记状态事实源；事件失败不改变 TaskRun 终态，也不重复创建 UserAsset。
+  failure_policy: Artifact 表是登记状态事实源；事件失败不改变 AtomicTask 终态，也不重复创建 UserAsset。
   related_rules: [BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]
+
+comfyui_workflow_api_converted:
+  producer: application-platform.comfyui-workflow
+  consumers: [application-platform.comfyui-workflow-view, audit-service]
+  trigger_condition: visual_workflow 首次成功保存 API Workflow。
+  payload:
+    workflow_id: string
+    source_checksum: string
+    api_workflow_checksum: string
+    converted_by_user_id: string
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: workflow_id:api_workflow_checksum
+  retry_policy: outbox 重试直到投递成功。
+  failure_policy: 工作流表是转换事实源，事件失败不回滚转换。
+  related_rules: [BR-AIAPP-164, BR-AIAPP-165]
+  related_user_stories: [US-AIAPP-047]
+
+comfyui_workflow_test_run_changed:
+  producer: application-platform.comfyui-workflow-test-run
+  consumers: [application-platform.comfyui-workflow-view, audit-service]
+  trigger_condition: 试运行绑定 DAG、恢复 prompt ID 或收集预览描述。
+  payload:
+    test_run_id: string
+    workflow_id: string
+    dag_task_group_id: string|null
+    external_job_id: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: test_run_id:resource_version
+  retry_policy: outbox 按资源版本重试。
+  failure_policy: test run 与 Task Center 投影仍为事实源。
+  related_rules: [BR-AIAPP-166, BR-AIAPP-168]
+  related_user_stories: [US-AIAPP-048]
