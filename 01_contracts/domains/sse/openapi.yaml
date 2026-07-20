@@ -1,0 +1,343 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM SSE Event API
+  version: 0.1.0-draft
+  description: 当前登录用户的 SSE 事件流、短期历史重放和同步状态契约。SSE 不是业务事实源。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: event-stream
+    description: 用户级实时事件流。
+  - name: event-replay
+    description: 短期历史与重同步。
+
+paths:
+  /api/v1/events/stream:
+    get:
+      tags: [event-stream]
+      summary: 建立当前用户的 SSE 事件流
+      operationId: stream_current_user_events
+      x-permission: sse.stream.read
+      x-s1-refs:
+        user_stories: [US-SSE-001, US-SSE-002, US-SSE-003, US-SSE-004, US-SSE-005]
+        business_rules: [BR-SSE-001, BR-SSE-002, BR-SSE-003, BR-SSE-005, BR-SSE-007, BR-SSE-013, BR-SSE-014]
+      parameters:
+        - $ref: '#/components/parameters/last_event_id'
+        - $ref: '#/components/parameters/after_event_id'
+        - $ref: '#/components/parameters/client_instance_id'
+      responses:
+        '200':
+          description: SSE 流；业务拒绝时也可返回 JSON 错误体。
+          headers:
+            Cache-Control:
+              schema: {type: string, example: no-cache}
+            X-Accel-Buffering:
+              schema: {type: string, example: 'no'}
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: 每条消息以空行结束；业务事件使用 id/event/retry/data 且 data 符合 UserEventEnvelope，连接控制事件不持久也不推进游标。
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/events:
+    get:
+      tags: [event-replay]
+      summary: 查询当前用户的短期历史事件
+      operationId: list_current_user_events
+      x-permission: sse.history.read
+      x-s1-refs:
+        user_stories: [US-SSE-004, US-SSE-005]
+        business_rules: [BR-SSE-003, BR-SSE-004, BR-SSE-005, BR-SSE-007, BR-SSE-008]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/search_fields'
+        - $ref: '#/components/parameters/sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - $ref: '#/components/parameters/after_event_id'
+        - $ref: '#/components/parameters/event_types'
+        - $ref: '#/components/parameters/aggregate_type'
+        - $ref: '#/components/parameters/aggregate_id'
+        - $ref: '#/components/parameters/created_after'
+        - $ref: '#/components/parameters/created_before'
+      responses:
+        '200':
+          description: 事件列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/UserEventListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/events/sync-state:
+    get:
+      tags: [event-replay]
+      summary: 查询当前用户事件流的同步边界
+      operationId: get_current_user_event_sync_state
+      x-permission: sse.history.read
+      x-s1-refs:
+        user_stories: [US-SSE-004]
+        business_rules: [BR-SSE-004, BR-SSE-007, BR-SSE-008]
+      responses:
+        '200':
+          description: 同步状态或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EventSyncState'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    last_event_id:
+      name: Last-Event-ID
+      in: header
+      required: false
+      schema: {type: integer, format: int64, minimum: 1}
+      description: 浏览器 SSE 标准恢复游标；与 after_event_id 同时存在时必须相同。
+    after_event_id:
+      name: after_event_id
+      in: query
+      required: false
+      schema: {type: integer, format: int64, minimum: 1}
+      description: 从指定用户事件之后开始返回。
+    client_instance_id:
+      name: client_instance_id
+      in: query
+      required: false
+      schema: {type: string, minLength: 1, maxLength: 128}
+      description: 当前标签页或前端客户实例标识，仅用于诊断和连接限制。
+    page_num:
+      name: page_num
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    page_size:
+      name: page_size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 500, default: 200}
+    keyword:
+      name: keyword
+      in: query
+      schema: {type: string, default: ''}
+      description: 仅匹配事件类型、聚合类型和聚合 ID，不对 payload 正文执行模糊搜索。
+    search_fields:
+      name: search_fields
+      in: query
+      schema: {type: string, default: 'event_type,aggregate_type,aggregate_id'}
+    sort_field:
+      name: sort_field
+      in: query
+      schema: {type: string, enum: [event_id, occurred_at], default: event_id}
+    sort_order:
+      name: sort_order
+      in: query
+      schema: {type: string, enum: [asc, desc], default: asc}
+    event_types:
+      name: event_types
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的 event_type；只用于诊断和短期补偿，不作为权限边界。
+    aggregate_type:
+      name: aggregate_type
+      in: query
+      schema: {type: string}
+    aggregate_id:
+      name: aggregate_id
+      in: query
+      schema: {type: string}
+    created_after:
+      name: created_after
+      in: query
+      schema: {type: string, format: date-time}
+    created_before:
+      name: created_before
+      in: query
+      schema: {type: string, format: date-time}
+
+  schemas:
+    UserEventType:
+      type: string
+      enum:
+        - atomic_task.created
+        - atomic_task.blocked
+        - atomic_task.ready
+        - atomic_task.started
+        - atomic_task.progressed
+        - atomic_task.retrying
+        - atomic_task.cancel_requested
+        - atomic_task.succeeded
+        - atomic_task.failed
+        - atomic_task.canceled
+        - atomic_task.timed_out
+        - atomic_task.skipped
+        - task_attempt.created
+        - task_attempt.started
+        - task_attempt.succeeded
+        - task_attempt.failed
+        - task_attempt.canceled
+        - task_attempt.timed_out
+        - task_group.created
+        - task_group.started
+        - task_group.progressed
+        - task_group.succeeded
+        - task_group.failed
+        - task_group.canceled
+        - dag_task_group.created
+        - dag_task_group.started
+        - dag_task_group.progressed
+        - dag_task_group.succeeded
+        - dag_task_group.failed
+        - dag_task_group.canceled
+        - artifact.created
+        - artifact.transferring
+        - artifact.processing
+        - artifact.preview_ready
+        - artifact.ready
+        - artifact.processing_failed
+        - artifact.registration_succeeded
+        - artifact.registration_failed
+        - artifact.deleted
+
+    UserEventEnvelope:
+      type: object
+      additionalProperties: false
+      required: [event_id, event_type, event_version, occurred_at, aggregate_type, aggregate_id, aggregate_version, payload]
+      properties:
+        event_id: {type: integer, format: int64, minimum: 1}
+        event_type: {$ref: '#/components/schemas/UserEventType'}
+        event_version: {type: integer, minimum: 1}
+        occurred_at: {type: string, format: date-time}
+        aggregate_type: {type: string}
+        aggregate_id: {type: string}
+        aggregate_version: {type: integer, minimum: 0}
+        correlation_id: {type: string, nullable: true}
+        causation_id: {type: string, nullable: true}
+        application_run_id: {type: string, nullable: true}
+        task_group_id: {type: string, nullable: true}
+        dag_task_group_id: {type: string, nullable: true}
+        atomic_task_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true}
+        artifact_id: {type: string, nullable: true}
+        payload:
+          oneOf:
+            - $ref: '#/components/schemas/AtomicTaskEventPayload'
+            - $ref: '#/components/schemas/TaskAttemptEventPayload'
+            - $ref: '#/components/schemas/TaskGroupEventPayload'
+            - $ref: '#/components/schemas/ArtifactEventPayload'
+
+    AtomicTaskEventPayload:
+      type: object
+      properties:
+        from_status: {type: string, nullable: true}
+        status: {type: string, enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, CANCEL_REQUESTED, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]}
+        progress: {type: number, format: float, minimum: 0, maximum: 1, nullable: true}
+        phase: {type: string, nullable: true}
+        current: {type: integer, minimum: 0, nullable: true}
+        total: {type: integer, minimum: 0, nullable: true}
+        message_code: {type: string, nullable: true}
+        current_attempt: {type: integer, minimum: 0, nullable: true}
+        retry_at: {type: string, format: date-time, nullable: true}
+        error_code: {type: string, nullable: true}
+        retryable: {type: boolean, nullable: true}
+        output_summary: {type: object, additionalProperties: true}
+
+    TaskAttemptEventPayload:
+      type: object
+      required: [attempt_no, status]
+      properties:
+        attempt_no: {type: integer, minimum: 1}
+        from_status: {type: string, nullable: true}
+        status: {type: string, enum: [SCHEDULED, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]}
+        error_code: {type: string, nullable: true}
+        retryable: {type: boolean, nullable: true}
+        started_at: {type: string, format: date-time, nullable: true}
+        finished_at: {type: string, format: date-time, nullable: true}
+
+    TaskGroupEventPayload:
+      type: object
+      required: [group_type, status]
+      properties:
+        group_type: {type: string, enum: [TASK_GROUP, DAG_TASK_GROUP]}
+        from_status: {type: string, nullable: true}
+        status: {type: string, enum: [PENDING, RUNNING, CANCEL_REQUESTED, SUCCESS, FAILED, CANCELED, TIMEOUT]}
+        progress: {type: number, format: float, minimum: 0, maximum: 1}
+        total: {type: integer, minimum: 0}
+        pending: {type: integer, minimum: 0}
+        blocked: {type: integer, minimum: 0}
+        running: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        failed: {type: integer, minimum: 0}
+        canceled: {type: integer, minimum: 0}
+        skipped: {type: integer, minimum: 0}
+
+    ArtifactEventPayload:
+      type: object
+      required: [processing_status, registration_status]
+      properties:
+        output_key: {type: string}
+        media_type: {type: string}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        processing_progress: {type: number, format: float, minimum: 0, maximum: 1, nullable: true}
+        processing_phase: {type: string, nullable: true}
+        preview_available: {type: boolean}
+        preview_ref: {type: string, nullable: true, description: 受保护或短期引用。}
+        thumbnail_ref: {type: string, nullable: true, description: 受保护或短期引用。}
+        size_bytes: {type: integer, format: int64, minimum: 0, nullable: true}
+        processing_error_code: {type: string, nullable: true}
+        processing_retryable: {type: boolean, nullable: true}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        asset_id: {type: string, nullable: true}
+        registration_error_code: {type: string, nullable: true}
+        registration_retryable: {type: boolean, nullable: true}
+        ready_at: {type: string, format: date-time, nullable: true}
+
+    UserEventListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/UserEventEnvelope'}
+
+    EventSyncState:
+      type: object
+      additionalProperties: false
+      required: [latest_event_id, earliest_available_event_id, retention_seconds, server_time]
+      properties:
+        latest_event_id: {type: integer, format: int64, minimum: 0}
+        earliest_available_event_id: {type: integer, format: int64, minimum: 0}
+        retention_seconds: {type: integer, minimum: 1}
+        server_time: {type: string, format: date-time}
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, value, message, messages, retryable]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        messages:
+          type: object
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: {type: string}
+            en-US: {type: string}
+        detail: {type: string}
+        retryable: {type: boolean}
+        data: {type: object, additionalProperties: true}

@@ -1177,8 +1177,8 @@ paths:
       summary: 查询 ApplicationRun 与 AtomicTask 投影
       x-permission: aiapp.application.run
       x-s1-refs:
-        user_stories: [US-AIAPP-043]
-        business_rules: [BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-149, BR-AIAPP-150]
+        user_stories: [US-AIAPP-043, US-AIAPP-050]
+        business_rules: [BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-149, BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179]
       parameters: [{$ref: '#/components/parameters/application_run_id'}]
       responses:
         '200':
@@ -2354,18 +2354,35 @@ components:
             capability_source_type: {enum: [comfyui_workflow]}
     ApplicationArtifact:
       type: object
-      required: [id, application_run_id, output_key, owner_user_id, media_type, content_ref, registration_status, created_at, updated_at, resource_version]
+      required: [id, application_run_id, output_key, owner_user_id, media_type, processing_status, processing_retryable, preview_available, registration_status, registration_retryable, created_at, updated_at, resource_version]
+      x-s1-refs:
+        user_stories: [US-AIAPP-043, US-AIAPP-050]
+        business_rules: [BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179, BR-AIAPP-180]
       properties:
         id: {type: string}
         application_run_id: {type: string}
         output_key: {type: string}
         owner_user_id: {type: string}
         media_type: {type: string, enum: [image, video, audio, text, pdf, other]}
-        content_ref: {type: string}
+        source_ref: {type: string, nullable: true}
+        content_ref: {type: string, nullable: true}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        processing_progress: {type: number, format: float, minimum: 0, maximum: 1, nullable: true}
+        processing_phase: {type: string}
+        preview_available: {type: boolean}
+        preview_ref: {type: string, nullable: true, description: 受保护资源引用，不得是长期公开 URL。}
+        thumbnail_ref: {type: string, nullable: true, description: 受保护资源引用，不得是长期公开 URL。}
+        size_bytes: {type: integer, format: int64, minimum: 0, nullable: true}
+        processing_error_code: {type: string, nullable: true}
+        processing_failure_detail: {type: string, nullable: true}
+        processing_retryable: {type: boolean}
+        ready_at: {type: string, format: date-time, nullable: true}
+        deleted_at: {type: string, format: date-time, nullable: true}
         registration_status: {type: string, enum: [pending, registered, failed]}
         asset_id: {type: string, nullable: true}
         registration_error_code: {type: string, nullable: true}
         registration_failure_detail: {type: string, nullable: true}
+        registration_retryable: {type: boolean}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}

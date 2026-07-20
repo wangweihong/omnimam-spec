@@ -19,6 +19,7 @@
 | `application-platform` | Runtime Registry、ProviderCapability、模板/应用版本、Engine、ApplicationRun 与 Artifact | 已有 S1/S2 |
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
+| `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
 
 ## 3. 依赖方向
 
@@ -31,6 +32,7 @@ graph TD
   App["application-platform<br/>Adapter、模板、应用与 AppEngine"]
   Task["task-center<br/>业务任务与 Conductor 适配"]
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
+  SSE["sse<br/>用户级短期事件投影"]
 
   Chat --> Model
   Chat --> Asset
@@ -40,12 +42,16 @@ graph TD
   Canvas --> Task
   Canvas --> App
   Canvas --> Asset
+  SSE --> Task
+  SSE --> App
+  SSE --> Asset
 
   Model --> Identity
   Chat --> Identity
   Asset --> Identity
   App --> Identity
   Task --> Identity
+  SSE --> Identity
 ```
 
 说明：
@@ -56,6 +62,7 @@ graph TD
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `workflow-canvas` 发布不可变 CanvasVersion，并通过 task-center DAGTaskGroup 执行；节点运行映射到 AtomicTask。
 - `asset-library` 是用户素材与生成产物的资产事实源，供聊天、应用和画布能力引用。
+- `sse` 只投影 task-center 任务事件、application-platform Artifact 处理事件和 UserAsset 登记结果；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
 
 ## 4. 运行链路
 
@@ -87,6 +94,7 @@ sequenceDiagram
   participant Adapter as ProviderAdapter
   participant Engine as AppEngine endpoint
   participant Asset as asset-library
+  participant SSE as SSE projector/gateway
 
   User->>App: 选择应用、输入和可选 AppEngine
   App->>App: 校验指定引擎或自动路由并占用
@@ -99,7 +107,10 @@ sequenceDiagram
   Task-->>App: 带 application_run_id + resourceVersion 的状态事件
   App->>App: 标准输出形成 Artifact
   App->>Asset: 幂等登记 UserAsset
-  App-->>User: 返回 ApplicationRun 状态投影、Artifact 和资产引用
+  Task-->>SSE: AtomicTask / Attempt / Group 可靠事件
+  App-->>SSE: Artifact 处理与登记可靠事件
+  SSE-->>User: 用户级实时事件
+  App-->>User: HTTP 事实查询与重同步
 ```
 
 ## 5. 数据与事件原则

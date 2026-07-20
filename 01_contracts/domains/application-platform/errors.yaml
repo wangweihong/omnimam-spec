@@ -842,3 +842,28 @@
   deprecated: false
   related_rules: [BR-AIAPP-169, BR-AIAPP-170]
   related_user_stories: [US-AIAPP-049]
+- code: ERR_AIAPP_ARTIFACT_PROCESSING_FAILED
+  value: 130829
+  http: 200
+  cn: Artifact 传输或处理失败。
+  en: Artifact transfer or processing failed.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-180]
+  related_user_stories: [US-AIAPP-050]
+
+- code: ERR_AIAPP_ARTIFACT_STATE_INVALID
+  value: 130830
+  http: 200
+  cn: Artifact 当前处理或登记状态不允许该转换。
+  en: The Artifact processing or registration state does not allow this transition.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-177, BR-AIAPP-178]
+  related_user_stories: [US-AIAPP-050]

@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, BR-TASK-073..077, BR-TASK-087..100.
+-- s1_refs: US-TASK-008, US-TASK-018, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE INDEX idx_atomic_tasks_application_run ON atomic_tasks(application_run_id
 CREATE INDEX idx_atomic_tasks_canvas_run ON atomic_tasks(canvas_run_id) WHERE canvas_run_id <> '';
 CREATE UNIQUE INDEX idx_atomic_tasks_runtime_task ON atomic_tasks(runtime_task_id) WHERE runtime_task_id <> '';
 
--- s1_refs: US-TASK-008, US-TASK-014, BR-TASK-075, BR-TASK-077.
+-- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, BR-TASK-075, BR-TASK-077, BR-TASK-120.
 CREATE TABLE task_attempts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE task_attempts (
   UNIQUE (runtime_task_id)
 );
 
--- s1_refs: US-TASK-009, BR-TASK-078..080, BR-TASK-098..099.
+-- s1_refs: US-TASK-009, US-TASK-018, BR-TASK-078..080, BR-TASK-098..099, BR-TASK-120.
 CREATE TABLE task_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE task_groups (
 CREATE UNIQUE INDEX idx_task_groups_idempotency ON task_groups(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE INDEX idx_task_groups_status ON task_groups(status, created_at);
 
--- s1_refs: US-TASK-010, BR-TASK-081..082, BR-TASK-094..099.
+-- s1_refs: US-TASK-010, US-TASK-018, BR-TASK-081..082, BR-TASK-094..099, BR-TASK-120.
 CREATE TABLE dag_task_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

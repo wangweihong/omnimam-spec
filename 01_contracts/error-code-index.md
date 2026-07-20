@@ -12,6 +12,7 @@
 | task-center | `01_contracts/domains/task-center/errors.yaml` | AtomicTask、Group/DAG、Schedule、运行时、Attempt 与权限错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、标签写入、当前用户访问与 Artifact 登记错误码 |
 | workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | Canvas、不可变版本、运行、节点引用和访问错误码 |
+| sse | `01_contracts/domains/sse/errors.yaml` | 实时连接、游标重放、事件投影和访问错误码 |
 
 ## 2. 错误码区间分配
 
@@ -50,6 +51,10 @@
 | 160400-160599 | workflow-canvas | version | CanvasVersion 查询、编译和发布错误 |
 | 160600-160799 | workflow-canvas | run | CanvasRun 状态、幂等和可见性错误 |
 | 160800-160999 | workflow-canvas | access | 工作流画布权限与访问控制错误 |
+| 170200-170399 | sse | stream | 连接上限与实时流可用性错误 |
+| 170400-170599 | sse | replay | 恢复游标冲突、不可见与过期错误 |
+| 170600-170799 | sse | projection | 上游事件字段与版本投影错误 |
+| 170800-170999 | sse | access | 实时流与历史事件访问控制错误 |
 
 ## 3. 分配规则
 

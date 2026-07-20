@@ -127,7 +127,7 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 | ApplicationVersion | application-platform 数据库 | 是 |
 | RuntimeFormSchema | 请求时计算结果 | 否 |
 | ApplicationRun | application-platform 数据库 | 是 |
-| Artifact | application-platform 数据库 | 是 |
+| Artifact | application-platform 数据库 | 是，处理状态与登记状态独立 |
 | UserAsset / Artifact 登记映射 | asset-library 数据库 | 是 |
 | AtomicTask / Attempt / Group / Schedule | task-center | 是 |
 
@@ -221,8 +221,11 @@ sequenceDiagram
     Exec-->>Task: 状态、进度、标准输出
     Task-->>App: resource_version 投影事件
     App->>App: 标准输出形成 Artifact
+    App->>App: 传输、处理、预览并进入 ready
     App->>Asset: 以 artifact_id 幂等登记 UserAsset
 ```
+
+Artifact 处理事实以 application-platform 为准，状态为 `created/transferring/processing/ready/failed/deleted`；预览就绪是独立事实。处理、预览或登记变化通过 outbox 发布给 SSE 等投影消费者，投影失败不回滚 Artifact、UserAsset 或已终态 AtomicTask。
 
 ## 10. 失败隔离
 

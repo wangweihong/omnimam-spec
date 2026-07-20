@@ -520,7 +520,7 @@ components:
         items: {type: array, items: {$ref: '#/components/schemas/AtomicTask'}}
     TaskAttempt:
       type: object
-      required: [id, atomic_task_id, attempt_no, status, created_at]
+      required: [id, atomic_task_id, attempt_no, status, retryable, resource_version, created_at, updated_at]
       properties:
         id: {type: string}
         atomic_task_id: {type: string}
@@ -533,7 +533,10 @@ components:
         started_at: {type: string, format: date-time}
         completed_at: {type: string, format: date-time}
         duration_ms: {type: integer}
+        retryable: {type: boolean}
+        resource_version: {type: integer, minimum: 0}
         created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
     TaskAttemptListResponse:
       type: object
       required: [total, items]

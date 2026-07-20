@@ -63,10 +63,12 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 状态、进度或结果变化递增 `resource_version`；消费者按资源 ID 与版本投影。
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
 - AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
+- AtomicTask 创建/状态、TaskAttempt 状态与 TaskGroup/DAGTaskGroup 汇总变化分别发布可重放事件；事件带 `created_by`、`project_id`、`namespace`、`resource_version` 和 correlation，供 SSE 等投影消费者按所有者路由并幂等处理。相关 S1：US-TASK-018、BR-TASK-120。
 
 ## 6. 跨域协作
 
 - application-platform 创建 `application.execute` AtomicTask，并在 ApplicationRun 保存 `atomic_task_id` 与只读状态投影。
+- SSE 领域消费 Task Center 可靠事件，建立当前用户的短期可重放投影；SSE 不得成为任务事实源，也不得直接消费 Conductor 原生事件。
 - asset-library 在上传事务写 outbox；task-center 按 `thumbnail:<asset_id>:<profile_version>` 幂等创建 AtomicTask。
 - application-platform 注册 `application-platform.engine-health` ReconcileHandler。其 SYSTEM TaskSchedule 直接分批探测 EngineInstance，不创建 Planner DAGTaskGroup 或健康 AtomicTask；状态变化由 application-platform 在同一事务中更新投影并写 outbox。
 - workflow-canvas 发布 CanvasVersion 后注册不可变 DAG 定义；CanvasRun 绑定 `dag_task_group_id`，CanvasNodeRun 绑定 `atomic_task_id`。

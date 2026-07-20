@@ -323,7 +323,7 @@ CREATE INDEX idx_aiapp_runs_application_created ON aiapp_application_runs(applic
 CREATE INDEX idx_aiapp_runs_engine_created ON aiapp_application_runs(engine_instance_id, created_at);
 CREATE INDEX idx_aiapp_runs_capability_revision ON aiapp_application_runs(provider_capability_id, provider_capability_revision);
 
--- s1_refs: US-AIAPP-043; BR-AIAPP-150.
+-- s1_refs: US-AIAPP-043, US-AIAPP-050; BR-AIAPP-150, BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-179, BR-AIAPP-180.
 CREATE TABLE aiapp_artifacts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -336,18 +336,36 @@ CREATE TABLE aiapp_artifacts (
   application_run_id TEXT NOT NULL REFERENCES aiapp_application_runs(id),
   output_key TEXT NOT NULL,
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'pdf', 'other')),
-  content_ref TEXT NOT NULL,
+  source_ref TEXT,
+  content_ref TEXT,
+  processing_status TEXT NOT NULL DEFAULT 'created' CHECK (processing_status IN ('created', 'transferring', 'processing', 'ready', 'failed', 'deleted')),
+  processing_progress NUMERIC(5,4),
+  processing_phase TEXT DEFAULT '',
+  preview_ref TEXT,
+  thumbnail_ref TEXT,
+  size_bytes BIGINT CHECK (size_bytes IS NULL OR size_bytes >= 0),
+  processing_error_code TEXT DEFAULT '',
+  processing_failure_detail TEXT DEFAULT '',
+  processing_retryable BOOLEAN NOT NULL DEFAULT FALSE,
+  ready_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
   registration_status TEXT NOT NULL DEFAULT 'pending' CHECK (registration_status IN ('pending', 'registered', 'failed')),
   asset_id TEXT,
   registration_error_code TEXT DEFAULT '',
   registration_failure_detail TEXT DEFAULT '',
+  registration_retryable BOOLEAN NOT NULL DEFAULT FALSE,
+  CHECK (processing_progress IS NULL OR (processing_progress >= 0 AND processing_progress <= 1)),
+  CHECK (processing_status <> 'ready' OR (content_ref IS NOT NULL AND ready_at IS NOT NULL)),
+  CHECK (processing_status <> 'deleted' OR deleted_at IS NOT NULL),
   CHECK (
     (registration_status = 'registered' AND asset_id IS NOT NULL) OR
     (registration_status IN ('pending', 'failed') AND asset_id IS NULL)
-  )
+  ),
+  CHECK (registration_status <> 'registered' OR (processing_status IN ('ready', 'deleted') AND content_ref IS NOT NULL))
 );
 
 CREATE UNIQUE INDEX idx_aiapp_artifacts_run_output ON aiapp_artifacts(application_run_id, output_key);
+CREATE INDEX idx_aiapp_artifacts_processing ON aiapp_artifacts(processing_status, updated_at);
 CREATE INDEX idx_aiapp_artifacts_registration ON aiapp_artifacts(registration_status, updated_at);
 
 -- RuntimeFormSchema and ProviderCapability load results are derived, process-local

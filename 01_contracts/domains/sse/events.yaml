@@ -1,0 +1,270 @@
+x-atomic-task-defaults: &atomic_task_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [task-center.atomic_task_created, task-center.atomic_task_status_changed]
+  payload:
+    atomic_task_id: string
+    from_status: string|null
+    status: string
+    progress: number|null
+    phase: string|null
+    current: integer|null
+    total: integer|null
+    message_code: string|null
+    current_attempt: integer|null
+    retry_at: string(date-time)|null
+    error_code: string|null
+    retryable: boolean|null
+    output_summary: object
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:atomic_task_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，重复键返回已有事件。
+  failure_policy: AtomicTask 仍以 task-center 为事实源；投影失败不回滚任务，客户端可查询事实恢复。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011]
+  related_user_stories: [US-SSE-002, US-SSE-004]
+
+x-task-attempt-defaults: &task_attempt_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [task-center.task_attempt_status_changed]
+  payload:
+    task_attempt_id: string
+    atomic_task_id: string
+    attempt_no: integer
+    from_status: string|null
+    status: string
+    error_code: string|null
+    retryable: boolean|null
+    started_at: string(date-time)|null
+    finished_at: string(date-time)|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:task_attempt_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，消费者按 Attempt 版本幂等。
+  failure_policy: TaskAttempt 历史仍以 task-center 为事实源，失败不改写 Attempt 或 AtomicTask。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-011]
+  related_user_stories: [US-SSE-002, US-SSE-004]
+
+x-task-group-defaults: &task_group_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [task-center.task_group_status_changed]
+  payload:
+    group_type: string(TASK_GROUP|DAG_TASK_GROUP)
+    group_id: string
+    from_status: string|null
+    status: string
+    progress: number
+    total: integer
+    pending: integer
+    blocked: integer
+    running: integer
+    success: integer
+    failed: integer
+    canceled: integer
+    skipped: integer
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:group_type:group_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，消费者按 Group/DAG 版本幂等。
+  failure_policy: Group/DAG 汇总仍以 task-center 为事实源，不用汇总事件覆盖子 AtomicTask 具体错误。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-011]
+  related_user_stories: [US-SSE-002, US-SSE-004]
+
+x-artifact-defaults: &artifact_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [application-platform.application_artifact_processing_changed, application-platform.application_artifact_registration_changed]
+  payload:
+    artifact_id: string
+    application_run_id: string
+    atomic_task_id: string|null
+    output_key: string
+    media_type: string
+    processing_status: string(created|transferring|processing|ready|failed|deleted)
+    processing_progress: number|null
+    processing_phase: string|null
+    preview_available: boolean
+    preview_ref: string|null
+    thumbnail_ref: string|null
+    size_bytes: integer|null
+    processing_error_code: string|null
+    processing_retryable: boolean|null
+    registration_status: string(pending|registered|failed)
+    asset_id: string|null
+    registration_error_code: string|null
+    registration_retryable: boolean|null
+    ready_at: string(date-time)|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:artifact_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，消费者按 Artifact 版本幂等。
+  failure_policy: Artifact 处理事实以 application-platform 为准，UserAsset 以 asset-library 为准；投影失败不回滚两者或 AtomicTask。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-SSE-012]
+  related_user_stories: [US-SSE-003, US-SSE-004]
+
+connection.ready:
+  producer: sse-event-gateway
+  consumers: [omnimam-web]
+  persistent: false
+  trigger_condition: 当前用户连接已通过鉴权，恢复边界已确定，并准备发送业务事件。
+  payload:
+    connection_id: string
+    server_time: string(date-time)
+    resume_from_event_id: integer|null
+  idempotency_key: connection_id:ready
+  retry_policy: 不单独重试；连接建立失败由客户端重连。
+  failure_policy: 未收到 ready 时客户端不得将连接标记为 connected。
+  related_rules: [BR-SSE-002, BR-SSE-003, BR-SSE-007]
+  related_user_stories: [US-SSE-001, US-SSE-004]
+
+connection.resync_required:
+  producer: sse-event-gateway
+  consumers: [omnimam-web]
+  persistent: false
+  trigger_condition: 恢复游标不存在、不属于当前用户、已过期或服务端无法保证缺口完整。
+  payload:
+    reason: string
+    requested_after_event_id: integer|null
+    earliest_available_event_id: integer
+  idempotency_key: connection_id:requested_after_event_id:resync
+  retry_policy: 不重试旧游标；客户端完整重查业务事实。
+  failure_policy: 客户端暂停增量消费，直到重同步完成。
+  related_rules: [BR-SSE-004, BR-SSE-007, BR-SSE-008]
+  related_user_stories: [US-SSE-004]
+
+connection.server_draining:
+  producer: sse-event-gateway
+  consumers: [omnimam-web]
+  persistent: false
+  trigger_condition: 当前服务实例即将停止并需要客户端转移连接。
+  payload:
+    retry_after_seconds: integer
+  idempotency_key: connection_id:server_instance_id:draining
+  retry_policy: 不单独重试；客户端在指定延迟后重连。
+  failure_policy: 服务端关闭连接，客户端按 Last-Event-ID 恢复。
+  related_rules: [BR-SSE-007, BR-SSE-014]
+  related_user_stories: [US-SSE-004, US-SSE-005]
+
+atomic_task.created:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 业务记录首次持久化为 PENDING。
+atomic_task.blocked:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 BLOCKED。
+atomic_task.ready:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 READY。
+atomic_task.started:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 首次或重试后进入 RUNNING。
+atomic_task.progressed:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 保持非终态且进度、阶段或结果摘要发生可见变化。
+atomic_task.retrying:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 RETRYING 并即将创建新 TaskAttempt。
+atomic_task.cancel_requested:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 CANCEL_REQUESTED。
+atomic_task.succeeded:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 SUCCESS。
+atomic_task.failed:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 FAILED。
+atomic_task.canceled:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 CANCELED。
+atomic_task.timed_out:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 TIMEOUT。
+atomic_task.skipped:
+  <<: *atomic_task_defaults
+  trigger_condition: AtomicTask 进入 SKIPPED。
+
+task_attempt.created:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 首次持久化为 SCHEDULED。
+task_attempt.started:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 进入 RUNNING。
+task_attempt.succeeded:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 进入 SUCCESS。
+task_attempt.failed:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 进入 FAILED。
+task_attempt.canceled:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 进入 CANCELED。
+task_attempt.timed_out:
+  <<: *task_attempt_defaults
+  trigger_condition: TaskAttempt 进入 TIMEOUT。
+
+task_group.created:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且 TaskGroup 首次持久化。
+task_group.started:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且 TaskGroup 进入 RUNNING。
+task_group.progressed:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且进度或汇总计数变化。
+task_group.succeeded:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且 TaskGroup 进入 SUCCESS。
+task_group.failed:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且 TaskGroup 进入 FAILED 或 TIMEOUT。
+task_group.canceled:
+  <<: *task_group_defaults
+  trigger_condition: group_type=TASK_GROUP 且 TaskGroup 进入 CANCELED。
+
+dag_task_group.created:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且 DAGTaskGroup 首次持久化。
+dag_task_group.started:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且 DAGTaskGroup 进入 RUNNING。
+dag_task_group.progressed:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且进度或节点汇总计数变化。
+dag_task_group.succeeded:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且 DAGTaskGroup 进入 SUCCESS。
+dag_task_group.failed:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且 DAGTaskGroup 进入 FAILED 或 TIMEOUT。
+dag_task_group.canceled:
+  <<: *task_group_defaults
+  trigger_condition: group_type=DAG_TASK_GROUP 且 DAGTaskGroup 进入 CANCELED。
+
+artifact.created:
+  <<: *artifact_defaults
+  trigger_condition: application-platform Artifact 首次持久化为 created。
+artifact.transferring:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 进入 transferring 或传输进度达到可推送阈值。
+artifact.processing:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 进入 processing 或处理阶段/进度达到可推送阈值。
+artifact.preview_ready:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 预览或缩略图首次就绪；不要求 processing_status=ready。
+artifact.ready:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 进入 ready 且可控 content_ref 已存在。
+artifact.processing_failed:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 传输或处理进入 failed。
+artifact.registration_succeeded:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 登记状态进入 registered 并关联唯一 UserAsset。
+artifact.registration_failed:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 登记状态进入 failed。
+artifact.deleted:
+  <<: *artifact_defaults
+  trigger_condition: Artifact 进入 deleted；不级联删除已登记 UserAsset。

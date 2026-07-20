@@ -326,6 +326,7 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 45. `BR-TASK-117`：引擎健康系统计划固定使用 systemKey `application-platform.engine-health` 和同名 reconcileRef，默认六段 cron、UTC 时区、16 并发、1000 项、4 秒单项与 5 秒整轮超时，服务重启不覆盖管理员修改。
 46. `BR-TASK-118`：巡检参数必须满足并发 1..64、单轮项数 1..1000、单项超时 1..30 秒、整轮超时 1..300 秒，且整轮超时不小于单项超时。
 47. `BR-TASK-119`：RECONCILE 低基数指标只允许 reconcileRef、状态和 runtime backend 等有界 label，不得使用 scheduleId、engineId 或其他无界资源 ID。
+48. `BR-TASK-120`：AtomicTask 创建与状态/进度变化、TaskAttempt 状态变化、TaskGroup/DAGTaskGroup 创建与汇总变化必须递增所属资源的 `resource_version` 并同事务写可靠事件；事件必须包含足以解析所有者和按版本幂等投影的字段，不得生成 TaskRun 事件。
 
 ---
 
@@ -410,6 +411,15 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 - `AC-TASK-017-03`：系统计划无法由用户创建或删除；管理员修改 cron、时区和安全运行参数后立即生效，服务重启不恢复默认值。
 - `AC-TASK-017-04`：同计划重叠触发只记录 SKIPPED_OVERLAP；历史依策略幂等清理，累计统计不回退。
 - `AC-TASK-017-05`：引擎健康巡检使用 `application-platform.engine-health`，不再创建 Planner 和健康 AtomicTask，状态变化仍通过 application-platform outbox 事件发布。
+
+### US-TASK-018 可靠投影任务事实
+
+作为任务列表、应用运行和 SSE 等投影消费者，我希望任务中心可靠发布带所有者和版本的 AtomicTask、TaskAttempt 与 Group/DAG 变化，使各投影不依赖运行时内部 API。
+
+- `AC-TASK-018-01`：AtomicTask 创建和每次状态、进度或结果变化产生可重放事件，包含 `created_by`、`project_id`、`namespace` 和 `resource_version`。
+- `AC-TASK-018-02`：每个 TaskAttempt 的创建与终态变化可独立投影，包含 `task_attempt_id`、`atomic_task_id`、`attempt_no`、状态和版本。
+- `AC-TASK-018-03`：TaskGroup 与 DAGTaskGroup 事件包含明确 `group_type`、所有者、汇总和版本，消费者不依赖从子 AtomicTask 反向猜测所有者。
+- `AC-TASK-018-04`：重复或乱序事件不覆盖较新投影，发布失败不回滚已持久化任务事实。
 
 ---
 

@@ -1,0 +1,111 @@
+stream_connection_limit_reached:
+  code: ERR_SSE_CONNECTION_LIMIT_REACHED
+  value: 170200
+  http: 200
+  cn: 当前用户或客户实例的实时连接数已达上限。
+  en: The real-time connection limit for the current user or client instance has been reached.
+  owning_domain: sse
+  owning_module: stream
+  range: 170200-170399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-SSE-002, BR-SSE-014]
+  related_user_stories: [US-SSE-001, US-SSE-005]
+
+stream_unavailable:
+  code: ERR_SSE_STREAM_UNAVAILABLE
+  value: 170201
+  http: 200
+  cn: 实时事件流暂时不可用，请使用事实查询降级。
+  en: The real-time event stream is temporarily unavailable; use fact-query fallback.
+  owning_domain: sse
+  owning_module: stream
+  range: 170200-170399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-SSE-014, BR-SSE-016]
+  related_user_stories: [US-SSE-005]
+
+cursor_conflict:
+  code: ERR_SSE_CURSOR_CONFLICT
+  value: 170400
+  http: 200
+  cn: Last-Event-ID 与 after_event_id 指向不同的恢复位置。
+  en: Last-Event-ID and after_event_id identify different resume positions.
+  owning_domain: sse
+  owning_module: replay
+  range: 170400-170599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-SSE-007]
+  related_user_stories: [US-SSE-004]
+
+cursor_not_visible:
+  code: ERR_SSE_CURSOR_NOT_VISIBLE
+  value: 170401
+  http: 200
+  cn: 恢复游标不存在或不属于当前用户，需要重新同步。
+  en: The resume cursor does not exist or is not visible to the current user; resynchronization is required.
+  owning_domain: sse
+  owning_module: replay
+  range: 170400-170599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-SSE-003, BR-SSE-007]
+  related_user_stories: [US-SSE-004]
+
+cursor_expired:
+  code: ERR_SSE_CURSOR_EXPIRED
+  value: 170402
+  http: 200
+  cn: 恢复游标已超出事件保留范围，需要重新同步。
+  en: The resume cursor is outside the retained event range; resynchronization is required.
+  owning_domain: sse
+  owning_module: replay
+  range: 170400-170599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-SSE-007, BR-SSE-008]
+  related_user_stories: [US-SSE-004]
+
+source_event_invalid:
+  code: ERR_SSE_SOURCE_EVENT_INVALID
+  value: 170600
+  http: 200
+  cn: 上游事件缺少所有者、资源版本或必需投影字段。
+  en: The upstream event lacks owner, resource version, or required projection fields.
+  owning_domain: sse
+  owning_module: projection
+  range: 170600-170799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-SSE-009, BR-SSE-010, BR-SSE-011]
+  related_user_stories: [US-SSE-002, US-SSE-003]
+
+source_event_unsupported:
+  code: ERR_SSE_SOURCE_EVENT_UNSUPPORTED
+  value: 170601
+  http: 200
+  cn: 上游事件版本尚不受当前 SSE 投影器支持。
+  en: The upstream event version is not supported by the current SSE projector.
+  owning_domain: sse
+  owning_module: projection
+  range: 170600-170799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-SSE-015]
+  related_user_stories: [US-SSE-005]
+
+permission_denied:
+  code: ERR_SSE_PERMISSION_DENIED
+  value: 170800
+  http: 200
+  cn: 当前调用方无权建立事件流或读取历史事件。
+  en: The caller cannot open the event stream or read event history.
+  owning_domain: sse
+  owning_module: access
+  range: 170800-170999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-SSE-003, BR-SSE-013]
+  related_user_stories: [US-SSE-001, US-SSE-004]

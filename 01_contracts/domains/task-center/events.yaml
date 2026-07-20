@@ -1,6 +1,6 @@
 atomic_task_created:
   producer: atomic-task-service
-  consumers: [application-platform, workflow-canvas, audit-service]
+  consumers: [application-platform, workflow-canvas, sse-event-projector, audit-service]
   trigger_condition: AtomicTask 业务记录和运行时启动请求已持久化。
   payload:
     atomic_task_id: string
@@ -8,56 +8,97 @@ atomic_task_created:
     owner_type: string|null
     owner_id: string|null
     root_task_id: string
+    application_run_id: string|null
+    canvas_run_id: string|null
     status: string
     resource_version: integer
     project_id: string
     namespace: string
+    created_by: string
+    correlation_id: string|null
     occurred_at: string(date-time)
   idempotency_key: atomic_task_id:atomic_task_created
   retry_policy: 由 PostgreSQL outbox 持续重试并支持人工重放。
   failure_policy: 发布失败不得回滚 AtomicTask；消费者按事件幂等键去重。
-  related_user_stories: [US-TASK-008]
-  related_rules: [BR-TASK-073, BR-TASK-088, BR-TASK-090]
+  related_user_stories: [US-TASK-008, US-TASK-018]
+  related_rules: [BR-TASK-073, BR-TASK-088, BR-TASK-090, BR-TASK-120]
 
 atomic_task_status_changed:
   producer: runtime-projection-service
-  consumers: [application-platform, workflow-canvas, notification-service, audit-service]
-  trigger_condition: AtomicTask 状态、进度、Attempt 或结果投影发生单调更新。
+  consumers: [application-platform, workflow-canvas, sse-event-projector, notification-service, audit-service]
+  trigger_condition: AtomicTask 状态、进度或结果投影发生单调更新。TaskAttempt 变化另行发布 task_attempt_status_changed。
   payload:
     atomic_task_id: string
     owner_type: string|null
     owner_id: string|null
+    application_run_id: string|null
+    canvas_run_id: string|null
     from_status: string
     to_status: string
     progress: number
+    progress_detail: object
     current_attempt: integer
     output: object
     last_error: object
     resource_version: integer
+    project_id: string
+    namespace: string
+    created_by: string
+    correlation_id: string|null
     occurred_at: string(date-time)
   idempotency_key: atomic_task_id:resource_version
   retry_policy: 由 outbox 重试；消费者丢弃相同或更低 resource_version。
   failure_policy: AtomicTask 投影为业务事实源，遗漏事件由运行时 reconciler 修复后重新发布。
-  related_user_stories: [US-TASK-008, US-TASK-015]
-  related_rules: [BR-TASK-075, BR-TASK-087, BR-TASK-088]
+  related_user_stories: [US-TASK-008, US-TASK-015, US-TASK-018]
+  related_rules: [BR-TASK-075, BR-TASK-087, BR-TASK-088, BR-TASK-120]
+
+task_attempt_status_changed:
+  producer: runtime-projection-service
+  consumers: [application-platform, workflow-canvas, sse-event-projector, audit-service]
+  trigger_condition: TaskAttempt 创建，开始执行，或进入 SUCCESS、FAILED、CANCELED、TIMEOUT 终态。
+  payload:
+    task_attempt_id: string
+    atomic_task_id: string
+    attempt_no: integer
+    from_status: string|null
+    to_status: string(SCHEDULED|RUNNING|SUCCESS|FAILED|CANCELED|TIMEOUT)
+    error: object|null
+    external_job_id: string|null
+    resource_version: integer
+    atomic_task_resource_version: integer
+    project_id: string
+    namespace: string
+    created_by: string
+    correlation_id: string|null
+    occurred_at: string(date-time)
+  idempotency_key: task_attempt_id:resource_version
+  retry_policy: 由 outbox 重试；消费者按 task_attempt_id 和 resource_version 丢弃重复或旧事件。
+  failure_policy: TaskAttempt 表是尝试历史事实源；发布失败不回滚 Attempt 或 AtomicTask，对账后可重放。
+  related_user_stories: [US-TASK-008, US-TASK-014, US-TASK-018]
+  related_rules: [BR-TASK-075, BR-TASK-077, BR-TASK-088, BR-TASK-120]
 
 task_group_status_changed:
   producer: orchestration-projection-service
-  consumers: [workflow-canvas, application-platform, audit-service]
-  trigger_condition: TaskGroup 或 DAGTaskGroup 的状态、进度或汇总发生变化。
+  consumers: [workflow-canvas, application-platform, sse-event-projector, audit-service]
+  trigger_condition: TaskGroup 或 DAGTaskGroup 创建，或状态、进度、汇总发生变化。
   payload:
     group_type: string
     group_id: string
-    status: string
+    from_status: string|null
+    to_status: string
     progress: number
     summary: object
     resource_version: integer
+    project_id: string
+    namespace: string
+    created_by: string
+    correlation_id: string|null
     occurred_at: string(date-time)
   idempotency_key: group_type:group_id:resource_version
   retry_policy: 由 outbox 重试，消费者按版本幂等。
   failure_policy: 子 AtomicTask 和组合投影可重新计算汇总，不覆盖较新版本。
-  related_user_stories: [US-TASK-009, US-TASK-010]
-  related_rules: [BR-TASK-080, BR-TASK-088]
+  related_user_stories: [US-TASK-009, US-TASK-010, US-TASK-018]
+  related_rules: [BR-TASK-080, BR-TASK-088, BR-TASK-120]
 
 task_schedule_execution_recorded:
   producer: schedule-service

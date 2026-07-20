@@ -1,0 +1,23 @@
+sse.stream.read:
+  domain: sse
+  module: stream
+  resource: current_user_event_stream
+  action: read
+  subject: authenticated_user
+  description: 建立当前登录用户的实时事件流。
+  frontend_usage: 登录后启动全局 SSE 客户端；退出或身份变化时关闭。
+  backend_enforcement: 只从当前认证上下文解析 recipient_user_id，禁止请求指定其他用户。
+  related_rules: [BR-SSE-002, BR-SSE-003, BR-SSE-013]
+  related_user_stories: [US-SSE-001]
+
+sse.history.read:
+  domain: sse
+  module: replay
+  resource: current_user_event_history
+  action: read
+  subject: authenticated_user
+  description: 查询当前登录用户的短期事件和同步边界。
+  frontend_usage: 断线补偿、连接恢复和重同步诊断。
+  backend_enforcement: 所有查询强制加入 recipient_user_id=当前用户；游标不可见时不泄露所属用户。
+  related_rules: [BR-SSE-003, BR-SSE-004, BR-SSE-007, BR-SSE-008]
+  related_user_stories: [US-SSE-004]

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-20
+
+- 整理 SSE S1 草案，保留原有连接、信封、断线恢复、顺序、前端缓存、网关和降级设计，新增 `BR-SSE-001..016`、`US-SSE-001..005` 与验收编号。
+- 将 SSE 任务事件从已废弃 TaskRun 迁移为 AtomicTask、TaskAttempt、TaskGroup 和 DAGTaskGroup，对齐 Task Center 当前状态、自动/手动重试和事实源边界。
+- 补全 Artifact `created/transferring/processing/preview_ready/ready/processing_failed/registration_succeeded/registration_failed/deleted` 事件，明确 application-platform 拥有处理状态、asset-library 拥有 UserAsset，处理与登记状态独立。
+- 扩展 application-platform Artifact S1/S2，新增 `BR-AIAPP-177..180`、`US-AIAPP-050`、处理/预览字段、错误码和可靠源事件。
+- 扩展 task-center S1/S2，新增 `BR-TASK-120`、`US-TASK-018` 和独立 TaskAttempt 变化事件，任务事件携带所有者、项目、命名空间与 `resource_version`。
+- 生成 SSE OpenAPI、设计态 schema、错误码、权限、事件目录、模块契约和领域架构参考，登记 `170200-170999` 错误码区间。
+- 本次 SSE 与跨域修订仍为未 release 草案，未写入 `RELEASE.md`。
+
 ## spec-v1.4.0
 
 - 将 ComfyUI `object_info` 所有权集中到 EngineInstance 一对一当前目录；目录随实例级联删除，不保存 checksum、历史、状态机或递增版本。
