@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.6.4
+
+- commit: 6b4a112
+- status: released
+- confirmed_by: user（2026-07-21 明确要求修改 SSOT、Server 和 Web，并把关联资源响应要求固化为 spec 规则）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - asset-library
+- S1:
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+- architecture:
+  - 02_architecture/domains/asset-library.md
+
 ## spec-v1.6.3
 
 - commit: 5fb52fbc91c4d8611d99e48894617a24a8450972
