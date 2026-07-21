@@ -6,6 +6,7 @@
 - 在 `skills/spec-workflow/S2.md` 增加强制评审规则：所有响应资源 ID 必须定义关联摘要或明确豁免原因，并在 release 前检查权限、缺失引用、递归边界、客户端生成和查询预算。
 - Task Center OpenAPI 升级为 1.1.0，新增 `AtomicTaskSummary`、`TaskOwnerSummary`、`TaskScheduleSummary`，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划增加只读摘要。
 - 新增 `BR-TASK-128`，同步 Task Center module contract 与架构，明确同域关联摘要的批量查询和访问控制边界。
+- 新增 `BR-AIAPP-185` 与 ApplicationRun 关联摘要：创建与详情同时返回 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、非敏感 EngineInstance 和 AtomicTask 一跳投影；跨域任务信息通过 Task Center 服务边界解析，内嵌 Artifact 投影禁止客户端逐项补查。
 
 ## 2026-07-20
 

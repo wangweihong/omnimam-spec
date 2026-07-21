@@ -64,6 +64,8 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - 转换在事务内按所选 validation 对应实例当前目录重新校验；首版模板版本只深拷贝 API Workflow 和模板契约，revision 不包含 object_info 或派生依赖；通用模板创建 API 不接受 ComfyUI 首版原始 Workflow。
 - ApplicationTemplateVersion 和 ApplicationVersion 通过显式 publish 动作发布，发布后不可变；ApplicationVersion 使用同一应用内唯一语义版本字符串。
 - ApplicationRun 固定联合能力来源 revision、EngineInstance、模板版本、输入和输出映射快照；ProviderCapability 字段只在 provider_capability 分支存在。
+- ApplicationRun 创建与详情响应返回 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、EngineInstance 和 AtomicTask 的一跳摘要。同域关系优先从 ApplicationRun 创建快照读取，旧数据缺少快照时才在 owner/visibility 边界内读取当前投影；AtomicTask 通过 Task Center 受控只读服务解析，禁止直接查询 Task Center 私有表。摘要缺失不使 ApplicationRun 响应失败。
+- ApplicationRun 的 Artifact 引用是 application-platform 保存的有界只读投影，必须直接提供输出名、媒体类型、处理/登记状态、资源版本及可用的 Asset 导航 ID；客户端禁止按 `artifact_id` 逐项调用 asset-library。需要实时 Artifact 正文或受保护内容时才显式进入 asset-library 单资源流程。
 - AtomicTask 是执行状态事实源，ApplicationRun 只接受更高 `task_resource_version` 的投影。
 - ApplicationRun 先以 `task_creation_status=pending` 保存，再使用 `application_run_id + idempotency_key` 调用 task-center；成功绑定唯一 AtomicTask，失败保留快照并可恢复。
 - Artifact 由 asset-library 按稳定 producer key 保存；application-platform 只维护 `application_run_id + output_key + sequence -> artifact_id` 引用和更高 resource_version 的只读投影。

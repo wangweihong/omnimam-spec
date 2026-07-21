@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -2231,6 +2231,69 @@ components:
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}
+    ApplicationSummary:
+      type: object
+      description: Application 的一跳可读摘要，不继续展开版本或 owner。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-AIAPP-185]}
+      required: [id, name, visibility]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        visibility: {type: string, enum: [private, global]}
+    ApplicationVersionSummary:
+      type: object
+      description: ApplicationVersion 的一跳不可变版本摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185]}
+      required: [id, semantic_version, status]
+      properties:
+        id: {type: string}
+        semantic_version: {type: string}
+        status: {type: string, enum: [draft, published, retired]}
+    ApplicationTemplateVersionSummary:
+      type: object
+      description: ApplicationTemplateVersion 的一跳不可变来源摘要，不展开模板正文或 Workflow。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185]}
+      required: [id, version, status, capability_source_type, source_revision]
+      properties:
+        id: {type: string}
+        version: {type: integer, minimum: 1}
+        status: {type: string, enum: [draft, published, retired]}
+        capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
+        source_revision: {type: string}
+    ProviderCapabilityRefSummary:
+      type: object
+      description: ApplicationRun 创建时保存的 ProviderCapability 非敏感摘要，不展开模型、变体或原始 provider 配置。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185]}
+      required: [id, name, revision, availability]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        revision: {type: string}
+        availability: {$ref: '#/components/schemas/ProviderCapabilityAvailability'}
+        operation_id: {type: string, nullable: true}
+        operation_name: {type: string, nullable: true}
+    EngineInstanceRefSummary:
+      type: object
+      description: EngineInstance 的非敏感一跳摘要，不包含 base_url 或 auth_config。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185]}
+      required: [id, name, application_engine_type_id, enabled, health_status]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        application_engine_type_id: {type: string}
+        enabled: {type: boolean}
+        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+    AtomicTaskRefSummary:
+      type: object
+      description: Task Center 提供的 AtomicTask 一跳只读投影。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-AIAPP-185, BR-TASK-128]}
+      required: [id, name, status, progress]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string}
     ApplicationVersionListResponse:
       type: object
       required: [total, items]
@@ -2321,13 +2384,19 @@ components:
       properties:
         id: {type: string}
         application_id: {type: string}
+        application: {$ref: '#/components/schemas/ApplicationSummary', nullable: true, readOnly: true}
         application_version_id: {type: string}
+        application_version: {$ref: '#/components/schemas/ApplicationVersionSummary', nullable: true, readOnly: true}
         application_template_version_id: {type: string}
+        application_template_version: {$ref: '#/components/schemas/ApplicationTemplateVersionSummary', nullable: true, readOnly: true}
         atomic_task_id: {type: string, nullable: true}
+        atomic_task: {$ref: '#/components/schemas/AtomicTaskRefSummary', nullable: true, readOnly: true}
         engine_instance_id: {type: string}
+        engine_instance: {$ref: '#/components/schemas/EngineInstanceRefSummary', nullable: true, readOnly: true}
         capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
         source_revision: {type: string}
         provider_capability_id: {type: string, nullable: true}
+        provider_capability: {$ref: '#/components/schemas/ProviderCapabilityRefSummary', nullable: true, readOnly: true}
         provider_capability_revision: {type: string, nullable: true}
         provider_operation_id: {type: string, nullable: true}
         workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
@@ -2353,6 +2422,7 @@ components:
             capability_source_type: {enum: [comfyui_workflow]}
     ApplicationArtifactRef:
       type: object
+      description: ApplicationRun 内嵌的 Artifact 一跳只读投影，已包含当前页面所需的输出名、媒体类型、处理/登记状态和 Asset 导航 ID；客户端不得再按 artifact_id 逐项读取 Artifact 详情。
       required: [id, application_run_id, artifact_id, output_key, sequence, media_type, artifact_processing_status, artifact_registration_status, artifact_resource_version, created_at, updated_at, resource_version]
       x-s1-refs:
         user_stories: [US-AIAPP-043, US-AIAPP-050]
@@ -2360,7 +2430,7 @@ components:
       properties:
         id: {type: string}
         application_run_id: {type: string}
-        artifact_id: {type: string}
+        artifact_id: {type: string, description: Artifact 稳定 ID；当前内嵌投影已提供展示信息，因此不再递归展开 Artifact。}
         output_key: {type: string}
         sequence: {type: integer, minimum: 0}
         media_type: {type: string, enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]}
