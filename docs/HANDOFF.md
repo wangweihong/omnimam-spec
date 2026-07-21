@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center、ApplicationRun 与 Canvas 已发布，AI Chat 关系契约正在发布。
+为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center、ApplicationRun、Canvas 与 AI Chat 关系契约已发布。
 
 ## 本次完成
 
@@ -18,6 +18,7 @@
 - AI Chat 新增 `BR-AICHAT-25`，Topic、Assistant 与助手级 QuickPhrase 增加 Assistant/ProviderModel 一跳摘要。
 - Message 历史快照、同 Topic 父消息、Generation 对应消息和翻译来源均明确为当前响应上下文可解析，不递归展开。
 - 修复 AI Chat OpenAPI 原有的根级 bearer 安全声明和 18 个 operation summary 缺失，使 Redocly 从 36 error 降为 0 error。
+- AI Chat 内容提交 `5fb52fbc91c4d8611d99e48894617a24a8450972` 已登记为 `spec-v1.6.3` 正式实现依据。
 
 ## 文件变化
 
@@ -54,6 +55,7 @@
 - 未修改 SQL schema、错误码、权限码、事件或运行时配置。
 - Workflow Canvas OpenAPI 由 `spec-v1.0.0` 升级到 `spec-v1.1.0`，同样只增加向后兼容的只读响应字段。
 - AI Chat OpenAPI 由 0.1.0 升级到 0.2.0；新增摘要字段并补齐已有鉴权/operation 元数据。
+- `RELEASE.md` 已登记 `spec-v1.6.3`；release tag 指向包含发布记录的最终提交。
 - `RELEASE.md` 已登记 `spec-v1.6.2`；release tag 指向包含发布记录的最终提交。
 
 ## 验证结果

@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.6.3
+
+- commit: 5fb52fbc91c4d8611d99e48894617a24a8450972
+- status: released
+- confirmed_by: user（2026-07-21 明确要求修改 SSOT、Server 和 Web，并把关联资源响应要求固化为 spec 规则）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - ai-chatting
+- S1:
+  - 00_product/domains/ai-chatting/product-spec.md
+- S2:
+  - 01_contracts/domains/ai-chatting/openapi.yaml
+  - 01_contracts/domains/ai-chatting/module-contract.md
+- architecture:
+  - 02_architecture/domains/ai-chatting.md
+
 ## spec-v1.6.2
 
 - commit: 73f37510a92d6b697773188a85a449a2cb06183e
