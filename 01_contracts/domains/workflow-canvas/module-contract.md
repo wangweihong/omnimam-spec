@@ -29,6 +29,7 @@
 - 取消调用 DAGTaskGroup cancel；重跑创建新 CanvasRun 和 DAGTaskGroup，并保存 `retry_of_canvas_run_id`。
 - CanvasRun/NodeRun 只接受更高 `task_resource_version`，详情读取可触发 task-center 对账。
 - 多父节点全部满足后才释放下游；必需父节点失败时下游投影为 SKIPPED，历史版本和历史运行不得被后续编辑改写。
+- CanvasVersion 返回 Canvas 摘要；CanvasRun 返回 Canvas、固定版本、DAGTaskGroup 和重跑来源摘要；CanvasNodeRun 返回 AtomicTask 摘要。Canvas/版本/重跑来源使用同域批量查询或运行快照，Task Center 关系使用受控批量只读投影，关联缺失不使父资源失败。
 
 ## 4. 跨域依赖
 

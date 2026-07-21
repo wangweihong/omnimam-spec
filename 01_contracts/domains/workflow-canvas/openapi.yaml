@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Workflow Canvas API
-  version: spec-v1.0.0
+  version: spec-v1.1.0
 servers:
   - url: /
 security:
@@ -304,6 +304,7 @@ components:
       properties:
         canvas_version_id: {type: string}
         canvas_id: {type: string}
+        canvas: {$ref: '#/components/schemas/CanvasSummary', nullable: true, readOnly: true}
         version: {type: integer}
         graph_snapshot: {$ref: '#/components/schemas/Graph'}
         input_schema: {type: object, additionalProperties: true}
@@ -316,6 +317,56 @@ components:
     CanvasRunStatus:
       type: string
       enum: [PENDING, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]
+    CanvasSummary:
+      type: object
+      description: Canvas 的一跳可读摘要，不展开草稿图或版本列表。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-WORKFLOW-016]}
+      required: [canvas_id, name, visibility]
+      properties:
+        canvas_id: {type: string}
+        name: {type: string}
+        visibility: {type: string, enum: [PRIVATE, PROJECT]}
+    CanvasVersionSummary:
+      type: object
+      description: CanvasRun 固定的不可变 CanvasVersion 摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-WORKFLOW-016]}
+      required: [canvas_version_id, version, content_digest, published_at]
+      properties:
+        canvas_version_id: {type: string}
+        version: {type: integer}
+        content_digest: {type: string}
+        published_at: {type: string, format: date-time}
+    CanvasRunSummary:
+      type: object
+      description: 手动重跑直接来源的一跳运行摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-WORKFLOW-016]}
+      required: [canvas_run_id, status, progress, created_at]
+      properties:
+        canvas_run_id: {type: string}
+        status: {$ref: '#/components/schemas/CanvasRunStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        created_at: {type: string, format: date-time}
+    DAGTaskGroupRefSummary:
+      type: object
+      description: Task Center 提供的 DAGTaskGroup 一跳只读投影。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016, BR-TASK-128]}
+      required: [id, name, status, progress]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+    AtomicTaskRefSummary:
+      type: object
+      description: Task Center 提供的 AtomicTask 一跳只读投影。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016, BR-TASK-128]}
+      required: [id, name, status, progress]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string}
     NodeRunStatus:
       type: string
       enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]
@@ -325,10 +376,13 @@ components:
       properties:
         canvas_run_id: {type: string}
         canvas_id: {type: string}
+        canvas: {$ref: '#/components/schemas/CanvasSummary', nullable: true, readOnly: true}
         canvas_version_id: {type: string}
+        canvas_version: {$ref: '#/components/schemas/CanvasVersionSummary', nullable: true, readOnly: true}
         idempotency_key: {type: string}
         input_snapshot: {type: object, additionalProperties: true}
         dag_task_group_id: {type: string, nullable: true}
+        dag_task_group: {$ref: '#/components/schemas/DAGTaskGroupRefSummary', nullable: true, readOnly: true}
         task_creation_status: {type: string, enum: [PENDING, CREATED, FAILED]}
         status: {$ref: '#/components/schemas/CanvasRunStatus'}
         progress: {type: number, minimum: 0, maximum: 1}
@@ -337,6 +391,7 @@ components:
         last_error: {type: object, additionalProperties: true}
         task_resource_version: {type: integer, format: int64}
         retry_of_canvas_run_id: {type: string, nullable: true}
+        retry_of_canvas_run: {$ref: '#/components/schemas/CanvasRunSummary', nullable: true, readOnly: true}
         project_id: {type: string}
         namespace: {type: string}
         created_by: {type: string}
@@ -348,10 +403,11 @@ components:
       required: [canvas_node_run_id, canvas_run_id, node_key, node_type, status, progress, output, task_resource_version, created_at, updated_at]
       properties:
         canvas_node_run_id: {type: string}
-        canvas_run_id: {type: string}
+        canvas_run_id: {type: string, description: 当前列表 endpoint 已由父 CanvasRun 限定，客户端无需为该 ID 再读取父运行。}
         node_key: {type: string}
         node_type: {type: string, enum: [APPLICATION, FUNCTION, DYNAMIC_FORK]}
         atomic_task_id: {type: string, nullable: true}
+        atomic_task: {$ref: '#/components/schemas/AtomicTaskRefSummary', nullable: true, readOnly: true}
         status: {$ref: '#/components/schemas/NodeRunStatus'}
         progress: {type: number, minimum: 0, maximum: 1}
         output: {type: object, additionalProperties: true}
