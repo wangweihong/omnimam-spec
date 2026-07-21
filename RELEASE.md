@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.6.5
+
+- commit: 9de8a07
+- status: released
+- confirmed_by: user（2026-07-21 明确要求修改 SSOT、Server 和 Web，并把关联资源响应要求固化为 spec 规则）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - model-management
+- S1:
+  - 00_product/domains/model-management/product-spec.md
+- S2:
+  - 01_contracts/domains/model-management/openapi.yaml
+  - 01_contracts/domains/model-management/module-contract.md
+- architecture:
+  - 02_architecture/domains/model-management.md
+
 ## spec-v1.6.4
 
 - commit: 6b4a112
