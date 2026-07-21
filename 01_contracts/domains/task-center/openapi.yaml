@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.0.0
+  version: 1.1.0
   description: AtomicTask、组合任务、DAG、Schedule、Attempt 与汇总查询契约。
 servers:
   - url: /
@@ -484,6 +484,37 @@ components:
         detail: {type: string}
         retryable: {type: boolean}
         occurred_at: {type: string, format: date-time}
+    AtomicTaskSummary:
+      type: object
+      description: AtomicTask 的一跳可读摘要，不包含 arguments、output、error 或其他关联摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-TASK-128]}
+      required: [id, name, status, progress]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/AtomicTaskStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string}
+    TaskOwnerSummary:
+      type: object
+      description: AtomicTask 所属 TaskGroup、DAGTaskGroup 或 TaskSchedule 的一跳摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-TASK-128]}
+      required: [type, id, name, status]
+      properties:
+        type: {type: string, enum: [TASK_GROUP, DAG_TASK_GROUP, TASK_SCHEDULE]}
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+    TaskScheduleSummary:
+      type: object
+      description: TaskSchedule 的一跳可读摘要，不包含 target 模板、历史或巡检配置。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-TASK-128]}
+      required: [id, name, status]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/TaskScheduleStatus'}
     AtomicTask:
       allOf:
         - {$ref: '#/components/schemas/AtomicTaskTemplate'}
@@ -498,9 +529,12 @@ components:
             output: {$ref: '#/components/schemas/TaskOutput'}
             last_error: {$ref: '#/components/schemas/TaskError'}
             retry_of_task_id: {type: string}
+            retry_of_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
             root_task_id: {type: string}
+            root_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
             owner_type: {type: string, enum: ['', TASK_GROUP, DAG_TASK_GROUP, TASK_SCHEDULE]}
             owner_id: {type: string}
+            owner: {$ref: '#/components/schemas/TaskOwnerSummary', nullable: true, readOnly: true}
             child_key: {type: string}
             runtime_execution_id: {type: string}
             runtime_task_id: {type: string}
@@ -550,6 +584,7 @@ components:
       properties:
         id: {type: string}
         atomic_task_id: {type: string}
+        atomic_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
         attempt_no: {type: integer}
         runtime_task_id: {type: string}
         status: {type: string, enum: [SCHEDULED, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]}
@@ -611,6 +646,7 @@ components:
             summary: {$ref: '#/components/schemas/TaskSummary'}
             result: {type: object, additionalProperties: true}
             retry_of_id: {type: string}
+            retry_of: {$ref: '#/components/schemas/TaskOwnerSummary', nullable: true, readOnly: true, description: type 固定为 TASK_GROUP。}
             runtime_execution_id: {type: string}
             schedule_source: {$ref: '#/components/schemas/ScheduleSourceSummary'}
             resource_version: {type: integer}
@@ -665,6 +701,7 @@ components:
             summary: {$ref: '#/components/schemas/TaskSummary'}
             result: {type: object, additionalProperties: true}
             retry_of_id: {type: string}
+            retry_of: {$ref: '#/components/schemas/TaskOwnerSummary', nullable: true, readOnly: true, description: type 固定为 DAG_TASK_GROUP。}
             runtime_execution_id: {type: string}
             runtime_definition_name: {type: string}
             runtime_definition_version: {type: integer}
@@ -813,6 +850,7 @@ components:
       properties:
         id: {type: string}
         schedule_id: {type: string}
+        schedule: {$ref: '#/components/schemas/TaskScheduleSummary', nullable: true, readOnly: true}
         execution_mode: {$ref: '#/components/schemas/TaskScheduleExecutionMode'}
         scheduled_at: {type: string, format: date-time}
         triggered_at: {type: string, format: date-time}

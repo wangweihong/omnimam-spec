@@ -49,6 +49,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 前一执行非终态时，本轮写 `SKIPPED_OVERLAP`，不得创建目标资源。
 - 暂停、恢复和软删除只影响未来触发，不取消已启动目标。
 - Schedule 与执行历史查询批量补充轻量目标摘要；全局任务与组合列表批量补充来源计划摘要，禁止逐行访问目标形成 N+1 查询。
+- AtomicTask 列表和详情按 ID 批量补充 root/retry AtomicTask 摘要，并按 owner_type 分组补充 TaskGroup、DAGTaskGroup 或 TaskSchedule 摘要；TaskAttempt、Group/DAG retry 来源和 ScheduleExecution 所属计划使用相同的一跳摘要规则。目标缺失或不可见时摘要为空，原始 ID 保留。
 - ReconcileRegistry 消费方契约为 `Ref()`、`ValidateConfig(config)` 和 `Reconcile(ctx, request) -> result`。request 包含 schedule ID、scheduledAt、checkpoint、config、并发、单轮上限和两级超时；result 包含 nextCheckpoint、cycleCompleted、scanned、findings、deferred、actions 和 summary。
 - `actions[]` 只能包含已注册 functionRef 的 AtomicTaskCreateRequest，每项必须带稳定幂等键；Task Center 统一校验和创建，巡检器不得构造任意 Conductor 任务。
 - checkpoint 以稳定 ID 为游标，按 max_parallelism 分块且只在整块完成后推进。ScheduleReconcileState 与当轮 execution 在同一业务事务中更新。
@@ -82,6 +83,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 ## 7. 安全与限制
 
 - 所有业务资源按 `project_id`、`namespace`、`created_by` 和授权关系隔离。
+- 关联摘要查询必须复用父资源已验证的 project、namespace、created_by 与授权边界；内部批量 store 方法不能成为绕过 service 权限返回完整资源的入口。
 - 调度目标的访问边界继承来源 Schedule；历史数据中错误落为系统身份的目标必须按 ScheduleExecution 关系幂等修复，空 target_id 不做推断。
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。

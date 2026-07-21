@@ -271,6 +271,7 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 ## 6. 查询与汇总
 
 - AtomicTask 详情必须返回当前状态、进度、Attempt 汇总、最近错误和手动重试链。
+- AtomicTask 列表与详情必须同时返回 root/retry 任务和多态 owner 的一跳可读摘要，使用户无需复制 UUID 或额外查询即可识别任务链与所属 Group、DAG 或 Schedule；摘要必须遵守全局关联资源规则。
 - TaskGroup/DAGTaskGroup 详情必须返回子任务计数、整体进度、节点状态和聚合结果。
 - TaskSchedule 详情必须返回总触发、运行、成功、失败、取消、重叠跳过数量，以及最近执行和下次触发时间。
 - ScheduleExecution、Group 子任务和 Attempt 历史必须支持分页、状态和时间范围过滤。
@@ -348,6 +349,7 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 53. `BR-TASK-125`：Representation backfill 只为缺失、可重试或可重建项创建带稳定幂等键的 `asset-library.representation.generate` AtomicTask，并限制扫描、动作、并发和失败退避。
 54. `BR-TASK-126`：Artifact/AssetVersion 与 AtomicTask 是不同聚合；任务终态后的登记或可选派生失败不得反向改写 AtomicTask，不同聚合事件不保证严格顺序。
 55. `BR-TASK-127`：`artifact_content_completed` 必须幂等创建 `asset-library.artifact.process` AtomicTask；任务输入输出只保存 Artifact/profile 引用，Artifact 状态由 asset-library 更新。
+56. `BR-TASK-128`：Task Center 响应保留所有关联资源 ID，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划返回权限裁剪的一跳摘要。列表必须按目标类型批量解析，详情不得因关联资源缺失而丢失父资源，且摘要不得递归包含大型任务输入输出。
 
 ---
 
