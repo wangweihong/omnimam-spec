@@ -40,6 +40,8 @@
 
 - `modelId` 和 `suggestedModelId` 必须引用 `model-management.UserProviderModel.id`。
 - `modelSnapshot` 只记录生成或翻译当时的模型事实快照，不代表 ai-chatting 拥有模型配置。
+- Topic 和 Assistant 的模型引用通过 model-management 当前用户受控批量只读能力返回一跳摘要；Topic 与助手级 QuickPhrase 的 Assistant 摘要由 ai-chatting 同域批量读取。关联缺失或不可见时保留原 ID、摘要为空，列表不得逐行补查。
+- Message 的模型/助手快照是历史展示事实；同 Topic 父消息、Generation 对应消息和 MessageTranslation 来源均由当前操作响应上下文解析，明确不递归展开。
 - 当前选中模型 unhealthy 时不得发送、重新生成、编辑后重生成或携带图片附件发送。
 - 后台完成提醒由 ai-chatting generation 状态和应用内 UI 提醒实现，不创建 task-center AtomicTask。
 
@@ -56,4 +58,4 @@
 ## 相关 S1 引用
 
 - user_stories: US-AICHAT-01, US-AICHAT-02, US-AICHAT-03, US-AICHAT-04, US-AICHAT-05, US-AICHAT-06, US-AICHAT-07, US-AICHAT-08, US-AICHAT-09, US-AICHAT-10
-- business_rules: BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-03, BR-AICHAT-04, BR-AICHAT-05, BR-AICHAT-06, BR-AICHAT-07, BR-AICHAT-08, BR-AICHAT-09, BR-AICHAT-10, BR-AICHAT-11, BR-AICHAT-12, BR-AICHAT-13, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-19, BR-AICHAT-20, BR-AICHAT-21, BR-AICHAT-22, BR-AICHAT-23, BR-AICHAT-24
+- business_rules: BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-03, BR-AICHAT-04, BR-AICHAT-05, BR-AICHAT-06, BR-AICHAT-07, BR-AICHAT-08, BR-AICHAT-09, BR-AICHAT-10, BR-AICHAT-11, BR-AICHAT-12, BR-AICHAT-13, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-19, BR-AICHAT-20, BR-AICHAT-21, BR-AICHAT-22, BR-AICHAT-23, BR-AICHAT-24, BR-AICHAT-25

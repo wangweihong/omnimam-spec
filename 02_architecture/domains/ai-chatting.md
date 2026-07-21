@@ -21,6 +21,7 @@
 ## 3. 外部依赖
 
 - 依赖 `model-management` 提供当前用户可用模型、默认模型和健康状态。
+- Topic、Assistant 和 QuickPhrase 查询使用同域批量摘要与 model-management 受控批量模型投影组合可读关系；Message 历史继续以保存的模型/助手快照为准，不用当前配置覆盖历史语义。
 - 依赖 `identity` 提供当前用户身份与资源隔离语义；当前 S2 `permissions.yaml` 为空，权限码待后续补齐。
 - 图片附件输入按 S1 描述不作为独立持久素材事实源；如需沉淀为用户素材，应通过 `asset-library` 的素材契约扩展。
 

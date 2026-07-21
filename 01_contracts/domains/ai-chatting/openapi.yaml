@@ -1,10 +1,12 @@
 openapi: 3.0.3
 info:
   title: OmniMAM AI Chatting API
-  version: 0.1.0
+  version: 0.2.0
   description: AI 聊天 S2 API 契约，覆盖话题、消息、generation、SSE、助手、快捷短语和翻译。
 servers:
   - url: /api/v1
+security:
+  - bearerAuth: []
 tags:
   - name: topics
   - name: messages
@@ -17,6 +19,7 @@ paths:
     get:
       tags: [topics]
       operationId: listChatTopics
+      summary: 查询当前用户话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-23]
@@ -34,6 +37,7 @@ paths:
     post:
       tags: [topics]
       operationId: createChatTopic
+      summary: 创建话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-02]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-24]
@@ -54,6 +58,7 @@ paths:
     get:
       tags: [topics]
       operationId: getChatTopic
+      summary: 查询话题详情
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02]
@@ -69,6 +74,7 @@ paths:
     patch:
       tags: [topics]
       operationId: updateChatTopic
+      summary: 更新话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
         business_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-24]
@@ -90,6 +96,7 @@ paths:
     delete:
       tags: [topics]
       operationId: deleteChatTopic
+      summary: 删除话题
       x-s1-refs:
         user_stories: [US-AICHAT-01]
         business_rules: [BR-AICHAT-02]
@@ -106,6 +113,7 @@ paths:
     get:
       tags: [messages]
       operationId: listChatMessages
+      summary: 查询话题消息
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
         business_rules: [BR-AICHAT-03]
@@ -121,6 +129,7 @@ paths:
     post:
       tags: [messages]
       operationId: sendChatMessage
+      summary: 发送消息并创建生成任务
       x-s1-refs:
         user_stories: [US-AICHAT-02, US-AICHAT-08]
         business_rules: [BR-AICHAT-03, BR-AICHAT-04, BR-AICHAT-05, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-21, BR-AICHAT-22]
@@ -143,6 +152,7 @@ paths:
     post:
       tags: [generations]
       operationId: regenerateAssistantMessage
+      summary: 重新生成助手回复
       x-s1-refs:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-06, BR-AICHAT-21]
@@ -159,6 +169,7 @@ paths:
     post:
       tags: [generations]
       operationId: editAndRegenerateMessage
+      summary: 编辑用户消息并重新生成
       x-s1-refs:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-07, BR-AICHAT-21]
@@ -181,6 +192,7 @@ paths:
     get:
       tags: [generations]
       operationId: streamGenerationEvents
+      summary: 订阅生成增量事件
       x-s1-refs:
         user_stories: [US-AICHAT-02, US-AICHAT-04]
         business_rules: [BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-20]
@@ -197,6 +209,7 @@ paths:
     post:
       tags: [generations]
       operationId: stopGeneration
+      summary: 停止生成
       x-s1-refs:
         user_stories: [US-AICHAT-03]
         business_rules: [BR-AICHAT-04, BR-AICHAT-21]
@@ -213,6 +226,7 @@ paths:
     get:
       tags: [assistants]
       operationId: listAssistants
+      summary: 查询助手
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
         business_rules: [BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10]
@@ -228,6 +242,7 @@ paths:
     post:
       tags: [assistants]
       operationId: createAssistant
+      summary: 创建助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-02, BR-AICHAT-10]
@@ -248,6 +263,7 @@ paths:
     patch:
       tags: [assistants]
       operationId: updateAssistant
+      summary: 更新助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-09, BR-AICHAT-10]
@@ -269,6 +285,7 @@ paths:
     delete:
       tags: [assistants]
       operationId: deleteAssistant
+      summary: 删除助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-09]
@@ -285,6 +302,7 @@ paths:
     get:
       tags: [quick-phrases]
       operationId: listQuickPhrases
+      summary: 查询快捷短语
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
         business_rules: [BR-AICHAT-02, BR-AICHAT-11]
@@ -298,6 +316,7 @@ paths:
     post:
       tags: [quick-phrases]
       operationId: createQuickPhrase
+      summary: 创建快捷短语
       x-s1-refs:
         user_stories: [US-AICHAT-06]
         business_rules: [BR-AICHAT-02, BR-AICHAT-11]
@@ -318,6 +337,7 @@ paths:
     post:
       tags: [translations]
       operationId: translateChatContent
+      summary: 翻译聊天内容
       x-s1-refs:
         user_stories: [US-AICHAT-09]
         business_rules: [BR-AICHAT-12, BR-AICHAT-13, BR-AICHAT-14]
@@ -335,6 +355,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageTranslation"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     page_num:
       name: page_num
@@ -392,9 +417,11 @@ components:
         title: { type: string }
         pinned: { type: boolean }
         assistant_id: { type: string }
+        assistant: { $ref: '#/components/schemas/AssistantSummary', nullable: true, readOnly: true }
         model_id:
           type: string
           description: 引用 model-management.UserProviderModel.id。
+        model: { $ref: '#/components/schemas/ProviderModelRefSummary', nullable: true, readOnly: true }
         branch_source: { type: object, additionalProperties: true }
         last_active_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
@@ -424,6 +451,7 @@ components:
         suggested_model_id:
           type: string
           description: 引用 model-management.UserProviderModel.id。
+        suggested_model: { $ref: '#/components/schemas/ProviderModelRefSummary', nullable: true, readOnly: true }
         use_suggested_model: { type: boolean }
         context_message_count: { type: integer }
         stream_enabled: { type: boolean }
@@ -452,13 +480,13 @@ components:
       required: [id, topic_id, role, content, status, version, created_at, updated_at]
       properties:
         id: { type: string }
-        topic_id: { type: string }
+        topic_id: { type: string, description: 消息列表 endpoint 已由父 Topic 限定，客户端无需按该 ID 补查 Topic。 }
         role: { type: string, enum: [user, assistant, system] }
         content: { type: string }
         status:
           $ref: "#/components/schemas/MessageStatus"
         version: { type: integer }
-        parent_message_id: { type: string }
+        parent_message_id: { type: string, description: 父消息来自同一 Topic 消息集合，客户端按当前列表构建分支，不递归展开。 }
         model_snapshot:
           type: object
           additionalProperties: true
@@ -486,8 +514,8 @@ components:
       required: [id, topic_id, assistant_message_id, operation, status]
       properties:
         id: { type: string }
-        topic_id: { type: string }
-        assistant_message_id: { type: string }
+        topic_id: { type: string, description: 当前 generation 操作已由 Topic 上下文限定。 }
+        assistant_message_id: { type: string, description: SendMessageResponse 同时返回对应 assistant_message，不重复展开。 }
         operation:
           $ref: "#/components/schemas/Operation"
         status:
@@ -531,6 +559,7 @@ components:
         content: { type: string }
         scope: { type: string, enum: [global, assistant] }
         assistant_id: { type: string }
+        assistant: { $ref: '#/components/schemas/AssistantSummary', nullable: true, readOnly: true }
         phrase_type: { type: string, enum: [plain, prompt] }
     QuickPhraseCreateRequest:
       type: object
@@ -553,13 +582,35 @@ components:
       required: [id, target_language, translated_content, model_snapshot, created_at]
       properties:
         id: { type: string }
-        message_id: { type: string }
+        message_id: { type: string, description: 翻译动作已携带原消息上下文，历史模型信息由 model_snapshot 提供。 }
         target_language: { type: string }
         translated_content: { type: string }
         model_snapshot:
           type: object
           additionalProperties: true
         created_at: { type: string, format: date-time }
+    AssistantSummary:
+      type: object
+      description: AI Chat Assistant 的一跳可读摘要，不展开系统提示词或运行参数。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-AICHAT-25]}
+      required: [id, name, is_system]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        is_system: { type: boolean }
+    ProviderModelRefSummary:
+      type: object
+      description: model-management 提供的当前用户模型一跳只读投影。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-AICHAT-02, BR-AICHAT-25]}
+      required: [id, display_name, provider_id, provider_name, model, health_status, enabled]
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        provider_id: { type: string }
+        provider_name: { type: string }
+        model: { type: string }
+        health_status: { type: string, enum: [unknown, healthy, unhealthy] }
+        enabled: { type: boolean }
     TopicListResponse:
       type: object
       required: [total, items]

@@ -256,6 +256,7 @@ classDiagram
 - **BR-AICHAT-22** 输入为空且没有图片附件时，不允许发送。
 - **BR-AICHAT-23** 当前特性暂不引入 `ai_chat.read`、`ai_chat.write`、`ai_chat.manage` 等独立业务权限；访问依赖系统基础登录态和当前用户个人数据隔离。
 - **BR-AICHAT-24** 新话题或无当前模型上下文需要默认聊天模型时，必须读取 `model-management` 中当前用户的 `assistant.default` 默认模型配置。
+- **BR-AICHAT-25** Topic、Assistant 和助手级 QuickPhrase 响应必须保留 assistant/model ID，并同时返回当前用户权限边界内的一跳可读摘要。模型摘要由 model-management 受控批量只读能力提供；Message 的 `model_snapshot`/`assistant_snapshot` 已是历史展示事实，父消息和 Generation 引用由当前 Topic 响应上下文解析，不再递归展开。
 
 ### 3.2 状态与异常
 

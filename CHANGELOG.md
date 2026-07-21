@@ -8,6 +8,7 @@
 - 新增 `BR-TASK-128`，同步 Task Center module contract 与架构，明确同域关联摘要的批量查询和访问控制边界。
 - 新增 `BR-AIAPP-185` 与 ApplicationRun 关联摘要：创建与详情同时返回 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、非敏感 EngineInstance 和 AtomicTask 一跳投影；跨域任务信息通过 Task Center 服务边界解析，内嵌 Artifact 投影禁止客户端逐项补查。
 - 新增 `BR-WORKFLOW-016` 与 Canvas 运行链关联摘要：CanvasVersion、CanvasRun、重跑来源、DAGTaskGroup 和 CanvasNodeRun AtomicTask 均返回一跳投影，Task Center 关系使用受控批量读取。
+- 新增 `BR-AICHAT-25`：Topic、Assistant 与助手级 QuickPhrase 返回 Assistant/ProviderModel 一跳摘要；Message 快照和当前 Topic 上下文引用明确豁免递归展开。
 
 ## 2026-07-20
 
