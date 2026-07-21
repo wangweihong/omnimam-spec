@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center 已发布，ApplicationRun 契约正在发布。
+为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center 与 ApplicationRun 契约已发布。
 
 ## 本次完成
 
@@ -11,6 +11,7 @@
 - ApplicationRun 创建与详情新增 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、EngineInstance 和 AtomicTask 一跳摘要。
 - 明确 ApplicationRun 的 Artifact 引用是可直接展示和导航的内嵌只读投影，客户端不得按 `artifact_id` 逐项补查。
 - 同步 application-platform module contract、架构和 CHANGELOG。
+- 内容提交 `47948e29dd208a6f4c73a22a15636114da5f15aa` 已登记为 `spec-v1.6.1` 正式实现依据。
 
 ## 文件变化
 
@@ -35,6 +36,7 @@
 
 - Application Platform OpenAPI 由 1.1.0 升级到 1.2.0，为向后兼容的只读响应字段扩展。
 - 新增 `ApplicationTemplateVersionSummary`、`ProviderCapabilityRefSummary`，并复用现有 Application、ApplicationVersion、EngineInstance、AtomicTask 摘要。
+- `RELEASE.md` 已登记 `spec-v1.6.1`；release tag 指向包含发布记录的最终提交。
 - 未修改 SQL schema、错误码、权限码、事件或运行时配置。
 
 ## 验证结果
