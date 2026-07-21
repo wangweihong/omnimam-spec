@@ -2,6 +2,9 @@
 
 ## 2026-07-21
 
+- 整理 `workflow-canvas` S1 草案，保留多流、局部运行、结果复用、节点一对多任务、渐进制品和交互式控制节点设计，并恢复 `BR-WORKFLOW-001..016`、`US-WORKFLOW-001..004` 的已发布追溯。
+- 新增 `BR-WORKFLOW-017..034` 与 `US-WORKFLOW-005..009`，补齐 NodeDefinition 注册、共享节点去重、复用资格、Artifact 所有权、用户级 SSE、必需输出、流级取消、自动/手动重试、安全和故障恢复语义。
+- Canvas 执行统一对齐 AtomicTask/TaskAttempt/DAGTaskGroup：多流和复合节点展平到每个 CanvasRun 唯一 DAGTaskGroup，移除 TaskRun、DAGFlowTask、ExecutionLease、Canvas 专属 SSE 和 Canvas 自有 Artifact 事实；本轮只修改 S1，不修改或发布 S2。
 - 新增全局关联资源可读投影规则 `BR-GLOBAL-001..005`：保留稳定 ID，同时在列表和详情中返回权限裁剪的一跳轻量摘要，历史资源优先使用快照，跨域不得穿透私有表，列表禁止 N+1。
 - 在 `skills/spec-workflow/S2.md` 增加强制评审规则：所有响应资源 ID 必须定义关联摘要或明确豁免原因，并在 release 前检查权限、缺失引用、递归边界、客户端生成和查询预算。
 - Task Center OpenAPI 升级为 1.1.0，新增 `AtomicTaskSummary`、`TaskOwnerSummary`、`TaskScheduleSummary`，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划增加只读摘要。
