@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center 与 ApplicationRun 已发布，Canvas 运行链正在发布。
+为公开资源响应建立统一的关联资源可读投影规则，并按领域逐步消除前端按 UUID 追加详情请求；Task Center、ApplicationRun 与 Canvas 运行链契约已发布。
 
 ## 本次完成
 
@@ -14,6 +14,7 @@
 - 内容提交 `47948e29dd208a6f4c73a22a15636114da5f15aa` 已登记为 `spec-v1.6.1` 正式实现依据。
 - Workflow Canvas 新增 `BR-WORKFLOW-016`，CanvasVersion、CanvasRun、重跑来源、DAGTaskGroup 与 CanvasNodeRun AtomicTask 增加一跳摘要。
 - 明确 Canvas/版本/重跑来源使用快照或同域批量读取，Task Center 关系使用受控批量投影。
+- Canvas 内容提交 `73f37510a92d6b697773188a85a449a2cb06183e` 已登记为 `spec-v1.6.2` 正式实现依据。
 
 ## 文件变化
 
@@ -45,6 +46,7 @@
 - `RELEASE.md` 已登记 `spec-v1.6.1`；release tag 指向包含发布记录的最终提交。
 - 未修改 SQL schema、错误码、权限码、事件或运行时配置。
 - Workflow Canvas OpenAPI 由 `spec-v1.0.0` 升级到 `spec-v1.1.0`，同样只增加向后兼容的只读响应字段。
+- `RELEASE.md` 已登记 `spec-v1.6.2`；release tag 指向包含发布记录的最终提交。
 
 ## 验证结果
 

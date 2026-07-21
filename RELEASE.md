@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.6.2
+
+- commit: 73f37510a92d6b697773188a85a449a2cb06183e
+- status: released
+- confirmed_by: user（2026-07-21 明确要求修改 SSOT、Server 和 Web，并把关联资源响应要求固化为 spec 规则）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - workflow-canvas
+- S1:
+  - 00_product/domains/workflow-canvas/product-spec.md
+- S2:
+  - 01_contracts/domains/workflow-canvas/openapi.yaml
+  - 01_contracts/domains/workflow-canvas/module-contract.md
+- architecture:
+  - 02_architecture/domains/workflow-canvas.md
+
 ## spec-v1.6.1
 
 - commit: 47948e29dd208a6f4c73a22a15636114da5f15aa
