@@ -1,19 +1,26 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Model Management API
-  version: 0.1.0
+  version: 0.2.0
   description: 用户模型管理 S2 API 契约，覆盖个人模型提供商、模型清单、连接检测、默认模型和下游模型选项。
 servers:
   - url: /api/v1
+security:
+  - bearer_auth: []
 tags:
   - name: model-providers
+    description: 当前用户模型提供商配置与连接检测。
   - name: provider-models
+    description: 当前用户提供商模型清单、同步与健康检测。
   - name: default-models
+    description: 当前用户按用途保存的默认模型。
   - name: model-options
+    description: 下游功能可读取的当前用户模型选项。
 paths:
   /api/v1/model-providers:
     get:
       tags: [model-providers]
+      summary: 查询当前用户模型提供商
       operationId: listModelProviders
       x-s1-refs:
         user_stories: [US-USER-MODEL-01]
@@ -44,6 +51,7 @@ paths:
                 $ref: "#/components/schemas/ModelProviderListResponse"
     post:
       tags: [model-providers]
+      summary: 创建模型提供商
       operationId: createModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-02]
@@ -64,6 +72,7 @@ paths:
   /api/v1/model-providers/test:
     post:
       tags: [model-providers]
+      summary: 检测未保存的提供商配置
       operationId: testUnsavedModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-05]
@@ -84,6 +93,7 @@ paths:
   /api/v1/model-providers/{provider_id}:
     get:
       tags: [model-providers]
+      summary: 查询模型提供商详情
       operationId: getModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-01]
@@ -99,6 +109,7 @@ paths:
                 $ref: "#/components/schemas/ModelProvider"
     patch:
       tags: [model-providers]
+      summary: 更新模型提供商
       operationId: updateModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-03]
@@ -120,6 +131,7 @@ paths:
                 $ref: "#/components/schemas/ModelProvider"
     delete:
       tags: [model-providers]
+      summary: 删除模型提供商
       operationId: deleteModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-04]
@@ -136,6 +148,7 @@ paths:
   /api/v1/model-providers/{provider_id}/test:
     post:
       tags: [model-providers]
+      summary: 检测已保存模型提供商
       operationId: testModelProvider
       x-s1-refs:
         user_stories: [US-USER-MODEL-05]
@@ -152,6 +165,7 @@ paths:
   /api/v1/model-providers/{provider_id}/models:
     get:
       tags: [provider-models]
+      summary: 查询提供商模型列表
       operationId: listProviderModels
       x-s1-refs:
         user_stories: [US-USER-MODEL-09]
@@ -183,6 +197,7 @@ paths:
                 $ref: "#/components/schemas/ProviderModelListResponse"
     post:
       tags: [provider-models]
+      summary: 手动创建提供商模型
       operationId: createProviderModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-07]
@@ -205,6 +220,7 @@ paths:
   /api/v1/model-providers/{provider_id}/models/sync:
     post:
       tags: [provider-models]
+      summary: 同步提供商模型清单
       operationId: syncProviderModels
       x-s1-refs:
         user_stories: [US-USER-MODEL-06]
@@ -221,6 +237,7 @@ paths:
   /api/v1/provider-models/{model_id}:
     patch:
       tags: [provider-models]
+      summary: 更新提供商模型
       operationId: updateProviderModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-08]
@@ -242,6 +259,7 @@ paths:
                 $ref: "#/components/schemas/ProviderModel"
     delete:
       tags: [provider-models]
+      summary: 删除提供商模型
       operationId: deleteProviderModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-11]
@@ -258,6 +276,7 @@ paths:
   /api/v1/provider-models/{model_id}/test:
     post:
       tags: [provider-models]
+      summary: 检测单个提供商模型
       operationId: testProviderModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-10]
@@ -274,6 +293,7 @@ paths:
   /api/v1/default-models/{usage}:
     get:
       tags: [default-models]
+      summary: 查询指定用途默认模型
       operationId: getDefaultModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
@@ -289,6 +309,7 @@ paths:
                 $ref: "#/components/schemas/DefaultModelConfig"
     put:
       tags: [default-models]
+      summary: 保存指定用途默认模型
       operationId: saveDefaultModel
       x-s1-refs:
         user_stories: [US-USER-MODEL-12]
@@ -311,6 +332,7 @@ paths:
   /api/v1/model-options:
     get:
       tags: [model-options]
+      summary: 查询下游可用模型选项
       operationId: listModelOptions
       x-s1-refs:
         user_stories: [US-USER-MODEL-13]
@@ -345,6 +367,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ModelOptionListResponse"
 components:
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     page_num:
       name: page_num
@@ -430,12 +457,12 @@ components:
         - $ref: "#/components/schemas/ModelProviderCreateRequest"
     ProviderModel:
       type: object
-      required: [id, owner_user_id, provider_id, model, display_name, capabilities, stream_supported, health_status, enabled, created_at, updated_at]
+      required: [id, owner_user_id, provider_id, provider_name, model, display_name, capabilities, stream_supported, health_status, enabled, created_at, updated_at]
       properties:
         id: { type: string }
-        owner_user_id: { type: string }
-        provider_id: { type: string }
-        provider_name: { type: string }
+        owner_user_id: { type: string, description: 当前登录用户的数据隔离字段，客户端无需补查用户详情。 }
+        provider_id: { type: string, description: 稳定 Provider 引用；同一对象的 provider_name 已提供可读展示。 }
+        provider_name: { type: string, description: 当前用户可见 Provider 的一跳名称投影。 }
         model: { type: string }
         display_name: { type: string }
         group: { type: string }
@@ -476,11 +503,11 @@ components:
       required: [id, owner_user_id, usage, provider_id, model_id, created_at, updated_at]
       properties:
         id: { type: string }
-        owner_user_id: { type: string }
+        owner_user_id: { type: string, description: 当前登录用户的数据隔离字段，客户端无需补查用户详情。 }
         usage:
           $ref: "#/components/schemas/DefaultUsage"
-        provider_id: { type: string }
-        model_id: { type: string }
+        provider_id: { type: string, description: 内嵌 model 已包含 provider_name，客户端无需补查 Provider。 }
+        model_id: { type: string, description: 内嵌 model 是该 ID 对应的非敏感完整模型投影。 }
         model:
           $ref: "#/components/schemas/ProviderModel"
         created_at: { type: string, format: date-time }
@@ -489,15 +516,15 @@ components:
       type: object
       required: [provider_id, model_id]
       properties:
-        provider_id: { type: string }
-        model_id: { type: string }
+        provider_id: { type: string, description: 当前保存动作选中的 Provider ID，请求不返回关联摘要。 }
+        model_id: { type: string, description: 当前保存动作选中的 ProviderModel ID，请求不返回关联摘要。 }
     HealthCheckResult:
       type: object
       required: [target_type, provider_id, success, health_status, checked_at]
       properties:
         target_type: { type: string, enum: [provider, model] }
-        provider_id: { type: string }
-        model_id: { type: string }
+        provider_id: { type: string, description: 当前检测 endpoint 的目标 Provider，调用方已有目标上下文。 }
+        model_id: { type: string, description: 仅模型检测返回；由当前 endpoint 目标上下文解析，不额外展开。 }
         success: { type: boolean }
         health_status:
           $ref: "#/components/schemas/HealthStatus"

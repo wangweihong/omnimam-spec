@@ -37,6 +37,8 @@
 - 下游只能通过只读查询能力读取当前用户模型选项和默认模型配置。
 - ai-chatting 不得创建、同步、编辑或删除模型提供商和模型清单。
 - 默认模型候选必须来自当前用户已启用提供商下的模型；unhealthy 模型不得被下游选中或调用。
+- ProviderModel 的 `provider_id` 必须同时返回 `provider_name`，列表、同步结果、默认模型和 option 复用同一 ProviderModel 投影并按 owner 批量组合，禁止客户端逐模型补查 Provider。
+- `owner_user_id` 只表达当前登录用户的数据隔离边界；DefaultModelConfig 已内嵌 model，HealthCheckResult 由当前检测 endpoint 目标上下文解析，这些 ID 不再重复展开关联摘要。
 
 ## 数据归属与权限边界
 

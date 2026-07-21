@@ -106,6 +106,7 @@
 * **BR-USER-MODEL-29** 默认模型如果变为 unhealthy，下游翻译或快捷任务必须提示模型异常，并要求用户修复或重新选择模型。
 * **BR-USER-MODEL-30** canWrite=false 时，页面可展示当前用户已有配置，但禁用新增、保存、删除、同步和默认模型切换等写操作。
 * **BR-USER-MODEL-31** 用户级模型管理不引入 platform.manage 或平台管理员共享语义。
+* **BR-USER-MODEL-32** ProviderModel 列表、详情、同步结果、默认模型和下游模型选项必须同时返回 providerId 与当前用户可见的 providerName；客户端不得为显示提供商名称逐模型补查 Provider。默认模型已内嵌完整非敏感 ProviderModel，健康检测结果由当前检测动作上下文解析，不重复展开关联对象。
 
 ---
 

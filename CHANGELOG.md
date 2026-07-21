@@ -10,6 +10,7 @@
 - 新增 `BR-WORKFLOW-016` 与 Canvas 运行链关联摘要：CanvasVersion、CanvasRun、重跑来源、DAGTaskGroup 和 CanvasNodeRun AtomicTask 均返回一跳投影，Task Center 关系使用受控批量读取。
 - 新增 `BR-AICHAT-25`：Topic、Assistant 与助手级 QuickPhrase 返回 Assistant/ProviderModel 一跳摘要；Message 快照和当前 Topic 上下文引用明确豁免递归展开。
 - 新增 `BR-USER-ASSET-80` 与 Asset Library 一跳摘要：UserAsset 当前版本、Artifact 来源/任务/运行/登记结果、Collection 父级/固定版本和 AssetRelation 两端素材均返回可读投影，并明确审计 ID 的上下文豁免与固定批次预算。
+- 新增 `BR-USER-MODEL-32`：ProviderModel 的 `provider_name` 成为稳定必返投影，默认模型和健康检测关联 ID 明确复用内嵌模型或当前动作上下文，不产生补查。
 
 ## 2026-07-20
 
