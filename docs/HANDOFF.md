@@ -12,6 +12,7 @@
 - 新增 `AtomicTaskSummary`、`TaskOwnerSummary`、`TaskScheduleSummary`。
 - AtomicTask 增加 `root_task`、`retry_of_task`、`owner`；TaskAttempt 增加 `atomic_task`；TaskGroup/DAGTaskGroup 增加 `retry_of`；ScheduleExecution 增加 `schedule`。
 - 更新 Task Center module contract 和架构，明确同域批量查询、缺失引用与权限边界。
+- 内容提交 `81d9788e2ca4b772e93e735d4e5663caf6fc5996` 已由用户确认为 `spec-v1.6.0` 正式实现依据。
 
 ## 文件变化
 
@@ -37,6 +38,7 @@
 ## API、Schema 与配置变化
 
 - Task Center OpenAPI 从 1.0.0 升级到 1.1.0，属于向后兼容的只读响应字段扩展。
+- `RELEASE.md` 已登记 `spec-v1.6.0`；release tag 指向包含 release 记录的最终提交。
 - 未修改 SQL schema、错误码、权限码、事件或运行时配置。
 
 ## 验证结果
@@ -47,13 +49,12 @@
 
 ## 待办与风险
 
-- 需要完成 release 记录并创建 `spec-v1.6.0` tag。
 - Server 和 Web 必须更新 submodule pin 后再提交正式实现。
 - 其他领域仍需按新规则逐项审查已有裸资源 ID；Task Center 是首个切片，不代表全仓审查已经完成。
 
 ## 推荐下一任务
 
-发布 `spec-v1.6.0`，更新 Server/Web 的 SSOT pin，完成 Task Center 后端批量摘要与前端详情展示，然后按 application-platform、workflow-canvas、ai-chatting、asset-library、model-management 顺序继续审查。
+更新 Server/Web 的 SSOT pin，完成 Task Center 后端批量摘要与前端详情展示，然后按 application-platform、workflow-canvas、ai-chatting、asset-library、model-management 顺序继续审查。
 
 Next Prompt:
 

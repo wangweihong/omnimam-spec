@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.6.0
+
+- commit: 81d9788e2ca4b772e93e735d4e5663caf6fc5996
+- status: released
+- confirmed_by: user（2026-07-21 明确要求修改 SSOT、Server 和 Web，并把关联资源响应要求固化为 spec 规则）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - global
+  - task-center
+- S1:
+  - 00_product/global-business-rules.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - skills/spec-workflow/S2.md
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+
 ## spec-v1.5.1
 
 - commit: 069a43778d82de87ab69b0885148f74c177a85ee
