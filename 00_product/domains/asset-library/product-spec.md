@@ -2543,6 +2543,7 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 77. `BR-USER-ASSET-77`：素材 UI 以 AssetVersion 事实和事件判断 ready，不得以 AtomicTask 成功直接推断。
 78. `BR-USER-ASSET-78`：transient Artifact 不生成 AssetRepresentation；临时预览必须作为 Artifact preview 独立表达。
 79. `BR-USER-ASSET-79`：Artifact 内容完成事务必须可靠触发幂等 `asset-library.artifact.process` AtomicTask；Task Center 不直接读写 Artifact 内容或状态。
+80. `BR-USER-ASSET-80`：素材列表与详情必须保留稳定关系 ID，并同时返回当前用户可见的一跳可读摘要：UserAsset 当前版本、Artifact producer/任务/运行/登记素材、Collection 父级与固定版本、AssetRelation 两端素材均不得要求客户端逐 ID 补查；列表使用同域批量查询或目标领域受控批量投影，关联缺失或不可见时只省略摘要。
 
 # 31. 稳定用户故事编号
 

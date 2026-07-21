@@ -185,6 +185,8 @@ sequenceDiagram
 - 选择器 AST 只能编译为参数化查询，且必须与 `owner_user_id`、`deleted_at IS NULL` 基础范围合取。
 - 批量打标按素材独立提交；单项失败不会回滚其他素材，单项成功递增素材 `resource_version`。
 - 画布输出资产通过 `canvas_asset_outputs` 建立输出包与素材集合之间的关系。
+- 查询投影层以固定批次组合 UserAsset 当前版本、Collection 父级/固定版本、Artifact 登记素材与 AssetRelation 两端素材；所有同域查询继续按 `owner_user_id` 和删除状态过滤。
+- Artifact producer、AtomicTask、ApplicationRun 和 CanvasRun 摘要由各事实源的受控批量读取能力或不可变快照提供。关联缺失或不可见时只省略摘要，不使 Artifact 查询失败，也不允许 asset-library 穿透目标领域私有表。
 
 ## 6. API 与事件缺口
 

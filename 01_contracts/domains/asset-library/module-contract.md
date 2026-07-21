@@ -54,6 +54,13 @@
 - 画布等外部模块可以通过回调或等价协作方式维护引用摘要。
 - 引用摘要用于前端提示和详情展示，不作为强一致权限判断、删除保护或完整依赖图事实源。
 
+## 5.0 关联资源可读投影
+
+- UserAsset 列表和写动作返回 `current_version`；Collection 返回 `parent_collection`，CollectionItem 返回 `pinned_version`；AssetRelation 返回 `source_asset` 与 `target_asset`。这些同域关系按 owner 批量读取，目标删除或不可见时保留 ID 并省略摘要。
+- Artifact 返回 producer 及可用的 AtomicTask、ApplicationRun、CanvasRun 一跳摘要；跨领域摘要只能通过 Task Center、application-platform、workflow-canvas 的受控批量只读能力或创建时非敏感快照获取，禁止查询目标领域私有表。
+- Artifact 登记后的 `asset_id`、`asset_version_id` 同时返回同域摘要。`task_attempt_id`、`node_run_id`、`node_id` 是所属任务/运行内的审计定位字段，由已返回的父任务或运行上下文解析，不再递归展开。
+- 所有列表查询次数必须与行数无关；摘要不返回任务参数、运行输入输出、canonical 内容、metadata、凭证或受保护 URL。
+
 ## 5.1 删除与回收站
 
 - `DELETE /api/v1/assets/{asset_id}` 只设置 `status=deleted` 与 `deleted_at`，保留 AssetVersion、Representation、Blob、来源和引用。

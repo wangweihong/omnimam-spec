@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Asset Library API
-  version: 0.3.0-draft
+  version: 0.4.0
   description: 素材、上传、Collection、Artifact、AssetVersion、AssetRepresentation、内容访问与周期修复协作契约。
 servers:
   - url: /api/v1
@@ -1236,6 +1236,7 @@ components:
           $ref: "#/components/schemas/SourceType"
         status: {type: string, enum: [active, archived, deleted]}
         current_version_id: {type: string, nullable: true}
+        current_version: {$ref: '#/components/schemas/AssetVersionSummary', nullable: true, readOnly: true}
         thumbnail_status:
           type: string
           enum: [none, pending, ready, failed]
@@ -1321,13 +1322,17 @@ components:
         owner_user_id: {type: string}
         producer_type: {type: string, enum: [application_run, canvas_run, atomic_task]}
         producer_id: {type: string}
+        producer: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
         producer_idempotency_key: {type: string}
         atomic_task_id: {type: string, nullable: true}
-        task_attempt_id: {type: string, nullable: true}
+        atomic_task: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
+        task_attempt_id: {type: string, nullable: true, description: 自动尝试的审计 ID；所属 AtomicTask 摘要已由 atomic_task 返回，尝试详情在 Task Center 任务上下文解析。}
         application_run_id: {type: string, nullable: true}
+        application_run: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
         canvas_run_id: {type: string, nullable: true}
-        node_run_id: {type: string, nullable: true}
-        node_id: {type: string, nullable: true}
+        canvas_run: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
+        node_run_id: {type: string, nullable: true, description: CanvasRun 内节点运行审计 ID；客户端在 canvas_run 上下文解析，不单独扇出读取。}
+        node_id: {type: string, nullable: true, description: CanvasVersion 内节点定义 ID；客户端在 canvas_run 固定版本上下文解析。}
         output_key: {type: string}
         sequence: {type: integer, minimum: 0}
         artifact_type: {type: string}
@@ -1340,7 +1345,9 @@ components:
         preview_ref: {type: string, nullable: true, description: 受保护短期引用。}
         thumbnail_ref: {type: string, nullable: true, description: 受保护短期引用。}
         asset_id: {type: string, nullable: true}
+        asset: {$ref: '#/components/schemas/UserAssetSummary', nullable: true, readOnly: true}
         asset_version_id: {type: string, nullable: true}
+        asset_version: {$ref: '#/components/schemas/AssetVersionSummary', nullable: true, readOnly: true}
         processing_error_code: {type: string, nullable: true}
         registration_error_code: {type: string, nullable: true}
         expires_at: {type: string, format: date-time, nullable: true}
@@ -1374,6 +1381,39 @@ components:
         resource_version: {type: integer, minimum: 0}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+    AssetVersionSummary:
+      type: object
+      description: AssetVersion 的一跳可读摘要，不展开 canonical 内容、metadata 或 Representation。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-USER-ASSET-80]}
+      required: [id, asset_id, version_no, status, source_type]
+      properties:
+        id: {type: string}
+        asset_id: {type: string}
+        version_no: {type: integer, minimum: 1}
+        status: {type: string, enum: [uploading, processing, ready, ready_with_warnings, failed]}
+        source_type: {type: string, enum: [upload, artifact, asset_edit, asset_conversion, external_import]}
+    UserAssetSummary:
+      type: object
+      description: 当前用户素材的一跳可读摘要，不展开标签、版本或内容地址。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-USER-ASSET-80]}
+      required: [id, display_name, media_type, status, thumbnail_status]
+      properties:
+        id: {type: string}
+        display_name: {type: string}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        status: {type: string, enum: [active, archived, deleted]}
+        thumbnail_status: {type: string, enum: [none, pending, ready, failed]}
+        current_version_id: {type: string, nullable: true}
+    RelatedResourceSummary:
+      type: object
+      description: Artifact 来源领域提供的一跳非敏感运行/任务投影，不展开参数、输入、输出或子资源。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-GLOBAL-005, BR-USER-ASSET-80]}
+      required: [type, id, name, status]
+      properties:
+        type: {type: string, enum: [application_run, canvas_run, atomic_task]}
+        id: {type: string}
+        name: {type: string}
+        status: {type: string}
     AssetRepresentation:
       type: object
       required: [id, asset_version_id, representation_type, profile, profile_version, status, required, retry_count, resource_version, created_at, updated_at]
@@ -1651,6 +1691,7 @@ components:
         name: {type: string}
         description: {type: string}
         parent_collection_id: {type: string, nullable: true}
+        parent_collection: {$ref: '#/components/schemas/CollectionSummary', nullable: true, readOnly: true}
         color: {type: string}
         sort_order: {type: integer}
         depth: {type: integer, minimum: 0, maximum: 8}
@@ -1658,6 +1699,17 @@ components:
         resource_version: {type: integer, minimum: 0}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+    CollectionSummary:
+      type: object
+      description: Collection 的一跳可读摘要，不递归展开父级或成员。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-USER-ASSET-80]}
+      required: [id, name, color, depth, item_count]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        color: {type: string}
+        depth: {type: integer, minimum: 0, maximum: 8}
+        item_count: {type: integer, minimum: 0}
     CollectionItem:
       type: object
       required: [id, collection_id, asset_id, role, sort_order, metadata, created_at, updated_at]
@@ -1666,6 +1718,7 @@ components:
         collection_id: {type: string}
         asset_id: {type: string}
         pinned_version_id: {type: string, nullable: true}
+        pinned_version: {$ref: '#/components/schemas/AssetVersionSummary', nullable: true, readOnly: true}
         role: {type: string, maxLength: 128}
         sort_order: {type: integer}
         metadata: {type: object, additionalProperties: true}
@@ -1772,12 +1825,14 @@ components:
       properties:
         id: {type: string}
         source_asset_id: {type: string}
+        source_asset: {$ref: '#/components/schemas/UserAssetSummary', nullable: true, readOnly: true}
         source_version_id: {type: string, nullable: true}
         relation_type: {type: string, enum: [derived_from, generated_from, edited_from, upscaled_from, extracted_from, converted_from, uses_reference, paired_with, caption_of, audio_of, subtitle_of, transcript_of]}
         target_asset_id: {type: string}
+        target_asset: {$ref: '#/components/schemas/UserAssetSummary', nullable: true, readOnly: true}
         target_version_id: {type: string, nullable: true}
         atomic_task_id: {type: string, nullable: true}
-        task_attempt_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true, description: AtomicTask 内尝试审计 ID；客户端由 atomic_task_id 对应任务上下文解析。}
         application_run_id: {type: string, nullable: true}
         canvas_run_id: {type: string, nullable: true}
         metadata: {type: object, additionalProperties: true}
