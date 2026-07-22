@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-基于 `00_product/domains/workflow-canvas/product-spec.md` 的 v1.1 S1 草案完成可实现、可校验、可追溯的 Workflow Canvas S2，并与 Task Center、Asset Library 和用户级 SSE 边界保持一致。
+基于 `00_product/domains/workflow-canvas/product-spec.md` 的 v1.1 S1 完成可实现、可校验、可追溯的 Workflow Canvas S2，并以 `spec-v1.7.0` 发布，与 Task Center、Asset Library 和用户级 SSE 边界保持一致。
 
 ## 本次完成
 
@@ -16,6 +16,7 @@
 4. 扩展为 28 个 workflow-canvas 错误、11 个权限码和 9 个可靠领域事件；继续使用已登记的 `160200-160999` 区间。
 5. 重写模块契约和领域架构，明确真实 DAG 直接依赖、节点最早释放、唯一 DAGTaskGroup、流业务投影和跨域批量摘要预算。
 6. 解决 SSE 跨域冲突：SSE 首期现包含 15 个既有 `canvas.run.*`/`canvas.node.*` 用户事件，仍复用当前用户唯一连接，不提供 CanvasRun 私有连接或独立 FlowRun event type。
+7. 用户于 2026-07-22 确认发布 `spec-v1.7.0`；规格变更 commit 为 `467abaa`，发布记录位于 `RELEASE.md`。
 
 ## 文件变化
 
@@ -60,11 +61,12 @@
 - workflow-canvas OpenAPI 本地 schema 引用解析检查通过，无缺失 `$ref`。
 - 所有 OpenAPI operation 均包含 `x-s1-refs` 和已定义的 `x-permission`。
 - `git diff --check` 通过。
-- 最终提交前仍需运行 OpenAPI lint、错误码全局唯一性、S1 引用存在性和 staged diff 检查。
+- 全局错误码 value/code 唯一性、workflow-canvas 错误区间/HTTP 白名单和 S1 引用存在性检查通过。
+- 22 个 workflow-canvas operation 的 `x-s1-refs` 与 `x-permission` 完整性检查通过。
 
 ## 待办与风险
 
-- Workflow Canvas S1/S2 仍为 draft，未写入 `RELEASE.md`，不能作为正式实现、合并或验收依据。
+- Workflow Canvas S1/S2 已以 `spec-v1.7.0` release，可作为正式实现、合并和验收依据；实现仍需满足 release 中的 implementation gate。
 - 本 S2 对旧 Canvas API/表结构是破坏性升级；正式实现需要设计数据迁移、客户端切换和旧 DTO 退役门禁。
 - Task Center 尚未提供 `best_effort`/`min_success` 容错 Join，因此相关值、流/分片级取消、分片重跑和 `selected_subgraph` 保持禁用。
 - identity 领域仍缺完整 S2；权限码已定义，但具体角色绑定和授权数据模型需要在 identity S2 中落地。
@@ -72,8 +74,8 @@
 
 ## 推荐下一任务
 
-人工评审本次 Workflow Canvas S2 的 API 破坏性变更、NodeDefinition 管理边界、Task Center/Asset Library 协作接口和 SSE 首期事件；确认后创建新 spec release，再到正式 Server/Web 仓库按发布版本实施。
+在正式 Server/Web 仓库按 `spec-v1.7.0` 实施，先完成 API/数据迁移方案和 Task Center、Asset Library、identity 跨域协作门禁，再实现 Canvas 编辑、发布、运行投影和 SSE 事件。
 
 ## Next Prompt
 
-读取 `docs/HANDOFF.md`、`skills/spec-workflow/SKILL.md`、`S1.md` 和 `S2.md`。审阅本次 workflow-canvas 与 SSE S2 diff，重点检查 OpenAPI scope/retry DTO、NodeRun 1:N TaskBinding、OutputBinding、错误码/权限/事件追溯和跨域批量接口。若用户确认发布，更新 `RELEASE.md` 并记录确切 commit；否则不要把 draft 用作正式实现依据。
+读取 `docs/HANDOFF.md`、`RELEASE.md` 和 `skills/spec-workflow/SKILL.md`，以 `spec-v1.7.0` 为正式依据。在 Server/Web 仓库先输出旧 Canvas API/schema 到新契约的迁移计划，核对 Task Center 内容寻址 DAG 与批量摘要、Asset Library producer context 和 identity 权限绑定，再分阶段实现并验证 Canvas 编辑、发布、五种 scope、复用、NodeRun 1:N TaskBinding、渐进输出和用户级 SSE。

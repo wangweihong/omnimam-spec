@@ -1,5 +1,33 @@
 # Release Records
 
+## spec-v1.7.0
+
+- commit: 467abaa（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-22 明确要求发布 Canvas release 并推送到远端仓库）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - workflow-canvas
+  - sse
+- S1:
+  - 00_product/domains/workflow-canvas/product-spec.md
+  - 00_product/domains/sse/product-spec.md
+- S2:
+  - 01_contracts/domains/workflow-canvas/openapi.yaml
+  - 01_contracts/domains/workflow-canvas/schema.sql
+  - 01_contracts/domains/workflow-canvas/errors.yaml
+  - 01_contracts/domains/workflow-canvas/permissions.yaml
+  - 01_contracts/domains/workflow-canvas/events.yaml
+  - 01_contracts/domains/workflow-canvas/module-contract.md
+  - 01_contracts/domains/sse/openapi.yaml
+  - 01_contracts/domains/sse/events.yaml
+  - 01_contracts/domains/sse/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/workflow-canvas.md
+  - 02_architecture/global-architecture.md
+- implementation_gate: 正式 Server/Web 实施前仍需完成人工 API 兼容评审、Task Center 内容寻址 DAG 注册/批量摘要协作、Asset Library producer context 协作、identity 权限绑定和旧 DTO/schema 迁移门禁。
+
 ## spec-v1.6.5
 
 - commit: 9de8a07

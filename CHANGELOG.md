@@ -10,6 +10,7 @@
 - 扩展 workflow-canvas 错误码、权限码、领域事件与模块契约，明确首期禁用 `selected_subgraph`、`best_effort`、`min_success`、流/分片级取消和分片手动重跑；错误码继续使用已登记的 `160200-160999` 区间。
 - 解决 SSE S1/S2 与新版 Canvas 首期范围冲突：将既有 15 个 `canvas.run.*`/`canvas.node.*` 事件纳入用户级单 SSE 首期目录，`canvas.run.progressed` 携带变化 FlowRun 摘要，不新增独立 FlowRun event type，也不复制 Artifact 生命周期事实。
 - 同步 workflow-canvas 与全局架构参考：编译器保留真实直接 DAG 依赖和节点最早释放，不再使用同层整体等待；列表关联摘要使用 Task Center/Asset Library 有界批量读取，禁止跨域私有表和 N+1。
+- 上述 Workflow Canvas S2 与 SSE Canvas 事件同步已由用户确认为 `spec-v1.7.0`，允许作为正式实现依据；Server/Web 实施仍受 API 兼容、跨域批量接口、权限绑定和旧数据迁移门禁约束。
 - 新增全局关联资源可读投影规则 `BR-GLOBAL-001..005`：保留稳定 ID，同时在列表和详情中返回权限裁剪的一跳轻量摘要，历史资源优先使用快照，跨域不得穿透私有表，列表禁止 N+1。
 - 在 `skills/spec-workflow/S2.md` 增加强制评审规则：所有响应资源 ID 必须定义关联摘要或明确豁免原因，并在 release 前检查权限、缺失引用、递归边界、客户端生成和查询预算。
 - Task Center OpenAPI 升级为 1.1.0，新增 `AtomicTaskSummary`、`TaskOwnerSummary`、`TaskScheduleSummary`，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划增加只读摘要。
