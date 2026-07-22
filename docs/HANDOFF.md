@@ -16,7 +16,7 @@
 4. 扩展为 28 个 workflow-canvas 错误、11 个权限码和 9 个可靠领域事件；继续使用已登记的 `160200-160999` 区间。
 5. 重写模块契约和领域架构，明确真实 DAG 直接依赖、节点最早释放、唯一 DAGTaskGroup、流业务投影和跨域批量摘要预算。
 6. 解决 SSE 跨域冲突：SSE 首期现包含 15 个既有 `canvas.run.*`/`canvas.node.*` 用户事件，仍复用当前用户唯一连接，不提供 CanvasRun 私有连接或独立 FlowRun event type。
-7. 用户于 2026-07-22 确认发布 `spec-v1.7.0`；规格变更 commit 为 `467abaa`，发布记录位于 `RELEASE.md`。
+7. 用户于 2026-07-22 确认发布 `spec-v1.7.0`；规格变更 commit 为 `467abaa`，release commit 为 `1090a25`，tag 和 `master` 已推送到 `origin`。
 
 ## 文件变化
 
@@ -33,7 +33,7 @@
 - 修改 `01_contracts/error-code-index.md`。
 - 修改 `02_architecture/domains/workflow-canvas.md`。
 - 修改 `02_architecture/global-architecture.md`。
-- 修改 `CHANGELOG.md` 和 `docs/HANDOFF.md`。
+- 修改 `CHANGELOG.md`、`RELEASE.md` 和 `docs/HANDOFF.md`。
 - 用户原有 `AGENTS.md` 修改保持不变且不应纳入本任务提交。
 
 ## 关键设计决策
