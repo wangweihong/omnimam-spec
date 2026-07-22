@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.2.0
-  description: AtomicTask、组合任务、DAG、Schedule、Attempt、执行日志与汇总查询契约。
+  version: 1.3.0
+  description: AtomicTask、组合任务、DAG 可观测详情、Schedule、Attempt、执行日志与汇总查询契约。
 servers:
   - url: /
 security:
@@ -80,7 +80,7 @@ paths:
       summary: 分页查询 TaskAttempt 运行中执行日志
       operationId: list_task_attempt_logs
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-022], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132]}
+      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140]}
       parameters:
         - {$ref: '#/components/parameters/atomic_task_id'}
         - {$ref: '#/components/parameters/task_attempt_id'}
@@ -88,10 +88,37 @@ paths:
         - name: page_size
           in: query
           schema: {type: integer, minimum: 1, maximum: 200, default: 100}
+        - {name: keyword, in: query, schema: {type: string, maxLength: 256}}
+        - {name: levels, in: query, description: INFO,WARN,ERROR 逗号分隔。, schema: {type: string}}
+        - {name: sources, in: query, description: LIFECYCLE,WORKER 逗号分隔。, schema: {type: string}}
+        - {name: cursor, in: query, description: 不透明日志游标；提供时忽略 page_num。, schema: {type: string}}
+        - {name: direction, in: query, schema: {type: string, enum: [forward, backward], default: forward}}
+        - {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
       responses:
         '200':
-          description: 按 occurred_at 与运行时原始顺序稳定升序排列的执行日志；无日志时成功返回空列表。
+          description: 按 occurred_at 与运行时原始顺序稳定分页；cursor 存在时忽略 page_num，无日志时成功返回空列表。
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskAttemptLogListResponse'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}/attempts/{task_attempt_id}/logs/download:
+    get:
+      tags: [atomic-tasks]
+      summary: 下载筛选后的 TaskAttempt 执行日志
+      operationId: download_task_attempt_logs
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140]}
+      parameters:
+        - {$ref: '#/components/parameters/atomic_task_id'}
+        - {$ref: '#/components/parameters/task_attempt_id'}
+        - {name: keyword, in: query, schema: {type: string, maxLength: 256}}
+        - {name: levels, in: query, description: INFO,WARN,ERROR 逗号分隔。, schema: {type: string}}
+        - {name: sources, in: query, description: LIFECYCLE,WORKER 逗号分隔。, schema: {type: string}}
+        - {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+      responses:
+        '200':
+          description: 使用与在线查询相同授权、过滤和脱敏规则生成的 UTF-8 日志附件。
+          headers:
+            Content-Disposition: {schema: {type: string}}
+          content:
+            text/plain: {schema: {type: string}}
   /api/v1/atomic-tasks/{atomic_task_id}/cancel:
     post:
       tags: [atomic-tasks]
@@ -208,7 +235,7 @@ paths:
       tags: [dag-task-groups]
       summary: 查询 DAGTaskGroup 列表
       operationId: list_dag_task_groups
-      x-permission: task.dag.operate
+      x-permission: task.group.operate
       x-s1-refs: {user_stories: [US-TASK-010, US-TASK-011], business_rules: [BR-TASK-081, BR-TASK-082, BR-TASK-103]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
@@ -223,7 +250,7 @@ paths:
       tags: [dag-task-groups]
       summary: 创建并启动 DAGTaskGroup
       operationId: create_dag_task_group
-      x-permission: task.dag.operate
+      x-permission: task.group.operate
       x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-081, BR-TASK-094, BR-TASK-097]}
       requestBody:
         required: true
@@ -237,35 +264,75 @@ paths:
       tags: [dag-task-groups]
       summary: 获取 DAGTaskGroup 汇总详情
       operationId: get_dag_task_group
-      x-permission: task.dag.operate
-      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-080, BR-TASK-082]}
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-010, US-TASK-023], business_rules: [BR-TASK-080, BR-TASK-082, BR-TASK-133, BR-TASK-134, BR-TASK-139, BR-TASK-141]}
       parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
       responses:
         '200':
           description: DAGTaskGroup。
-          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroup'}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTaskGroupDetail'}}}
   /api/v1/dag-task-groups/{dag_task_group_id}/tasks:
     get:
       tags: [dag-task-groups]
       summary: 查询 DAGTaskGroup 节点 AtomicTask
       operationId: list_dag_task_group_tasks
-      x-permission: task.dag.operate
-      x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-082]}
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-010, US-TASK-023], business_rules: [BR-TASK-082, BR-TASK-135]}
       parameters:
         - {$ref: '#/components/parameters/dag_task_group_id'}
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
         - {$ref: '#/components/parameters/status'}
+        - {name: node_key, in: query, schema: {type: string, minLength: 1, maxLength: 128}}
       responses:
         '200':
           description: 节点任务列表。
           content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskListResponse'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}/events:
+    get:
+      tags: [dag-task-groups]
+      summary: 查询规范化 DAG 执行事件
+      operationId: list_dag_task_group_events
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-023], business_rules: [BR-TASK-136]}
+      parameters:
+        - {$ref: '#/components/parameters/dag_task_group_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {name: node_key, in: query, schema: {type: string, maxLength: 128}}
+        - {name: atomic_task_id, in: query, schema: {type: string}}
+        - {name: task_attempt_id, in: query, schema: {type: string}}
+        - {name: attempt_no, in: query, schema: {type: integer, minimum: 1}}
+        - {name: event_types, in: query, description: DAGExecutionEventType 逗号分隔。, schema: {type: string}}
+        - {name: occurred_after, in: query, schema: {type: string, format: date-time}}
+        - {name: occurred_before, in: query, schema: {type: string, format: date-time}}
+        - {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+      responses:
+        '200':
+          description: 由运行时投影白名单映射且不含原始 payload 的 DAG 执行事件。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGExecutionEventListResponse'}}}
+  /api/v1/dag-task-groups/{dag_task_group_id}/timeline:
+    get:
+      tags: [dag-task-groups]
+      summary: 查询 DAG 节点与 Attempt 规范化时间线
+      operationId: list_dag_task_group_timeline
+      x-permission: task.group.operate
+      x-s1-refs: {user_stories: [US-TASK-023], business_rules: [BR-TASK-134, BR-TASK-137]}
+      parameters:
+        - {$ref: '#/components/parameters/dag_task_group_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {name: node_key, in: query, schema: {type: string, maxLength: 128}}
+      responses:
+        '200':
+          description: 按实际 AtomicTask 分行的规范化时间线；历史缺失通过 complete=false 表达。
+          content: {application/json: {schema: {$ref: '#/components/schemas/DAGTimelineListResponse'}}}
   /api/v1/dag-task-groups/{dag_task_group_id}/cancel:
     post:
       tags: [dag-task-groups]
       summary: 取消 DAGTaskGroup
       operationId: cancel_dag_task_group
-      x-permission: task.dag.operate
+      x-permission: task.group.operate
       x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-098]}
       parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
       responses:
@@ -277,7 +344,7 @@ paths:
       tags: [dag-task-groups]
       summary: 创建新的 DAGTaskGroup 重跑资源
       operationId: retry_dag_task_group
-      x-permission: task.dag.operate
+      x-permission: task.group.operate
       x-s1-refs: {user_stories: [US-TASK-010], business_rules: [BR-TASK-099]}
       parameters: [{$ref: '#/components/parameters/dag_task_group_id'}]
       responses:
@@ -555,6 +622,7 @@ components:
             owner_id: {type: string}
             owner: {$ref: '#/components/schemas/TaskOwnerSummary', nullable: true, readOnly: true}
             child_key: {type: string}
+            node_key: {type: string, readOnly: true, description: DAG_TASK_GROUP 内声明节点 key；动态 fan-out 的实际 AtomicTask 共享该值。}
             runtime_execution_id: {type: string}
             runtime_task_id: {type: string}
             project_id: {type: string}
@@ -577,8 +645,35 @@ components:
       required: [artifact_id, output_key, sequence]
       properties:
         artifact_id: {type: string}
+        artifact: {$ref: '#/components/schemas/TaskArtifactSummary', nullable: true, readOnly: true, description: 由 asset-library 有界批量解析；目标不可见或不存在时为空。}
         output_key: {type: string}
         sequence: {type: integer, minimum: 0}
+    TaskArtifactSummary:
+      type: object
+      description: asset-library 返回的一跳 Artifact 可读摘要，不包含内容、metadata、存储引用或访问 URL。
+      x-s1-refs: {user_stories: [US-TASK-023, US-USER-ASSET-47], business_rules: [BR-TASK-139, BR-USER-ASSET-81]}
+      required: [id, output_key, artifact_type, media_type, processing_status, registration_status, preview_available]
+      properties:
+        id: {type: string}
+        output_key: {type: string}
+        artifact_type: {type: string}
+        media_type: {type: string, enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        preview_available: {type: boolean}
+        asset_id: {type: string, nullable: true}
+        asset: {$ref: '#/components/schemas/TaskArtifactAssetSummary', nullable: true, readOnly: true}
+    TaskArtifactAssetSummary:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, media_type, status, thumbnail_status]
+      properties:
+        id: {type: string}
+        display_name: {type: string}
+        media_type: {type: string, enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]}
+        status: {type: string, enum: [active, archived, deleted]}
+        thumbnail_status: {type: string, enum: [none, pending, ready, failed]}
+        current_version_id: {type: string, nullable: true}
     RepresentationRef:
       type: object
       additionalProperties: false
@@ -610,6 +705,7 @@ components:
         error: {$ref: '#/components/schemas/TaskError'}
         external_job_id: {type: string}
         logs_ref: {type: string, description: Task Center 生成的稳定不透明引用，格式为 task-attempt-log:<task_attempt_id>；客户端不得自行解析或访问运行时。}
+        executor: {$ref: '#/components/schemas/TaskExecutorSummary', nullable: true, readOnly: true, description: 仅拥有 task.operation.admin 的调用方可见。}
         started_at: {type: string, format: date-time}
         completed_at: {type: string, format: date-time}
         duration_ms: {type: integer}
@@ -617,6 +713,14 @@ components:
         resource_version: {type: integer, minimum: 0}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+    TaskExecutorSummary:
+      type: object
+      additionalProperties: false
+      x-s1-refs: {user_stories: [US-TASK-023], business_rules: [BR-TASK-138]}
+      required: [type, display_name]
+      properties:
+        type: {type: string, enum: [WORKER, APPLICATION_EXECUTOR, SYSTEM]}
+        display_name: {type: string, maxLength: 256}
     TaskAttemptListResponse:
       type: object
       required: [total, items]
@@ -638,6 +742,8 @@ components:
       properties:
         total: {type: integer, minimum: 0}
         items: {type: array, items: {$ref: '#/components/schemas/TaskAttemptLog'}}
+        next_cursor: {type: string, nullable: true}
+        previous_cursor: {type: string, nullable: true}
     GroupStrategy:
       type: object
       properties:
@@ -650,10 +756,14 @@ components:
         total: {type: integer}
         pending: {type: integer}
         blocked: {type: integer}
+        ready: {type: integer}
         running: {type: integer}
+        retrying: {type: integer}
+        cancel_requested: {type: integer}
         success: {type: integer}
         failed: {type: integer}
         canceled: {type: integer}
+        timeout: {type: integer}
         skipped: {type: integer}
     TaskGroupCreateRequest:
       type: object
@@ -744,6 +854,98 @@ components:
             resource_version: {type: integer}
             created_at: {type: string, format: date-time}
             updated_at: {type: string, format: date-time}
+    DAGTriggerSummary:
+      type: object
+      additionalProperties: false
+      required: [type, triggered_at]
+      properties:
+        type: {type: string, enum: [API, SCHEDULE, CANVAS, DOMAIN_EVENT, RETRY]}
+        source_id: {type: string, nullable: true}
+        source_name: {type: string, nullable: true}
+        triggered_at: {type: string, format: date-time}
+    DAGNodeExecutionSummary:
+      type: object
+      additionalProperties: false
+      required: [node_key, dynamic, status, progress, task_summary, attempt_count, retry_count, artifact_count, representation_count]
+      properties:
+        node_key: {type: string}
+        dynamic: {type: boolean}
+        status: {$ref: '#/components/schemas/AtomicTaskStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        task_summary: {$ref: '#/components/schemas/TaskSummary'}
+        primary_atomic_task_id: {type: string, nullable: true}
+        primary_atomic_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
+        attempt_count: {type: integer, minimum: 0}
+        retry_count: {type: integer, minimum: 0}
+        started_at: {type: string, format: date-time, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        duration_ms: {type: integer, minimum: 0}
+        latest_error: {$ref: '#/components/schemas/TaskError', nullable: true}
+        artifact_count: {type: integer, minimum: 0}
+        representation_count: {type: integer, minimum: 0}
+    DAGTaskGroupDetail:
+      allOf:
+        - {$ref: '#/components/schemas/DAGTaskGroup'}
+        - type: object
+          required: [trigger_summary, execution_nodes]
+          properties:
+            started_at: {type: string, format: date-time, nullable: true}
+            completed_at: {type: string, format: date-time, nullable: true}
+            trigger_summary: {$ref: '#/components/schemas/DAGTriggerSummary'}
+            execution_nodes: {type: array, items: {$ref: '#/components/schemas/DAGNodeExecutionSummary'}}
+    DAGExecutionEventType:
+      type: string
+      enum: [NODE_CREATED, NODE_BLOCKED, NODE_READY, ATTEMPT_SCHEDULED, ATTEMPT_STARTED, PROGRESS_UPDATED, RETRY_SCHEDULED, OUTPUT_AVAILABLE, NODE_SUCCEEDED, NODE_FAILED, NODE_CANCELED, NODE_TIMED_OUT, NODE_SKIPPED]
+    DAGExecutionEvent:
+      type: object
+      additionalProperties: false
+      required: [id, event_type, node_key, occurred_at]
+      properties:
+        id: {type: string}
+        event_type: {$ref: '#/components/schemas/DAGExecutionEventType'}
+        node_key: {type: string}
+        atomic_task_id: {type: string, nullable: true}
+        task_attempt_id: {type: string, nullable: true}
+        attempt_no: {type: integer, minimum: 1, nullable: true}
+        status: {$ref: '#/components/schemas/AtomicTaskStatus', nullable: true}
+        progress: {type: number, minimum: 0, maximum: 1, nullable: true}
+        error: {$ref: '#/components/schemas/TaskError', nullable: true}
+        output_count: {type: integer, minimum: 0, nullable: true}
+        message: {type: string, maxLength: 1024, nullable: true}
+        occurred_at: {type: string, format: date-time}
+    DAGExecutionEventListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/DAGExecutionEvent'}}
+    DAGTimelineSegment:
+      type: object
+      additionalProperties: false
+      required: [phase, started_at, complete]
+      properties:
+        phase: {type: string, enum: [DEPENDENCY_WAIT, QUEUE_WAIT, RUNNING, RETRY_WAIT]}
+        attempt_no: {type: integer, minimum: 1, nullable: true}
+        started_at: {type: string, format: date-time}
+        completed_at: {type: string, format: date-time, nullable: true}
+        complete: {type: boolean}
+    DAGTimelineRow:
+      type: object
+      additionalProperties: false
+      required: [node_key, atomic_task_id, atomic_task_name, status, complete, segments]
+      properties:
+        node_key: {type: string}
+        atomic_task_id: {type: string}
+        atomic_task_name: {type: string}
+        status: {$ref: '#/components/schemas/AtomicTaskStatus'}
+        complete: {type: boolean}
+        segments: {type: array, items: {$ref: '#/components/schemas/DAGTimelineSegment'}}
+    DAGTimelineListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/DAGTimelineRow'}}
     DAGTaskGroupListResponse:
       type: object
       required: [total, items]

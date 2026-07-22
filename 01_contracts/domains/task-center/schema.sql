@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, US-TASK-018..020, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126.
+-- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -26,6 +26,7 @@ CREATE TABLE atomic_tasks (
   owner_type TEXT DEFAULT '' CHECK (owner_type IN ('','TASK_GROUP','DAG_TASK_GROUP','TASK_SCHEDULE')),
   owner_id TEXT DEFAULT '',
   child_key TEXT DEFAULT '',
+  dag_node_key TEXT NOT NULL DEFAULT '',
   child_order INTEGER NOT NULL DEFAULT 0,
   application_run_id TEXT DEFAULT '',
   canvas_run_id TEXT DEFAULT '',
@@ -51,12 +52,13 @@ CREATE UNIQUE INDEX idx_atomic_tasks_idempotency ON atomic_tasks(project_id, nam
 CREATE UNIQUE INDEX idx_atomic_tasks_owner_child ON atomic_tasks(owner_type, owner_id, child_key) WHERE owner_type IN ('TASK_GROUP','DAG_TASK_GROUP') AND child_key <> '';
 CREATE INDEX idx_atomic_tasks_status ON atomic_tasks(status, schedule_at);
 CREATE INDEX idx_atomic_tasks_owner ON atomic_tasks(owner_type, owner_id, child_order);
+CREATE INDEX idx_atomic_tasks_dag_node ON atomic_tasks(owner_id, dag_node_key, child_order) WHERE owner_type = 'DAG_TASK_GROUP' AND dag_node_key <> '';
 CREATE INDEX idx_atomic_tasks_retry_root ON atomic_tasks(root_task_id);
 CREATE INDEX idx_atomic_tasks_application_run ON atomic_tasks(application_run_id) WHERE application_run_id <> '';
 CREATE INDEX idx_atomic_tasks_canvas_run ON atomic_tasks(canvas_run_id) WHERE canvas_run_id <> '';
 CREATE UNIQUE INDEX idx_atomic_tasks_runtime_task ON atomic_tasks(runtime_task_id) WHERE runtime_task_id <> '';
 
--- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, US-TASK-022, BR-TASK-075, BR-TASK-077, BR-TASK-120, BR-TASK-129..132.
+-- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, US-TASK-022..023, BR-TASK-075, BR-TASK-077, BR-TASK-120, BR-TASK-129..132, BR-TASK-138.
 CREATE TABLE task_attempts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -74,6 +76,8 @@ CREATE TABLE task_attempts (
   error_json TEXT NOT NULL DEFAULT '{}',
   external_job_id TEXT DEFAULT '',
   logs_ref TEXT DEFAULT '',
+  executor_type TEXT NOT NULL DEFAULT '',
+  executor_display_name TEXT NOT NULL DEFAULT '',
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   duration_ms BIGINT NOT NULL DEFAULT 0,
@@ -114,7 +118,7 @@ CREATE TABLE task_groups (
 CREATE UNIQUE INDEX idx_task_groups_idempotency ON task_groups(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE INDEX idx_task_groups_status ON task_groups(status, created_at);
 
--- s1_refs: US-TASK-010, US-TASK-018, BR-TASK-081..082, BR-TASK-094..099, BR-TASK-120.
+-- s1_refs: US-TASK-010, US-TASK-018, US-TASK-023, BR-TASK-081..082, BR-TASK-094..099, BR-TASK-120, BR-TASK-133..141.
 CREATE TABLE dag_task_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -131,6 +135,12 @@ CREATE TABLE dag_task_groups (
   progress REAL NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 1),
   summary_json TEXT NOT NULL DEFAULT '{}',
   result_json TEXT NOT NULL DEFAULT '{}',
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  trigger_type TEXT NOT NULL DEFAULT 'API' CHECK (trigger_type IN ('API','SCHEDULE','CANVAS','DOMAIN_EVENT','RETRY')),
+  trigger_source_id TEXT NOT NULL DEFAULT '',
+  trigger_source_name TEXT NOT NULL DEFAULT '',
+  triggered_at TIMESTAMPTZ,
   retry_of_id TEXT REFERENCES dag_task_groups(id),
   canvas_version_id TEXT DEFAULT '',
   runtime_execution_id TEXT DEFAULT '',
@@ -149,6 +159,7 @@ CREATE TABLE dag_task_groups (
 CREATE INDEX idx_dag_groups_definition ON dag_task_groups(runtime_definition_name, runtime_definition_version);
 CREATE UNIQUE INDEX idx_dag_groups_idempotency ON dag_task_groups(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE INDEX idx_dag_groups_canvas_version ON dag_task_groups(canvas_version_id) WHERE canvas_version_id <> '';
+CREATE INDEX idx_dag_groups_status_time ON dag_task_groups(status, started_at, completed_at);
 
 -- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, BR-TASK-083..086, BR-TASK-107..118.
 CREATE TABLE task_schedules (
@@ -275,3 +286,4 @@ CREATE TABLE runtime_projection_events (
 );
 
 CREATE INDEX idx_runtime_projection_pending ON runtime_projection_events(projection_status, occurred_at);
+CREATE INDEX idx_runtime_projection_execution_time ON runtime_projection_events(runtime_execution_id, occurred_at, id);

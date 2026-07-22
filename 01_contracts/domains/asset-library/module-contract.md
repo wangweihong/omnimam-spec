@@ -60,6 +60,8 @@
 - Artifact 返回 producer 及可用的 AtomicTask、ApplicationRun、CanvasRun 一跳摘要；跨领域摘要只能通过 Task Center、application-platform、workflow-canvas 的受控批量只读能力或创建时非敏感快照获取，禁止查询目标领域私有表。
 - Artifact 登记后的 `asset_id`、`asset_version_id` 同时返回同域摘要。`task_attempt_id`、`node_run_id`、`node_id` 是所属任务/运行内的审计定位字段，由已返回的父任务或运行上下文解析，不再递归展开。
 - 所有列表查询次数必须与行数无关；摘要不返回任务参数、运行输入输出、canonical 内容、metadata、凭证或受保护 URL。
+- `POST /api/v1/artifacts/batch-summaries` 是 Artifact 事实源提供的受控批量投影：每批 1..200 个 `{id}`，保持请求顺序，按调用主体逐项裁剪；不存在、已删除或不可见统一返回空摘要，不返回差异错误。
+- Artifact 批量摘要只包含 ID、output key、Artifact/media type、处理/登记状态、preview availability 与可选登记 Asset 摘要。Task Center 不得缓存为第二事实源或据此授权内容访问。
 
 ## 5.1 删除与回收站
 

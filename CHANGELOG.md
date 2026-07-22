@@ -2,6 +2,11 @@
 
 ## 2026-07-22
 
+- 新增 `US-TASK-023`、`BR-TASK-133..141`，补齐 DAG 运行工作台所需的详情投影、动态节点确定性聚合、node_key 子任务过滤、规范化事件/时间线、管理员 executor 摘要、Artifact 一跳摘要与增强日志语义。
+- Task Center OpenAPI 升级为 1.3.0：全部 DAG operation 统一使用已存在的 `task.group.operate`，详情返回 `DAGTaskGroupDetail`，新增 DAG events/timeline、日志 cursor/筛选/下载，并扩展 TaskAttempt、ArtifactRef 与节点执行 DTO。
+- Task Center 设计态 schema 增加 DAG 执行时间、触发快照、`dag_node_key`、executor 快照和运行时投影查询索引；用户事件与时间线继续从既有 `runtime_projection_events` 生成，不新增第二套历史表。
+- 新增 `US-USER-ASSET-47`、`BR-USER-ASSET-81`，Asset Library OpenAPI 升级为 0.5.0，并增加 `POST /api/v1/artifacts/batch-summaries`，为 Task Center 提供最多 200 项、owner 裁剪且不泄露不可见性差异的 Artifact 摘要。
+- 同步更新 Task Center/Asset Library 权限、事件追溯、模块契约与领域架构，明确无跨域私表访问、无 N+1、无永久内容 URL 和普通用户不可见内部 Worker 标识。
 - 新增 `US-TASK-022`、`BR-TASK-129..132` 与验收标准，明确运行中 Attempt 日志、Task Center 授权代理、Conductor retention、双重脱敏和 best-effort 写入语义。
 - Task Center OpenAPI 升级为 1.2.0，新增 `GET /api/v1/atomic-tasks/{atomic_task_id}/attempts/{task_attempt_id}/logs`、稳定 `logs_ref`、分页日志 DTO 和 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
 - 扩展 Task Center 权限、WorkflowRuntime 模块契约和领域架构；执行日志不新增业务表或 SSE 事件，也不复用 Asset Library 媒体存储。

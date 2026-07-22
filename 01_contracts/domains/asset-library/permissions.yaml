@@ -134,12 +134,12 @@ asset.artifact.read:
   module: artifact
   resource: artifact
   action: read
-  description: 查看当前用户自己的 Artifact 和受控状态投影。
-  frontend_usage: 控制任务制品列表、详情、预览和登记入口。
-  backend_enforcement: 必须按已认证 owner 过滤；不得通过来源 ID 或任务关联绕过所有权。
+  description: 查看当前用户自己的 Artifact、受控状态投影和有界批量可读摘要。
+  frontend_usage: 控制任务制品列表、详情、预览、登记入口和跨域任务详情摘要。
+  backend_enforcement: 必须按已认证 owner 过滤；批量解析最多 200 项，不存在、已删除或不可见目标统一返回空摘要；不得通过来源 ID 或任务关联绕过所有权。
   default_roles: []
-  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66]
-  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-81]
+  related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45, US-USER-ASSET-47]
 
 asset.artifact.delete:
   module: artifact

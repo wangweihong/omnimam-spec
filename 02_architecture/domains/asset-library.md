@@ -21,6 +21,7 @@
 | `processing-task` | 表达上传后异步处理任务，如缩略图、预览派生物和 SHA256 补算 | `user_asset_processing_tasks` |
 | `canvas-output` | 登记画布输出资产包与关联素材 | `canvas_asset_outputs` |
 | `artifact` | 管理跨应用、画布和 AtomicTask 的 Artifact 身份、受控内容、处理、保留与登记状态 | `artifacts`、`blobs` |
+| `artifact-summary` | 为受控跨域调用提供 owner 裁剪的有界 Artifact 批量摘要 | 无独立持久化资源 |
 | `artifact-registration` | 将 ready Artifact 幂等登记为 Asset/AssetVersion，并复用 Blob 创建 original Representation | `artifact_asset_registrations`、`asset_versions`、`asset_representations` |
 | `representation` | 管理 expected policy、派生 Representation、build request、状态汇总与周期补全 | `asset_representations`、`representation_build_requests` |
 
@@ -187,6 +188,7 @@ sequenceDiagram
 - 画布输出资产通过 `canvas_asset_outputs` 建立输出包与素材集合之间的关系。
 - 查询投影层以固定批次组合 UserAsset 当前版本、Collection 父级/固定版本、Artifact 登记素材与 AssetRelation 两端素材；所有同域查询继续按 `owner_user_id` 和删除状态过滤。
 - Artifact producer、AtomicTask、ApplicationRun 和 CanvasRun 摘要由各事实源的受控批量读取能力或不可变快照提供。关联缺失或不可见时只省略摘要，不使 Artifact 查询失败，也不允许 asset-library 穿透目标领域私有表。
+- Task Center 反向解析任务输出 Artifact 时调用 `artifact-summary` 批量投影，每批最多 200 项。投影只读 `artifacts` 及其同域登记素材摘要，不返回 Blob、metadata、内容地址或不可见性差异，也不成为新的授权事实源。
 
 ## 6. API 与事件缺口
 

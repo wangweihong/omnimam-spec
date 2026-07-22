@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Asset Library API
-  version: 0.4.0
+  version: 0.5.0
   description: 素材、上传、Collection、Artifact、AssetVersion、AssetRepresentation、内容访问与周期修复协作契约。
 servers:
   - url: /api/v1
@@ -697,6 +697,28 @@ paths:
                   - {$ref: '#/components/schemas/Artifact'}
                   - {$ref: '#/components/schemas/BusinessError'}
 
+  /api/v1/artifacts/batch-summaries:
+    post:
+      tags: [artifacts]
+      summary: 批量解析当前调用方可见的 Artifact 摘要
+      operationId: batch_resolve_artifact_summaries
+      description: 请求最多 200 项并保持原顺序；不存在、已删除或不可见目标统一返回 artifact=null，不披露差异。
+      x-permission: asset.artifact.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-47, US-TASK-023]
+        business_rules: [BR-USER-ASSET-80, BR-USER-ASSET-81, BR-TASK-139]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchArtifactSummaryRequest'}
+      responses:
+        '200':
+          description: 与请求顺序一致的权限裁剪摘要。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BatchArtifactSummaryResponse'}
+
   /api/v1/artifacts/{artifact_id}:
     get:
       tags: [artifacts]
@@ -1354,6 +1376,51 @@ components:
         resource_version: {type: integer, minimum: 0}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+    ArtifactReadableSummary:
+      type: object
+      additionalProperties: false
+      description: 供跨域页面识别、状态展示和导航的一跳摘要，不包含内容、metadata、存储引用或访问 URL。
+      x-s1-refs: {user_stories: [US-USER-ASSET-47, US-TASK-023], business_rules: [BR-USER-ASSET-81, BR-TASK-139]}
+      required: [id, output_key, artifact_type, media_type, processing_status, registration_status, preview_available]
+      properties:
+        id: {type: string}
+        output_key: {type: string}
+        artifact_type: {type: string}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        preview_available: {type: boolean}
+        asset_id: {type: string, nullable: true}
+        asset: {$ref: '#/components/schemas/UserAssetSummary', nullable: true, readOnly: true}
+    BatchArtifactSummaryItem:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string, minLength: 1}
+    BatchArtifactSummaryRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: {$ref: '#/components/schemas/BatchArtifactSummaryItem'}
+    BatchArtifactSummaryResult:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string}
+        artifact: {$ref: '#/components/schemas/ArtifactReadableSummary', nullable: true}
+    BatchArtifactSummaryResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/BatchArtifactSummaryResult'}}
     ArtifactListResponse:
       type: object
       required: [total, items]

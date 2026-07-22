@@ -2544,6 +2544,7 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 78. `BR-USER-ASSET-78`：transient Artifact 不生成 AssetRepresentation；临时预览必须作为 Artifact preview 独立表达。
 79. `BR-USER-ASSET-79`：Artifact 内容完成事务必须可靠触发幂等 `asset-library.artifact.process` AtomicTask；Task Center 不直接读写 Artifact 内容或状态。
 80. `BR-USER-ASSET-80`：素材列表与详情必须保留稳定关系 ID，并同时返回当前用户可见的一跳可读摘要：UserAsset 当前版本、Artifact producer/任务/运行/登记素材、Collection 父级与固定版本、AssetRelation 两端素材均不得要求客户端逐 ID 补查；列表使用同域批量查询或目标领域受控批量投影，关联缺失或不可见时只省略摘要。
+81. `BR-USER-ASSET-81`：asset-library 必须为 Task Center 等受控调用方提供有界 Artifact 批量可读摘要；每项先按调用主体与 owner 校验，仅返回标识、输出键、类型、媒体类型、处理/登记状态、预览可用性和可选登记素材摘要，不返回内容、metadata、存储引用、永久 URL 或不可见性差异。
 
 # 31. 稳定用户故事编号
 
@@ -2629,3 +2630,11 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 - 重复 complete 事件返回同一处理 AtomicTask。
 - Artifact 处理任务只返回引用，不向 Task Center 写入媒体正文。
 - Artifact 状态由 asset-library 按 resource_version 单调更新。
+
+## US-USER-ASSET-47 批量识别任务制品
+
+作为任务详情用户，我希望任务输出中的多个 Artifact 能直接显示当前可见状态和登记素材，使我无需逐个打开制品详情。
+
+- 批量请求使用对象数组并设置固定上限，返回顺序与请求一致。
+- 不存在、已删除或不可见 Artifact 统一返回空摘要，不泄露目标是否存在。
+- 摘要只用于识别、状态展示和导航，不包含内容、metadata、存储引用或永久访问地址。

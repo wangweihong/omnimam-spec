@@ -273,6 +273,9 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 - AtomicTask 详情必须返回当前状态、进度、Attempt 汇总、最近错误和手动重试链。
 - AtomicTask 列表与详情必须同时返回 root/retry 任务和多态 owner 的一跳可读摘要，使用户无需复制 UUID 或额外查询即可识别任务链与所属 Group、DAG 或 Schedule；摘要必须遵守全局关联资源规则。
 - TaskGroup/DAGTaskGroup 详情必须返回子任务计数、整体进度、节点状态和聚合结果。
+- DAGTaskGroup 详情必须同时返回开始/完成时间、触发来源摘要和按声明节点聚合的执行投影，使客户端无需读取原始节点、任务与运行时 JSON 即可展示当前路径、异常节点和执行结果。
+- DAG 节点聚合必须保持确定性：普通节点跟随唯一主 AtomicTask；动态节点按实际 AtomicTask 集合汇总，存在活动任务时优先表达活动状态，全部终态后按失败、超时、取消、成功与跳过结果确定聚合状态，并返回任务计数、进度、Attempt/重试、时间范围、最近错误和输出计数。
+- DAG 子任务可以按 nodeKey 分页查询；用户可查询经过脱敏和权限裁剪的 DAG 执行事件与规范化时间线。时间线按实际 AtomicTask 返回依赖等待、排队、运行和重试等待区段，动态 fan-out 子任务不得合并为不可定位的一行。
 - TaskSchedule 详情必须返回总触发、运行、成功、失败、取消、重叠跳过数量，以及最近执行和下次触发时间。
 - ScheduleExecution、Group 子任务和 Attempt 历史必须支持分页、状态和时间范围过滤。
 - TaskSchedule 列表与详情必须返回可读的目标摘要；ScheduleExecution 历史必须返回实际目标摘要，使用户无需解析模板 JSON 或额外逐条查询即可识别本轮运行对象。
@@ -354,6 +357,15 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 58. `BR-TASK-130`：运行中 Attempt 的日志正文由 WorkflowRuntime 保存，Task Center 按时间升序代理读取；日志可用期跟随对应运行时任务历史，运行时历史已清理时必须返回稳定的日志不可用错误。
 59. `BR-TASK-131`：Worker 只记录统一生命周期与受控业务进度，不得自动捕获全局进程日志，也不得记录凭证、Authorization、Provider 原始响应、任意 URL、文件路径或大型输入输出；日志在写入和读取边界均须脱敏，单条消息最多 4096 字节。
 60. `BR-TASK-132`：日志写入是 best-effort 诊断副作用，失败不得改变 AtomicTask、TaskAttempt、Group/DAG 或 Schedule 的状态、结果、重试和取消语义；日志读取失败不得伪造成空日志。
+61. `BR-TASK-133`：DAGTaskGroup 详情必须返回 `startedAt`、`completedAt`、触发来源摘要和声明节点级执行投影；投影只包含任务事实与小型摘要，不暴露运行时原始 payload、Conductor 内部字段或大型输入输出。
+62. `BR-TASK-134`：普通 DAG 节点聚合跟随唯一主 AtomicTask；动态节点按实际子任务确定性聚合，活动状态优先于终态汇总，全部终态后按 FAILED、TIMEOUT、CANCELED、SUCCESS、SKIPPED 的业务优先级表达结果，并返回计数、进度、Attempt、重试、时间、最近错误与输出数量。
+63. `BR-TASK-135`：DAGTaskGroup 子任务查询必须支持 `nodeKey` 精确过滤；动态 fan-out 的实际 AtomicTask 必须独立分页，不得仅返回聚合节点而丢失可定位历史。
+64. `BR-TASK-136`：DAG 执行事件由既有运行时投影事实规范化生成，支持节点、AtomicTask、Attempt、事件类型和时间过滤；只返回产品事件白名单与脱敏字段，不得直接透传运行时 payload。
+65. `BR-TASK-137`：DAG 时间线按实际 AtomicTask 返回 DEPENDENCY_WAIT、QUEUE_WAIT、RUNNING、RETRY_WAIT 规范化区段；历史不完整时必须明确 `complete=false`，不得伪造缺失时间。
+66. `BR-TASK-138`：TaskAttempt 的 executor 摘要只包含稳定类型和显示名，仅 `task.operation.admin` 可见；普通用户不得获得 Worker ID、队列、主机、地址或其他内部拓扑标识。
+67. `BR-TASK-139`：Task Center 返回 Artifact 引用时可附带 asset-library 权限裁剪的一跳可读摘要；列表和 DAG 详情必须使用有界批量协作，目标不存在或不可见时保留 artifactId 并返回空摘要，不得访问 asset-library 私有表或返回永久内容 URL。
+68. `BR-TASK-140`：Attempt 日志查询支持不透明 cursor、前后方向、关键字、级别、来源和稳定排序，日志下载复用相同授权、过滤、脱敏和保留期语义；下载不得绕过 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
+69. `BR-TASK-141`：DAG 触发来源固定为 API、SCHEDULE、CANVAS、DOMAIN_EVENT 或 RETRY，并保存触发时刻与可选来源标识/名称快照；来源资源删除或不可见不得影响 DAG 详情读取。
 
 ---
 
@@ -479,6 +491,16 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 - `AC-TASK-022-02`：IN_PROGRESS 延迟回调期间日志可查询，自动重试的每个 Attempt 使用各自的日志历史，手动重试使用新 AtomicTask 的日志链。
 - `AC-TASK-022-03`：日志中的鉴权信息、凭证、URL、Provider 原始响应、文件路径和大型正文不会对用户暴露，重复生命周期记录在查询投影中去重。
 - `AC-TASK-022-04`：日志写入失败不影响任务结果；运行时不可用与历史已清理分别返回可重试和不可重试的稳定业务错误。
+
+### US-TASK-023 可视化排查 DAG 运行
+
+作为任务发起者或运维人员，我希望在 DAG 运行详情中直接查看节点拓扑、异常路径、Attempt、日志、输入输出和制品，使排障不依赖原始 JSON 或运行时内部系统。
+
+- `AC-TASK-023-01`：DAG 详情返回触发信息、执行时间和全部声明节点的确定性执行摘要，动态节点可分页查看实际 AtomicTask。
+- `AC-TASK-023-02`：节点事件和时间线可按节点、任务、Attempt、事件类型与时间过滤，且任何响应不包含运行时原始 payload。
+- `AC-TASK-023-03`：失败、超时、取消、重试和上游失败跳过均可通过节点状态、最近错误、Attempt 与规范化时间区段定位。
+- `AC-TASK-023-04`：Artifact 引用附带当前用户可见的一跳摘要，不可见或已删除关联降级为空；普通用户看不到内部 executor 标识。
+- `AC-TASK-023-05`：日志筛选、在线读取与下载执行相同权限、脱敏和不可用错误语义。
 
 ---
 

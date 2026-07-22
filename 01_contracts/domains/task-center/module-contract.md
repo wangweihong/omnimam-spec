@@ -7,7 +7,7 @@
 | 模块 | 拥有 | 不拥有 |
 | --- | --- | --- |
 | atomic-task | AtomicTask 创建、幂等、取消、手动重试、Attempt 查询 | Worker claim、Lease、业务函数实现 |
-| orchestration | TaskGroup、DAGTaskGroup、子任务展开、状态和结果汇总 | Group 嵌套、任意脚本、运行时 DAG 状态机 |
+| orchestration | TaskGroup、DAGTaskGroup、子任务展开、状态/结果汇总、节点执行投影、规范化事件与时间线 | Group 嵌套、任意脚本、运行时 DAG 状态机 |
 | schedule | TaskSchedule、ScheduleExecution、ScheduleReconcileState、暂停恢复、重叠门禁和历史保留 | cron 引擎、具体领域巡检实现 |
 | reconcile-registry | 受控 reconcileRef、配置校验、轻量巡检路由和修复动作门禁 | 用户自定义代码、任意 Conductor 任务、具体领域数据归属 |
 | runtime | WorkflowRuntime 接口、Conductor 适配、运行时 binding、事件投影和对账 | 对外业务 API、Conductor 数据库所有权 |
@@ -33,6 +33,8 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - AtomicTask 是唯一 Worker handler 执行的业务资源；handler 按受控 `function_ref` 路由。
 - SERIAL Group 编译为顺序 SIMPLE task；PARALLEL 编译为 Fork/Join，并应用 `max_parallelism` 门禁。
 - DAGTaskGroup 发布前校验无环、key 唯一、引用完整和规模限制；普通节点编译为 SIMPLE，动态批量节点编译为 Dynamic Fork/Join。
+- DAG 详情查询以声明节点为主键聚合实际 AtomicTask。`dag_node_key` 保存声明节点 key，静态节点使用唯一主任务，动态 fan-out 的全部实际任务共享该值；动态节点按活动优先和确定性终态优先级计算状态，并在摘要外保留按 node_key 分页读取实际任务的能力。
+- DAG 触发来源在创建时保存 API/SCHEDULE/CANVAS/DOMAIN_EVENT/RETRY 类型、触发时间及可选来源 ID/名称快照；来源删除或不可见不回查改写历史。
 - Group/DAG 创建时在一个业务事务中写根资源和全部静态 AtomicTask；运行时启动失败保留可恢复投影，不切换到本地 Dispatcher。
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
@@ -68,6 +70,9 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
 - AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
 - TaskAttempt 的 `logs_ref` 固定为 `task-attempt-log:<task_attempt_id>`，不携带运行时地址且不作为客户端可解析 URL。日志正文继续属于 WorkflowRuntime 历史，Task Center 只做受权代理；运行时历史清理后返回 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
+- Attempt 日志列表与下载共享同一读取管线，列表支持不透明 cursor 与前后方向，并统一应用关键字、级别、来源、排序、授权、脱敏和 retention；下载不能成为绕过日志不可用错误的旁路。
+- DAG 用户事件和时间线从 `runtime_projection_events` 与任务/Attempt 投影规范化生成，不新增第二套运行历史表。事件只映射白名单字段；时间线按实际 AtomicTask 返回 DEPENDENCY_WAIT、QUEUE_WAIT、RUNNING、RETRY_WAIT，并以 `complete=false` 表达历史缺口。
+- 已有 DAG 数据升级时必须以 `created_at` 回填缺失的 `triggered_at`，并依据可验证的 schedule/canvas/retry 关系回填 trigger type；无法证明来源时使用 API，不得猜测 source ID 或名称。
 - AtomicTask 创建/状态、TaskAttempt 状态与 TaskGroup/DAGTaskGroup 汇总变化分别发布可重放事件；事件带 `created_by`、`project_id`、`namespace`、`resource_version` 和 correlation，供 SSE 等投影消费者按所有者路由并幂等处理。相关 S1：US-TASK-018、BR-TASK-120。
 
 ## 6. 跨域协作
@@ -76,6 +81,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - SSE 领域消费 Task Center 可靠事件，建立当前用户的短期可重放投影；SSE 不得成为任务事实源，也不得直接消费 Conductor 原生事件。
 - asset-library 在上传或 Artifact 登记事务写 `asset_version_representation_requested`；task-center 按 `asset-representations:<asset_version_id>:<profile_version>` 幂等创建 Representation build DAGTaskGroup。
 - asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`；task-center 按 `artifact-process:<artifact_id>:<processing_profile_version>` 幂等创建 `asset-library.artifact.process` AtomicTask。
+- Task Center 按请求批次调用 asset-library 的 Artifact 可读摘要能力，为 `artifact_refs` 填充权限裁剪的一跳摘要；每批最多 200 项，目标不存在、已删除或不可见时保留 ID 并返回空摘要，禁止穿透 asset-library 私有表。
 - build DAG 只能使用 asset-library 提供的计划和已注册 `asset-library.representation.*` functionRef；生成节点使用稳定 `representation_type + profile` childKey，只返回 Representation/Blob 引用。
 - asset-library 注册 `asset-library.representation-backfill` ReconcileHandler。Task Center 以同名 system_key 原子确保唯一 SYSTEM RECONCILE 计划，默认 `03:30 UTC`，只为缺失、可重试或可重建项创建 `asset-library.representation.generate` AtomicTask。
 - application-platform 注册 `application-platform.engine-health` ReconcileHandler。其 SYSTEM TaskSchedule 直接分批探测 EngineInstance，不创建 Planner DAGTaskGroup 或健康 AtomicTask；状态变化由 application-platform 在同一事务中更新投影并写 outbox。
@@ -87,6 +93,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - 所有业务资源按 `project_id`、`namespace`、`created_by` 和授权关系隔离。
 - Attempt 日志查询必须先复用 AtomicTask 可见性，再验证 Attempt 属于该任务；不得凭 runtime task ID 绕过业务授权。
+- TaskAttempt executor 摘要只在同时通过任务可见性和 `task.operation.admin` 校验时返回，且只含稳定类型与显示名；普通响应不得暴露 Worker ID、队列、主机或地址。
 - 关联摘要查询必须复用父资源已验证的 project、namespace、created_by 与授权边界；内部批量 store 方法不能成为绕过 service 权限返回完整资源的入口。
 - 调度目标的访问边界继承来源 Schedule；历史数据中错误落为系统身份的目标必须按 ScheduleExecution 关系幂等修复，空 target_id 不做推断。
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
@@ -95,7 +102,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 日志消息在 Worker 写入和 Task Center 读取边界双重脱敏并限制为 4096 字节；禁止自动捕获全局进程日志，禁止记录鉴权信息、凭证、Provider 原始响应、任意 URL、文件路径或大型正文。
 - 巡检指标固定包含 `reconcile_runs_total{ref,status}`、`reconcile_scanned_total{ref}`、`reconcile_findings_total{ref}`、`reconcile_actions_total{ref}`、`reconcile_duration_seconds{ref}`、`reconcile_checkpoint_age_seconds{ref}`、`reconcile_overlap_skipped_total{ref}` 和 `reconcile_retention_failures_total{backend}`。label 不得包含 schedule ID、engine ID 等无界值。
 
-执行日志相关 S1：US-TASK-022、BR-TASK-129..132。
+执行日志与 DAG 可观测详情相关 S1：US-TASK-022..023、BR-TASK-129..141。
 
 ## 8. 废弃路径
 

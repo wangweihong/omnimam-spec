@@ -97,8 +97,8 @@ task_group_status_changed:
   idempotency_key: group_type:group_id:resource_version
   retry_policy: 由 outbox 重试，消费者按版本幂等。
   failure_policy: 子 AtomicTask 和组合投影可重新计算汇总，不覆盖较新版本。
-  related_user_stories: [US-TASK-009, US-TASK-010, US-TASK-018]
-  related_rules: [BR-TASK-080, BR-TASK-088, BR-TASK-120]
+  related_user_stories: [US-TASK-009, US-TASK-010, US-TASK-018, US-TASK-023]
+  related_rules: [BR-TASK-080, BR-TASK-088, BR-TASK-120, BR-TASK-133, BR-TASK-134]
 
 task_schedule_execution_recorded:
   producer: schedule-service

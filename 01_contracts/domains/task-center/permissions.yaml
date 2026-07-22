@@ -2,25 +2,25 @@ task.atomic.operate:
   domain: task-center
   module: atomic-task
   resource: atomic_task, task_attempt
-  action: create, read, read_attempt_logs, cancel, retry
+  action: create, read, read_attempt_logs, download_attempt_logs, cancel, retry
   subject: ordinary_user, business_service, system_admin
   description: 创建、查询、取消和手动重试 AtomicTask，并查看 Attempt 历史与脱敏执行日志。
   frontend_usage: 控制任务详情、取消、重试、Attempt 历史和执行日志入口。
   backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；日志读取必须先校验 AtomicTask 可见性和 Attempt 归属，不得暴露运行时地址；手动重试必须创建新 AtomicTask。
-  related_user_stories: [US-TASK-008, US-TASK-022]
-  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076, BR-TASK-103, BR-TASK-129, BR-TASK-131]
+  related_user_stories: [US-TASK-008, US-TASK-022, US-TASK-023]
+  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076, BR-TASK-103, BR-TASK-129, BR-TASK-131, BR-TASK-140]
 
 task.group.operate:
   domain: task-center
   module: orchestration
   resource: task_group, dag_task_group
-  action: create, read, cancel, retry
+  action: create, read, read_events, read_timeline, cancel, retry
   subject: ordinary_user, business_developer, business_service, system_admin
-  description: 创建和操作串并行 TaskGroup 与 DAGTaskGroup，查看子任务和汇总。
-  frontend_usage: 控制组合任务列表、详情、节点状态、取消和重跑入口。
-  backend_enforcement: 校验租户边界、functionRef 白名单、节点和边限制；重跑必须创建新组合资源。
-  related_user_stories: [US-TASK-009, US-TASK-010]
-  related_rules: [BR-TASK-078, BR-TASK-081, BR-TASK-096, BR-TASK-099, BR-TASK-103]
+  description: 创建和操作串并行 TaskGroup 与 DAGTaskGroup，查看子任务、节点执行投影、事件、时间线和汇总。
+  frontend_usage: 控制组合任务列表、DAG 运行工作台、节点状态、事件/时间线、取消和重跑入口。
+  backend_enforcement: 校验租户边界、functionRef 白名单、节点和边限制；事件只返回规范化白名单，时间线不得暴露运行时 payload；重跑必须创建新组合资源。
+  related_user_stories: [US-TASK-009, US-TASK-010, US-TASK-023]
+  related_rules: [BR-TASK-078, BR-TASK-081, BR-TASK-096, BR-TASK-099, BR-TASK-103, BR-TASK-133, BR-TASK-135, BR-TASK-136, BR-TASK-137]
 
 task.schedule.manage:
   domain: task-center
@@ -52,8 +52,8 @@ task.operation.admin:
   resource: atomic_task, task_group, dag_task_group, task_schedule, runtime_projection
   action: inspect_all, reconcile, read_health
   subject: system_admin, ops_user
-  description: 跨项目查看异常任务、计划执行和运行时投影健康。
+  description: 跨项目查看异常任务、计划执行、权限裁剪的 executor 摘要和运行时投影健康。
   frontend_usage: 控制内部运维诊断入口；不提供 Conductor 原生 UI 权限。
   backend_enforcement: 必须校验运维身份，诊断操作不得改写业务结果或绕过租户审计。
-  related_user_stories: [US-TASK-015]
-  related_rules: [BR-TASK-087, BR-TASK-088]
+  related_user_stories: [US-TASK-015, US-TASK-023]
+  related_rules: [BR-TASK-087, BR-TASK-088, BR-TASK-138]
