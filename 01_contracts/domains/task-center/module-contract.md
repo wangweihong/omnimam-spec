@@ -20,10 +20,11 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - 注册不可变 workflow definition，并以内容摘要避免同名版本漂移；
 - 启动独立任务、Group、DAG 和持久化 WAIT launcher；
-- 查询、取消执行并读取运行时任务和重试历史；
+- 查询、取消执行并读取运行时任务、重试历史和按 runtime task 隔离的执行日志；
 - 注册、暂停、恢复和删除 cron schedule；
 - 消费状态事件，并枚举全部非终态 execution 供 reconciler 对账。
 - 删除指定的终态 runtime execution，仅供 RECONCILE retention 使用。
+- 通过受控日志写入器追加生命周期与业务进度日志，并按 runtime task ID 读取日志；写入失败不得改变 handler 结果。
 
 首个生产实现是 `ConductorRuntime`，测试使用 fake。业务服务、前端和其他领域不得直接调用 Conductor API。
 
@@ -36,6 +37,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 - Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
+- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
 
 ## 4. 调度与巡检契约
 
@@ -65,6 +67,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 状态、进度或结果变化递增 `resource_version`；消费者按资源 ID 与版本投影。
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
 - AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
+- TaskAttempt 的 `logs_ref` 固定为 `task-attempt-log:<task_attempt_id>`，不携带运行时地址且不作为客户端可解析 URL。日志正文继续属于 WorkflowRuntime 历史，Task Center 只做受权代理；运行时历史清理后返回 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
 - AtomicTask 创建/状态、TaskAttempt 状态与 TaskGroup/DAGTaskGroup 汇总变化分别发布可重放事件；事件带 `created_by`、`project_id`、`namespace`、`resource_version` 和 correlation，供 SSE 等投影消费者按所有者路由并幂等处理。相关 S1：US-TASK-018、BR-TASK-120。
 
 ## 6. 跨域协作
@@ -83,12 +86,16 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 ## 7. 安全与限制
 
 - 所有业务资源按 `project_id`、`namespace`、`created_by` 和授权关系隔离。
+- Attempt 日志查询必须先复用 AtomicTask 可见性，再验证 Attempt 属于该任务；不得凭 runtime task ID 绕过业务授权。
 - 关联摘要查询必须复用父资源已验证的 project、namespace、created_by 与授权边界；内部批量 store 方法不能成为绕过 service 权限返回完整资源的入口。
 - 调度目标的访问边界继承来源 Schedule；历史数据中错误落为系统身份的目标必须按 ScheduleExecution 关系幂等修复，空 target_id 不做推断。
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。
 - Conductor UI 和 API 只供内部运维，且不能替代 Task Center 权限、审计和租户隔离。
+- 日志消息在 Worker 写入和 Task Center 读取边界双重脱敏并限制为 4096 字节；禁止自动捕获全局进程日志，禁止记录鉴权信息、凭证、Provider 原始响应、任意 URL、文件路径或大型正文。
 - 巡检指标固定包含 `reconcile_runs_total{ref,status}`、`reconcile_scanned_total{ref}`、`reconcile_findings_total{ref}`、`reconcile_actions_total{ref}`、`reconcile_duration_seconds{ref}`、`reconcile_checkpoint_age_seconds{ref}`、`reconcile_overlap_skipped_total{ref}` 和 `reconcile_retention_failures_total{backend}`。label 不得包含 schedule ID、engine ID 等无界值。
+
+执行日志相关 S1：US-TASK-022、BR-TASK-129..132。
 
 ## 8. 废弃路径
 

@@ -350,6 +350,10 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 54. `BR-TASK-126`：Artifact/AssetVersion 与 AtomicTask 是不同聚合；任务终态后的登记或可选派生失败不得反向改写 AtomicTask，不同聚合事件不保证严格顺序。
 55. `BR-TASK-127`：`artifact_content_completed` 必须幂等创建 `asset-library.artifact.process` AtomicTask；任务输入输出只保存 Artifact/profile 引用，Artifact 状态由 asset-library 更新。
 56. `BR-TASK-128`：Task Center 响应保留所有关联资源 ID，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划返回权限裁剪的一跳摘要。列表必须按目标类型批量解析，详情不得因关联资源缺失而丢失父资源，且摘要不得递归包含大型任务输入输出。
+57. `BR-TASK-129`：每个 TaskAttempt 必须保存稳定且不直接暴露运行时地址的日志引用；用户只能通过 Task Center 的权限校验接口分页读取日志，不得直接访问 Conductor API、数据库或 UI。
+58. `BR-TASK-130`：运行中 Attempt 的日志正文由 WorkflowRuntime 保存，Task Center 按时间升序代理读取；日志可用期跟随对应运行时任务历史，运行时历史已清理时必须返回稳定的日志不可用错误。
+59. `BR-TASK-131`：Worker 只记录统一生命周期与受控业务进度，不得自动捕获全局进程日志，也不得记录凭证、Authorization、Provider 原始响应、任意 URL、文件路径或大型输入输出；日志在写入和读取边界均须脱敏，单条消息最多 4096 字节。
+60. `BR-TASK-132`：日志写入是 best-effort 诊断副作用，失败不得改变 AtomicTask、TaskAttempt、Group/DAG 或 Schedule 的状态、结果、重试和取消语义；日志读取失败不得伪造成空日志。
 
 ---
 
@@ -466,6 +470,15 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 
 - `AC-TASK-021-01`：重复 complete 事件返回同一 AtomicTask。
 - `AC-TASK-021-02`：Task Center 不保存媒体正文，handler 通过 asset-library 读取和写回。
+
+### US-TASK-022 运行中执行日志
+
+作为任务执行者和运维人员，我希望在 AtomicTask 运行期间按 Attempt 查看安全、可归属的执行日志，以便定位等待、失败和业务处理阶段，而不接触内部运行时接口。
+
+- `AC-TASK-022-01`：TaskAttempt 返回稳定 `logsRef`，受权调用方可通过 Task Center 分页读取按时间升序排列的生命周期和业务进度日志。
+- `AC-TASK-022-02`：IN_PROGRESS 延迟回调期间日志可查询，自动重试的每个 Attempt 使用各自的日志历史，手动重试使用新 AtomicTask 的日志链。
+- `AC-TASK-022-03`：日志中的鉴权信息、凭证、URL、Provider 原始响应、文件路径和大型正文不会对用户暴露，重复生命周期记录在查询投影中去重。
+- `AC-TASK-022-04`：日志写入失败不影响任务结果；运行时不可用与历史已清理分别返回可重试和不可重试的稳定业务错误。
 
 ---
 

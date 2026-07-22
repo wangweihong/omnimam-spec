@@ -2,13 +2,13 @@ task.atomic.operate:
   domain: task-center
   module: atomic-task
   resource: atomic_task, task_attempt
-  action: create, read, cancel, retry
+  action: create, read, read_attempt_logs, cancel, retry
   subject: ordinary_user, business_service, system_admin
-  description: 创建、查询、取消和手动重试 AtomicTask，并查看 Attempt 历史。
-  frontend_usage: 控制任务详情、取消、重试和 Attempt 历史入口。
-  backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；手动重试必须创建新 AtomicTask。
-  related_user_stories: [US-TASK-008]
-  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076, BR-TASK-103]
+  description: 创建、查询、取消和手动重试 AtomicTask，并查看 Attempt 历史与脱敏执行日志。
+  frontend_usage: 控制任务详情、取消、重试、Attempt 历史和执行日志入口。
+  backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；日志读取必须先校验 AtomicTask 可见性和 Attempt 归属，不得暴露运行时地址；手动重试必须创建新 AtomicTask。
+  related_user_stories: [US-TASK-008, US-TASK-022]
+  related_rules: [BR-TASK-073, BR-TASK-075, BR-TASK-076, BR-TASK-103, BR-TASK-129, BR-TASK-131]
 
 task.group.operate:
   domain: task-center
@@ -37,14 +37,14 @@ task.schedule.manage:
 task.runtime.internal:
   domain: task-center
   module: runtime
-  resource: workflow_runtime, runtime_projection_event
-  action: register_definition, start, query, cancel, reconcile, project_event
+  resource: workflow_runtime, runtime_projection_event, task_log
+  action: register_definition, start, query, append_task_log, read_task_log, cancel, reconcile, project_event
   subject: task_center_service, runtime_adapter
-  description: Task Center 与 WorkflowRuntime 的内部运行协议。
+  description: Task Center 与 WorkflowRuntime 的内部运行、投影和执行日志协议。
   frontend_usage: 不向业务前端或普通 Open API 暴露。
-  backend_enforcement: 仅服务身份可调用；运行时事件按 runtime_event_id 幂等并按版本单调投影。
-  related_user_stories: [US-TASK-015]
-  related_rules: [BR-TASK-087, BR-TASK-088, BR-TASK-100]
+  backend_enforcement: 仅服务身份可调用；运行时事件按 runtime_event_id 幂等并按版本单调投影；日志写入失败不得改变业务执行结果。
+  related_user_stories: [US-TASK-015, US-TASK-022]
+  related_rules: [BR-TASK-087, BR-TASK-088, BR-TASK-100, BR-TASK-130, BR-TASK-132]
 
 task.operation.admin:
   domain: task-center

@@ -334,6 +334,22 @@ attempt_not_found:
   related_user_stories: [US-TASK-008]
   related_rules: [BR-TASK-075]
 
+attempt_log_unavailable:
+  code: ERR_TASK_ATTEMPT_LOG_UNAVAILABLE
+  value: 141002
+  cn: TaskAttempt 对应的运行时日志历史已不可用。
+  en: Runtime log history for the TaskAttempt is no longer available.
+  owning_domain: task-center
+  owning_module: attempt
+  range: 141000-141199
+  severity: warning
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-022]
+  related_rules: [BR-TASK-130]
+
 permission_denied:
   code: ERR_TASK_PERMISSION_DENIED
   value: 141200

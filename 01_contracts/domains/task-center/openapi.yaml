@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.1.0
-  description: AtomicTask、组合任务、DAG、Schedule、Attempt 与汇总查询契约。
+  version: 1.2.0
+  description: AtomicTask、组合任务、DAG、Schedule、Attempt、执行日志与汇总查询契约。
 servers:
   - url: /
 security:
@@ -74,6 +74,24 @@ paths:
         '200':
           description: Attempt 列表。
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskAttemptListResponse'}}}
+  /api/v1/atomic-tasks/{atomic_task_id}/attempts/{task_attempt_id}/logs:
+    get:
+      tags: [atomic-tasks]
+      summary: 分页查询 TaskAttempt 运行中执行日志
+      operationId: list_task_attempt_logs
+      x-permission: task.atomic.operate
+      x-s1-refs: {user_stories: [US-TASK-022], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132]}
+      parameters:
+        - {$ref: '#/components/parameters/atomic_task_id'}
+        - {$ref: '#/components/parameters/task_attempt_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - name: page_size
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200, default: 100}
+      responses:
+        '200':
+          description: 按 occurred_at 与运行时原始顺序稳定升序排列的执行日志；无日志时成功返回空列表。
+          content: {application/json: {schema: {$ref: '#/components/schemas/TaskAttemptLogListResponse'}}}
   /api/v1/atomic-tasks/{atomic_task_id}/cancel:
     post:
       tags: [atomic-tasks]
@@ -411,6 +429,7 @@ components:
     created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
     created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
     atomic_task_id: {name: atomic_task_id, in: path, required: true, schema: {type: string}}
+    task_attempt_id: {name: task_attempt_id, in: path, required: true, schema: {type: string}}
     task_group_id: {name: task_group_id, in: path, required: true, schema: {type: string}}
     dag_task_group_id: {name: dag_task_group_id, in: path, required: true, schema: {type: string}}
     task_schedule_id: {name: task_schedule_id, in: path, required: true, schema: {type: string}}
@@ -590,7 +609,7 @@ components:
         status: {type: string, enum: [SCHEDULED, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]}
         error: {$ref: '#/components/schemas/TaskError'}
         external_job_id: {type: string}
-        logs_ref: {type: string}
+        logs_ref: {type: string, description: Task Center 生成的稳定不透明引用，格式为 task-attempt-log:<task_attempt_id>；客户端不得自行解析或访问运行时。}
         started_at: {type: string, format: date-time}
         completed_at: {type: string, format: date-time}
         duration_ms: {type: integer}
@@ -604,6 +623,21 @@ components:
       properties:
         total: {type: integer}
         items: {type: array, items: {$ref: '#/components/schemas/TaskAttempt'}}
+    TaskAttemptLog:
+      type: object
+      required: [sequence, source, level, message, occurred_at]
+      properties:
+        sequence: {type: integer, minimum: 1, description: 当前运行时日志历史内按稳定升序分配的序号。}
+        source: {type: string, enum: [LIFECYCLE, WORKER]}
+        level: {type: string, enum: [INFO, WARN, ERROR]}
+        message: {type: string, maxLength: 4096, description: 已在运行时写入和 Task Center 读取边界双重脱敏的单行消息。}
+        occurred_at: {type: string, format: date-time}
+    TaskAttemptLogListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/TaskAttemptLog'}}
     GroupStrategy:
       type: object
       properties:

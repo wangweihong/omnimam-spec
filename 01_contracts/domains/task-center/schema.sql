@@ -56,7 +56,7 @@ CREATE INDEX idx_atomic_tasks_application_run ON atomic_tasks(application_run_id
 CREATE INDEX idx_atomic_tasks_canvas_run ON atomic_tasks(canvas_run_id) WHERE canvas_run_id <> '';
 CREATE UNIQUE INDEX idx_atomic_tasks_runtime_task ON atomic_tasks(runtime_task_id) WHERE runtime_task_id <> '';
 
--- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, BR-TASK-075, BR-TASK-077, BR-TASK-120.
+-- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, US-TASK-022, BR-TASK-075, BR-TASK-077, BR-TASK-120, BR-TASK-129..132.
 CREATE TABLE task_attempts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

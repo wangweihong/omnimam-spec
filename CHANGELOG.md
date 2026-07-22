@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-22
+
+- 新增 `US-TASK-022`、`BR-TASK-129..132` 与验收标准，明确运行中 Attempt 日志、Task Center 授权代理、Conductor retention、双重脱敏和 best-effort 写入语义。
+- Task Center OpenAPI 升级为 1.2.0，新增 `GET /api/v1/atomic-tasks/{atomic_task_id}/attempts/{task_attempt_id}/logs`、稳定 `logs_ref`、分页日志 DTO 和 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
+- 扩展 Task Center 权限、WorkflowRuntime 模块契约和领域架构；执行日志不新增业务表或 SSE 事件，也不复用 Asset Library 媒体存储。
+
 ## 2026-07-21
 
 - 整理 `workflow-canvas` S1 草案，保留多流、局部运行、结果复用、节点一对多任务、渐进制品和交互式控制节点设计，并恢复 `BR-WORKFLOW-001..016`、`US-WORKFLOW-001..004` 的已发布追溯。
