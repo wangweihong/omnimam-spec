@@ -1,5 +1,25 @@
 # Release Records
 
+## spec-v1.7.1
+
+- commit: 865741c（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-22 明确要求实施 Task Center 执行日志修复方案并先发布 SSOT）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/errors.yaml
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+- implementation_gate: Server 必须通过 WorkflowRuntime 消费方接口代理 Conductor task log，执行 AtomicTask/Attempt 归属授权、双重脱敏、分页排序和 best-effort 写入；不得新增日志业务表、复用 Asset Library 媒体存储、暴露 Conductor API/UI 或把日志写入失败变成任务失败。
+
 ## spec-v1.7.0
 
 - commit: 467abaa（规格变更提交；release 记录提交随后追加）
