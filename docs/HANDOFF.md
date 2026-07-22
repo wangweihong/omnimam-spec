@@ -2,7 +2,7 @@
 
 ## 当前项目目标
 
-发布 `spec-v1.7.2`，补齐任务中心 DAG 运行工作台依赖的 S1/S2，并提供 Asset Library Artifact 有界批量摘要协作。
+`spec-v1.7.2` 已发布，任务中心 DAG 运行工作台所需 S1/S2 与 Asset Library Artifact 有界批量摘要协作已成为正式实现依据。
 
 ## 本次完成
 
@@ -12,12 +12,13 @@
 4. Task Center schema 增加 DAG 时间/触发快照、`dag_node_key`、executor 快照和运行时投影查询索引；未新增执行历史表。
 5. 新增 `US-USER-ASSET-47`、`BR-USER-ASSET-81`；Asset Library OpenAPI 升级到 0.5.0，并增加最多 200 项的 Artifact 批量摘要接口。
 6. 更新两个领域的权限、事件追溯、模块契约、架构参考和 CHANGELOG。
+7. 规格变更提交为 `4d601ce`；用户明确确认发布 `spec-v1.7.2`，release 记录、标签和远端分支已同步。
 
 ## 文件变化
 
 - 修改 Task Center S1、OpenAPI、schema、permissions、events、module contract 和领域架构。
 - 修改 Asset Library S1、OpenAPI、permissions、module contract 和领域架构。
-- 修改 `CHANGELOG.md`、`RELEASE.md` 和本文件。
+- 修改 `CHANGELOG.md`、`RELEASE.md` 和本文件，并创建 `spec-v1.7.2` 标签。
 - 用户原有 `AGENTS.md` 修改保持不变，不纳入本次提交或 release。
 
 ## 关键设计决策

@@ -1,5 +1,31 @@
 # Release Records
 
+## spec-v1.7.2
+
+- commit: 4d601ce（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-22 明确要求直接补充缺失 S1/S2 并发布 spec-v1.7.2）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+  - asset-library
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/events.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+  - 02_architecture/domains/asset-library.md
+- implementation_gate: Server 必须先实现 DAG trigger/时间与 dag_node_key migration、确定性节点聚合、规范化事件/时间线、日志 cursor/筛选/下载、admin-only executor 裁剪及 Asset Library 有界批量摘要，再允许 Web 以本 release 作为 DAG 运行工作台正式契约；不得新增第二套运行历史、暴露运行时 payload/Worker 内部标识、跨域读取私表或形成 Artifact N+1。
+
 ## spec-v1.7.1
 
 - commit: 865741c（规格变更提交；release 记录提交随后追加）
