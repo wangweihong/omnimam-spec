@@ -2,61 +2,78 @@
 
 ## 当前项目目标
 
-完成 Workflow Canvas S1 的产品语义整理：保留新版设计中的多流、局部运行、结果复用、节点一对多任务、渐进制品和交互式控制节点，并对齐现有 Task Center、SSE、Asset Library 和已发布 Canvas 事实。当前只维护 S1，不修改 S2。
+基于 `00_product/domains/workflow-canvas/product-spec.md` 的 v1.1 S1 草案完成可实现、可校验、可追溯的 Workflow Canvas S2，并与 Task Center、Asset Library 和用户级 SSE 边界保持一致。
 
 ## 本次完成
 
-- 将新版长文档保留在正式路径 `00_product/domains/workflow-canvas/product-spec.md`，恢复其 S1 定位和 `workflow-canvas` domain_id。
-- 区分 Canvas 草稿 revision 与不可变 CanvasVersion；CanvasRun 固定版本、输入、scope、幂等键和唯一 DAGTaskGroup。
-- 移除 TaskRun、DAGFlowTask、ExecutionLease、运行时 task type 和 Group 嵌套语义；多流、fan-out 和复合节点统一展平到 DAGTaskGroup 的 AtomicTask 节点。
-- 补齐 all/flows/only_nodes/until_nodes/from_nodes 输入闭包、共享节点去重、执行指纹、复用资格、必需/可选输出和历史来源绑定。
-- Artifact 所有权对齐 Asset Library；Canvas 只保存 ArtifactReference、输出端口、producer context 和运行投影。
-- Canvas 实时能力对齐用户级单 SSE、统一 UserEvent 信封、event_id、aggregate_version、重放、重同步和轮询降级。
-- 明确 BLOCKED/SKIPPED、自动 TaskAttempt/用户新 CanvasRun、整次/流级取消，以及第二阶段分片取消和容错 Join。
-- 保留姿态、光照、Gaussian 和摄像机控制设计，并补充 ControllerState schema、资源权限、前端上传和受控 functionRef 边界。
-- 恢复 `BR-WORKFLOW-001..016`、`US-WORKFLOW-001..004`；新增 `BR-WORKFLOW-017..034`、`US-WORKFLOW-005..009` 及验收标准。
+1. 重写 workflow-canvas OpenAPI，共 22 个 operation：
+   - NodeDefinition 查询、注册新版本和下线新引用。
+   - Canvas 创建、读取、revision 保存、软删除、草稿预检、发布和版本查询。
+   - 固定 CanvasVersion 的运行预检，以及 CanvasRun 创建、列表、详情、FlowRun、NodeRun、整次取消和手动重跑。
+   - 首期 scope 为 `all`、`flows`、`only_nodes`、`until_nodes`、`from_nodes`；复用策略为 `rerun_all`、`reuse_valid_outputs`、`reuse_required`。
+2. 重构设计态 SQL schema，共 11 张表，补齐 NodeDefinition、FlowRun、共享执行实例、NodeRun 1:N TaskBinding、OutputBinding、复用来源、outbox 和对账游标。
+3. 将 CanvasRun 状态补齐 `PARTIAL_SUCCESS`，NodeRun 补齐 `PARTIAL_SUCCESS` 和 `REUSED`；Task 创建失败使用可恢复 `RETRYABLE_FAILED`，不回退本地执行。
+4. 扩展为 28 个 workflow-canvas 错误、11 个权限码和 9 个可靠领域事件；继续使用已登记的 `160200-160999` 区间。
+5. 重写模块契约和领域架构，明确真实 DAG 直接依赖、节点最早释放、唯一 DAGTaskGroup、流业务投影和跨域批量摘要预算。
+6. 解决 SSE 跨域冲突：SSE 首期现包含 15 个既有 `canvas.run.*`/`canvas.node.*` 用户事件，仍复用当前用户唯一连接，不提供 CanvasRun 私有连接或独立 FlowRun event type。
 
 ## 文件变化
 
-- 修改 `00_product/domains/workflow-canvas/product-spec.md`。
-- 修改 `CHANGELOG.md`。
-- 修改 `docs/HANDOFF.md`。
-- 用户原有 `AGENTS.md` 修改保持不变。
+- 修改 `00_product/domains/sse/product-spec.md`。
+- 修改 `01_contracts/domains/workflow-canvas/openapi.yaml`。
+- 修改 `01_contracts/domains/workflow-canvas/schema.sql`。
+- 修改 `01_contracts/domains/workflow-canvas/errors.yaml`。
+- 修改 `01_contracts/domains/workflow-canvas/permissions.yaml`。
+- 修改 `01_contracts/domains/workflow-canvas/events.yaml`。
+- 修改 `01_contracts/domains/workflow-canvas/module-contract.md`。
+- 修改 `01_contracts/domains/sse/openapi.yaml`。
+- 修改 `01_contracts/domains/sse/events.yaml`。
+- 修改 `01_contracts/domains/sse/module-contract.md`。
+- 修改 `01_contracts/error-code-index.md`。
+- 修改 `02_architecture/domains/workflow-canvas.md`。
+- 修改 `02_architecture/global-architecture.md`。
+- 修改 `CHANGELOG.md` 和 `docs/HANDOFF.md`。
+- 用户原有 `AGENTS.md` 修改保持不变且不应纳入本任务提交。
 
 ## 关键设计决策
 
-- AtomicTask 是唯一 Worker 执行单元；CanvasRun 只有一个 DAGTaskGroup，不使用 Group 嵌套表达多流或复合节点。
-- CanvasFlowRun 是 DAG 中一组执行实例的业务投影，不是 Task Center Group。
-- 普通节点通常映射一个 AtomicTask；fan-out/复合节点可映射多个；Data、Viewer、REUSED NodeRun 可以无任务。
-- 首期并发失败只支持 `all_success`；`best_effort`、`min_success` 和容错 Join 保留为第二阶段。
-- 自动重试新增 TaskAttempt；任何用户手动重跑都创建新 CanvasRun、DAGTaskGroup 和 AtomicTask。
-- Artifact 与 AtomicTask 是不同聚合；AtomicTask 成功不代表必需 Artifact ready，也不允许反向改写任务终态。
-- Canvas 页面复用用户级 SSE，不提供按 CanvasRun 私有连接；不同聚合事件不保证严格顺序。
+- CanvasRun 固定 CanvasVersion、输入、scope、策略、复用决策和 ExecutionPlan，只创建一个 DAGTaskGroup。
+- 多流、fan-out 和复合节点全部展平为 DAGTaskGroup 内 AtomicTask；FlowRun 不是 Task Center Group。
+- NodeRun 到 AtomicTask 为 0..N。Data、Viewer、REUSED 和 client-generated NodeRun 可以没有新任务。
+- 共享节点只在 execution fingerprint、依赖来源和策略完全一致时复用同一 execution key。
+- AtomicTask 成功不等于 NodeRun 输出可用；必需 Artifact READY 后才能完成 NodeRun，Artifact 生命周期仍归 Asset Library。
+- 自动重试新增 TaskAttempt；所有用户手动重跑意图创建新 CanvasRun、DAGTaskGroup 和 AtomicTask。
+- 跨域关联只保存稳定 ID、非敏感快照和已观察版本；列表对 Task Center/Asset Library 使用有界批量读取，禁止 N+1 和私有表穿透。
 
 ## API、Schema 与配置变化
 
-- 本轮无 S2 变更：未修改 OpenAPI、SQL schema、错误码、权限码、事件目录或 module contract。
-- S1 中原有具体 HTTP 路径、TypeScript DTO 和数据库列建议已改写为产品操作、逻辑字段和领域所有权。
-- `best_effort`、`min_success`、流/分片级操作、多任务 NodeRun、新 Canvas 事件与新增 BR/US 尚未写入 S2。
+- OpenAPI 成功响应从旧 `code/message/data/meta` 包裹改为直接业务对象；业务错误仍为 HTTP 200 + 稳定 `code/value`。
+- 列表分页统一为 `page_num=0` 起始，并补齐 keyword、search_fields、排序和时间过滤参数。
+- Canvas 图改为 NodeInstance、稳定 Port key、独立 Edge 和 FlowDefinition；NodeDefinition 固定版本保存端口、schema、renderer 和受控执行绑定。
+- CanvasRun 新增 scope、run_policy、reuse decision、execution plan digest、FlowRun 摘要、重跑意图和 aggregate version。
+- NodeRun 新增 execution key/fingerprint、result mode、FlowRun 引用、TaskBinding、OutputBinding 和 reuse source。
+- 没有运行时配置或实际 migration 变更；`schema.sql` 仅为设计态 schema。
 
 ## 验证结果
 
-- 已扫描并移除 S1 中的 TaskRun、DAGFlowTask、ExecutionLease、CanvasRevision 运行语义、CanvasRun 私有 SSE 和 Canvas 自有 Artifact 存储定义。
-- 已恢复并检查 `BR-WORKFLOW-001..016` 与 `US-WORKFLOW-001..004`，新增编号不复用旧编号。
+- `yq` 解析 workflow-canvas 与 SSE 的 OpenAPI、errors、permissions、events 全部通过。
+- workflow-canvas OpenAPI 本地 schema 引用解析检查通过，无缺失 `$ref`。
+- 所有 OpenAPI operation 均包含 `x-s1-refs` 和已定义的 `x-permission`。
 - `git diff --check` 通过。
+- 最终提交前仍需运行 OpenAPI lint、错误码全局唯一性、S1 引用存在性和 staged diff 检查。
 
 ## 待办与风险
 
-- 当前 S1 草案尚未 release，不能作为正式实现或验收依据。
-- 现有 workflow-canvas S2 仍表达“静态 NodeRun 唯一 AtomicTask”等旧范围，尚未覆盖 FlowRun、多任务绑定、局部运行、复用、渐进输出和新增事件；按用户要求本轮不修改。
-- SSE S1 将 Canvas 事件列为第二阶段；Workflow Canvas S1 已补全其产品语义，后续需要联合评审事件命名和 payload 契约。
-- Task Center 当前无 `best_effort`/`min_success` 容错 Join 契约，因此这些能力明确留在第二阶段。
-- 应在后续 S2 生成前再次检查 ApplicationVersion/functionRef 解析、Asset Library producer key 和跨域摘要批量查询预算。
+- Workflow Canvas S1/S2 仍为 draft，未写入 `RELEASE.md`，不能作为正式实现、合并或验收依据。
+- 本 S2 对旧 Canvas API/表结构是破坏性升级；正式实现需要设计数据迁移、客户端切换和旧 DTO 退役门禁。
+- Task Center 尚未提供 `best_effort`/`min_success` 容错 Join，因此相关值、流/分片级取消、分片重跑和 `selected_subgraph` 保持禁用。
+- identity 领域仍缺完整 S2；权限码已定义，但具体角色绑定和授权数据模型需要在 identity S2 中落地。
+- 正式实现前应联合确认 Task Center 内容寻址 workflow definition 注册、动态 child 批量查询和 Asset Library Canvas producer context 接口。
 
 ## 推荐下一任务
 
-先对本次 Workflow Canvas S1 做人工产品评审，确认首期范围、FlowRun、共享节点去重、历史复用、流级取消和 client-generated 正式输出。确认后再单独执行 S2 差异分析和契约更新，不在未确认前 release。
+人工评审本次 Workflow Canvas S2 的 API 破坏性变更、NodeDefinition 管理边界、Task Center/Asset Library 协作接口和 SSE 首期事件；确认后创建新 spec release，再到正式 Server/Web 仓库按发布版本实施。
 
 ## Next Prompt
 
-读取 `docs/HANDOFF.md`、`skills/spec-workflow/SKILL.md`、`S1.md` 和 `S2.md`。先审阅 `00_product/domains/workflow-canvas/product-spec.md` 的首期范围与新增 `BR-WORKFLOW-017..034`，列出产品待确认点；用户确认后再对 `01_contracts/domains/workflow-canvas/` 做 S2 差异分析和更新。不要自动写 RELEASE。
+读取 `docs/HANDOFF.md`、`skills/spec-workflow/SKILL.md`、`S1.md` 和 `S2.md`。审阅本次 workflow-canvas 与 SSE S2 diff，重点检查 OpenAPI scope/retry DTO、NodeRun 1:N TaskBinding、OutputBinding、错误码/权限/事件追溯和跨域批量接口。若用户确认发布，更新 `RELEASE.md` 并记录确切 commit；否则不要把 draft 用作正式实现依据。

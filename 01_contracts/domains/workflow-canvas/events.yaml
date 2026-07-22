@@ -1,57 +1,190 @@
 canvas_version_published:
   producer: canvas-version-service
-  consumers: [audit-service, application-platform]
-  trigger_condition: Canvas 草稿校验、编译和运行时定义注册全部成功后发布版本。
+  consumers: [sse-event-projector, audit-service]
+  trigger_condition: 草稿校验、确定性编译、不可变 workflow definition 注册和 CanvasVersion 持久化全部成功。
   payload:
     canvas_id: string
     canvas_version_id: string
     version: integer
     content_digest: string
-    compiled_definition_name: string
-    compiled_definition_version: integer
+    execution_template_digest: string
+    workflow_definition_name: string
+    workflow_definition_version: string
     project_id: string
     namespace: string
     published_by: string
+    aggregate_version: integer
     occurred_at: string(date-time)
-  idempotency_key: canvas_version_id:published
-  retry_policy: 由事务 outbox 重试。
-  failure_policy: CanvasVersion 为事实源，事件失败不得回滚已发布版本。
-  related_user_stories: [US-WORKFLOW-001]
-  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002]
+  idempotency_key: canvas_version_id:aggregate_version:published
+  retry_policy: CanvasVersion 与 outbox 同事务写入，由 outbox 持续重试。
+  failure_policy: CanvasVersion 为事实源；发布事件失败不得回滚已成立版本，也不得重复注册漂移定义。
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-004]
+  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002, BR-WORKFLOW-012, BR-WORKFLOW-034]
 
 canvas_run_created:
   producer: canvas-run-service
-  consumers: [audit-service]
-  trigger_condition: CanvasRun 已保存并成功绑定 DAGTaskGroup。
+  consumers: [sse-event-projector, audit-service]
+  trigger_condition: CanvasRun 已固定版本、输入、scope、策略、请求摘要和执行计划并持久化；DAGTaskGroup 可以尚未绑定。
   payload:
     canvas_run_id: string
+    canvas_id: string
     canvas_version_id: string
-    dag_task_group_id: string
-    status: string
+    retry_of_canvas_run_id: string|null
+    retry_intent: string|null
+    task_creation_status: string(PENDING|CREATED|RETRYABLE_FAILED)
+    status: string(PENDING)
+    flow_summaries: array<object>
     project_id: string
     namespace: string
     created_by: string
+    aggregate_version: integer
     occurred_at: string(date-time)
-  idempotency_key: canvas_run_id:created
-  retry_policy: 由事务 outbox 重试。
-  failure_policy: CanvasRun 与 dag_task_group_id 唯一绑定为事实源，不重复创建 DAGTaskGroup。
-  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
-  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007]
+  idempotency_key: canvas_run_id:aggregate_version:created
+  retry_policy: CanvasRun 与 outbox 同事务写入，由 outbox 持续重试。
+  failure_policy: CanvasRun 为事实源；事件或 Task Center 暂时失败不删除运行，也不创建第二个 DAGTaskGroup。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-008]
+  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-027, BR-WORKFLOW-032, BR-WORKFLOW-034]
 
-canvas_run_status_changed:
-  producer: canvas-projection-service
-  consumers: [frontend-realtime-adapter, notification-service, audit-service]
-  trigger_condition: task-center 的 Group 或 AtomicTask 投影推进 CanvasRun 或 CanvasNodeRun。
+canvas_run_task_group_bound:
+  producer: canvas-run-service
+  consumers: [sse-event-projector, audit-service]
+  trigger_condition: Task Center 幂等返回唯一 DAGTaskGroup，CanvasRun 和全部静态 task binding 已持久化。
   payload:
     canvas_run_id: string
-    node_key: string|null
-    atomic_task_id: string|null
-    status: string
-    progress: number
-    task_resource_version: integer
+    dag_task_group_id: string
+    task_creation_status: string(CREATED)
+    task_binding_count: integer
+    aggregate_version: integer
     occurred_at: string(date-time)
-  idempotency_key: canvas_run_id:node_key:task_resource_version
-  retry_policy: 由 outbox 重试，消费者丢弃旧版本。
-  failure_policy: CanvasRun/CanvasNodeRun 投影可从 task-center 对账恢复。
+  idempotency_key: canvas_run_id:dag_task_group_id:bound
+  retry_policy: 由 outbox 重试；重复绑定相同 ID 幂等成功，不同 ID 进入一致性告警。
+  failure_policy: CanvasRun 的 dag_task_group_id 唯一绑定为事实源；事件失败不得重复创建 DAGTaskGroup。
   related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004]
-  related_rules: [BR-WORKFLOW-008, BR-WORKFLOW-014]
+  related_rules: [BR-WORKFLOW-007, BR-WORKFLOW-008, BR-WORKFLOW-032]
+
+canvas_run_status_changed:
+  producer: canvas-run-projector
+  consumers: [sse-event-projector, notification-service, audit-service]
+  trigger_condition: CanvasRun 状态、进度、FlowRun 摘要、计数或 warning 发生单调变化。
+  payload:
+    canvas_run_id: string
+    from_status: string|null
+    status: string(PENDING|RUNNING|SUCCESS|PARTIAL_SUCCESS|FAILED|CANCELED|TIMEOUT)
+    progress: number
+    summary: object
+    changed_flow_summaries: array<object>
+    warnings: array<object>
+    last_error: object|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: canvas_run_id:aggregate_version:status
+  retry_policy: 由 outbox 重试；消费者丢弃相同或更低 aggregate_version。
+  failure_policy: CanvasRun/FlowRun 投影可从 Task Center 和 NodeRun 绑定对账恢复；不得覆盖节点具体任务和错误事实。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-006, US-WORKFLOW-008]
+  related_rules: [BR-WORKFLOW-014, BR-WORKFLOW-023, BR-WORKFLOW-024, BR-WORKFLOW-025, BR-WORKFLOW-026, BR-WORKFLOW-034]
+
+canvas_node_run_status_changed:
+  producer: canvas-run-projector
+  consumers: [sse-event-projector, audit-service]
+  trigger_condition: Task Center 或 Asset Library 更高版本事实使 CanvasNodeRun 状态、进度、warning 或错误发生单调变化。
+  payload:
+    canvas_run_id: string
+    canvas_node_run_id: string
+    node_id: string
+    execution_key: string
+    from_status: string|null
+    status: string(PENDING|BLOCKED|READY|RUNNING|RETRYING|SUCCESS|PARTIAL_SUCCESS|FAILED|CANCELED|TIMEOUT|SKIPPED|REUSED)
+    status_reason: string|null
+    result_mode: string(executed|reused|passive|client_generated)
+    progress: number
+    task_summary: object
+    warnings: array<object>
+    last_error: object|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: canvas_node_run_id:aggregate_version:status
+  retry_policy: 由 outbox 重试；消费者按 CanvasNodeRun aggregate_version 幂等。
+  failure_policy: NodeRun 投影可按 task binding 与 output binding 对账；旧任务或 Artifact 事件不得回退终态。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-006]
+  related_rules: [BR-WORKFLOW-008, BR-WORKFLOW-009, BR-WORKFLOW-014, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-023, BR-WORKFLOW-024, BR-WORKFLOW-025]
+
+canvas_node_output_available:
+  producer: canvas-run-projector
+  consumers: [sse-event-projector, audit-service]
+  trigger_condition: 一个结构化输出已持久化，或一个 Artifact 已由 Asset Library 确认为端口要求的 READY，并幂等绑定到 NodeRun 输出槽位。
+  payload:
+    canvas_run_id: string
+    canvas_node_run_id: string
+    node_id: string
+    execution_key: string
+    port_key: string
+    shard_key: string
+    shard_index: integer|null
+    atomic_task_id: string|null
+    artifact_id: string|null
+    artifact_summary: object|null
+    structured_value_summary: object|null
+    required: boolean
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: canvas_node_run_id:port_key:shard_key:artifact_id_or_value_digest
+  retry_policy: 由 outbox 重试；同一输出槽位和 Artifact/value digest 重复事件只产生一次语义通知。
+  failure_policy: 输出绑定是 Canvas 事实，Artifact 生命周期仍以 Asset Library 为准；事件失败不删除绑定，客户端可重查 NodeRun。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-006, US-WORKFLOW-007]
+  related_rules: [BR-WORKFLOW-014, BR-WORKFLOW-015, BR-WORKFLOW-022, BR-WORKFLOW-023, BR-WORKFLOW-024, BR-WORKFLOW-025, BR-WORKFLOW-030]
+
+canvas_run_cancel_requested:
+  producer: canvas-run-service
+  consumers: [audit-service]
+  trigger_condition: 调用方通过权限校验并幂等请求 Task Center 取消 CanvasRun 的唯一 DAGTaskGroup。
+  payload:
+    canvas_run_id: string
+    dag_task_group_id: string
+    requested_by: string
+    reason: string|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: canvas_run_id:cancel_requested
+  retry_policy: Task Center 取消命令与 outbox 均使用稳定幂等键重试。
+  failure_policy: 取消请求不直接改写已成功 AtomicTask；CanvasRun 最终状态由投影事实收敛。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-008]
+  related_rules: [BR-WORKFLOW-013, BR-WORKFLOW-027]
+
+canvas_run_retry_created:
+  producer: canvas-run-service
+  consumers: [audit-service]
+  trigger_condition: 用户手动重跑意图通过校验并创建了新的 CanvasRun。
+  payload:
+    source_canvas_run_id: string
+    new_canvas_run_id: string
+    retry_intent: string(retry_failed|retry_node|retry_from_node|retry_flow|rerun_all)
+    target_node_ids: array<string>
+    target_flow_ids: array<string>
+    created_by: string
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: new_canvas_run_id:retry_created
+  retry_policy: 与新 CanvasRun outbox 同事务写入并重试。
+  failure_policy: 原 CanvasRun、AtomicTask、TaskAttempt、NodeRun 和 Artifact 历史保持不变。
+  related_user_stories: [US-WORKFLOW-005, US-WORKFLOW-008]
+  related_rules: [BR-WORKFLOW-013, BR-WORKFLOW-021, BR-WORKFLOW-027, BR-WORKFLOW-034]
+
+canvas_projection_reconciled:
+  producer: canvas-run-reconciler
+  consumers: [operations-monitor, audit-service]
+  trigger_condition: 对账修复了漏事件、乱序或投影差异，或确认当前投影已收敛。
+  payload:
+    canvas_run_id: string
+    task_binding_count: integer
+    output_binding_count: integer
+    repaired_node_run_ids: array<string>
+    task_cursor: string|null
+    artifact_cursor: string|null
+    result: string(noop|repaired|failed)
+    error_code: string|null
+    occurred_at: string(date-time)
+  idempotency_key: canvas_run_id:task_cursor:artifact_cursor:result
+  retry_policy: 对账任务按稳定运行 ID 和游标重试；修复写入仍按版本幂等。
+  failure_policy: 对账失败不覆盖当前较新投影并进入可观测告警，后续继续从事实源恢复。
+  related_user_stories: [US-WORKFLOW-004, US-WORKFLOW-006]
+  related_rules: [BR-WORKFLOW-014, BR-WORKFLOW-022, BR-WORKFLOW-023, BR-WORKFLOW-025, BR-WORKFLOW-034]

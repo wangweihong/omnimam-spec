@@ -1,378 +1,1127 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Workflow Canvas API
-  version: spec-v1.1.0
+  version: 1.2.0-draft
+  description: |
+    Workflow Canvas S2 契约。Canvas 保存编辑事实并发布不可变版本；每次运行固定版本、
+    输入、scope 与复用决策，并展平到 Task Center 的唯一 DAGTaskGroup。
+    业务错误使用 HTTP 200 和 ErrorResponse 表达；HTTP 404 仅表示路由不存在。
 servers:
   - url: /
 security:
-  - bearerAuth: []
+  - bearer_auth: []
+tags:
+  - {name: node-definitions, description: 受控节点能力目录。}
+  - {name: canvases, description: Canvas 草稿、校验与发布。}
+  - {name: canvas-versions, description: 不可变 CanvasVersion。}
+  - {name: canvas-runs, description: 固定版本运行、快照、取消与手动重跑。}
+
 paths:
+  /api/v1/node-definitions:
+    get:
+      tags: [node-definitions]
+      operationId: list_node_definitions
+      summary: 查询当前调用方可用的节点定义版本
+      x-permission: workflow.node_definition.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-004, BR-WORKFLOW-017, BR-WORKFLOW-029, BR-WORKFLOW-031]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: node_kind, in: query, schema: {$ref: '#/components/schemas/NodeKind'}}
+        - {name: execution_mode, in: query, schema: {$ref: '#/components/schemas/ExecutionMode'}}
+        - {name: include_deprecated, in: query, schema: {type: boolean, default: false}}
+      responses:
+        '200':
+          description: 节点定义列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NodeDefinitionList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+    post:
+      tags: [node-definitions]
+      operationId: register_node_definition
+      summary: 注册新的不可变节点定义版本
+      x-permission: workflow.node_definition.manage
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-005, BR-WORKFLOW-017, BR-WORKFLOW-029, BR-WORKFLOW-031]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RegisterNodeDefinitionRequest'}}}
+      responses:
+        '200':
+          description: 新节点定义版本或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NodeDefinition'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/node-definitions/{node_type}/versions/{definition_version}:
+    get:
+      tags: [node-definitions]
+      operationId: get_node_definition
+      summary: 查询节点定义的固定版本
+      x-permission: workflow.node_definition.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-017, BR-WORKFLOW-029, BR-WORKFLOW-031]
+      parameters:
+        - {$ref: '#/components/parameters/node_type'}
+        - {$ref: '#/components/parameters/definition_version'}
+      responses:
+        '200':
+          description: 节点定义或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NodeDefinition'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/node-definitions/{node_type}/versions/{definition_version}/deprecate:
+    post:
+      tags: [node-definitions]
+      operationId: deprecate_node_definition
+      summary: 阻止节点定义版本被新画布引用
+      x-permission: workflow.node_definition.manage
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-017, BR-WORKFLOW-031]
+      parameters:
+        - {$ref: '#/components/parameters/node_type'}
+        - {$ref: '#/components/parameters/definition_version'}
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/DeprecateNodeDefinitionRequest'}}}
+      responses:
+        '200':
+          description: 已下线节点定义；历史版本和历史运行仍可读，或返回业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NodeDefinition'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
   /api/v1/canvases:
     get:
+      tags: [canvases]
       operationId: list_canvases
       summary: 查询可见 Canvas
+      x-permission: workflow.canvas.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-031]
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: visibility, in: query, schema: {$ref: '#/components/schemas/Visibility'}}
+        - {name: project_id, in: query, schema: {type: string}}
+        - {name: namespace, in: query, schema: {type: string}}
       responses:
         '200':
-          description: Canvas 列表
+          description: Canvas 列表或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasListResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
     post:
+      tags: [canvases]
       operationId: create_canvas
       summary: 创建 Canvas 草稿
+      x-permission: workflow.canvas.edit
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-017, BR-WORKFLOW-029, BR-WORKFLOW-031]
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/CreateCanvasRequest'}
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateCanvasRequest'}}}
       responses:
         '200':
-          description: 创建结果
+          description: 新 Canvas 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Canvas'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
   /api/v1/canvases/{canvas_id}:
     parameters:
-      - $ref: '#/components/parameters/CanvasId'
+      - {$ref: '#/components/parameters/canvas_id'}
     get:
+      tags: [canvases]
       operationId: get_canvas
       summary: 查询 Canvas 与当前草稿
+      x-permission: workflow.canvas.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-029, BR-WORKFLOW-031]
       responses:
         '200':
-          description: Canvas 详情
+          description: Canvas 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Canvas'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
     patch:
+      tags: [canvases]
       operationId: update_canvas_draft
-      summary: 更新 Canvas 信息和草稿图
+      summary: 按期望 revision 更新 Canvas 元数据和草稿图
+      x-permission: workflow.canvas.edit
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-012, BR-WORKFLOW-029, BR-WORKFLOW-031]
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/UpdateCanvasRequest'}
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateCanvasDraftRequest'}}}
       responses:
         '200':
-          description: 更新结果
+          description: 更新后的 Canvas 或业务错误；revision 冲突时 ErrorResponse.data 返回 current_revision。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Canvas'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
     delete:
+      tags: [canvases]
       operationId: delete_canvas
       summary: 软删除 Canvas
+      x-permission: workflow.canvas.delete
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-004]
+        business_rules: [BR-WORKFLOW-012, BR-WORKFLOW-034]
       responses:
-        '200': {$ref: '#/components/responses/EmptySuccess'}
-  /api/v1/canvases/{canvas_id}/publish:
-    parameters:
-      - $ref: '#/components/parameters/CanvasId'
+        '200':
+          description: 删除结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/ActionResult'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/canvases/{canvas_id}/validate:
     post:
-      operationId: publish_canvas
-      summary: 校验并发布不可变 CanvasVersion
+      tags: [canvases]
+      operationId: validate_canvas_draft
+      summary: 校验当前 Canvas 草稿并一次返回全部可定位问题
+      x-permission: workflow.canvas.edit
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-005, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-029, BR-WORKFLOW-031]
+      parameters:
+        - {$ref: '#/components/parameters/canvas_id'}
       requestBody:
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [draft_revision]
-              properties:
-                draft_revision: {type: integer, format: int64, minimum: 1}
+        content: {application/json: {schema: {$ref: '#/components/schemas/ValidateDraftRequest'}}}
       responses:
         '200':
-          description: 发布结果
+          description: 校验结果或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasVersionResponse'}
-  /api/v1/canvases/{canvas_id}/versions:
-    parameters:
-      - $ref: '#/components/parameters/CanvasId'
-    get:
-      operationId: list_canvas_versions
-      summary: 查询 CanvasVersion
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/ValidationResult'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/canvases/{canvas_id}/publish:
+    post:
+      tags: [canvases]
+      operationId: publish_canvas
+      summary: 原子校验并发布不可变 CanvasVersion
+      x-permission: workflow.canvas.publish
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-005, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-018, BR-WORKFLOW-031]
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - {$ref: '#/components/parameters/canvas_id'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PublishCanvasRequest'}}}
       responses:
         '200':
-          description: 版本列表
+          description: 不可变版本或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasVersionListResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasVersion'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/canvases/{canvas_id}/versions:
+    get:
+      tags: [canvas-versions]
+      operationId: list_canvas_versions
+      summary: 查询 Canvas 的不可变版本
+      x-permission: workflow.canvas.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-004]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-012, BR-WORKFLOW-034]
+      parameters:
+        - {$ref: '#/components/parameters/canvas_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200':
+          description: CanvasVersion 列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasVersionList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
   /api/v1/canvas-versions/{canvas_version_id}:
     get:
-      operationId: get_canvasVersion
+      tags: [canvas-versions]
+      operationId: get_canvas_version
       summary: 查询不可变 CanvasVersion
+      x-permission: workflow.canvas.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-002, US-WORKFLOW-004]
+        business_rules: [BR-WORKFLOW-001, BR-WORKFLOW-006, BR-WORKFLOW-012, BR-WORKFLOW-016, BR-WORKFLOW-034]
       parameters:
-        - $ref: '#/components/parameters/CanvasVersionId'
+        - {$ref: '#/components/parameters/canvas_version_id'}
       responses:
         '200':
-          description: 版本详情
+          description: CanvasVersion 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasVersionResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasVersion'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/canvas-versions/{canvas_version_id}/validate-run:
+    post:
+      tags: [canvas-versions]
+      operationId: validate_canvas_run
+      summary: 在创建任务前预检固定版本、scope、输入和复用策略
+      x-permission: workflow.run.create
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-005, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-010, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-033]
+      parameters:
+        - {$ref: '#/components/parameters/canvas_version_id'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ValidateRunRequest'}}}
+      responses:
+        '200':
+          description: 运行预检结果或业务错误；不会创建 CanvasRun 或 Task Center 资源。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/RunValidationResult'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
   /api/v1/canvas-runs:
     get:
+      tags: [canvas-runs]
       operationId: list_canvas_runs
       summary: 查询 CanvasRun
+      x-permission: workflow.run.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-008, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-012, BR-WORKFLOW-016, BR-WORKFLOW-031, BR-WORKFLOW-034]
       parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
         - {name: canvas_id, in: query, schema: {type: string}}
         - {name: canvas_version_id, in: query, schema: {type: string}}
         - {name: status, in: query, schema: {$ref: '#/components/schemas/CanvasRunStatus'}}
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - {name: retry_of_canvas_run_id, in: query, schema: {type: string}}
+        - {name: project_id, in: query, schema: {type: string}}
+        - {name: namespace, in: query, schema: {type: string}}
       responses:
         '200':
-          description: 运行列表
+          description: CanvasRun 列表或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasRunListResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasRunList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
     post:
-      operationId: create_canvasRun
-      summary: 运行已发布 CanvasVersion
+      tags: [canvas-runs]
+      operationId: create_canvas_run
+      summary: 幂等创建并启动固定版本 CanvasRun
+      x-permission: workflow.run.create
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-010, BR-WORKFLOW-018, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-032, BR-WORKFLOW-033]
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/CreateCanvasRunRequest'}
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateCanvasRunRequest'}}}
       responses:
         '200':
-          description: 创建或幂等命中的运行
+          description: 新建或幂等命中的 CanvasRun 初始快照，或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasRun'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
   /api/v1/canvas-runs/{canvas_run_id}:
     get:
-      operationId: get_canvasRun
-      summary: 查询 CanvasRun 详情和汇总
+      tags: [canvas-runs]
+      operationId: get_canvas_run
+      summary: 查询 CanvasRun 事实快照与聚合摘要
+      x-permission: workflow.run.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-006, US-WORKFLOW-008, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-014, BR-WORKFLOW-016, BR-WORKFLOW-021, BR-WORKFLOW-023, BR-WORKFLOW-031, BR-WORKFLOW-034]
       parameters:
-        - $ref: '#/components/parameters/CanvasRunId'
+        - {$ref: '#/components/parameters/canvas_run_id'}
       responses:
         '200':
-          description: 运行详情
+          description: CanvasRun 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasRun'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+  /api/v1/canvas-runs/{canvas_run_id}/flows:
+    get:
+      tags: [canvas-runs]
+      operationId: list_canvas_flow_runs
+      summary: 查询 CanvasFlowRun 投影
+      x-permission: workflow.run.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-008]
+        business_rules: [BR-WORKFLOW-007, BR-WORKFLOW-014, BR-WORKFLOW-020, BR-WORKFLOW-026, BR-WORKFLOW-034]
+      parameters:
+        - {$ref: '#/components/parameters/canvas_run_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/CanvasRunStatus'}}
+      responses:
+        '200':
+          description: FlowRun 列表或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasFlowRunList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
   /api/v1/canvas-runs/{canvas_run_id}/nodes:
     get:
+      tags: [canvas-runs]
       operationId: list_canvas_node_runs
-      summary: 查询 CanvasNodeRun
+      summary: 查询 CanvasNodeRun 执行实例投影
+      x-permission: workflow.run.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-006, US-WORKFLOW-008]
+        business_rules: [BR-WORKFLOW-008, BR-WORKFLOW-014, BR-WORKFLOW-016, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-023, BR-WORKFLOW-027]
       parameters:
-        - $ref: '#/components/parameters/CanvasRunId'
+        - {$ref: '#/components/parameters/canvas_run_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
         - {name: status, in: query, schema: {$ref: '#/components/schemas/NodeRunStatus'}}
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - {name: flow_id, in: query, schema: {type: string}}
+        - {name: node_id, in: query, schema: {type: string}}
       responses:
         '200':
-          description: 节点运行列表
+          description: NodeRun 列表或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasNodeRunListResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasNodeRunList'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
   /api/v1/canvas-runs/{canvas_run_id}/cancel:
     post:
+      tags: [canvas-runs]
       operationId: cancel_canvas_run
-      summary: 通过 Task Center 取消运行
+      summary: 幂等取消整个 CanvasRun
+      x-permission: workflow.run.cancel
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-008, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-013, BR-WORKFLOW-027, BR-WORKFLOW-031]
+      description: 首期只支持整次 CanvasRun 取消；流级和分片级取消未在本版本开放。
       parameters:
-        - $ref: '#/components/parameters/CanvasRunId'
+        - {$ref: '#/components/parameters/canvas_run_id'}
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/CancelCanvasRunRequest'}}}
       responses:
         '200':
-          description: 取消后的运行
+          description: 取消请求后的 CanvasRun 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasRun'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
   /api/v1/canvas-runs/{canvas_run_id}/retry:
     post:
+      tags: [canvas-runs]
       operationId: retry_canvas_run
-      summary: 创建新的 CanvasRun 重跑
+      summary: 按明确意图创建新的 CanvasRun
+      x-permission: workflow.run.retry
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-005, US-WORKFLOW-008, US-WORKFLOW-009]
+        business_rules: [BR-WORKFLOW-013, BR-WORKFLOW-021, BR-WORKFLOW-027, BR-WORKFLOW-031, BR-WORKFLOW-034]
+      description: |
+        retry_failed、retry_node、retry_from_node、retry_flow 和 rerun_all 均创建新 CanvasRun、
+        DAGTaskGroup 与需要执行的 AtomicTask；原运行和自动 TaskAttempt 历史保持不变。
       parameters:
-        - $ref: '#/components/parameters/CanvasRunId'
+        - {$ref: '#/components/parameters/canvas_run_id'}
       requestBody:
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [idempotency_key]
-              properties:
-                idempotency_key: {type: string, minLength: 1, maxLength: 200}
+        content: {application/json: {schema: {$ref: '#/components/schemas/RetryCanvasRunRequest'}}}
       responses:
         '200':
-          description: 新运行
+          description: 新 CanvasRun 或业务错误。
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/CanvasRunResponse'}
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasRun'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/canvas-node-runs/{canvas_node_run_id}:
+    get:
+      tags: [canvas-runs]
+      operationId: get_canvas_node_run
+      summary: 查询单个 CanvasNodeRun、任务绑定和输出绑定
+      x-permission: workflow.run.read
+      x-s1-refs:
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-006]
+        business_rules: [BR-WORKFLOW-008, BR-WORKFLOW-014, BR-WORKFLOW-016, BR-WORKFLOW-021, BR-WORKFLOW-022, BR-WORKFLOW-023]
+      parameters:
+        - {$ref: '#/components/parameters/canvas_node_run_id'}
+      responses:
+        '200':
+          description: NodeRun 详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/CanvasNodeRunDetail'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
 components:
   securitySchemes:
-    bearerAuth:
+    bearer_auth:
       type: http
       scheme: bearer
       bearerFormat: JWT
   parameters:
-    CanvasId: {name: canvas_id, in: path, required: true, schema: {type: string}}
-    CanvasVersionId: {name: canvas_version_id, in: path, required: true, schema: {type: string}}
-    CanvasRunId: {name: canvas_run_id, in: path, required: true, schema: {type: string}}
-    Page: {name: page_num, in: query, schema: {type: integer, minimum: 1, default: 1}}
-    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
-  responses:
-    EmptySuccess:
-      description: 操作成功
-      content:
-        application/json:
-          schema: {$ref: '#/components/schemas/EmptyResponse'}
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, default: ''}}
+    search_fields: {name: search_fields, in: query, schema: {type: string, default: 'name,description'}, description: 逗号分隔的允许搜索字段。}
+    sort_field: {name: sort_field, in: query, schema: {type: string, default: ''}, description: 允许的排序字段；支持逗号分隔的稳定多字段排序。}
+    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
+    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
+    canvas_id: {name: canvas_id, in: path, required: true, schema: {type: string}}
+    canvas_version_id: {name: canvas_version_id, in: path, required: true, schema: {type: string}}
+    canvas_run_id: {name: canvas_run_id, in: path, required: true, schema: {type: string}}
+    canvas_node_run_id: {name: canvas_node_run_id, in: path, required: true, schema: {type: string}}
+    node_type: {name: node_type, in: path, required: true, schema: {type: string}}
+    definition_version: {name: definition_version, in: path, required: true, schema: {type: string}}
+
   schemas:
-    ResponseMeta:
+    ErrorResponse:
       type: object
-      required: [request_id]
+      required: [code, value, message, messages, retryable]
       properties:
-        request_id: {type: string}
-    EmptyResponse:
+        code: {type: string, example: ERR_CANVAS_GRAPH_INVALID}
+        value: {type: integer, example: 160202}
+        message: {type: string}
+        messages:
+          type: object
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: {type: string}
+            en-US: {type: string}
+        detail: {type: string, nullable: true}
+        retryable: {type: boolean}
+        causes: {type: array, items: {$ref: '#/components/schemas/ValidationIssue'}}
+        data:
+          type: object
+          additionalProperties: true
+          nullable: true
+    ActionResult:
       type: object
-      required: [code, message, data, meta]
+      required: [success]
       properties:
-        code: {type: integer, example: 0}
-        message: {type: string, example: success}
-        data: {type: object, nullable: true}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    Graph:
+        success: {type: boolean}
+
+    Visibility:
+      type: string
+      enum: [PRIVATE, PROJECT]
+    NodeKind:
+      type: string
+      enum: [data, processor, generator, controller, orchestrator, viewer]
+    ExecutionMode:
+      type: string
+      enum: [passive, atomic, expanded]
+    PortDirection:
+      type: string
+      enum: [input, output]
+    PortCardinality:
+      type: string
+      enum: [single, multiple]
+    ConnectionType:
+      type: string
+      enum: [data, control]
+    CanvasRunStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCESS, PARTIAL_SUCCESS, FAILED, CANCELED, TIMEOUT]
+    NodeRunStatus:
+      type: string
+      enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, SUCCESS, PARTIAL_SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED, REUSED]
+    TaskCreationStatus:
+      type: string
+      enum: [PENDING, CREATED, RETRYABLE_FAILED]
+    ReusePolicy:
+      type: string
+      enum: [rerun_all, reuse_valid_outputs, reuse_required]
+    RunFailurePolicy:
+      type: string
+      enum: [continue_independent_flows, fail_fast]
+      description: 节点 fan-out 首期仍仅支持 all_success；本字段只控制独立流聚合。
+    RunScopeMode:
+      type: string
+      enum: [all, flows, only_nodes, until_nodes, from_nodes]
+      description: selected_subgraph 属于第二阶段，当前契约不接受该值。
+    ResultMode:
+      type: string
+      enum: [executed, reused, passive, client_generated]
+    JsonValue:
+      nullable: true
+      anyOf:
+        - {type: object, additionalProperties: true}
+        - {type: array, items: {}}
+        - {type: string}
+        - {type: number}
+        - {type: boolean}
+
+    PortDefinition:
       type: object
-      required: [nodes, edges]
+      required: [key, label, direction, data_type, required, cardinality, connection_type]
       properties:
-        nodes:
-          type: array
-          maxItems: 1000
-          items: {$ref: '#/components/schemas/CanvasNode'}
-        edges:
-          type: array
-          maxItems: 5000
-          items: {$ref: '#/components/schemas/CanvasEdge'}
-    CanvasNode:
+        key: {type: string, pattern: '^[a-z][a-z0-9_]{0,99}$'}
+        label: {type: string}
+        direction: {$ref: '#/components/schemas/PortDirection'}
+        data_type: {type: string}
+        required: {type: boolean}
+        cardinality: {$ref: '#/components/schemas/PortCardinality'}
+        connection_type: {$ref: '#/components/schemas/ConnectionType'}
+        allows_literal: {type: boolean, default: false}
+        default_value: {$ref: '#/components/schemas/JsonValue'}
+        required_for_completion: {type: boolean, default: false}
+        artifact_ready_timeout_seconds: {type: integer, minimum: 1, nullable: true}
+    ExecutionBinding:
       type: object
-      required: [node_key, node_type, config, input_bindings]
+      required: [mode, binding_version]
       properties:
-        node_key: {type: string, pattern: '^[a-z][a-z0-9_]{0,99}$'}
-        node_type: {type: string, enum: [APPLICATION, FUNCTION, DYNAMIC_FORK]}
-        config: {type: object, additionalProperties: true}
-        input_bindings: {type: object, additionalProperties: true}
-        position: {type: object, additionalProperties: true}
+        mode: {$ref: '#/components/schemas/ExecutionMode'}
+        binding_version: {type: string}
+        function_ref: {type: string, nullable: true}
+        application_version_id: {type: string, nullable: true}
         max_dynamic_tasks: {type: integer, minimum: 1, maximum: 1000, nullable: true}
+      description: passive 不携带执行引用；atomic/expanded 只能携带受控 function_ref 或已发布 application_version_id。
+    RendererCapability:
+      type: object
+      required: [renderer_key, renderer_version]
+      properties:
+        renderer_key: {type: string}
+        renderer_version: {type: string}
+        supports_client_generated_output: {type: boolean, default: false}
+    NodeDefinition:
+      type: object
+      required: [node_type, definition_version, title, category, node_kind, ports, config_schema, execution_binding, availability_scope, deprecated, created_at]
+      properties:
+        node_type: {type: string}
+        definition_version: {type: string}
+        title: {type: string}
+        description: {type: string}
+        category: {type: string}
+        node_kind: {$ref: '#/components/schemas/NodeKind'}
+        ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
+        config_schema:
+          type: object
+          additionalProperties: true
+          x-naming-exception: JSON Schema 原始关键字与节点定义属性名由注册能力拥有，不强制 lower_snake_case。
+        controller_state_schema:
+          type: object
+          additionalProperties: true
+          nullable: true
+          x-naming-exception: ControllerState 由固定 NodeDefinition schema 约束，历史节点可能保留注册时字段名。
+        controller_schema_version: {type: string, nullable: true}
+        execution_binding: {$ref: '#/components/schemas/ExecutionBinding'}
+        renderer: {$ref: '#/components/schemas/RendererCapability'}
+        cache_allowed: {type: boolean, default: false}
+        reuse_ttl_seconds: {type: integer, minimum: 1, nullable: true}
+        availability_scope: {type: string, enum: [SYSTEM, PROJECT]}
+        project_id: {type: string, nullable: true}
+        namespace: {type: string, nullable: true}
+        deprecated: {type: boolean}
+        created_at: {type: string, format: date-time}
+    NodeDefinitionListItem:
+      type: object
+      required: [node_type, definition_version, title, category, node_kind, execution_mode, availability_scope, deprecated, created_at]
+      properties:
+        node_type: {type: string}
+        definition_version: {type: string}
+        title: {type: string}
+        description: {type: string}
+        category: {type: string}
+        node_kind: {$ref: '#/components/schemas/NodeKind'}
+        execution_mode: {$ref: '#/components/schemas/ExecutionMode'}
+        renderer_key: {type: string, nullable: true}
+        availability_scope: {type: string, enum: [SYSTEM, PROJECT]}
+        deprecated: {type: boolean}
+        created_at: {type: string, format: date-time}
+    NodeDefinitionList:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/NodeDefinitionListItem'}}
+    RegisterNodeDefinitionRequest:
+      type: object
+      required: [node_type, definition_version, title, category, node_kind, ports, config_schema, execution_binding, availability_scope]
+      properties:
+        node_type: {type: string}
+        definition_version: {type: string}
+        title: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000, default: ''}
+        category: {type: string}
+        node_kind: {$ref: '#/components/schemas/NodeKind'}
+        ports: {type: array, items: {$ref: '#/components/schemas/PortDefinition'}}
+        config_schema:
+          type: object
+          additionalProperties: true
+          x-naming-exception: 注册的 JSON Schema 原始关键字和业务属性名不强制 lower_snake_case。
+        controller_state_schema:
+          type: object
+          additionalProperties: true
+          nullable: true
+        controller_schema_version: {type: string, nullable: true}
+        execution_binding: {$ref: '#/components/schemas/ExecutionBinding'}
+        renderer: {$ref: '#/components/schemas/RendererCapability'}
+        cache_allowed: {type: boolean, default: false}
+        reuse_ttl_seconds: {type: integer, minimum: 1, nullable: true}
+        availability_scope: {type: string, enum: [SYSTEM, PROJECT]}
+        project_id: {type: string, nullable: true}
+        namespace: {type: string, nullable: true}
+    DeprecateNodeDefinitionRequest:
+      type: object
+      properties:
+        reason: {type: string, maxLength: 1000}
+
+    CanvasNodeInstance:
+      type: object
+      required: [node_id, node_type, definition_version, position, config]
+      properties:
+        node_id: {type: string}
+        node_type: {type: string}
+        definition_version: {type: string}
+        position: {$ref: '#/components/schemas/CanvasPosition'}
+        size: {$ref: '#/components/schemas/CanvasSize'}
+        config: {type: object, additionalProperties: true}
+        controller_state:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: 必须包含匹配节点定义的 schema_version 和坐标系；不得含任意 URL、凭证或大型二进制。
+        literal_inputs: {type: object, additionalProperties: true}
+        ui_state: {type: object, additionalProperties: true, description: 仅编辑态使用，不参与执行指纹。}
+    CanvasPosition:
+      type: object
+      required: [x, y]
+      properties:
+        x: {type: number}
+        y: {type: number}
+    CanvasSize:
+      type: object
+      required: [width, height]
+      properties:
+        width: {type: number, exclusiveMinimum: true, minimum: 0}
+        height: {type: number, exclusiveMinimum: true, minimum: 0}
     CanvasEdge:
       type: object
-      required: [from_node_key, from_output, to_node_key, to_input]
+      required: [edge_id, source_node_id, source_port_key, target_node_id, target_port_key, connection_type, enabled]
       properties:
-        from_node_key: {type: string}
-        from_output: {type: string}
-        to_node_key: {type: string}
-        to_input: {type: string}
+        edge_id: {type: string}
+        source_node_id: {type: string}
+        source_port_key: {type: string}
+        target_node_id: {type: string}
+        target_port_key: {type: string}
+        connection_type: {$ref: '#/components/schemas/ConnectionType'}
+        order: {type: integer, minimum: 0, nullable: true}
+        enabled: {type: boolean}
+        display: {type: object, additionalProperties: true}
+    CanvasFlowDefinition:
+      type: object
+      required: [flow_id, name, entry_node_ids, output_node_ids]
+      properties:
+        flow_id: {type: string}
+        name: {type: string}
+        entry_node_ids: {type: array, items: {type: string}}
+        output_node_ids: {type: array, minItems: 1, items: {type: string}}
+        run_policy: {type: object, additionalProperties: true}
+    CanvasGraph:
+      type: object
+      required: [nodes, edges, flows]
+      properties:
+        nodes: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/CanvasNodeInstance'}}
+        edges: {type: array, maxItems: 5000, items: {$ref: '#/components/schemas/CanvasEdge'}}
+        flows: {type: array, items: {$ref: '#/components/schemas/CanvasFlowDefinition'}}
+        groups: {type: array, items: {type: object, additionalProperties: true}}
+        viewport: {type: object, additionalProperties: true}
+    CanvasSummary:
+      type: object
+      description: 权限裁剪的一跳 Canvas 摘要；不展开草稿图。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-WORKFLOW-016]}
+      required: [canvas_id, name, visibility]
+      properties:
+        canvas_id: {type: string}
+        name: {type: string}
+        visibility: {$ref: '#/components/schemas/Visibility'}
     Canvas:
       type: object
-      required: [canvas_id, name, visibility, draft_graph, draft_revision, latest_version, project_id, namespace, created_by, created_at, updated_at]
+      required: [canvas_id, name, description, visibility, draft_graph, draft_revision, latest_version, project_id, namespace, created_by, resource_version, created_at, updated_at]
       properties:
         canvas_id: {type: string}
         name: {type: string}
         description: {type: string}
-        visibility: {type: string, enum: [PRIVATE, PROJECT]}
-        draft_graph: {$ref: '#/components/schemas/Graph'}
-        draft_revision: {type: integer, format: int64}
-        latest_version: {type: integer}
+        visibility: {$ref: '#/components/schemas/Visibility'}
+        draft_graph: {$ref: '#/components/schemas/CanvasGraph'}
+        draft_revision: {type: integer, format: int64, minimum: 1}
+        latest_version: {type: integer, minimum: 0}
+        latest_published_version_id: {type: string, nullable: true}
+        project_id: {type: string}
+        namespace: {type: string}
+        created_by: {type: string}
+        resource_version: {type: integer, format: int64, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CanvasListItem:
+      type: object
+      required: [canvas_id, name, description, visibility, draft_revision, latest_version, project_id, namespace, created_by, created_at, updated_at]
+      properties:
+        canvas_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        visibility: {$ref: '#/components/schemas/Visibility'}
+        draft_revision: {type: integer, format: int64, minimum: 1}
+        latest_version: {type: integer, minimum: 0}
+        latest_published_version_id: {type: string, nullable: true}
         project_id: {type: string}
         namespace: {type: string}
         created_by: {type: string}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+    CanvasList:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CanvasListItem'}}
     CreateCanvasRequest:
       type: object
       required: [name, visibility]
       properties:
         name: {type: string, minLength: 1, maxLength: 200}
-        description: {type: string, maxLength: 2000}
-        visibility: {type: string, enum: [PRIVATE, PROJECT]}
-        draft_graph: {$ref: '#/components/schemas/Graph'}
-    UpdateCanvasRequest:
+        description: {type: string, maxLength: 2000, default: ''}
+        visibility: {$ref: '#/components/schemas/Visibility'}
+        draft_graph: {$ref: '#/components/schemas/CanvasGraph'}
+    UpdateCanvasDraftRequest:
       type: object
       required: [expected_draft_revision]
       properties:
         expected_draft_revision: {type: integer, format: int64, minimum: 1}
         name: {type: string, minLength: 1, maxLength: 200}
         description: {type: string, maxLength: 2000}
-        visibility: {type: string, enum: [PRIVATE, PROJECT]}
-        draft_graph: {$ref: '#/components/schemas/Graph'}
+        visibility: {$ref: '#/components/schemas/Visibility'}
+        draft_graph: {$ref: '#/components/schemas/CanvasGraph'}
+    ValidateDraftRequest:
+      type: object
+      required: [expected_draft_revision]
+      properties:
+        expected_draft_revision: {type: integer, format: int64, minimum: 1}
+    PublishCanvasRequest:
+      type: object
+      required: [expected_draft_revision]
+      properties:
+        expected_draft_revision: {type: integer, format: int64, minimum: 1}
+
+    ValidationIssue:
+      type: object
+      required: [code, severity, message]
+      properties:
+        code: {type: string}
+        severity: {type: string, enum: [error, warning]}
+        message: {type: string}
+        node_id: {type: string, nullable: true}
+        edge_id: {type: string, nullable: true}
+        port_key: {type: string, nullable: true}
+        flow_id: {type: string, nullable: true}
+        data: {type: object, additionalProperties: true}
+    ValidationResult:
+      type: object
+      required: [valid, issues, node_count, edge_count]
+      properties:
+        valid: {type: boolean}
+        issues: {type: array, items: {$ref: '#/components/schemas/ValidationIssue'}}
+        node_count: {type: integer, minimum: 0}
+        edge_count: {type: integer, minimum: 0}
+        content_digest: {type: string, nullable: true}
+
+    CanvasVersionSummary:
+      type: object
+      description: CanvasRun 创建时保存的不可变版本非敏感快照。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-WORKFLOW-016]}
+      required: [canvas_version_id, canvas_id, version, content_digest, published_at]
+      properties:
+        canvas_version_id: {type: string}
+        canvas_id: {type: string}
+        version: {type: integer}
+        content_digest: {type: string}
+        published_at: {type: string, format: date-time}
     CanvasVersion:
       type: object
-      required: [canvas_version_id, canvas_id, version, graph_snapshot, content_digest, compiled_definition_name, compiled_definition_version, published_by, published_at]
+      required: [canvas_version_id, canvas_id, version, graph_snapshot, definition_snapshots, input_schema, output_schema, content_digest, execution_template_digest, node_count, edge_count, published_by, published_at]
       properties:
         canvas_version_id: {type: string}
         canvas_id: {type: string}
         canvas: {$ref: '#/components/schemas/CanvasSummary', nullable: true, readOnly: true}
-        version: {type: integer}
-        graph_snapshot: {$ref: '#/components/schemas/Graph'}
+        version: {type: integer, minimum: 1}
+        graph_snapshot: {$ref: '#/components/schemas/CanvasGraph'}
+        definition_snapshots: {type: array, items: {$ref: '#/components/schemas/NodeDefinition'}}
         input_schema: {type: object, additionalProperties: true}
         output_schema: {type: object, additionalProperties: true}
         content_digest: {type: string}
-        compiled_definition_name: {type: string}
-        compiled_definition_version: {type: integer}
+        execution_template_digest: {type: string}
+        workflow_definition_name: {type: string}
+        workflow_definition_version: {type: string}
+        node_count: {type: integer, minimum: 0, maximum: 1000}
+        edge_count: {type: integer, minimum: 0, maximum: 5000}
         published_by: {type: string}
         published_at: {type: string, format: date-time}
-    CanvasRunStatus:
-      type: string
-      enum: [PENDING, RUNNING, SUCCESS, FAILED, CANCELED, TIMEOUT]
-    CanvasSummary:
+    CanvasVersionListItem:
       type: object
-      description: Canvas 的一跳可读摘要，不展开草稿图或版本列表。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-WORKFLOW-016]}
-      required: [canvas_id, name, visibility]
-      properties:
-        canvas_id: {type: string}
-        name: {type: string}
-        visibility: {type: string, enum: [PRIVATE, PROJECT]}
-    CanvasVersionSummary:
-      type: object
-      description: CanvasRun 固定的不可变 CanvasVersion 摘要。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-WORKFLOW-016]}
-      required: [canvas_version_id, version, content_digest, published_at]
+      required: [canvas_version_id, canvas_id, version, content_digest, execution_template_digest, node_count, edge_count, published_by, published_at]
       properties:
         canvas_version_id: {type: string}
-        version: {type: integer}
+        canvas_id: {type: string}
+        canvas: {$ref: '#/components/schemas/CanvasSummary', nullable: true, readOnly: true}
+        version: {type: integer, minimum: 1}
         content_digest: {type: string}
+        execution_template_digest: {type: string}
+        node_count: {type: integer, minimum: 0, maximum: 1000}
+        edge_count: {type: integer, minimum: 0, maximum: 5000}
+        published_by: {type: string}
         published_at: {type: string, format: date-time}
+    CanvasVersionList:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CanvasVersionListItem'}}
+
+    RunScope:
+      type: object
+      required: [mode]
+      properties:
+        mode: {$ref: '#/components/schemas/RunScopeMode'}
+        flow_ids:
+          type: array
+          uniqueItems: true
+          items: {type: string}
+          description: mode=flows 时必填，其他模式不得提交。
+        node_ids:
+          type: array
+          uniqueItems: true
+          items: {type: string}
+          description: mode=only_nodes、until_nodes 或 from_nodes 时必填。
+    RunPolicy:
+      type: object
+      required: [reuse_policy, failure_policy]
+      properties:
+        reuse_policy: {$ref: '#/components/schemas/ReusePolicy'}
+        failure_policy: {$ref: '#/components/schemas/RunFailurePolicy'}
+    ValidateRunRequest:
+      type: object
+      required: [scope, run_policy, runtime_inputs]
+      properties:
+        scope: {$ref: '#/components/schemas/RunScope'}
+        run_policy: {$ref: '#/components/schemas/RunPolicy'}
+        runtime_inputs: {type: object, additionalProperties: true}
+    CreateCanvasRunRequest:
+      allOf:
+        - {$ref: '#/components/schemas/ValidateRunRequest'}
+        - type: object
+          required: [canvas_version_id, idempotency_key]
+          properties:
+            canvas_version_id: {type: string}
+            idempotency_key: {type: string, minLength: 1, maxLength: 200}
+    RunValidationResult:
+      allOf:
+        - {$ref: '#/components/schemas/ValidationResult'}
+        - type: object
+          required: [selected_node_count, executable_task_count, reused_node_count, flow_count]
+          properties:
+            selected_node_count: {type: integer, minimum: 0}
+            executable_task_count: {type: integer, minimum: 0}
+            reused_node_count: {type: integer, minimum: 0}
+            flow_count: {type: integer, minimum: 0}
+            execution_plan_digest: {type: string, nullable: true}
+    CancelCanvasRunRequest:
+      type: object
+      properties:
+        reason: {type: string, maxLength: 1000}
+    RetryIntent:
+      type: string
+      enum: [retry_failed, retry_node, retry_from_node, retry_flow, rerun_all]
+    RetryCanvasRunRequest:
+      type: object
+      required: [idempotency_key, intent]
+      properties:
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+        intent: {$ref: '#/components/schemas/RetryIntent'}
+        node_ids:
+          type: array
+          uniqueItems: true
+          items: {type: string}
+          description: retry_node 或 retry_from_node 时必填。
+        flow_ids:
+          type: array
+          uniqueItems: true
+          items: {type: string}
+          description: retry_flow 时必填。
+        reuse_policy: {$ref: '#/components/schemas/ReusePolicy'}
+
+    ProgressSummary:
+      type: object
+      required: [progress, total, completed, success, failed, canceled, skipped]
+      properties:
+        progress: {type: number, minimum: 0, maximum: 1}
+        total: {type: integer, minimum: 0}
+        completed: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        failed: {type: integer, minimum: 0}
+        canceled: {type: integer, minimum: 0}
+        skipped: {type: integer, minimum: 0}
+        running: {type: integer, minimum: 0}
+        warnings: {type: integer, minimum: 0}
+    DAGTaskGroupSummary:
+      type: object
+      description: Task Center 受控批量接口返回的一跳摘要；不得逐运行单独补查。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016]}
+      required: [dag_task_group_id, name, status, progress]
+      properties:
+        dag_task_group_id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+    AtomicTaskSummary:
+      type: object
+      description: Task Center 受控批量接口返回的一跳摘要；不展开 Attempt、输入或大型输出。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016]}
+      required: [atomic_task_id, name, status, progress, resource_version]
+      properties:
+        atomic_task_id: {type: string}
+        name: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        function_ref: {type: string, nullable: true}
+        resource_version: {type: integer, format: int64, minimum: 0}
     CanvasRunSummary:
       type: object
-      description: 手动重跑直接来源的一跳运行摘要。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-WORKFLOW-016]}
-      required: [canvas_run_id, status, progress, created_at]
+      description: 手动重跑来源在创建时保存的一跳不可变摘要。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-WORKFLOW-016]}
+      required: [canvas_run_id, status, created_at]
       properties:
         canvas_run_id: {type: string}
         status: {$ref: '#/components/schemas/CanvasRunStatus'}
-        progress: {type: number, minimum: 0, maximum: 1}
         created_at: {type: string, format: date-time}
-    DAGTaskGroupRefSummary:
+
+    CanvasFlowRun:
       type: object
-      description: Task Center 提供的 DAGTaskGroup 一跳只读投影。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016, BR-TASK-128]}
-      required: [id, name, status, progress]
+      required: [canvas_flow_run_id, canvas_run_id, flow_id, name, execution_keys, status, progress, summary, aggregate_version, created_at, updated_at]
       properties:
-        id: {type: string}
+        canvas_flow_run_id: {type: string}
+        canvas_run_id: {type: string, description: 当前响应已位于父运行上下文，客户端无需额外读取父运行。}
+        flow_id: {type: string}
         name: {type: string}
-        status: {type: string}
+        execution_keys: {type: array, items: {type: string}}
+        status: {$ref: '#/components/schemas/CanvasRunStatus'}
         progress: {type: number, minimum: 0, maximum: 1}
-    AtomicTaskRefSummary:
+        summary: {$ref: '#/components/schemas/ProgressSummary'}
+        result_summary: {type: object, additionalProperties: true}
+        warnings: {type: array, items: {$ref: '#/components/schemas/RunWarning'}}
+        aggregate_version: {type: integer, format: int64, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+    CanvasFlowRunList:
       type: object
-      description: Task Center 提供的 AtomicTask 一跳只读投影。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-016, BR-TASK-128]}
-      required: [id, name, status, progress]
+      required: [total, items]
       properties:
-        id: {type: string}
-        name: {type: string}
-        status: {type: string}
-        progress: {type: number, minimum: 0, maximum: 1}
-        function_ref: {type: string}
-    NodeRunStatus:
-      type: string
-      enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CanvasFlowRun'}}
+
+    RunWarning:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        node_id: {type: string, nullable: true}
+        port_key: {type: string, nullable: true}
+        artifact_id: {type: string, nullable: true}
     CanvasRun:
       type: object
-      required: [canvas_run_id, canvas_id, canvas_version_id, idempotency_key, input_snapshot, task_creation_status, status, progress, summary, output, task_resource_version, project_id, namespace, created_by, created_at, updated_at]
+      required: [canvas_run_id, canvas_id, canvas_version_id, idempotency_key, request_digest, input_snapshot, scope, run_policy, execution_plan_digest, task_creation_status, status, progress, summary, flow_runs, aggregate_version, project_id, namespace, created_by, created_at, updated_at]
       properties:
         canvas_run_id: {type: string}
         canvas_id: {type: string}
@@ -380,125 +1129,171 @@ components:
         canvas_version_id: {type: string}
         canvas_version: {$ref: '#/components/schemas/CanvasVersionSummary', nullable: true, readOnly: true}
         idempotency_key: {type: string}
+        request_digest: {type: string}
         input_snapshot: {type: object, additionalProperties: true}
+        scope: {$ref: '#/components/schemas/RunScope'}
+        run_policy: {$ref: '#/components/schemas/RunPolicy'}
+        execution_plan_digest: {type: string}
         dag_task_group_id: {type: string, nullable: true}
-        dag_task_group: {$ref: '#/components/schemas/DAGTaskGroupRefSummary', nullable: true, readOnly: true}
-        task_creation_status: {type: string, enum: [PENDING, CREATED, FAILED]}
+        dag_task_group: {$ref: '#/components/schemas/DAGTaskGroupSummary', nullable: true, readOnly: true}
+        task_creation_status: {$ref: '#/components/schemas/TaskCreationStatus'}
+        task_creation_attempts: {type: integer, minimum: 0}
         status: {$ref: '#/components/schemas/CanvasRunStatus'}
         progress: {type: number, minimum: 0, maximum: 1}
-        summary: {type: object, additionalProperties: true}
-        output: {type: object, additionalProperties: true}
-        last_error: {type: object, additionalProperties: true}
-        task_resource_version: {type: integer, format: int64}
+        summary: {$ref: '#/components/schemas/ProgressSummary'}
+        result_summary: {type: object, additionalProperties: true}
+        warnings: {type: array, items: {$ref: '#/components/schemas/RunWarning'}}
+        last_error: {$ref: '#/components/schemas/ErrorSnapshot'}
+        flow_runs:
+          type: array
+          description: 创建响应与详情返回有界 FlowRun 摘要；完整分页使用 flows endpoint。
+          items: {$ref: '#/components/schemas/CanvasFlowRun'}
         retry_of_canvas_run_id: {type: string, nullable: true}
         retry_of_canvas_run: {$ref: '#/components/schemas/CanvasRunSummary', nullable: true, readOnly: true}
+        retry_intent: {$ref: '#/components/schemas/RetryIntent', nullable: true}
+        aggregate_version: {type: integer, format: int64, minimum: 0}
         project_id: {type: string}
         namespace: {type: string}
         created_by: {type: string}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time, nullable: true}
         finished_at: {type: string, format: date-time, nullable: true}
+    CanvasRunListItem:
+      type: object
+      required: [canvas_run_id, canvas_id, canvas_version_id, task_creation_status, status, progress, summary, aggregate_version, project_id, namespace, created_by, created_at]
+      properties:
+        canvas_run_id: {type: string}
+        canvas_id: {type: string}
+        canvas: {$ref: '#/components/schemas/CanvasSummary', nullable: true, readOnly: true}
+        canvas_version_id: {type: string}
+        canvas_version: {$ref: '#/components/schemas/CanvasVersionSummary', nullable: true, readOnly: true}
+        dag_task_group_id: {type: string, nullable: true}
+        dag_task_group: {$ref: '#/components/schemas/DAGTaskGroupSummary', nullable: true, readOnly: true}
+        task_creation_status: {$ref: '#/components/schemas/TaskCreationStatus'}
+        status: {$ref: '#/components/schemas/CanvasRunStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        summary: {$ref: '#/components/schemas/ProgressSummary'}
+        warnings: {type: array, items: {$ref: '#/components/schemas/RunWarning'}}
+        retry_of_canvas_run_id: {type: string, nullable: true}
+        retry_of_canvas_run: {$ref: '#/components/schemas/CanvasRunSummary', nullable: true, readOnly: true}
+        retry_intent: {$ref: '#/components/schemas/RetryIntent', nullable: true}
+        aggregate_version: {type: integer, format: int64, minimum: 0}
+        project_id: {type: string}
+        namespace: {type: string}
+        created_by: {type: string}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+    CanvasRunList:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CanvasRunListItem'}}
+
+    ErrorSnapshot:
+      type: object
+      nullable: true
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        detail: {type: string, nullable: true}
+    ReuseSourceSummary:
+      type: object
+      description: REUSED NodeRun 固定的来源摘要，不随来源资源后续变化改写。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-WORKFLOW-021]}
+      required: [source_canvas_run_id, source_canvas_node_run_id, execution_fingerprint]
+      properties:
+        source_canvas_run_id: {type: string}
+        source_canvas_node_run_id: {type: string}
+        execution_fingerprint: {type: string}
     CanvasNodeRun:
       type: object
-      required: [canvas_node_run_id, canvas_run_id, node_key, node_type, status, progress, output, task_resource_version, created_at, updated_at]
+      required: [canvas_node_run_id, canvas_run_id, node_id, execution_key, node_type, definition_version, flow_ids, execution_fingerprint, result_mode, status, progress, output_count, aggregate_version, created_at, updated_at]
       properties:
         canvas_node_run_id: {type: string}
-        canvas_run_id: {type: string, description: 当前列表 endpoint 已由父 CanvasRun 限定，客户端无需为该 ID 再读取父运行。}
-        node_key: {type: string}
-        node_type: {type: string, enum: [APPLICATION, FUNCTION, DYNAMIC_FORK]}
-        atomic_task_id: {type: string, nullable: true}
-        atomic_task: {$ref: '#/components/schemas/AtomicTaskRefSummary', nullable: true, readOnly: true}
+        canvas_run_id: {type: string, description: 父运行已由 endpoint 或页面上下文提供，无需额外读取。}
+        node_id: {type: string}
+        execution_key: {type: string}
+        node_type: {type: string}
+        definition_version: {type: string}
+        flow_ids: {type: array, items: {type: string}}
+        execution_fingerprint: {type: string}
+        result_mode: {$ref: '#/components/schemas/ResultMode'}
         status: {$ref: '#/components/schemas/NodeRunStatus'}
+        status_reason: {type: string, nullable: true}
         progress: {type: number, minimum: 0, maximum: 1}
-        output: {type: object, additionalProperties: true}
-        last_error: {type: object, additionalProperties: true}
-        task_resource_version: {type: integer, format: int64}
+        output_count: {type: integer, minimum: 0}
+        task_count: {type: integer, minimum: 0}
+        warnings: {type: array, items: {$ref: '#/components/schemas/RunWarning'}}
+        last_error: {$ref: '#/components/schemas/ErrorSnapshot'}
+        reuse_source: {$ref: '#/components/schemas/ReuseSourceSummary', nullable: true}
+        aggregate_version: {type: integer, format: int64, minimum: 0}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time, nullable: true}
         finished_at: {type: string, format: date-time, nullable: true}
-    CreateCanvasRunRequest:
+    CanvasNodeRunList:
       type: object
-      required: [canvas_version_id, idempotency_key, input]
+      required: [total, items]
       properties:
-        canvas_version_id: {type: string}
-        idempotency_key: {type: string, minLength: 1, maxLength: 200}
-        input: {type: object, additionalProperties: true}
-    CanvasResponse: {$ref: '#/components/schemas/CanvasEnvelope'}
-    CanvasVersionResponse: {$ref: '#/components/schemas/CanvasVersionEnvelope'}
-    CanvasRunResponse: {$ref: '#/components/schemas/CanvasRunEnvelope'}
-    CanvasEnvelope:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/CanvasNodeRun'}}
+    TaskBinding:
       type: object
-      required: [code, message, data, meta]
+      required: [binding_id, dag_task_group_id, atomic_task_id, task_child_key, binding_role, task_resource_version]
       properties:
-        code: {type: integer}
-        message: {type: string}
-        data: {$ref: '#/components/schemas/Canvas'}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasVersionEnvelope:
+        binding_id: {type: string}
+        dag_task_group_id: {type: string}
+        atomic_task_id: {type: string}
+        atomic_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
+        task_child_key: {type: string}
+        binding_role: {type: string, enum: [primary, worker, dependency, join]}
+        shard_key: {type: string, nullable: true}
+        shard_index: {type: integer, minimum: 0, nullable: true}
+        task_resource_version: {type: integer, format: int64, minimum: 0}
+    ArtifactSummary:
       type: object
-      required: [code, message, data, meta]
+      description: Asset Library 提供的权限裁剪一跳摘要；preview_ref 为受保护短期引用。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-WORKFLOW-022, BR-WORKFLOW-031]}
+      required: [artifact_id, artifact_type, processing_status, preview_available, resource_version]
       properties:
-        code: {type: integer}
-        message: {type: string}
-        data: {$ref: '#/components/schemas/CanvasVersion'}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasRunEnvelope:
+        artifact_id: {type: string}
+        name: {type: string, nullable: true}
+        artifact_type: {type: string}
+        media_type: {type: string, nullable: true}
+        processing_status: {type: string}
+        preview_available: {type: boolean}
+        preview_ref: {type: string, nullable: true}
+        resource_version: {type: integer, format: int64, minimum: 0}
+    OutputBinding:
       type: object
-      required: [code, message, data, meta]
+      required: [output_binding_id, port_key, required, producer_key, availability_status, aggregate_version, created_at, updated_at]
       properties:
-        code: {type: integer}
-        message: {type: string}
-        data: {$ref: '#/components/schemas/CanvasRun'}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasListResponse:
-      type: object
-      required: [code, message, data, meta]
-      properties:
-        code: {type: integer}
-        message: {type: string}
-        data:
-          type: object
-          required: [total, items]
+        output_binding_id: {type: string}
+        port_key: {type: string}
+        required: {type: boolean}
+        shard_key: {type: string, nullable: true}
+        shard_index: {type: integer, minimum: 0, nullable: true}
+        producer_key: {type: string}
+        atomic_task_id: {type: string, nullable: true, description: 可为空；client_generated、passive 或 reused 输出不一定有新任务。}
+        artifact_id: {type: string, nullable: true}
+        artifact: {$ref: '#/components/schemas/ArtifactSummary', nullable: true, readOnly: true}
+        structured_value:
+          allOf:
+            - {$ref: '#/components/schemas/JsonValue'}
+          description: 受端口 schema 约束的小型结构化输出；大型正文必须使用 artifact_id。
+        availability_status: {type: string, enum: [PENDING, READY, FAILED]}
+        warning: {$ref: '#/components/schemas/RunWarning', nullable: true}
+        aggregate_version: {type: integer, format: int64, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CanvasNodeRunDetail:
+      allOf:
+        - {$ref: '#/components/schemas/CanvasNodeRun'}
+        - type: object
+          required: [task_bindings, output_bindings]
           properties:
-            total: {type: integer}
-            items: {type: array, items: {$ref: '#/components/schemas/Canvas'}}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasVersionListResponse:
-      type: object
-      required: [code, message, data, meta]
-      properties:
-        code: {type: integer}
-        message: {type: string}
-        data:
-          type: object
-          required: [total, items]
-          properties:
-            total: {type: integer}
-            items: {type: array, items: {$ref: '#/components/schemas/CanvasVersion'}}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasRunListResponse:
-      type: object
-      required: [code, message, data, meta]
-      properties:
-        code: {type: integer}
-        message: {type: string}
-        data:
-          type: object
-          required: [total, items]
-          properties:
-            total: {type: integer}
-            items: {type: array, items: {$ref: '#/components/schemas/CanvasRun'}}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
-    CanvasNodeRunListResponse:
-      type: object
-      required: [code, message, data, meta]
-      properties:
-        code: {type: integer}
-        message: {type: string}
-        data:
-          type: object
-          required: [total, items]
-          properties:
-            total: {type: integer}
-            items: {type: array, items: {$ref: '#/components/schemas/CanvasNodeRun'}}
-        meta: {$ref: '#/components/schemas/ResponseMeta'}
+            task_bindings: {type: array, items: {$ref: '#/components/schemas/TaskBinding'}}
+            output_bindings: {type: array, items: {$ref: '#/components/schemas/OutputBinding'}}

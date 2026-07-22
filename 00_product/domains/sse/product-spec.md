@@ -10,12 +10,12 @@
 | 目标版本   | V1                              |
 | 通信方案   | HTTP REST + Server-Sent Events  |
 | 事件订阅范围 | 当前登录用户                          |
-| 第一阶段范围 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact 处理/登记与连接状态 |
-| 后续阶段范围 | Canvas 实时事件、Agent 实时事件、通知中心     |
+| 第一阶段范围 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact 处理/登记、CanvasRun/CanvasNodeRun 与连接状态 |
+| 后续阶段范围 | CanvasFlowRun/流和分片高级事件、Agent 实时事件、通知中心 |
 | 适用客户端  | OmniMAM Web 应用                  |
 | 不适用范围  | Worker 通信、服务间 RPC、多人协同编辑、高频双向控制 |
 
-本文档必须与 task-center、application-platform 和 asset-library S1/S2 保持一致。SSE 仅投影业务事实，不得恢复已废弃的 TaskRun 执行路径。Artifact、AssetVersion、Representation 和 Asset 登记事实归 asset-library，ApplicationPlatform 只维护 ApplicationRun 输出引用投影，SSE 统一对客户端的事件投影。
+本文档必须与 task-center、application-platform、asset-library 和 workflow-canvas S1/S2 保持一致。SSE 仅投影业务事实，不得恢复已废弃的 TaskRun 执行路径。Artifact、AssetVersion、Representation 和 Asset 登记事实归 asset-library，CanvasRun/CanvasFlowRun/CanvasNodeRun 事实归 workflow-canvas，ApplicationPlatform 只维护 ApplicationRun 输出引用投影，SSE 统一对客户端的事件投影。
 
 ---
 
@@ -2700,7 +2700,7 @@ artifact.registration_succeeded
 
 ## 34. 分阶段实施
 
-### 第一阶段：任务中心和制品实时化
+### 第一阶段：任务中心、制品和画布运行实时化
 
 实现：
 
@@ -2713,6 +2713,9 @@ artifact.registration_succeeded
 * 任务中心增量更新。
 * 任务详情增量更新。
 * 制品增量展示。
+* CanvasRun 状态、进度和变化流摘要。
+* CanvasNodeRun READY、排队、运行、进度、输出可用和终态事件。
+* Canvas 节点渐进制品展示。
 * Last-Event-ID。
 * 自动重连。
 * 事件去重。
@@ -2723,17 +2726,17 @@ artifact.registration_succeeded
 
 第一阶段不实现：
 
-* Canvas 事件。
-* NodeRun 事件。
+* CanvasFlowRun 独立事件；首期由 `canvas.run.progressed` 携带变化流摘要。
+* 流级取消、分片级取消和分片级手动重跑的专用事件。
 * Agent 事件。
 * 多人协同。
 * WebSocket。
 
 ---
 
-### 第二阶段：Canvas 实时事件
+### 第二阶段：Canvas 高级实时事件
 
-在画布运行功能稳定后增加：
+第一阶段已经提供以下 CanvasRun 与 CanvasNodeRun 事件：
 
 * `canvas.run.created`
 * `canvas.run.started`
@@ -2751,17 +2754,13 @@ artifact.registration_succeeded
 * `canvas.node.skipped`
 * `canvas.node.cancelled`
 
-第二阶段需要解决：
+第二阶段在对应 Canvas S1/S2 能力开放后再解决：
 
-* CanvasRun 与 TaskGroup 的关系。
-* NodeRun 与 AtomicTask 的关系。
-* 一个节点多次运行的识别。
-* 多节点并行状态展示。
-* DAG 依赖状态展示。
-* 节点产生多个制品的关联。
-* 只运行选中节点。
-* 从指定节点向下游运行。
-* 运行完整链路。
+* CanvasFlowRun 独立 event_type。
+* 流级取消的实时反馈和共享任务保护。
+* 分片级取消与手动重跑的实时反馈。
+* `best_effort`、`min_success` 和容错 Join 的增量状态。
+* 多人实时协作与高频双向控制；此类能力不强行复用 SSE。
 
 Canvas 事件仍然通过同一条用户级 SSE 连接发送，不为每个画布建立独立连接。
 

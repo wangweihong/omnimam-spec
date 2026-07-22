@@ -45,6 +45,7 @@ graph TD
   SSE --> Task
   SSE --> App
   SSE --> Asset
+  SSE --> Canvas
 
   Model --> Identity
   Chat --> Identity
@@ -60,9 +61,9 @@ graph TD
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
 - `application-platform` 定义只读 Runtime Registry、ProviderCapability、模板/应用版本、Engine 路由、ApplicationRun 投影和 Artifact 引用；EngineInstance 只表达运行实例配置和状态。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
-- `workflow-canvas` 发布不可变 CanvasVersion，并通过 task-center DAGTaskGroup 执行；节点运行映射到 AtomicTask。
+- `workflow-canvas` 发布不可变 CanvasVersion，并将多流、fan-out 和复合节点展平到唯一 task-center DAGTaskGroup；一个 CanvasNodeRun 可以映射零个、一个或多个 AtomicTask。
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
-- `sse` 只投影 task-center 任务事件、asset-library Artifact/AssetVersion 事件和 ApplicationRun 引用关联；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
+- `sse` 只投影 task-center 任务事件、asset-library Artifact/AssetVersion 事件、workflow-canvas 运行语义事件和 ApplicationRun 引用关联；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
 
 ## 4. 运行链路
 
@@ -124,4 +125,4 @@ sequenceDiagram
 
 - `identity` 只有 S1，尚缺 S2 契约，其他领域的权限集成只能按 S1 语义描述。
 - `asset-library` 的素材列表、批量打标、Artifact、AssetVersion 和 Representation 已有 S2；普通素材上传、下载、重命名、删除与完整分组 API 仍待补。
-- workflow-canvas V1 的拓扑分层编译优先保证任意 DAG 正确性，后续可在不改变依赖语义时优化节点最早释放。
+- workflow-canvas 首期编译保留直接 DAG 依赖并支持节点最早释放；多流、fan-out 和复合节点必须展平到唯一 DAGTaskGroup，不能使用 Group 嵌套或同层整体等待改变依赖语义。

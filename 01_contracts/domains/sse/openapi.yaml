@@ -215,6 +215,21 @@ components:
         - asset_version.ready
         - asset_version.ready_with_warnings
         - asset_version.processing_failed
+        - canvas.run.created
+        - canvas.run.started
+        - canvas.run.progressed
+        - canvas.run.succeeded
+        - canvas.run.failed
+        - canvas.run.cancelled
+        - canvas.node.ready
+        - canvas.node.queued
+        - canvas.node.started
+        - canvas.node.progressed
+        - canvas.node.output_available
+        - canvas.node.succeeded
+        - canvas.node.failed
+        - canvas.node.skipped
+        - canvas.node.cancelled
 
     UserEventEnvelope:
       type: object
@@ -238,6 +253,8 @@ components:
         artifact_id: {type: string, nullable: true}
         asset_id: {type: string, nullable: true}
         asset_version_id: {type: string, nullable: true}
+        canvas_run_id: {type: string, nullable: true}
+        canvas_node_run_id: {type: string, nullable: true}
         payload:
           oneOf:
             - $ref: '#/components/schemas/AtomicTaskEventPayload'
@@ -245,6 +262,8 @@ components:
             - $ref: '#/components/schemas/TaskGroupEventPayload'
             - $ref: '#/components/schemas/ArtifactEventPayload'
             - $ref: '#/components/schemas/AssetVersionEventPayload'
+            - $ref: '#/components/schemas/CanvasRunEventPayload'
+            - $ref: '#/components/schemas/CanvasNodeEventPayload'
 
     AtomicTaskEventPayload:
       type: object
@@ -324,6 +343,44 @@ components:
         failed_count: {type: integer, minimum: 0}
         task_group_id: {type: string, nullable: true}
         atomic_task_id: {type: string, nullable: true}
+        error_code: {type: string, nullable: true}
+
+    CanvasRunEventPayload:
+      type: object
+      required: [canvas_run_id, status, progress]
+      properties:
+        canvas_run_id: {type: string}
+        canvas_id: {type: string, nullable: true}
+        canvas_version_id: {type: string, nullable: true}
+        from_status: {type: string, nullable: true}
+        status: {type: string, enum: [PENDING, RUNNING, SUCCESS, PARTIAL_SUCCESS, FAILED, CANCELED, TIMEOUT]}
+        progress: {type: number, format: float, minimum: 0, maximum: 1}
+        task_creation_status: {type: string, enum: [PENDING, CREATED, RETRYABLE_FAILED], nullable: true}
+        summary: {type: object, additionalProperties: true}
+        changed_flow_summaries: {type: array, items: {type: object, additionalProperties: true}}
+        warnings: {type: array, items: {type: object, additionalProperties: true}}
+        error_code: {type: string, nullable: true}
+
+    CanvasNodeEventPayload:
+      type: object
+      required: [canvas_run_id, canvas_node_run_id, node_id, execution_key]
+      properties:
+        canvas_run_id: {type: string}
+        canvas_node_run_id: {type: string}
+        node_id: {type: string}
+        execution_key: {type: string}
+        from_status: {type: string, nullable: true}
+        status: {type: string, enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, SUCCESS, PARTIAL_SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED, REUSED], nullable: true}
+        status_reason: {type: string, nullable: true}
+        result_mode: {type: string, enum: [executed, reused, passive, client_generated], nullable: true}
+        progress: {type: number, format: float, minimum: 0, maximum: 1, nullable: true}
+        port_key: {type: string, nullable: true}
+        shard_key: {type: string, nullable: true}
+        shard_index: {type: integer, minimum: 0, nullable: true}
+        atomic_task_id: {type: string, nullable: true}
+        artifact_id: {type: string, nullable: true}
+        artifact_summary: {type: object, additionalProperties: true, nullable: true}
+        warnings: {type: array, items: {type: object, additionalProperties: true}}
         error_code: {type: string, nullable: true}
 
     UserEventListResponse:

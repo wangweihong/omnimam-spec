@@ -126,6 +126,60 @@ x-asset-version-defaults: &asset_version_defaults
   related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-SSE-017, BR-SSE-018]
   related_user_stories: [US-SSE-003, US-SSE-004]
 
+x-canvas-run-defaults: &canvas_run_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [workflow-canvas.canvas_run_created, workflow-canvas.canvas_run_task_group_bound, workflow-canvas.canvas_run_status_changed]
+  payload:
+    canvas_run_id: string
+    canvas_id: string|null
+    canvas_version_id: string|null
+    from_status: string|null
+    status: string(PENDING|RUNNING|SUCCESS|PARTIAL_SUCCESS|FAILED|CANCELED|TIMEOUT)
+    progress: number
+    task_creation_status: string|null
+    summary: object
+    changed_flow_summaries: array<object>
+    warnings: array<object>
+    error_code: string|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:canvas_run_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试，消费者按 CanvasRun aggregate_version 幂等。
+  failure_policy: CanvasRun/FlowRun 仍以 workflow-canvas 为事实源；投影失败不回滚运行，客户端重查运行快照恢复。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-WORKFLOW-014, BR-WORKFLOW-024, BR-WORKFLOW-025]
+  related_user_stories: [US-SSE-002, US-SSE-004, US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-006]
+
+x-canvas-node-defaults: &canvas_node_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [workflow-canvas.canvas_node_run_status_changed, workflow-canvas.canvas_node_output_available]
+  payload:
+    canvas_run_id: string
+    canvas_node_run_id: string
+    node_id: string
+    execution_key: string
+    from_status: string|null
+    status: string|null
+    status_reason: string|null
+    result_mode: string|null
+    progress: number|null
+    port_key: string|null
+    shard_key: string|null
+    shard_index: integer|null
+    atomic_task_id: string|null
+    artifact_id: string|null
+    artifact_summary: object|null
+    warnings: array<object>
+    error_code: string|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:canvas_node_run_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试；输出事件额外按 node_run + port + shard + artifact 去重。
+  failure_policy: CanvasNodeRun 与输出绑定仍以 workflow-canvas 为事实源，Artifact 生命周期以 asset-library 为事实源；不同聚合版本不可比较。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-WORKFLOW-014, BR-WORKFLOW-022, BR-WORKFLOW-023, BR-WORKFLOW-024, BR-WORKFLOW-025]
+  related_user_stories: [US-SSE-002, US-SSE-003, US-SSE-004, US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-006]
+
 connection.ready:
   producer: sse-event-gateway
   consumers: [omnimam-web]
@@ -306,3 +360,50 @@ asset_version.ready_with_warnings:
 asset_version.processing_failed:
   <<: *asset_version_defaults
   trigger_condition: original、metadata 或其他必需 Representation 处理失败。
+
+canvas.run.created:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 固定版本、输入、scope、策略和执行计划后首次持久化。
+canvas.run.started:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 首次进入 RUNNING。
+canvas.run.progressed:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 进度、聚合计数、warning 或变化 FlowRun 摘要发生更新。
+canvas.run.succeeded:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 进入 SUCCESS 或 PARTIAL_SUCCESS；payload.status 保留具体终态。
+canvas.run.failed:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 进入 FAILED 或 TIMEOUT；payload.status 保留具体终态。
+canvas.run.cancelled:
+  <<: *canvas_run_defaults
+  trigger_condition: CanvasRun 进入 CANCELED。
+
+canvas.node.ready:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 进入 READY。
+canvas.node.queued:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 已形成 TaskBinding，任务尚未开始且仍为 PENDING 或 BLOCKED。
+canvas.node.started:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 首次或自动重试后进入 RUNNING。
+canvas.node.progressed:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 状态未终结且进度、分片计数或 warning 发生变化。
+canvas.node.output_available:
+  <<: *canvas_node_defaults
+  trigger_condition: 一个结构化输出已持久化，或 Artifact 已 READY 并绑定到 port_key + shard_key 输出槽位。
+canvas.node.succeeded:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 进入 SUCCESS、PARTIAL_SUCCESS 或 REUSED；payload.status 和 result_mode 保留具体语义。
+canvas.node.failed:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 进入 FAILED 或 TIMEOUT；payload.status 保留具体终态。
+canvas.node.skipped:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 因依赖失败或确定不执行而进入 SKIPPED。
+canvas.node.cancelled:
+  <<: *canvas_node_defaults
+  trigger_condition: CanvasNodeRun 进入 CANCELED。

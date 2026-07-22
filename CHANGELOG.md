@@ -5,6 +5,11 @@
 - 整理 `workflow-canvas` S1 草案，保留多流、局部运行、结果复用、节点一对多任务、渐进制品和交互式控制节点设计，并恢复 `BR-WORKFLOW-001..016`、`US-WORKFLOW-001..004` 的已发布追溯。
 - 新增 `BR-WORKFLOW-017..034` 与 `US-WORKFLOW-005..009`，补齐 NodeDefinition 注册、共享节点去重、复用资格、Artifact 所有权、用户级 SSE、必需输出、流级取消、自动/手动重试、安全和故障恢复语义。
 - Canvas 执行统一对齐 AtomicTask/TaskAttempt/DAGTaskGroup：多流和复合节点展平到每个 CanvasRun 唯一 DAGTaskGroup，移除 TaskRun、DAGFlowTask、ExecutionLease、Canvas 专属 SSE 和 Canvas 自有 Artifact 事实；本轮只修改 S1，不修改或发布 S2。
+- 基于新版 `workflow-canvas` S1 重写 S2 草案：22 个 OpenAPI operation 覆盖 NodeDefinition 注册/下线、Canvas 草稿/预检/发布、五种首期 scope、三种复用策略、FlowRun/NodeRun 查询、整次取消与五种手动重跑意图；成功响应改为直接业务对象，分页从 `page_num=0` 开始。
+- 重构 workflow-canvas 设计态 schema，新增 NodeDefinition、CanvasFlowRun、NodeRun 多流引用、NodeRun 1:N AtomicTask 绑定、渐进输出绑定、复用来源、可靠 outbox 与对账游标，并保持 Task Center 和 Asset Library 仅通过跨域 ID/版本协作。
+- 扩展 workflow-canvas 错误码、权限码、领域事件与模块契约，明确首期禁用 `selected_subgraph`、`best_effort`、`min_success`、流/分片级取消和分片手动重跑；错误码继续使用已登记的 `160200-160999` 区间。
+- 解决 SSE S1/S2 与新版 Canvas 首期范围冲突：将既有 15 个 `canvas.run.*`/`canvas.node.*` 事件纳入用户级单 SSE 首期目录，`canvas.run.progressed` 携带变化 FlowRun 摘要，不新增独立 FlowRun event type，也不复制 Artifact 生命周期事实。
+- 同步 workflow-canvas 与全局架构参考：编译器保留真实直接 DAG 依赖和节点最早释放，不再使用同层整体等待；列表关联摘要使用 Task Center/Asset Library 有界批量读取，禁止跨域私有表和 N+1。
 - 新增全局关联资源可读投影规则 `BR-GLOBAL-001..005`：保留稳定 ID，同时在列表和详情中返回权限裁剪的一跳轻量摘要，历史资源优先使用快照，跨域不得穿透私有表，列表禁止 N+1。
 - 在 `skills/spec-workflow/S2.md` 增加强制评审规则：所有响应资源 ID 必须定义关联摘要或明确豁免原因，并在 release 前检查权限、缺失引用、递归边界、客户端生成和查询预算。
 - Task Center OpenAPI 升级为 1.1.0，新增 `AtomicTaskSummary`、`TaskOwnerSummary`、`TaskScheduleSummary`，并为 AtomicTask root/retry/owner、TaskAttempt 所属任务、Group/DAG retry 来源和 ScheduleExecution 所属计划增加只读摘要。
