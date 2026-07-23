@@ -2,6 +2,7 @@
 
 ## 2026-07-23
 
+- 收紧 ComfyUI `output-candidates.extractable`：仅 `object_info.output_node=true` 的终端输出节点可标记为可提取；普通中间端口不能用于应用模板或试运行输出，试运行进一步只接受图片/文本预览候选。
 - 应用平台试运行参数扩展为输入覆盖与输出候选选择：创建请求要求至少一个 `node_id + output_index` 输出候选，详情返回不可变 `output_snapshot`，历史再次运行需重新校验输入与输出。
 - `comfyui.collect_preview` 只收集输出选择快照中 node_id 对应的图片/文本轻量预览；同节点多端口选择按节点去重，仍不登记 Artifact/Asset。
 - Application Platform OpenAPI 升级为 1.3.0，设计态试运行表增加 `output_snapshot_json`；复用 `ERR_AIAPP_COMFYUI_TEST_PARAMETER_INVALID` 表达输入或输出候选校验失败。

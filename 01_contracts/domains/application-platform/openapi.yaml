@@ -1803,7 +1803,7 @@ components:
         output_index: {type: integer, minimum: 0}
         output_name: {type: string}
         data_type: {type: string}
-        extractable: {type: boolean}
+        extractable: {type: boolean, description: 仅当目标实例当前 object_info 将所属节点声明为 output_node=true 时为 true；普通中间节点端口必须为 false。}
         media_type: {type: string}
     ComfyUIWorkflowOutputCandidateListResponse:
       type: object
