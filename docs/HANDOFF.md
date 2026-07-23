@@ -2,46 +2,47 @@
 
 ## 当前项目目标
 
-`spec-v1.7.3` 已发布，Task Center 系统任务名称多语言兼容契约已成为 Server 实现 `name_i18n` 与名称来源持久化的正式依据。
+发布 Asset Library 管理员存储检查契约，使 Server/Web 可以从 AssetRepresentation 的 `blob_id` 逐级查看 Blob 和 StorageBackend 详情。
 
 ## 本次完成
 
-1. 新增 `US-TASK-024`、`BR-TASK-142` 和 4 项验收标准，定义系统名称与用户名称的边界。
-2. Task Center OpenAPI 升级到 1.4.0，增加可扩展 `LocalizedName` 及资源本体/一跳摘要的多语言字段。
-3. 四类任务资源增加名称来源、系统 key 和参数设计态字段及一致性约束。
-4. 模块契约和架构增加 name-catalog，明确统一投影和传递边界。
-5. 更新 CHANGELOG；用户原有 `AGENTS.md` 修改保持不变，不纳入本次发布。
-6. 规格变更提交为 `ab677e7`，用户确认的 `spec-v1.7.3` release 记录、标签和远端分支已同步。
+1. 新增 `US-USER-ASSET-48`、`BR-USER-ASSET-82..83`，明确 Blob/StorageBackend 是管理员可见的全局基础设施事实。
+2. Asset Library OpenAPI 升级到 0.6.0，新增 Blob 与 StorageBackend 详情，并将现有 StorageBackend 列表、创建、更新纳入契约。
+3. 新增 `asset.storage.read/manage` 权限及 `150610..150612` 业务错误。
+4. StorageBackend 设计态 schema 对齐运行态 `type/root/config/enabled/readonly/quota`。
+5. 模块契约和架构增加 `storage-inspection` 边界；事件契约不变。
+6. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
 
 ## 文件变化
 
-- 修改 Task Center S1、OpenAPI、schema、module contract 和领域架构。
-- 修改 `CHANGELOG.md`、`RELEASE.md` 和本文件。
-- 无错误码、权限码或事件契约变化。
+- 修改 Asset Library S1、OpenAPI、schema、errors、permissions、module contract 和领域架构。
+- 修改 `CHANGELOG.md` 和本文件。
+- 无事件、全局错误码区间或其他领域契约变化。
 
 ## 关键设计决策
 
-- 原 `name` 继续保留；系统名称的 `name` 使用 `en-US` 兼容值。
-- 系统名称以稳定 key 和小型受控字符串参数保存，查询时生成当前目录的全部 BCP 47 语言。
-- 首期 `name_i18n` 必含 `zh-CN` 和 `en-US`，不依赖 `Accept-Language`。
-- 用户自定义名称及无元数据的历史资源不返回译文；不按文本或 createdBy 启发式回填。
+- Blob 详情及 StorageBackend 列表、详情、创建、更新仅允许 `ADMIN`、`SUPER_ADMIN`；兼容 Server 的 `system-admin` 开发主体。
+- 管理员响应按用户确认原样返回 Blob `object_key`、StorageBackend `root` 和完整 `config`，不做凭证脱敏。
+- 普通素材、Representation、Artifact、任务输出和跨域摘要不得传播上述敏感字段。
+- StorageBackend 列表新增规范 `items`，同时保留内容相同的 deprecated `backends` 兼容字段。
 
 ## API、Schema 与配置变化
 
-- Task Center OpenAPI 版本为 1.4.0。
-- 新增 `LocalizedName`，资源与摘要增加可选 `name_i18n`。
-- `ScheduleSourceSummary` 增加 `schedule_name_i18n`；`DAGTimelineRow` 增加 `atomic_task_name_i18n`。
-- `atomic_tasks`、`task_groups`、`dag_task_groups`、`task_schedules` 增加 `name_source`、`system_name_key`、`system_name_params_json`。
+- 新增 `GET /api/v1/blobs/{blob_id}`。
+- 新增 `GET /api/v1/storage-backends/{backend_id}`。
+- 正式定义 `GET/POST /api/v1/storage-backends` 与 `PATCH /api/v1/storage-backends/{backend_id}`。
+- 新增 `AssetBlobDetail`、`StorageBackend`、StorageBackend 请求与列表 DTO。
 
 ## 待办与风险
 
-- Server 尚需 pin 新 release，实现 name catalog、migration、内部创建元数据传递和所有查询摘要投影。
-- 旧资源不会自动获得多语言名称，这是已确认的安全兼容策略。
-- 公开创建请求必须无法注入系统名称 key/参数。
+- 完成规格变更提交、release 记录、`spec-v1.7.4` 标签并推送。
+- Server 需更新 submodule/`SSOT_VERSION`，实现管理员鉴权、Blob 查询、StorageBackend 详情与兼容列表字段。
+- Web 后续需重新生成 Asset Library client 并接入详情导航。
+- 原样返回 `config` 可能暴露凭证；这是本轮明确确认的管理员契约，后续若需脱敏必须再次修改并 release SSOT。
 
 ## 推荐下一任务
 
-在 `omnimam-server` 更新 spec submodule 与 `SSOT_VERSION`，实现 Task Center 系统名称目录、持久化字段、完整响应投影与兼容测试。
+在 `omnimam-server` pin `spec-v1.7.4` 并实现已发布的存储检查 API 与测试。
 
 Next Prompt:
 

@@ -173,3 +173,25 @@ asset.representation.write:
   default_roles: []
   related_rules: [BR-USER-ASSET-67, BR-USER-ASSET-70, BR-USER-ASSET-71, BR-USER-ASSET-74]
   related_user_stories: [US-USER-ASSET-43, US-USER-ASSET-44]
+
+asset.storage.read:
+  module: storage-inspection
+  resource: asset_storage
+  action: read
+  description: 查看全局 Blob 与 StorageBackend 的完整物理存储信息。
+  frontend_usage: 控制管理员存储检查页、Blob 详情和 StorageBackend 列表/详情入口。
+  backend_enforcement: 必须要求 ADMIN 或 SUPER_ADMIN；Blob 和 StorageBackend 是全局资源，不执行普通素材 owner 裁剪，拒绝普通用户通过列表绕过详情权限。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+  related_user_stories: [US-USER-ASSET-48]
+
+asset.storage.manage:
+  module: storage-inspection
+  resource: asset_storage
+  action: manage
+  description: 创建或更新全局 StorageBackend 配置。
+  frontend_usage: 控制管理员 StorageBackend 新增和编辑入口。
+  backend_enforcement: 必须要求 ADMIN 或 SUPER_ADMIN；服务端必须在读取或写入 StorageBackend store 前完成鉴权。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+  related_user_stories: [US-USER-ASSET-48]

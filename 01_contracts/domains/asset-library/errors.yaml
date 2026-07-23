@@ -313,6 +313,51 @@ asset_version_content_invalid:
   related_user_stories: [US-USER-ASSET-06, US-USER-ASSET-10]
   related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-19, BR-USER-ASSET-20]
 
+asset_storage_permission_denied:
+  code: asset_storage_permission_denied
+  value: 150610
+  cn: 当前用户不是管理员，不能查看或管理 Blob 与 StorageBackend。
+  en: The current user is not an administrator and cannot inspect or manage Blobs and StorageBackends.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-48]
+  related_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+
+asset_blob_not_found:
+  code: asset_blob_not_found
+  value: 150611
+  cn: Blob 不存在。
+  en: The Blob does not exist.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-48]
+  related_rules: [BR-USER-ASSET-82]
+
+asset_storage_backend_not_found:
+  code: asset_storage_backend_not_found
+  value: 150612
+  cn: StorageBackend 不存在。
+  en: The StorageBackend does not exist.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-48]
+  related_rules: [BR-USER-ASSET-82]
+
 artifact_registration_invalid:
   code: artifact_registration_invalid
   value: 150800

@@ -44,7 +44,7 @@ CREATE INDEX idx_user_assets_display_name ON user_assets(owner_user_id, display_
 CREATE INDEX idx_user_assets_original_name ON user_assets(owner_user_id, original_name);
 CREATE UNIQUE INDEX idx_user_assets_owner_id_unique ON user_assets(owner_user_id, id);
 
--- S1 refs: US-USER-ASSET-42..US-USER-ASSET-44; BR-USER-ASSET-64..BR-USER-ASSET-78.
+-- S1 refs: US-USER-ASSET-42..US-USER-ASSET-44, US-USER-ASSET-48; BR-USER-ASSET-64..BR-USER-ASSET-78, BR-USER-ASSET-82..BR-USER-ASSET-83.
 CREATE TABLE storage_backends (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -53,9 +53,12 @@ CREATE TABLE storage_backends (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
-  backend_type TEXT NOT NULL CHECK (backend_type IN ('local', 's3', 'minio', 'oss', 'cos', 'azure_blob')),
+  type TEXT NOT NULL CHECK (type IN ('local', 's3', 'minio', 'oss', 'cos', 'azure_blob')),
+  root TEXT NOT NULL DEFAULT '',
+  config TEXT NOT NULL DEFAULT '{}',
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
-  config_ref TEXT NOT NULL
+  readonly BOOLEAN NOT NULL DEFAULT FALSE,
+  quota BIGINT NOT NULL DEFAULT 0 CHECK (quota >= 0)
 );
 
 CREATE TABLE blobs (

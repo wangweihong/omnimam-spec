@@ -2,6 +2,10 @@
 
 ## 2026-07-23
 
+- 新增 `US-USER-ASSET-48`、`BR-USER-ASSET-82..83`，定义管理员从 AssetRepresentation 检查 Blob 与 StorageBackend 物理存储链路的能力及敏感字段边界。
+- Asset Library OpenAPI 升级为 0.6.0：新增 Blob/StorageBackend 详情，将现有 StorageBackend 列表、创建、更新纳入正式契约，并统一限制为 `ADMIN`、`SUPER_ADMIN`。
+- 新增 `asset.storage.read/manage` 权限与 `150610..150612` 业务错误；管理员响应按确认原样返回 object key、root 和完整 config。
+- StorageBackend 设计态 schema 对齐运行态 type/root/config/enabled/readonly/quota 字段，列表新增规范 `items` 并保留等值 `backends` 兼容字段。
 - 新增 `US-TASK-024`、`BR-TASK-142` 及验收标准，明确系统提供任务名称使用稳定 key 与受控参数持久化，用户自定义名称不翻译、不猜测。
 - Task Center OpenAPI 升级为 1.4.0：保留 `name`，为 AtomicTask、TaskGroup、DAGTaskGroup、TaskSchedule 及 retry/owner/target/schedule source/timeline 摘要增加只读多语言名称映射，首期必含 `zh-CN` 和 `en-US`。
 - Task Center 设计态 schema 为四类资源增加 `name_source`、`system_name_key` 和 `system_name_params_json`；旧数据默认为 `USER`，不执行文本启发式回填。

@@ -24,6 +24,7 @@
 | `artifact-summary` | 为受控跨域调用提供 owner 裁剪的有界 Artifact 批量摘要 | 无独立持久化资源 |
 | `artifact-registration` | 将 ready Artifact 幂等登记为 Asset/AssetVersion，并复用 Blob 创建 original Representation | `artifact_asset_registrations`、`asset_versions`、`asset_representations` |
 | `representation` | 管理 expected policy、派生 Representation、build request、状态汇总与周期补全 | `asset_representations`、`representation_build_requests` |
+| `storage-inspection` | 管理员查看 Blob → StorageBackend 物理链路并维护后端配置；不向普通素材投影传播敏感字段 | `blobs`、`storage_backends` |
 
 ## 3. 外部依赖
 
@@ -35,6 +36,7 @@
 - 画布等外部模块可以通过回调或等价协作方式维护素材的轻量引用摘要，用于前端提示。
 - 自然语言解析可依赖独立模型或索引服务，但输出必须再次通过 `selector-parser` 校验；依赖异常不得触发关键词降级。
 - asset-library 拥有 Artifact、Asset、AssetVersion、AssetRepresentation 和登记失败状态；application-platform 只拥有 ApplicationRun 输出引用投影，Task Center 只拥有任务状态。
+- 管理员存储检查依赖 identity 的角色绑定；`ADMIN`、`SUPER_ADMIN` 可读取完整 object key、root 和 config，普通用户与跨域摘要不得访问这些字段。
 
 ## 4. 核心链路
 

@@ -7,6 +7,7 @@
 | `asset` | 维护用户素材 metadata、`sha256`、上传去重命中、轻量引用摘要和素材返回 | `US-USER-ASSET-31`、`US-USER-ASSET-40`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42`、`BR-USER-ASSET-57`、`BR-USER-ASSET-58` |
 | `upload` | 维护普通/分片上传会话、分片校验、StorageAdapter 写入、完成事务和取消清理 | `US-USER-ASSET-05`..`US-USER-ASSET-09`、`US-USER-ASSET-31`、`BR-USER-ASSET-11`..`BR-USER-ASSET-19`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42` |
 | `content-access` | 沿 Representation 所属链路执行所有权校验，提供受控读取、下载和短期访问地址 | `US-USER-ASSET-11`..`US-USER-ASSET-13`、`BR-USER-ASSET-07`、`BR-USER-ASSET-21`..`BR-USER-ASSET-23`、`BR-USER-ASSET-27` |
+| `storage-inspection` | 为管理员提供 Blob 物理详情与 StorageBackend 列表、详情和配置管理 | `US-USER-ASSET-48`、`BR-USER-ASSET-82`、`BR-USER-ASSET-83` |
 | `labeling` | 维护素材 Labels/Tags、来源、字段约束、数量上限和逐项批量写入 | `US-USER-ASSET-19`..`US-USER-ASSET-30`、`BR-USER-ASSET-35`、`BR-USER-ASSET-36`、`BR-USER-ASSET-40` |
 | `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
@@ -69,6 +70,13 @@
 - `POST /api/v1/assets/{asset_id}/restore` 只恢复当前用户已软删除素材；不得借恢复绕过所有权或 canWrite 校验。
 - 永久删除先向画布、应用、Task Center、Collection 和素材关系的事实源执行强引用检查；`reference_count` 与 `reference_sources_json` 仅用于提示，不能单独授权删除。
 - 只有未被任何 Representation 或 Artifact 引用的 Blob 才物理删除；部分 Blob 仍被共享时返回 retained_blob_ids。
+
+## 5.2 管理员存储检查
+
+- Blob 与 StorageBackend 是全局基础设施事实，不按素材 owner 过滤；所有读取以及 StorageBackend 创建/更新必须先校验 `ADMIN` 或 `SUPER_ADMIN`。
+- `GET /api/v1/blobs/{blob_id}` 返回 `storage_backend_id` 与完整 object key；客户端需要配置详情时显式调用 StorageBackend 详情，不在 Blob 响应中递归内嵌配置。
+- StorageBackend 列表、详情和写入返回完整 `root` 与 `config`，不做凭证脱敏；这些字段不得进入普通素材、Representation、Artifact、任务输出或跨域摘要。
+- StorageBackend 列表保留旧 `backends` 字段作为 `items` 的等值兼容别名；新客户端使用 `items`，不得为两个字段执行两次查询。
 
 ## 6. 标签数据归属与约束
 

@@ -217,6 +217,10 @@ azure_blob
 
 第一阶段虽然只实现本地存储，但业务代码必须通过统一存储适配接口访问文件，不得直接依赖本地磁盘路径。
 
+Blob 与 StorageBackend 是全局存储基础设施事实，不属于普通素材用户的个人资源。`ADMIN`、`SUPER_ADMIN` 可以在运维界面查看 Blob → StorageBackend 的物理存储链路，并管理 StorageBackend；普通用户仍只能通过自己可见的 AssetRepresentation 读取受控内容。
+
+管理员运维详情首期返回完整物理定位与配置，包括 Blob `object_key`、StorageBackend `root` 和 `config`。这些字段可能包含路径或凭证，仅允许管理员接口返回，不得进入普通素材列表、素材详情、任务输出或跨域摘要。
+
 ---
 
 ## 4.6 Artifact
@@ -1658,10 +1662,12 @@ Blob
 StorageBackend
 ├── id: UUID
 ├── name: VARCHAR
-├── backend_type: VARCHAR
-├── config_ref: VARCHAR
-├── status: VARCHAR
-├── priority: INTEGER
+├── type: VARCHAR
+├── root: VARCHAR
+├── config: JSON
+├── enabled: BOOLEAN
+├── readonly: BOOLEAN
+├── quota: BIGINT
 ├── created_at: TIMESTAMPTZ
 └── updated_at: TIMESTAMPTZ
 ```
@@ -1669,7 +1675,7 @@ StorageBackend
 第一阶段只有：
 
 ```text
-backend_type=local
+type=local
 ```
 
 S3 和 MinIO 可以预先作为枚举保留，但不得在第一阶段界面中创建或启用。
@@ -2116,6 +2122,18 @@ GET /api/v1/assets/{asset_id}/references
 GET /api/v1/assets/{asset_id}/usages
 ```
 
+## 23.9 管理员存储检查
+
+```http
+GET   /api/v1/blobs/{blob_id}
+GET   /api/v1/storage-backends
+POST  /api/v1/storage-backends
+GET   /api/v1/storage-backends/{backend_id}
+PATCH /api/v1/storage-backends/{backend_id}
+```
+
+以上接口仅允许 `ADMIN`、`SUPER_ADMIN`。Blob 与 StorageBackend 详情用于从 Representation 的 `blob_id` 逐级检查物理存储链路；首期管理员响应原样返回 `object_key`、`root` 和 `config`，不做凭证脱敏。
+
 ---
 
 # 24. SSE 事件
@@ -2545,6 +2563,8 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 79. `BR-USER-ASSET-79`：Artifact 内容完成事务必须可靠触发幂等 `asset-library.artifact.process` AtomicTask；Task Center 不直接读写 Artifact 内容或状态。
 80. `BR-USER-ASSET-80`：素材列表与详情必须保留稳定关系 ID，并同时返回当前用户可见的一跳可读摘要：UserAsset 当前版本、Artifact producer/任务/运行/登记素材、Collection 父级与固定版本、AssetRelation 两端素材均不得要求客户端逐 ID 补查；列表使用同域批量查询或目标领域受控批量投影，关联缺失或不可见时只省略摘要。
 81. `BR-USER-ASSET-81`：asset-library 必须为 Task Center 等受控调用方提供有界 Artifact 批量可读摘要；每项先按调用主体与 owner 校验，仅返回标识、输出键、类型、媒体类型、处理/登记状态、预览可用性和可选登记素材摘要，不返回内容、metadata、存储引用、永久 URL 或不可见性差异。
+82. `BR-USER-ASSET-82`：Blob 与 StorageBackend 是全局存储基础设施事实；Blob 详情以及 StorageBackend 列表、详情、创建和更新只允许 `ADMIN`、`SUPER_ADMIN`，普通用户不得通过任一入口枚举这些资源。
+83. `BR-USER-ASSET-83`：管理员存储检查响应原样返回 Blob `object_key`、StorageBackend `root` 和完整 `config`；这些敏感字段不得进入普通素材、Representation、Artifact、任务输出或跨域摘要。
 
 # 31. 稳定用户故事编号
 
@@ -2638,3 +2658,11 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 - 批量请求使用对象数组并设置固定上限，返回顺序与请求一致。
 - 不存在、已删除或不可见 Artifact 统一返回空摘要，不泄露目标是否存在。
 - 摘要只用于识别、状态展示和导航，不包含内容、metadata、存储引用或永久访问地址。
+
+## US-USER-ASSET-48 检查素材物理存储链路
+
+作为系统管理员，我希望从 AssetRepresentation 的 `blob_id` 查看 Blob 详情，并继续查看其 StorageBackend 配置，以便定位内容缺失、损坏或后端配置问题。
+
+- Blob 详情返回存储后端 ID、object key、SHA256、大小、MIME 类型和状态。
+- StorageBackend 详情返回类型、根位置、完整配置、启用、只读和配额状态。
+- StorageBackend 列表、详情、创建和更新以及 Blob 详情全部执行管理员鉴权，普通用户无法通过列表绕过详情权限。

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Asset Library API
-  version: 0.5.0
+  version: 0.6.0
   description: 素材、上传、Collection、Artifact、AssetVersion、AssetRepresentation、内容访问与周期修复协作契约。
 servers:
   - url: /api/v1
@@ -22,6 +22,8 @@ tags:
     description: 受信 producer 创建、上传、完成和查询 Artifact。
   - name: representations
     description: AssetVersion 与 AssetRepresentation 查询和受控写入。
+  - name: storage
+    description: 管理员 Blob 与 StorageBackend 物理存储检查和配置管理。
 
 paths:
   /api/v1/assets:
@@ -360,6 +362,121 @@ paths:
               schema:
                 oneOf:
                   - {$ref: '#/components/schemas/AssetUploadSession'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/blobs/{blob_id}:
+    get:
+      tags: [storage]
+      summary: 查询 Blob 物理存储详情
+      operationId: get_asset_blob
+      description: 仅管理员可用；原样返回 object_key，用于从 Representation 的 blob_id 检查物理存储链路。
+      x-permission: asset.storage.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-48]
+        business_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+      parameters:
+        - {name: blob_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Blob 详情、权限错误或不存在错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/AssetBlobDetail'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/storage-backends:
+    get:
+      tags: [storage]
+      summary: 查询 StorageBackend 列表
+      operationId: list_storage_backends
+      description: 仅管理员可用；items 为规范列表字段，backends 为旧客户端兼容别名且内容必须与 items 相同。
+      x-permission: asset.storage.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-48]
+        business_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {name: type, in: query, schema: {$ref: '#/components/schemas/StorageBackendType'}}
+        - {name: enabled, in: query, schema: {type: boolean}}
+      responses:
+        '200':
+          description: StorageBackend 列表或权限错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/StorageBackendListResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    post:
+      tags: [storage]
+      summary: 创建 StorageBackend
+      operationId: create_storage_backend
+      x-permission: asset.storage.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-48]
+        business_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateStorageBackendRequest'}
+      responses:
+        '200':
+          description: 已创建 StorageBackend 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/StorageBackend'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/storage-backends/{backend_id}:
+    get:
+      tags: [storage]
+      summary: 查询 StorageBackend 详情
+      operationId: get_storage_backend
+      description: 仅管理员可用；root 与 config 原样返回，不做凭证脱敏。
+      x-permission: asset.storage.read
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-48]
+        business_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+      parameters:
+        - {name: backend_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: StorageBackend 详情、权限错误或不存在错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/StorageBackend'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+    patch:
+      tags: [storage]
+      summary: 更新 StorageBackend
+      operationId: update_storage_backend
+      x-permission: asset.storage.manage
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-48]
+        business_rules: [BR-USER-ASSET-82, BR-USER-ASSET-83]
+      parameters:
+        - {name: backend_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateStorageBackendRequest'}
+      responses:
+        '200':
+          description: 更新后的 StorageBackend 或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/StorageBackend'}
                   - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/collections:
@@ -1210,6 +1327,82 @@ components:
       schema: { type: string, format: date-time }
 
   schemas:
+    StorageBackendType:
+      type: string
+      enum: [local, s3, minio, oss, cos, azure_blob]
+    AssetBlobDetail:
+      type: object
+      additionalProperties: false
+      description: 管理员物理存储检查投影；storage_backend_id 供显式导航到独立详情，不内嵌敏感 StorageBackend 配置。
+      required: [id, name, description, extend, storage_backend_id, object_key, sha256, size_bytes, mime_type, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        extend: {type: object, additionalProperties: true}
+        storage_backend_id: {type: string}
+        object_key: {type: string}
+        sha256: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        mime_type: {type: string}
+        status: {type: string, enum: [pending, available, corrupted, missing, deleting, deleted]}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StorageBackend:
+      type: object
+      additionalProperties: false
+      description: 管理员存储配置投影；root 和 config 原样返回，调用方不得记录或转发到普通用户页面。
+      required: [id, name, description, extend, type, root, config, enabled, readonly, quota, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        extend: {type: object, additionalProperties: true}
+        type: {$ref: '#/components/schemas/StorageBackendType'}
+        root: {type: string}
+        config: {type: object, additionalProperties: true}
+        enabled: {type: boolean}
+        readonly: {type: boolean}
+        quota: {type: integer, format: int64, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StorageBackendListResponse:
+      type: object
+      required: [total, items, backends]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/StorageBackend'}}
+        backends:
+          type: array
+          deprecated: true
+          description: 旧客户端兼容别名，内容与 items 相同。
+          items: {$ref: '#/components/schemas/StorageBackend'}
+    CreateStorageBackendRequest:
+      type: object
+      additionalProperties: false
+      required: [name, type]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 255}
+        type: {$ref: '#/components/schemas/StorageBackendType'}
+        root: {type: string, maxLength: 1024, default: ''}
+        config: {type: object, additionalProperties: true, default: {}}
+        enabled: {type: boolean, default: true}
+        readonly: {type: boolean, default: false}
+        quota: {type: integer, format: int64, minimum: 0, default: 0}
+    UpdateStorageBackendRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 255}
+        type: {$ref: '#/components/schemas/StorageBackendType'}
+        root: {type: string, maxLength: 1024}
+        config: {type: object, additionalProperties: true}
+        enabled: {type: boolean}
+        readonly: {type: boolean}
+        quota: {type: integer, format: int64, minimum: 0}
     MediaType:
       type: string
       enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]
