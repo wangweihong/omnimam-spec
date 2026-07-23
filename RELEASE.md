@@ -1,5 +1,23 @@
 # Release Records
 
+## spec-v1.7.3
+
+- commit: ab677e7（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-23 明确要求实施系统任务名称多语言方案，且方案要求先发布 SSOT）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+- implementation_gate: Server 必须保留原 `name`，仅对持久化为 SYSTEM 且具有有效 name key/参数的新资源返回至少包含 `zh-CN` 和 `en-US` 的多语言映射；公开请求不得注入系统名称元数据，历史资源不得按文本或 createdBy 启发式回填。
+
 ## spec-v1.7.2
 
 - commit: 4d601ce（规格变更提交；release 记录提交随后追加）
