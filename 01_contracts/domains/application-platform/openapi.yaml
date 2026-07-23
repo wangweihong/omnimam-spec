@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.3.0
+  version: 1.4.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -258,7 +258,7 @@ paths:
       x-permission: aiapp.engine_instance.read
       x-s1-refs:
         user_stories: [US-AIAPP-049]
-        business_rules: [BR-AIAPP-169, BR-AIAPP-175, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-169, BR-AIAPP-175, BR-AIAPP-187]
       parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
       responses:
         '200':
@@ -288,7 +288,7 @@ paths:
       x-permission: aiapp.engine_instance.manage
       x-s1-refs:
         user_stories: [US-AIAPP-049]
-        business_rules: [BR-AIAPP-169, BR-AIAPP-170, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-169, BR-AIAPP-170, BR-AIAPP-187]
       parameters: [{$ref: '#/components/parameters/engine_instance_id'}]
       responses:
         '200':
@@ -396,7 +396,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-171]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-186]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -409,9 +409,6 @@ paths:
         - name: converted
           in: query
           schema: {type: boolean}
-        - name: source_engine_instance_id
-          in: query
-          schema: {type: string}
         - name: owner_user_id
           in: query
           description: 仅管理员和超级管理员可用。
@@ -429,7 +426,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.manage
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-153, BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-153, BR-AIAPP-169, BR-AIAPP-186]
       requestBody:
         required: true
         content:
@@ -453,7 +450,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186]
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       responses:
         '200':
@@ -471,7 +468,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.manage
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186]
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
         required: true
@@ -496,7 +493,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
         - name: engine_instance_id
@@ -524,7 +521,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
         - name: engine_instance_id
@@ -550,7 +547,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
         - name: engine_instance_id
@@ -576,7 +573,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.read
       x-s1-refs:
         user_stories: [US-AIAPP-044]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-171, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
         - name: engine_instance_id
@@ -626,7 +623,7 @@ paths:
       x-permission: aiapp.comfyui_workflow.validate
       x-s1-refs:
         user_stories: [US-AIAPP-045]
-        business_rules: [BR-AIAPP-156, BR-AIAPP-172, BR-AIAPP-176]
+        business_rules: [BR-AIAPP-156, BR-AIAPP-172, BR-AIAPP-187]
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
         required: true
@@ -695,11 +692,11 @@ paths:
       operationId: convert_comfyui_workflow_to_api
       summary: 将普通 Workflow 显式转换为 API Workflow
       x-permission: aiapp.comfyui_workflow.manage
-      x-s1-refs: {user_stories: [US-AIAPP-047], business_rules: [BR-AIAPP-164, BR-AIAPP-165]}
+      x-s1-refs: {user_stories: [US-AIAPP-047], business_rules: [BR-AIAPP-164, BR-AIAPP-165, BR-AIAPP-187]}
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
         required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/ResourceVersionRequest'}}}
+        content: {application/json: {schema: {$ref: '#/components/schemas/ComfyUIWorkflowAPIConversionRequest'}}}
       responses:
         '200':
           description: 转换结果或业务错误。
@@ -1678,13 +1675,12 @@ components:
       enum: [compatible, incompatible, failed]
     ComfyUIWorkflow:
       type: object
-      required: [id, name, owner_user_id, source_engine_instance_id, source_type, api_conversion_status, source_checksum, converted, created_at, updated_at, resource_version]
+      required: [id, name, owner_user_id, source_type, api_conversion_status, source_checksum, converted, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
         description: {type: string}
         owner_user_id: {type: string}
-        source_engine_instance_id: {type: string}
         source_type: {$ref: '#/components/schemas/ComfyUIWorkflowSourceType'}
         api_conversion_status: {$ref: '#/components/schemas/ComfyUIAPIConversionStatus'}
         source_checksum: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
@@ -1706,11 +1702,10 @@ components:
     ComfyUIWorkflowImportRequest:
       type: object
       additionalProperties: false
-      required: [name, source_engine_instance_id]
+      required: [name]
       properties:
         name: {type: string}
         description: {type: string}
-        source_engine_instance_id: {type: string}
         workflow_file: {type: string, format: binary, description: 新客户端使用的单一普通 Workflow 或 API Workflow JSON。}
         api_workflow_file: {type: string, format: binary, deprecated: true}
         visual_workflow_file: {type: string, format: binary, deprecated: true}
@@ -1738,6 +1733,13 @@ components:
       additionalProperties: false
       required: [resource_version]
       properties:
+        resource_version: {type: integer}
+    ComfyUIWorkflowAPIConversionRequest:
+      type: object
+      additionalProperties: false
+      required: [engine_instance_id, resource_version]
+      properties:
+        engine_instance_id: {type: string}
         resource_version: {type: integer}
     ComfyUIWorkflowListResponse:
       type: object

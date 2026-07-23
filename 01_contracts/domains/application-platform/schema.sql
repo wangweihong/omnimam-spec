@@ -31,7 +31,7 @@ CREATE TABLE aiapp_engine_instances (
 CREATE UNIQUE INDEX idx_aiapp_engine_instances_name ON aiapp_engine_instances(name);
 CREATE INDEX idx_aiapp_engine_instances_type_health ON aiapp_engine_instances(application_engine_type_id, enabled, health_status);
 
--- s1_refs: US-AIAPP-041, US-AIAPP-049; BR-AIAPP-169, BR-AIAPP-170, BR-AIAPP-176.
+-- s1_refs: US-AIAPP-041, US-AIAPP-049; BR-AIAPP-169, BR-AIAPP-170, BR-AIAPP-187.
 -- This is a one-to-one current-fact extension, not an independently managed resource;
 -- it intentionally has no id/name/resource_version, checksum, history, or state column.
 CREATE TABLE aiapp_comfyui_engine_object_info (
@@ -62,7 +62,7 @@ CREATE TABLE aiapp_engine_capability_bindings (
 CREATE UNIQUE INDEX idx_aiapp_binding_engine_capability ON aiapp_engine_capability_bindings(engine_instance_id, provider_capability_id);
 CREATE INDEX idx_aiapp_binding_capability ON aiapp_engine_capability_bindings(provider_capability_id, enabled);
 
--- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-173, BR-AIAPP-174.
+-- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-169, BR-AIAPP-173, BR-AIAPP-174, BR-AIAPP-186, BR-AIAPP-187.
 -- A workflow import is deliberately not versioned. Re-import creates another row.
 CREATE TABLE aiapp_comfyui_workflows (
   id TEXT PRIMARY KEY,
@@ -75,7 +75,6 @@ CREATE TABLE aiapp_comfyui_workflows (
   owner_user_id TEXT NOT NULL,
   created_by_user_id TEXT NOT NULL,
   updated_by_user_id TEXT NOT NULL,
-  source_engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
   source_type TEXT NOT NULL CHECK (source_type IN ('visual_workflow', 'api_workflow')),
   api_conversion_status TEXT NOT NULL CHECK (api_conversion_status IN ('pending', 'ready')),
   api_workflow_json TEXT,

@@ -56,9 +56,10 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 
 - ProviderCapability、ApplicationEngineType、加载结果和 RuntimeFormSchema 不建表。
 - Binding 保存稳定能力 ID 与绑定时 revision，但每次解析和运行仍读取当前注册表；能力不可用时 Binding 保留且不生效。
-- ComfyUIWorkflow 是 owner 私有的非版本化导入资源；内容和来源实例不可修改，重新导入创建新 ID，不定义 archive、restore 或 lifecycle。
+- ComfyUIWorkflow 是 owner 私有的非版本化导入资源；导入不选择或保存实例，也不读取 object_info。源文件不可修改，重新导入创建新 ID，不定义 archive、restore 或 lifecycle。
 - API Workflow 使用 RFC 8785 JSON Canonicalization Scheme 计算 SHA-256，重复 checksum 查询限制在 owner 范围内；object_info 不计算或保存 checksum。
 - 节点、输入候选、输出候选和依赖按请求中的目标实例当前目录计算，不写入工作流表。
+- visual_workflow 显式转换请求必须携带 EngineInstance；服务端只使用类型为 comfyui、enabled、online 且当前目录未过期的实例完成图解析与 API Workflow 校验，失败不保存部分结果，实例引用不写入工作流。
 - ComfyUIWorkflowValidation 读取目标实例当前目录，只保存不可变结果、摘要、诊断和时间；不保存目录正文或 checksum，不提交 prompt。
 - 工作流转换在单事务内创建 ApplicationTemplate、version=1 draft ApplicationTemplateVersion 和固定关系；owner 范围幂等键唯一，同一工作流只能成功转换一次。
 - 转换在事务内按所选 validation 对应实例当前目录重新校验；首版模板版本只深拷贝 API Workflow 和模板契约，revision 不包含 object_info 或派生依赖；通用模板创建 API 不接受 ComfyUI 首版原始 Workflow。

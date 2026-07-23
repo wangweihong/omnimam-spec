@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-24
+
+- ComfyUI 单文件导入与 EngineInstance 解耦：导入不再接收或保存来源实例，也不读取 object_info；Visual Workflow 只保存源画布并保持 pending。
+- Visual Workflow 显式转换请求新增必填 `engine_instance_id`，仅允许使用 enabled、online 且当前 object_info 未过期的 ComfyUI 实例，转换实例不持久化到工作流。
+- Application Platform OpenAPI 升级为 1.4.0，设计态工作流表删除 `source_engine_instance_id`，新增 `BR-AIAPP-186..187` 与 `AC-AIAPP-047-04`。
+
 ## 2026-07-23
 
 - 收紧 ComfyUI `output-candidates.extractable`：仅 `object_info.output_node=true` 的终端输出节点可标记为可提取；普通中间端口不能用于应用模板或试运行输出，试运行进一步只接受图片/文本预览候选。
