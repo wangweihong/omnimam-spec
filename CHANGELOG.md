@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-23
+
+- 新增 `US-TASK-024`、`BR-TASK-142` 及验收标准，明确系统提供任务名称使用稳定 key 与受控参数持久化，用户自定义名称不翻译、不猜测。
+- Task Center OpenAPI 升级为 1.4.0：保留 `name`，为 AtomicTask、TaskGroup、DAGTaskGroup、TaskSchedule 及 retry/owner/target/schedule source/timeline 摘要增加只读多语言名称映射，首期必含 `zh-CN` 和 `en-US`。
+- Task Center 设计态 schema 为四类资源增加 `name_source`、`system_name_key` 和 `system_name_params_json`；旧数据默认为 `USER`，不执行文本启发式回填。
+- 增加 name-catalog 模块边界与架构说明，后续语言通过 BCP 47 键扩展，不改变 API 结构。
+
 ## 2026-07-22
 
 - 新增 `US-TASK-023`、`BR-TASK-133..141`，补齐 DAG 运行工作台所需的详情投影、动态节点确定性聚合、node_key 子任务过滤、规范化事件/时间线、管理员 executor 摘要、Artifact 一跳摘要与增强日志语义。

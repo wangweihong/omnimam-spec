@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135.
+-- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023..024, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135, BR-TASK-142.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -9,6 +9,9 @@ CREATE TABLE atomic_tasks (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
+  name_source TEXT NOT NULL DEFAULT 'USER' CHECK (name_source IN ('USER','SYSTEM')),
+  system_name_key TEXT NOT NULL DEFAULT '',
+  system_name_params_json TEXT NOT NULL DEFAULT '{}',
   function_ref TEXT NOT NULL,
   arguments_json TEXT NOT NULL DEFAULT '{}',
   required_capabilities TEXT DEFAULT '',
@@ -45,7 +48,8 @@ CREATE TABLE atomic_tasks (
   created_by TEXT NOT NULL,
   tags TEXT DEFAULT '',
   deleted_at TIMESTAMPTZ,
-  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> ''))
+  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> '')),
+  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
 );
 
 CREATE UNIQUE INDEX idx_atomic_tasks_idempotency ON atomic_tasks(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
@@ -86,7 +90,7 @@ CREATE TABLE task_attempts (
   UNIQUE (runtime_task_id)
 );
 
--- s1_refs: US-TASK-009, US-TASK-018, BR-TASK-078..080, BR-TASK-098..099, BR-TASK-120.
+-- s1_refs: US-TASK-009, US-TASK-018, US-TASK-024, BR-TASK-078..080, BR-TASK-098..099, BR-TASK-120, BR-TASK-142.
 CREATE TABLE task_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -95,6 +99,9 @@ CREATE TABLE task_groups (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
+  name_source TEXT NOT NULL DEFAULT 'USER' CHECK (name_source IN ('USER','SYSTEM')),
+  system_name_key TEXT NOT NULL DEFAULT '',
+  system_name_params_json TEXT NOT NULL DEFAULT '{}',
   mode TEXT NOT NULL CHECK (mode IN ('SERIAL','PARALLEL')),
   task_templates_json TEXT NOT NULL,
   strategy_json TEXT NOT NULL DEFAULT '{}',
@@ -112,13 +119,14 @@ CREATE TABLE task_groups (
   namespace TEXT NOT NULL,
   created_by TEXT NOT NULL,
   deleted_at TIMESTAMPTZ,
-  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> ''))
+  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> '')),
+  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
 );
 
 CREATE UNIQUE INDEX idx_task_groups_idempotency ON task_groups(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE INDEX idx_task_groups_status ON task_groups(status, created_at);
 
--- s1_refs: US-TASK-010, US-TASK-018, US-TASK-023, BR-TASK-081..082, BR-TASK-094..099, BR-TASK-120, BR-TASK-133..141.
+-- s1_refs: US-TASK-010, US-TASK-018, US-TASK-023..024, BR-TASK-081..082, BR-TASK-094..099, BR-TASK-120, BR-TASK-133..142.
 CREATE TABLE dag_task_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -127,6 +135,9 @@ CREATE TABLE dag_task_groups (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
+  name_source TEXT NOT NULL DEFAULT 'USER' CHECK (name_source IN ('USER','SYSTEM')),
+  system_name_key TEXT NOT NULL DEFAULT '',
+  system_name_params_json TEXT NOT NULL DEFAULT '{}',
   nodes_json TEXT NOT NULL,
   edges_json TEXT NOT NULL,
   input_mapping_json TEXT NOT NULL DEFAULT '{}',
@@ -153,7 +164,8 @@ CREATE TABLE dag_task_groups (
   namespace TEXT NOT NULL,
   created_by TEXT NOT NULL,
   deleted_at TIMESTAMPTZ,
-  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> ''))
+  CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> '')),
+  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
 );
 
 CREATE INDEX idx_dag_groups_definition ON dag_task_groups(runtime_definition_name, runtime_definition_version);
@@ -161,7 +173,7 @@ CREATE UNIQUE INDEX idx_dag_groups_idempotency ON dag_task_groups(project_id, na
 CREATE INDEX idx_dag_groups_canvas_version ON dag_task_groups(canvas_version_id) WHERE canvas_version_id <> '';
 CREATE INDEX idx_dag_groups_status_time ON dag_task_groups(status, started_at, completed_at);
 
--- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, BR-TASK-083..086, BR-TASK-107..118.
+-- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, US-TASK-024, BR-TASK-083..086, BR-TASK-107..118, BR-TASK-142.
 CREATE TABLE task_schedules (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -170,6 +182,9 @@ CREATE TABLE task_schedules (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
+  name_source TEXT NOT NULL DEFAULT 'USER' CHECK (name_source IN ('USER','SYSTEM')),
+  system_name_key TEXT NOT NULL DEFAULT '',
+  system_name_params_json TEXT NOT NULL DEFAULT '{}',
   execution_mode TEXT NOT NULL DEFAULT 'MATERIALIZED' CHECK (execution_mode IN ('MATERIALIZED','RECONCILE')),
   management_mode TEXT NOT NULL DEFAULT 'USER' CHECK (management_mode IN ('USER','SYSTEM')),
   system_key TEXT NOT NULL DEFAULT '',
@@ -203,7 +218,8 @@ CREATE TABLE task_schedules (
   CHECK (
     (execution_mode = 'MATERIALIZED' AND target_type <> '' AND target_template_json <> '' AND reconcile_ref = '') OR
     (execution_mode = 'RECONCILE' AND trigger_type = 'CRON' AND target_type = '' AND target_template_json = '' AND reconcile_ref <> '')
-  )
+  ),
+  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
 );
 
 CREATE INDEX idx_task_schedules_status_next ON task_schedules(status, next_trigger_at);

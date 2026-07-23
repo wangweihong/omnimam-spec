@@ -12,6 +12,7 @@
 | reconcile-registry | 受控 reconcileRef、配置校验、轻量巡检路由和修复动作门禁 | 用户自定义代码、任意 Conductor 任务、具体领域数据归属 |
 | runtime | WorkflowRuntime 接口、Conductor 适配、运行时 binding、事件投影和对账 | 对外业务 API、Conductor 数据库所有权 |
 | function-registry | 可用 functionRef、输入输出 schema、能力要求和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
+| name-catalog | 系统任务名称 key、受控参数校验和 BCP 47 多语言投影 | 翻译用户自定义名称、按请求语言改写持久化 name |
 | access | project、namespace、createdBy 和服务身份访问控制 | identity 主体生命周期 |
 
 ## 2. WorkflowRuntime 消费方接口
@@ -63,6 +64,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 ## 5. 投影与一致性
 
+- 系统命名资源持久化 `name_source=SYSTEM`、稳定 `system_name_key` 和小型 `system_name_params_json`；用户资源固定为 `USER` 且 key 为空。查询层通过 name-catalog 统一生成 `name_i18n`，并传递到 retry、owner、target、schedule source 和 timeline 摘要。公开请求不得设置系统名称元数据，旧数据默认 `USER` 且不作启发式回填。相关 S1：US-TASK-024、BR-TASK-142。
 - Conductor 与业务表使用独立数据库或 schema，互不直接写入。
 - 运行时事件按 `runtime_event_id` 幂等落入 `runtime_projection_events`；资源只接受更高 `runtime_sequence` 或确定性更强的终态。
 - reconciler 周期枚举全部非终态 execution，修复漏事件、乱序和 API/运行时重启窗口。

@@ -2,60 +2,45 @@
 
 ## 当前项目目标
 
-`spec-v1.7.2` 已发布，任务中心 DAG 运行工作台所需 S1/S2 与 Asset Library Artifact 有界批量摘要协作已成为正式实现依据。
+发布 Task Center 系统任务名称多语言兼容契约，作为 Server 实现 `name_i18n` 与名称来源持久化的正式依据。
 
 ## 本次完成
 
-1. 新增 `US-TASK-023`、`BR-TASK-133..141`，定义 DAG 可观测详情、动态节点聚合、事件、时间线、executor 裁剪、Artifact 摘要和日志筛选/下载。
-2. Task Center OpenAPI 升级到 1.3.0；DAG operation 从不存在的 `task.dag.operate` 统一为 `task.group.operate`。
-3. 新增 `DAGTaskGroupDetail`、`DAGNodeExecutionSummary`、触发摘要、事件/时间线 DTO、`node_key` 子任务过滤，以及 Attempt 日志 cursor、方向、筛选和下载接口。
-4. Task Center schema 增加 DAG 时间/触发快照、`dag_node_key`、executor 快照和运行时投影查询索引；未新增执行历史表。
-5. 新增 `US-USER-ASSET-47`、`BR-USER-ASSET-81`；Asset Library OpenAPI 升级到 0.5.0，并增加最多 200 项的 Artifact 批量摘要接口。
-6. 更新两个领域的权限、事件追溯、模块契约、架构参考和 CHANGELOG。
-7. 规格变更提交为 `4d601ce`；用户明确确认发布 `spec-v1.7.2`，release 记录、标签和远端分支已同步。
+1. 新增 `US-TASK-024`、`BR-TASK-142` 和 4 项验收标准，定义系统名称与用户名称的边界。
+2. Task Center OpenAPI 升级到 1.4.0，增加可扩展 `LocalizedName` 及资源本体/一跳摘要的多语言字段。
+3. 四类任务资源增加名称来源、系统 key 和参数设计态字段及一致性约束。
+4. 模块契约和架构增加 name-catalog，明确统一投影和传递边界。
+5. 更新 CHANGELOG；用户原有 `AGENTS.md` 修改保持不变，不纳入本次发布。
 
 ## 文件变化
 
-- 修改 Task Center S1、OpenAPI、schema、permissions、events、module contract 和领域架构。
-- 修改 Asset Library S1、OpenAPI、permissions、module contract 和领域架构。
-- 修改 `CHANGELOG.md`、`RELEASE.md` 和本文件，并创建 `spec-v1.7.2` 标签。
-- 用户原有 `AGENTS.md` 修改保持不变，不纳入本次提交或 release。
+- 修改 Task Center S1、OpenAPI、schema、module contract 和领域架构。
+- 修改 `CHANGELOG.md`、`RELEASE.md` 和本文件。
+- 无错误码、权限码或事件契约变化。
 
 ## 关键设计决策
 
-- DAG 用户事件和时间线从既有 `runtime_projection_events`、AtomicTask 和 TaskAttempt 投影规范化生成，不建立第二套事件事实表，也不透传运行时 payload。
-- 动态节点按 `dag_node_key` 聚合，实际 fan-out AtomicTask 仍可独立分页定位。
-- executor 只保存稳定类型与显示名，且仅 `task.operation.admin` 可见。
-- Artifact 摘要由 Asset Library 事实源按 owner 批量裁剪；不可见、已删除或不存在统一返回空摘要，Task Center 保留原 ID。
-- Attempt 日志在线查询和下载共用授权、过滤、脱敏、排序与 retention 语义。
+- 原 `name` 继续保留；系统名称的 `name` 使用 `en-US` 兼容值。
+- 系统名称以稳定 key 和小型受控字符串参数保存，查询时生成当前目录的全部 BCP 47 语言。
+- 首期 `name_i18n` 必含 `zh-CN` 和 `en-US`，不依赖 `Accept-Language`。
+- 用户自定义名称及无元数据的历史资源不返回译文；不按文本或 createdBy 启发式回填。
 
 ## API、Schema 与配置变化
 
-- 新增 `GET /api/v1/dag-task-groups/{dag_task_group_id}/events`。
-- 新增 `GET /api/v1/dag-task-groups/{dag_task_group_id}/timeline`。
-- 新增 `GET /api/v1/atomic-tasks/{atomic_task_id}/attempts/{task_attempt_id}/logs/download`。
-- 新增 `POST /api/v1/artifacts/batch-summaries`。
-- DAG 详情响应改为 `DAGTaskGroupDetail`，子任务查询增加 `node_key`。
-- `dag_task_groups` 增加执行时间与触发快照；`atomic_tasks` 增加 `dag_node_key`；`task_attempts` 增加 executor 快照。
-- 无新错误码、无新领域源事件、无运行时配置。
-
-## 验证结果
-
-- 5 个相关 YAML 文件解析通过。
-- Task Center 与 Asset Library OpenAPI 本地 `$ref`、operationId、权限引用和 S1 引用检查通过。
-- 全仓 196 个错误码 code/value 唯一性检查通过。
-- `task.dag.operate` 已从 S2 清除，`git diff --check` 通过。
+- Task Center OpenAPI 版本为 1.4.0。
+- 新增 `LocalizedName`，资源与摘要增加可选 `name_i18n`。
+- `ScheduleSourceSummary` 增加 `schedule_name_i18n`；`DAGTimelineRow` 增加 `atomic_task_name_i18n`。
+- `atomic_tasks`、`task_groups`、`dag_task_groups`、`task_schedules` 增加 `name_source`、`system_name_key`、`system_name_params_json`。
 
 ## 待办与风险
 
-- Server/Web 尚未 pin `spec-v1.7.2` 或实现本次契约。
-- 实现迁移需为已有 DAG 回填 trigger 信息，并新增 schema migration；本仓库只维护设计态 schema。
-- 事件/时间线完整性取决于运行时历史和投影保留，缺失必须返回 `complete=false`。
-- OpenAPI 未运行专用外部 validator；已完成 YAML、引用、权限、operationId 和追溯自检。
+- Server 尚需 pin 新 release，实现 name catalog、migration、内部创建元数据传递和所有查询摘要投影。
+- 旧资源不会自动获得多语言名称，这是已确认的安全兼容策略。
+- 公开创建请求必须无法注入系统名称 key/参数。
 
 ## 推荐下一任务
 
-在 `omnimam-server` 更新 spec submodule 与 `SSOT_VERSION` 到 `spec-v1.7.2`，实现 Task Center/Asset Library 契约和 migration，再由 Web 接入 DAG 运行工作台。
+在 `omnimam-server` 更新 spec submodule 与 `SSOT_VERSION`，实现 Task Center 系统名称目录、持久化字段、完整响应投影与兼容测试。
 
 Next Prompt:
 

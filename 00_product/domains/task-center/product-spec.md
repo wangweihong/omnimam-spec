@@ -270,6 +270,9 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 
 ## 6. 查询与汇总
 
+- Task Center 必须区分系统提供的名称与用户自定义名称。系统名称使用稳定名称 key 和受控参数保存语义，查询时在保留原 `name` 的同时返回所有已登记语言的名称映射。用户自定义名称只返回原 `name`，不翻译、不猜测、不覆盖。
+- 名称多语言投影必须覆盖 AtomicTask、TaskGroup、DAGTaskGroup、TaskSchedule 的列表与详情，并传递到 retry、owner、target、schedule source 和 timeline 等一跳摘要，使同一资源在不同查询入口的名称语义一致。
+- 首期名称目录至少提供 `zh-CN` 和 `en-US`，语言代码使用 BCP 47；后续可向同一映射增加语言，不改变 API 结构。返回结果不依赖 `Accept-Language`，客户端自行选择已返回语言。
 - AtomicTask 详情必须返回当前状态、进度、Attempt 汇总、最近错误和手动重试链。
 - AtomicTask 列表与详情必须同时返回 root/retry 任务和多态 owner 的一跳可读摘要，使用户无需复制 UUID 或额外查询即可识别任务链与所属 Group、DAG 或 Schedule；摘要必须遵守全局关联资源规则。
 - TaskGroup/DAGTaskGroup 详情必须返回子任务计数、整体进度、节点状态和聚合结果。
@@ -366,6 +369,7 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 67. `BR-TASK-139`：Task Center 返回 Artifact 引用时可附带 asset-library 权限裁剪的一跳可读摘要；列表和 DAG 详情必须使用有界批量协作，目标不存在或不可见时保留 artifactId 并返回空摘要，不得访问 asset-library 私有表或返回永久内容 URL。
 68. `BR-TASK-140`：Attempt 日志查询支持不透明 cursor、前后方向、关键字、级别、来源和稳定排序，日志下载复用相同授权、过滤、脱敏和保留期语义；下载不得绕过 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
 69. `BR-TASK-141`：DAG 触发来源固定为 API、SCHEDULE、CANVAS、DOMAIN_EVENT 或 RETRY，并保存触发时刻与可选来源标识/名称快照；来源资源删除或不可见不得影响 DAG 详情读取。
+70. `BR-TASK-142`：系统提供的 AtomicTask、TaskGroup、DAGTaskGroup 和 TaskSchedule 名称必须持久化稳定名称 key 与受控参数，查询时保留兼容 `name` 并额外返回至少包含 `zh-CN` 和 `en-US` 的 `name_i18n`；用户自定义名称不得翻译或返回伪造多语言映射。名称映射必须在资源本体及 retry、owner、target、schedule source、timeline 一跳摘要中保持一致；旧数据不作名称启发式回填。
 
 ---
 
@@ -501,6 +505,15 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 - `AC-TASK-023-03`：失败、超时、取消、重试和上游失败跳过均可通过节点状态、最近错误、Attempt 与规范化时间区段定位。
 - `AC-TASK-023-04`：Artifact 引用附带当前用户可见的一跳摘要，不可见或已删除关联降级为空；普通用户看不到内部 executor 标识。
 - `AC-TASK-023-05`：日志筛选、在线读取与下载执行相同权限、脱敏和不可用错误语义。
+
+### US-TASK-024 系统任务名称多语言展示
+
+作为任务中心用户，我希望系统提供的任务、组合任务和计划名称同时提供中英文，使前端可以按当前界面语言展示，同时不改写我自定义的名称。
+
+- `AC-TASK-024-01`：新建系统命名资源保留原 `name`，并返回至少包含 `zh-CN` 和 `en-US` 的 `name_i18n`。
+- `AC-TASK-024-02`：用户自定义名称及无可验证系统名称元数据的历史资源不返回 `name_i18n`。
+- `AC-TASK-024-03`：同一系统命名资源在列表、详情及 retry、owner、target、schedule source、timeline 摘要中返回一致译文。
+- `AC-TASK-024-04`：手动重试、Group/DAG 子任务与调度派生资源保留系统名称 key 和参数；后续新增语言不需修改响应结构。
 
 ---
 
