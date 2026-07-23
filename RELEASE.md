@@ -1,5 +1,25 @@
 # Release Records
 
+## spec-v1.7.4
+
+- commit: 81e6cfd（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-23 确认继续实施管理员 Blob/StorageBackend 独立详情接口，并明确管理员全量返回物理定位与配置）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - asset-library
+- S1:
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/schema.sql
+  - 01_contracts/domains/asset-library/errors.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+- architecture:
+  - 02_architecture/domains/asset-library.md
+- implementation_gate: Server 必须对 Blob 详情及 StorageBackend 列表/详情/创建/更新执行 ADMIN/SUPER_ADMIN 鉴权，管理员响应原样返回 object_key、root 与 config，普通素材和跨域摘要不得传播这些字段；StorageBackend 列表的 items/backends 必须来自同一次查询且内容相同。
+
 ## spec-v1.7.3
 
 - commit: ab677e7（规格变更提交；release 记录提交随后追加）

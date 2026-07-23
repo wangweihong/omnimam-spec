@@ -11,7 +11,8 @@
 3. 新增 `asset.storage.read/manage` 权限及 `150610..150612` 业务错误。
 4. StorageBackend 设计态 schema 对齐运行态 `type/root/config/enabled/readonly/quota`。
 5. 模块契约和架构增加 `storage-inspection` 边界；事件契约不变。
-6. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
+6. 规格变更提交为 `81e6cfd`，`spec-v1.7.4` release 记录与标签已创建。
+7. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
 
 ## 文件变化
 
@@ -35,7 +36,7 @@
 
 ## 待办与风险
 
-- 完成规格变更提交、release 记录、`spec-v1.7.4` 标签并推送。
+- 推送 `master` 与 `spec-v1.7.4` 标签。
 - Server 需更新 submodule/`SSOT_VERSION`，实现管理员鉴权、Blob 查询、StorageBackend 详情与兼容列表字段。
 - Web 后续需重新生成 Asset Library client 并接入详情导航。
 - 原样返回 `config` 可能暴露凭证；这是本轮明确确认的管理员契约，后续若需脱敏必须再次修改并 release SSOT。
