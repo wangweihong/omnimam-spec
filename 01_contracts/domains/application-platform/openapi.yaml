@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.2.0
+  version: 1.3.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -1979,6 +1979,13 @@ components:
         node_id: {type: string}
         input_name: {type: string}
         value: {$ref: '#/components/schemas/RuntimeValue'}
+    ComfyUIWorkflowTestOutputSelection:
+      type: object
+      additionalProperties: false
+      required: [node_id, output_index]
+      properties:
+        node_id: {type: string}
+        output_index: {type: integer, minimum: 0}
     ComfyUIWorkflowTestEngineSnapshot:
       type: object
       additionalProperties: false
@@ -1990,10 +1997,15 @@ components:
     ComfyUIWorkflowTestRunCreateRequest:
       type: object
       additionalProperties: false
-      required: [engine_instance_id, parameters, idempotency_key]
+      required: [engine_instance_id, parameters, outputs, idempotency_key]
       properties:
         engine_instance_id: {type: string}
         parameters: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowTestParameter'}}
+        outputs:
+          type: array
+          minItems: 1
+          maxItems: 256
+          items: {$ref: '#/components/schemas/ComfyUIWorkflowTestOutputSelection'}
         idempotency_key: {type: string, minLength: 1, maxLength: 128}
     ComfyUIWorkflowTestStep:
       type: object
@@ -2043,7 +2055,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ComfyUIWorkflowTestRun'
         - type: object
-          required: [status, progress, parameter_snapshot, steps, outputs]
+          required: [status, progress, parameter_snapshot, output_snapshot, steps, outputs]
           properties:
             status: {type: string}
             progress: {type: number, minimum: 0, maximum: 1}
@@ -2053,6 +2065,10 @@ components:
               type: array
               nullable: true
               items: {$ref: '#/components/schemas/ComfyUIWorkflowTestParameter'}
+            output_snapshot:
+              type: array
+              nullable: true
+              items: {$ref: '#/components/schemas/ComfyUIWorkflowTestOutputSelection'}
             steps:
               type: array
               nullable: true

@@ -146,6 +146,7 @@ CREATE TABLE aiapp_comfyui_workflow_test_runs (
   external_job_id TEXT,
   idempotency_key TEXT NOT NULL,
   parameter_snapshot_json TEXT NOT NULL DEFAULT '[]',
+  output_snapshot_json TEXT NOT NULL DEFAULT '[]',
   api_workflow_snapshot_json TEXT NOT NULL,
   output_descriptors_json TEXT NOT NULL DEFAULT '[]',
   task_creation_status TEXT NOT NULL CHECK (task_creation_status IN ('pending', 'created', 'failed')),

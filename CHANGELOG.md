@@ -2,6 +2,9 @@
 
 ## 2026-07-23
 
+- 应用平台试运行参数扩展为输入覆盖与输出候选选择：创建请求要求至少一个 `node_id + output_index` 输出候选，详情返回不可变 `output_snapshot`，历史再次运行需重新校验输入与输出。
+- `comfyui.collect_preview` 只收集输出选择快照中 node_id 对应的图片/文本轻量预览；同节点多端口选择按节点去重，仍不登记 Artifact/Asset。
+- Application Platform OpenAPI 升级为 1.3.0，设计态试运行表增加 `output_snapshot_json`；复用 `ERR_AIAPP_COMFYUI_TEST_PARAMETER_INVALID` 表达输入或输出候选校验失败。
 - 新增 `US-USER-ASSET-48`、`BR-USER-ASSET-82..83`，定义管理员从 AssetRepresentation 检查 Blob 与 StorageBackend 物理存储链路的能力及敏感字段边界。
 - Asset Library OpenAPI 升级为 0.6.0：新增 Blob/StorageBackend 详情，将现有 StorageBackend 列表、创建、更新纳入正式契约，并统一限制为 `ADMIN`、`SUPER_ADMIN`。
 - 新增 `asset.storage.read/manage` 权限与 `150610..150612` 业务错误；管理员响应按确认原样返回 object key、root 和完整 config。

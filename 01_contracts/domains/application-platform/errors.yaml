@@ -768,14 +768,14 @@
 - code: ERR_AIAPP_COMFYUI_TEST_PARAMETER_INVALID
   value: 131239
   http: 200
-  cn: 试运行参数不存在、不允许覆盖或未通过类型与范围校验。
-  en: A test parameter is unknown, cannot be overridden, or violates its type or range.
+  cn: 试运行输入参数或输出候选不存在、不允许使用、重复或未通过校验。
+  en: A test input parameter or output candidate is unknown, disallowed, duplicated, or invalid.
   owning_domain: application-platform
   owning_module: comfyui-workflow
   range: 131200-131399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-167]
+  related_rules: [BR-AIAPP-167, BR-AIAPP-168]
   related_user_stories: [US-AIAPP-048]
 
 - code: ERR_AIAPP_COMFYUI_TEST_RUN_NOT_FOUND

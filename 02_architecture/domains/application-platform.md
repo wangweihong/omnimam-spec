@@ -137,9 +137,9 @@ ApplicationRun 查询在 application-platform 内组合创建时保存的 Applic
 
 ComfyUIWorkflow 不维护版本树或 lifecycle。每次导入生成新资源，只保存源文件、API Workflow、来源实例和元数据；单文件由服务端识别 visual 或 API 来源，visual 来源显式转换后才形成 API 执行事实。节点、候选项和依赖按目标实例当前目录即时计算。兼容性校验只保存结果与诊断；一次性模板转换只把 API Workflow 和模板契约深拷贝到首个 draft ApplicationTemplateVersion。
 
-WorkflowTestRun 归 application-platform 所有，通过 Task Center 创建 `submit -> poll -> collect_preview` DAG。输出正文不落库，预览经 EngineAdapter 使用服务端 output ID 受控代理。
+WorkflowTestRun 归 application-platform 所有，通过 Task Center 创建 `submit -> poll -> collect_preview` DAG。创建时固定输入覆盖和 `node_id + output_index` 输出候选选择；collect_preview 将选择按 node_id 归并，只读取对应节点的轻量预览。输出正文不落库，预览经 EngineAdapter 使用服务端 output ID 受控代理。
 
-WorkflowTestRun 同时保存本次 EngineInstance 的非敏感身份快照和参数覆盖快照。列表投影默认只携带快照摘要、状态和进度，完整参数、步骤与输出按 detail=true 或单条详情读取；历史配置再次运行仍通过标准创建链路重新校验并创建新的 DAG。
+WorkflowTestRun 同时保存本次 EngineInstance 的非敏感身份快照、输入参数覆盖快照和输出候选选择快照。列表投影默认只携带快照摘要、状态和进度，完整输入、输出选择、步骤与预览按 detail=true 或单条详情读取；历史配置再次运行仍通过标准创建链路重新校验并创建新的 DAG。
 
 ## 7. ComfyUI 工作流导入与转换时序
 
