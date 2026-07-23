@@ -1,5 +1,23 @@
 # Release Records
 
+## spec-v1.7.7
+
+- commit: a26b029
+- status: released
+- confirmed_by: user（2026-07-24 明确要求 ComfyUI 工作流导入移除实例依赖，并在 Visual Workflow 转 API 时显式选择可用实例）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: 工作流导入不得接收、保存或查询 EngineInstance/object_info；Visual Workflow 显式转换必须提交 engine_instance_id，并使用 enabled、online 且当前目录未过期的 ComfyUI 实例。
+
 ## spec-v1.7.6
 
 - commit: ce3538e（规格变更提交；release 记录提交随后追加）

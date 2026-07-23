@@ -2,26 +2,24 @@
 
 ## 当前项目目标
 
-发布 ComfyUI WorkflowTestRun 输入覆盖与输出候选选择契约，使临时预览只采集用户所选输出节点。
+发布 ComfyUI 工作流导入与 EngineInstance 解耦契约，使实例目录只在 Visual Workflow 显式转换和后续解析、校验、运行阶段使用。
 
 ## 本次完成
 
-1. 扩展 `BR-AIAPP-167..168` 和 `AC-AIAPP-048-01/04/05`，明确输入参数与输出候选的校验、快照和历史回填语义。
-2. 试运行输出候选沿用应用模板的 `node_id + output_index` 身份，至少选择一项。
-3. `collect_preview` 将输出选择按 `node_id` 归并，只收集所选节点的图片/文本轻量描述。
-4. 保持临时预览边界，不登记 Artifact/Asset，不保存媒体正文。
-5. Application Platform OpenAPI 升级为 1.3.0，并增加输出选择请求与详情快照 DTO。
-6. 设计态试运行表增加 `output_snapshot_json`；权限、事件和错误码编号不变。
-7. 真实目录验证发现普通中间端口也被旧实现标记 extractable；补充 `object_info.output_node=true` 门禁及试运行 image/text 限制。
-8. `spec-v1.7.5` 已发布输出选择快照契约；output_node 门禁修订提交为 `ce3538e`，`spec-v1.7.6` release 记录与标签已创建。
-9. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
+1. ComfyUI 单文件导入不再接收、保存或查询 EngineInstance/object_info。
+2. Visual Workflow 导入后只保存源画布并保持 `pending`；API Workflow 完成基础节点结构校验后直接进入 `ready`。
+3. Visual 转 API 请求新增必填 `engine_instance_id`，要求实例类型为 comfyui、enabled、online 且当前目录未过期。
+4. 转换实例不持久化到工作流，失败不保存部分 API Workflow。
+5. 工作流 schema 删除 `source_engine_instance_id`；列表筛选与公共响应同步删除该字段。
+6. 新增 `BR-AIAPP-186..187` 与 `AC-AIAPP-047-04`，Application Platform OpenAPI 升级为 1.4.0。
+7. 规格变更提交为 `a26b029`，`spec-v1.7.7` 已发布。
+8. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
 
 ## 文件变化
 
 - `00_product/domains/application-platform/product-spec.md`
 - `01_contracts/domains/application-platform/openapi.yaml`
 - `01_contracts/domains/application-platform/schema.sql`
-- `01_contracts/domains/application-platform/errors.yaml`
 - `01_contracts/domains/application-platform/module-contract.md`
 - `02_architecture/domains/application-platform.md`
 - `CHANGELOG.md`
@@ -30,28 +28,27 @@
 
 ## 关键设计决策
 
-- 输出选择与应用模板输出映射复用相同稳定身份，但试运行只按 node_id 过滤 ComfyUI history，不产生标准应用制品。
-- `extractable=true` 只适用于当前 object_info 声明的 OUTPUT_NODE；普通中间端口即使数据类型为 IMAGE/STRING 也不可选择。
-- 输出选择必须持久化，因为 collect_preview 在异步 DAG 的第三步执行，不能依赖前端临时状态。
-- 同节点选择多个输出端口时只收集一次该节点的 history 结果。
-- 旧试运行记录允许输出快照为空；新创建请求必须至少选择一个当前可解析输出候选。
+- 导入只验证上传文件和来源基础结构，不依赖任何运行实例能力事实。
+- Visual 转 API 是首次需要 object_info 的阶段，所选实例是单次操作输入，不成为工作流来源属性。
+- 现有部署不要求保留旧 Application Platform 数据；server 实现可以破坏性重建相关表并清理跨域引用。
 
 ## API、Schema 与配置变化
 
-- `ComfyUIWorkflowTestRunCreateRequest` 新增必填 `outputs`。
-- 新增 `ComfyUIWorkflowTestOutputSelection`。
-- `ComfyUIWorkflowTestRunDetail` 新增可空 `output_snapshot`。
-- `aiapp_comfyui_workflow_test_runs` 新增 `output_snapshot_json TEXT NOT NULL DEFAULT '[]'`。
-- 无新 endpoint、权限、事件、错误码编号或运行时配置。
+- `ComfyUIWorkflowImportRequest` 删除 `source_engine_instance_id`。
+- `ComfyUIWorkflow` 响应及列表筛选删除 `source_engine_instance_id`。
+- `ComfyUIWorkflowAPIConversionRequest` 包含必填 `engine_instance_id` 与 `resource_version`。
+- `aiapp_comfyui_workflows` 删除 `source_engine_instance_id` 外键列。
+- 无新 endpoint、权限、事件或错误码编号。
 
 ## 待办与风险
 
-- Server/Web 已在本地 pin `spec-v1.7.6` 并完成实现与全量测试，但尚未提交、部署或执行真实试运行。
-- `master`、`spec-v1.7.5` 和 `spec-v1.7.6` 均尚未推送到远端。
+- Server 尚未更新 submodule pin、运行时模型、破坏性重建和导入/转换实现。
+- Web 需要同步移除导入实例选择，并在 Visual 转换操作中增加实例选择。
+- release 尚待推送远端。
 
 ## 推荐下一任务
 
-推送本地 release，部署 Server/Web，并执行一次仅选择部分输出节点的真实试运行。
+在 omnimam-server pin `spec-v1.7.7`，实现后端契约并完成破坏性数据重建测试。
 
 Next Prompt:
 
