@@ -13,7 +13,7 @@
 5. Application Platform OpenAPI 升级为 1.3.0，并增加输出选择请求与详情快照 DTO。
 6. 设计态试运行表增加 `output_snapshot_json`；权限、事件和错误码编号不变。
 7. 真实目录验证发现普通中间端口也被旧实现标记 extractable；补充 `object_info.output_node=true` 门禁及试运行 image/text 限制。
-8. `spec-v1.7.5` 已发布输出选择快照契约；最终 output_node 门禁修订将发布为 `spec-v1.7.6`。
+8. `spec-v1.7.5` 已发布输出选择快照契约；output_node 门禁修订提交为 `ce3538e`，`spec-v1.7.6` release 记录与标签已创建。
 9. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
 
 ## 文件变化
@@ -48,11 +48,11 @@
 
 - Server 需要更新 SSOT pin，增加运行态列、请求校验、幂等比较、输出快照持久化和 collect_preview 过滤。
 - Web 需要更新 SSOT pin 和生成客户端，在试运行画布中分别选择输入覆盖与输出候选，并支持历史回填。
-- `spec-v1.7.6` 发布提交与标签尚需创建；全部本地 release 均尚未推送到远端。
+- `master`、`spec-v1.7.5` 和 `spec-v1.7.6` 均尚未推送到远端。
 
 ## 推荐下一任务
 
-发布 `spec-v1.7.6`，并让 Server/Web pin 最终 release。
+让 Server/Web pin `spec-v1.7.6` 并完成实现验证。
 
 Next Prompt:
 

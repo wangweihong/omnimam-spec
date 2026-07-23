@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.7.6
+
+- commit: ce3538e（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-23 明确要求参考 ComfyUI 应用逻辑，只采集输出节点结果）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: output-candidates 只有所属节点在目标实例当前 object_info 中声明 output_node=true 时才可标记 extractable；普通中间端口不得用于应用模板或试运行输出，试运行进一步只接受 image/text 候选。
+
 ## spec-v1.7.5
 
 - commit: 3e166a5（规格变更提交；release 记录提交随后追加）
