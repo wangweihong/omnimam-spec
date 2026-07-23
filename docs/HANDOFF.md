@@ -12,7 +12,8 @@
 4. 保持临时预览边界，不登记 Artifact/Asset，不保存媒体正文。
 5. Application Platform OpenAPI 升级为 1.3.0，并增加输出选择请求与详情快照 DTO。
 6. 设计态试运行表增加 `output_snapshot_json`；权限、事件和错误码编号不变。
-7. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
+7. 规格变更提交为 `3e166a5`，`spec-v1.7.5` release 记录与标签已创建。
+8. 保留用户原有 `AGENTS.md` 修改，不纳入本任务提交。
 
 ## 文件变化
 
@@ -45,11 +46,11 @@
 
 - Server 需要更新 SSOT pin，增加运行态列、请求校验、幂等比较、输出快照持久化和 collect_preview 过滤。
 - Web 需要更新 SSOT pin 和生成客户端，在试运行画布中分别选择输入覆盖与输出候选，并支持历史回填。
-- 发布提交和 `spec-v1.7.5` 标签尚需在完成规格校验后创建。
+- `master` 与 `spec-v1.7.5` 标签尚未推送到远端；Server/Web 本地实施可先 pin 当前 release commit。
 
 ## 推荐下一任务
 
-发布 `spec-v1.7.5`，随后同步实施 Server 与 Web。
+在 Server/Web pin `spec-v1.7.5` 并实施输出选择快照与筛选。
 
 Next Prompt:
 

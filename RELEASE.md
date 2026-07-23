@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.7.5
+
+- commit: 3e166a5（规格变更提交；release 记录提交随后追加）
+- status: released
+- confirmed_by: user（2026-07-23 明确确认 ComfyUI 试运行仍保持临时预览，并仅按选定输出节点采集）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: Server 必须持久化并重新校验输出候选选择快照，collect_preview 只读取选择快照中 node_id 对应的轻量预览并按节点去重；Web 必须同时提交输入覆盖与至少一个输出候选。试运行不得登记 Artifact/Asset。
+
 ## spec-v1.7.4
 
 - commit: 81e6cfd（规格变更提交；release 记录提交随后追加）
