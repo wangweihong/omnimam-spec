@@ -64,7 +64,7 @@ CREATE INDEX idx_aiapp_binding_capability ON aiapp_engine_capability_bindings(pr
 
 -- system_managed is derived from the current ProviderCapability binding_policy and is not persisted.
 
--- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-169, BR-AIAPP-173, BR-AIAPP-174, BR-AIAPP-186, BR-AIAPP-187.
+-- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-169, BR-AIAPP-174, BR-AIAPP-186, BR-AIAPP-187, BR-AIAPP-190, BR-AIAPP-191, BR-AIAPP-192.
 -- A workflow import is deliberately not versioned. Re-import creates another row.
 CREATE TABLE aiapp_comfyui_workflows (
   id TEXT PRIMARY KEY,
@@ -83,15 +83,6 @@ CREATE TABLE aiapp_comfyui_workflows (
   visual_workflow_json TEXT,
   source_checksum TEXT NOT NULL CHECK (source_checksum ~ '^sha256:[0-9a-f]{64}$'),
   api_workflow_checksum TEXT CHECK (api_workflow_checksum IS NULL OR api_workflow_checksum ~ '^sha256:[0-9a-f]{64}$'),
-  converted_application_template_id TEXT,
-  converted_template_version_id TEXT,
-  conversion_idempotency_key TEXT,
-  converted_at TIMESTAMPTZ,
-  converted_by_user_id TEXT,
-  CHECK (
-    (converted_application_template_id IS NULL AND converted_template_version_id IS NULL AND conversion_idempotency_key IS NULL AND converted_at IS NULL AND converted_by_user_id IS NULL) OR
-    (converted_application_template_id IS NOT NULL AND converted_template_version_id IS NOT NULL AND conversion_idempotency_key IS NOT NULL AND converted_at IS NOT NULL AND converted_by_user_id IS NOT NULL)
-  ),
   CHECK (
     (source_type = 'api_workflow' AND api_conversion_status = 'ready' AND api_workflow_json IS NOT NULL AND api_workflow_checksum IS NOT NULL) OR
     (source_type = 'visual_workflow' AND visual_workflow_json IS NOT NULL AND ((api_conversion_status = 'pending' AND api_workflow_json IS NULL AND api_workflow_checksum IS NULL) OR (api_conversion_status = 'ready' AND api_workflow_json IS NOT NULL AND api_workflow_checksum IS NOT NULL)))
@@ -101,8 +92,6 @@ CREATE TABLE aiapp_comfyui_workflows (
 CREATE INDEX idx_aiapp_comfyui_workflows_owner_created ON aiapp_comfyui_workflows(owner_user_id, created_at);
 CREATE INDEX idx_aiapp_comfyui_workflows_filters ON aiapp_comfyui_workflows(owner_user_id, source_type, api_conversion_status);
 CREATE INDEX idx_aiapp_comfyui_workflows_checksum ON aiapp_comfyui_workflows(owner_user_id, source_type, source_checksum);
-CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_conversion_key ON aiapp_comfyui_workflows(owner_user_id, conversion_idempotency_key) WHERE conversion_idempotency_key IS NOT NULL;
-CREATE UNIQUE INDEX idx_aiapp_comfyui_workflows_converted_template ON aiapp_comfyui_workflows(converted_application_template_id) WHERE converted_application_template_id IS NOT NULL;
 
 -- s1_refs: US-AIAPP-045, US-AIAPP-046; BR-AIAPP-172, BR-AIAPP-173.
 -- Validation rows retain immutable outcomes and diagnostics, never object_info bodies or checksums.
@@ -158,7 +147,7 @@ CREATE TABLE aiapp_comfyui_workflow_test_runs (
 CREATE UNIQUE INDEX idx_aiapp_comfyui_test_runs_owner_key ON aiapp_comfyui_workflow_test_runs(owner_user_id, idempotency_key);
 CREATE INDEX idx_aiapp_comfyui_test_runs_workflow_created ON aiapp_comfyui_workflow_test_runs(workflow_id, created_at);
 
--- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-159, BR-AIAPP-174.
+-- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-174, BR-AIAPP-190, BR-AIAPP-192.
 CREATE TABLE aiapp_application_templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -170,13 +159,15 @@ CREATE TABLE aiapp_application_templates (
   owner_user_id TEXT NOT NULL,
   capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
   capability_definition_id TEXT NOT NULL,
-  current_version_id TEXT
+  current_version_id TEXT,
+  comfyui_conversion_idempotency_key TEXT
 );
 
 CREATE UNIQUE INDEX idx_aiapp_templates_owner_name ON aiapp_application_templates(owner_user_id, name);
 CREATE INDEX idx_aiapp_templates_capability ON aiapp_application_templates(capability_definition_id, capability_source_type);
+CREATE UNIQUE INDEX idx_aiapp_templates_conversion_key ON aiapp_application_templates(owner_user_id, comfyui_conversion_idempotency_key) WHERE comfyui_conversion_idempotency_key IS NOT NULL;
 
--- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-159, BR-AIAPP-174.
+-- s1_refs: US-AIAPP-042, US-AIAPP-046; BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-174, BR-AIAPP-190, BR-AIAPP-192.
 CREATE TABLE aiapp_application_template_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -195,7 +186,6 @@ CREATE TABLE aiapp_application_template_versions (
   provider_operation_id TEXT,
   workflow_contract_revision TEXT CHECK (workflow_contract_revision IS NULL OR workflow_contract_revision ~ '^sha256:[0-9a-f]{64}$'),
   source_comfyui_workflow_id TEXT REFERENCES aiapp_comfyui_workflows(id),
-  source_workflow_validation_id TEXT REFERENCES aiapp_comfyui_workflow_validations(id),
   template_contract_json TEXT NOT NULL,
   comfyui_api_workflow_json TEXT,
   published_at TIMESTAMPTZ,
@@ -215,15 +205,6 @@ CREATE UNIQUE INDEX idx_aiapp_template_versions_number ON aiapp_application_temp
 ALTER TABLE aiapp_application_templates
   ADD CONSTRAINT fk_aiapp_template_current_version
   FOREIGN KEY (current_version_id) REFERENCES aiapp_application_template_versions(id);
-
--- Deferred conversion references after template tables are defined.
-ALTER TABLE aiapp_comfyui_workflows
-  ADD CONSTRAINT fk_aiapp_comfyui_workflow_converted_template
-  FOREIGN KEY (converted_application_template_id) REFERENCES aiapp_application_templates(id);
-
-ALTER TABLE aiapp_comfyui_workflows
-  ADD CONSTRAINT fk_aiapp_comfyui_workflow_converted_version
-  FOREIGN KEY (converted_template_version_id) REFERENCES aiapp_application_template_versions(id);
 
 -- s1_refs: US-AIAPP-042, US-AIAPP-043; BR-AIAPP-142, BR-AIAPP-148.
 CREATE TABLE aiapp_applications (

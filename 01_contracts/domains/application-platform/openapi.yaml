@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.5.0
+  version: 1.6.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -16,7 +16,7 @@ tags:
   - name: engine-instances
   - name: engine-capability-bindings
   - name: comfyui-workflows
-    description: 用户私有 ComfyUI 工作流的导入、解析、实例兼容性校验和一次性模板转换。
+    description: 用户私有 ComfyUI 工作流的导入、解析、实例兼容性校验和可重复模板转换。
   - name: application-templates
   - name: applications
   - name: application-runs
@@ -104,7 +104,7 @@ paths:
       x-permission: aiapp.provider_capability.read
       x-s1-refs:
         user_stories: [US-AIAPP-039, US-AIAPP-041]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-140, BR-AIAPP-151]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-140, BR-AIAPP-151, BR-AIAPP-193]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -406,9 +406,6 @@ paths:
         - $ref: '#/components/parameters/sort_order'
         - $ref: '#/components/parameters/created_after'
         - $ref: '#/components/parameters/created_before'
-        - name: converted
-          in: query
-          schema: {type: boolean}
         - name: owner_user_id
           in: query
           description: 仅管理员和超级管理员可用。
@@ -664,12 +661,12 @@ paths:
     post:
       tags: [comfyui-workflows]
       operationId: convert_comfyui_workflow_to_application_template
-      summary: 一次性转换为应用模板首个草稿版本
+      summary: 转换为新的应用模板首个草稿版本
       x-permission: aiapp.comfyui_workflow.convert
       x-additional-permissions: [aiapp.application.manage]
       x-s1-refs:
         user_stories: [US-AIAPP-046]
-        business_rules: [BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-173, BR-AIAPP-174]
+        business_rules: [BR-AIAPP-174, BR-AIAPP-190, BR-AIAPP-191, BR-AIAPP-192]
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
         required: true
@@ -1401,15 +1398,27 @@ components:
         total: {type: integer}
         registry_status: {$ref: '#/components/schemas/RegistryStatus'}
         items: {type: array, items: {$ref: '#/components/schemas/ProviderCapabilityLoadResult'}}
+    LocalizedCapabilityDefinitionNames:
+      type: object
+      additionalProperties: false
+      required: [zh-CN, en-US]
+      description: 两组名称均按所属 ApplicationEngineType 的 operation_executors key 字典序排列。
+      properties:
+        zh-CN: {type: array, items: {type: string}}
+        en-US: {type: array, items: {type: string}}
     ApplicationEngineType:
       type: object
-      required: [id, name, enabled, engine_adapter_id, capability_definition_ids]
+      required: [id, name, enabled, engine_adapter_id, operation_executors, capability_definitions]
       properties:
         id: {type: string}
         name: {type: string}
         enabled: {type: boolean}
         engine_adapter_id: {type: string}
-        capability_definition_ids: {type: array, items: {type: string}}
+        operation_executors:
+          type: object
+          description: key 是下拉选项提交的 CapabilityDefinition ID，value 是只读 OperationExecutor ID。
+          additionalProperties: {type: string}
+        capability_definitions: {$ref: '#/components/schemas/LocalizedCapabilityDefinitionNames'}
         authentication_types: {type: array, items: {type: string, enum: [none, api_key, bearer_token, ak_sk]}}
     ApplicationEngineTypeListResponse:
       type: object
@@ -1694,7 +1703,7 @@ components:
       enum: [compatible, incompatible, failed]
     ComfyUIWorkflow:
       type: object
-      required: [id, name, owner_user_id, source_type, api_conversion_status, source_checksum, converted, created_at, updated_at, resource_version]
+      required: [id, name, owner_user_id, source_type, api_conversion_status, source_checksum, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
@@ -1704,10 +1713,6 @@ components:
         api_conversion_status: {$ref: '#/components/schemas/ComfyUIAPIConversionStatus'}
         source_checksum: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
         api_workflow_checksum: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
-        converted: {type: boolean}
-        converted_application_template_id: {type: string, nullable: true}
-        converted_template_version_id: {type: string, nullable: true}
-        converted_at: {type: string, format: date-time, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}
@@ -1891,12 +1896,12 @@ components:
     ComfyUIWorkflowConvertRequest:
       type: object
       additionalProperties: false
-      required: [name, capability_definition_id, workflow_validation_id, template_contract, idempotency_key]
+      required: [name, capability_definition_id, engine_instance_id, template_contract, idempotency_key]
       properties:
         name: {type: string}
         description: {type: string}
         capability_definition_id: {type: string}
-        workflow_validation_id: {type: string}
+        engine_instance_id: {type: string}
         template_contract: {$ref: '#/components/schemas/ComfyUIWorkflowTemplateContract'}
         idempotency_key: {type: string}
     ComfyUIWorkflowTemplateContract:
@@ -2153,7 +2158,6 @@ components:
         provider_operation_id: {type: string, nullable: true}
         workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
         source_comfyui_workflow_id: {type: string, nullable: true}
-        source_workflow_validation_id: {type: string, nullable: true}
         template_contract: {type: object, additionalProperties: true}
         comfyui_api_workflow: {type: object, nullable: true, additionalProperties: true, x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。}
         published_at: {type: string, format: date-time, nullable: true}

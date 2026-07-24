@@ -670,7 +670,7 @@
   owning_module: comfyui-workflow
   range: 131200-131399
   retryable: false
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-173]
   related_user_stories: [US-AIAPP-046]
 
@@ -696,7 +696,7 @@
   owning_module: comfyui-workflow
   range: 131200-131399
   retryable: false
-  deprecated: false
+  deprecated: true
   related_rules: [BR-AIAPP-159, BR-AIAPP-160]
   related_user_stories: [US-AIAPP-046]
 

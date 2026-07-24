@@ -2,6 +2,10 @@
 
 ## 2026-07-24
 
+- ComfyUI 模板转换改为直接选择当前可用 EngineInstance 并实时校验，不再选择历史 compatible Validation；所有 API-ready 工作流均可转换，同一工作流可使用不同幂等键创建多个独立模板。
+- 移除 ComfyUIWorkflow 的 converted 状态、单一模板引用和转换筛选，移除 TemplateVersion 的 source_workflow_validation_id；转换幂等事实改由新建 ApplicationTemplate 内部字段承担，不提供转换历史接口。
+- ApplicationEngineType 以 `operation_executors` key 为能力 value，并按 key 字典序返回 `capability_definitions.zh-CN/en-US` 名称数组；Application Platform OpenAPI 升级为 1.6.0。
+- 本次契约要求 Application Platform 全量破坏性重建，不迁移或回填旧 aiapp 数据；Task Center、Asset Library 等其他领域数据不在删除范围。
 - ProviderCapability 增加 `kind`、只读 `origin` 和 `binding_policy` 三个正交维度，区分模型目录能力、绑定专用能力、内置/目录来源及 manual/required_immutable 绑定策略。
 - 新增内置 `comfyui-workflow-runtime` engine_binding；所有现有及新建 ComfyUI EngineInstance 必须拥有不可变系统绑定，新建实例与绑定原子提交，启动时幂等回填。
 - 外部目录不得覆盖内置保留 ID；目录不可读时 registry 保持 degraded，但内置 ComfyUI 能力继续可用。Application Platform OpenAPI 升级为 1.5.0，并新增系统绑定保护错误码与级联删除契约。

@@ -10,7 +10,7 @@
 | provider-capability-loader | 先严格加载内置 YAML，再从单一目录原子加载外部 YAML，验证 Schema 和执行依赖并建立只读注册表与诊断 | 不递归、不允许目录覆盖内置 ID、不写库、不热加载 | US-AIAPP-039、040；BR-AIAPP-130..139、188 |
 | engine-instance | 管理真实连接环境、鉴权配置、手动/周期健康检测、ComfyUI 当前 object_info 和安全失败摘要，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力、维护 object-info 历史或向普通用户暴露凭证及原始上游失败载荷 | US-AIAPP-041、044、045、049；BR-AIAPP-140、162、163、169、170、175、176 |
 | engine-binding | 管理 manual 绑定，并为匹配 EngineType 的实例原子创建、启动补齐 required_immutable 系统绑定 | 不复制能力清单，不允许 restrictions 扩张能力或修改系统绑定 | US-AIAPP-041；BR-AIAPP-135、137、141、189 |
-| comfyui-workflow | 单文件导入双来源工作流、显式生成 API、按目标实例当前目录派生解析结果、兼容校验和一次性模板转换 | 不维护 object-info/解析缓存、版本树、lifecycle、共享工作流、节点编辑或后续模板版本 | US-AIAPP-044..047；BR-AIAPP-153、156、159、160、164、165、169、171..174、176 |
+| comfyui-workflow | 单文件导入双来源工作流、显式生成 API、按目标实例当前目录派生解析结果、独立兼容校验和可重复模板转换 | 不维护 object-info/解析缓存、版本树、lifecycle、共享工作流、节点编辑、转换历史或后续模板版本 | US-AIAPP-044..047；BR-AIAPP-153、156、164、165、169、174、186、187、190..193 |
 | comfyui-workflow-test-run | 保存试运行快照并通过 Task Center 创建三节点 DAG，聚合任务投影和受控临时预览 | 不持久化媒体正文、不登记 Artifact/Asset、不拥有任务状态机 | US-AIAPP-048；BR-AIAPP-166..168 |
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
 | application | 管理 private/global Application、独立能力开关与不可变语义版本 | 不原地修改已发布版本，普通用户不得设置 global | US-AIAPP-042；BR-AIAPP-142、147、148 |
@@ -77,8 +77,9 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - 节点、输入候选、输出候选和依赖按请求中的目标实例当前目录计算，不写入工作流表。
 - visual_workflow 显式转换请求必须携带 EngineInstance；服务端只使用类型为 comfyui、enabled、online 且当前目录未过期的实例完成图解析与 API Workflow 校验，失败不保存部分结果，实例引用不写入工作流。
 - ComfyUIWorkflowValidation 读取目标实例当前目录，只保存不可变结果、摘要、诊断和时间；不保存目录正文或 checksum，不提交 prompt。
-- 工作流转换在单事务内创建 ApplicationTemplate、version=1 draft ApplicationTemplateVersion 和固定关系；owner 范围幂等键唯一，同一工作流只能成功转换一次。
-- 转换在事务内按所选 validation 对应实例当前目录重新校验；首版模板版本只深拷贝 API Workflow 和模板契约，revision 不包含 object_info 或派生依赖；通用模板创建 API 不接受 ComfyUI 首版原始 Workflow。
+- 工作流转换在单事务内创建新的 ApplicationTemplate 与 version=1 draft ApplicationTemplateVersion；owner 范围幂等键唯一，相同工作流可用不同幂等键重复转换，工作流不保存转换状态或历史。
+- 转换直接选择 ComfyUI EngineInstance，并在事务内按其当前目录重新校验；历史 validation 不作为请求输入。每次转换创建新的模板与首版，版本只深拷贝 API Workflow 和模板契约，revision 不包含 object_info 或派生依赖；通用模板创建 API 不接受 ComfyUI 首版原始 Workflow。
+- ApplicationEngineType 的能力名称数组由 `operation_executors` key 字典序派生，Runtime Registry 必须为每个 CapabilityDefinition 提供 `zh-CN` 与 `en-US` 名称。
 - ApplicationTemplateVersion 和 ApplicationVersion 通过显式 publish 动作发布，发布后不可变；ApplicationVersion 使用同一应用内唯一语义版本字符串。
 - ApplicationRun 固定联合能力来源 revision、EngineInstance、模板版本、输入和输出映射快照；ProviderCapability 字段只在 provider_capability 分支存在。
 - ApplicationRun 创建与详情响应返回 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、EngineInstance 和 AtomicTask 的一跳摘要。同域关系优先从 ApplicationRun 创建快照读取，旧数据缺少快照时才在 owner/visibility 边界内读取当前投影；AtomicTask 通过 Task Center 受控只读服务解析，禁止直接查询 Task Center 私有表。摘要缺失不使 ApplicationRun 响应失败。
