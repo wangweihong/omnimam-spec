@@ -2,6 +2,9 @@
 
 ## 2026-07-24
 
+- ProviderCapability 增加 `kind`、只读 `origin` 和 `binding_policy` 三个正交维度，区分模型目录能力、绑定专用能力、内置/目录来源及 manual/required_immutable 绑定策略。
+- 新增内置 `comfyui-workflow-runtime` engine_binding；所有现有及新建 ComfyUI EngineInstance 必须拥有不可变系统绑定，新建实例与绑定原子提交，启动时幂等回填。
+- 外部目录不得覆盖内置保留 ID；目录不可读时 registry 保持 degraded，但内置 ComfyUI 能力继续可用。Application Platform OpenAPI 升级为 1.5.0，并新增系统绑定保护错误码与级联删除契约。
 - ComfyUI 单文件导入与 EngineInstance 解耦：导入不再接收或保存来源实例，也不读取 object_info；Visual Workflow 只保存源画布并保持 pending。
 - Visual Workflow 显式转换请求新增必填 `engine_instance_id`，仅允许使用 enabled、online 且当前 object_info 未过期的 ComfyUI 实例，转换实例不持久化到工作流。
 - Application Platform OpenAPI 升级为 1.4.0，设计态工作流表删除 `source_engine_instance_id`，新增 `BR-AIAPP-186..187` 与 `AC-AIAPP-047-04`。

@@ -1,12 +1,12 @@
 # AI 应用平台领域架构参考
 
-本文是 application-platform v1.1.0 的架构参考。产品语义以 S1 为准，实现接口与数据结构以 S2 为准。
+本文是 application-platform v1.2.0 的架构参考。产品语义以 S1 为准，实现接口与数据结构以 S2 为准。
 
 ## 1. 架构目标
 
 - 将 ApplicationEngineType、EngineAdapter、OperationExecutor 与易变的平台能力清单分离。
-- 以启动目录中的 YAML 作为 ProviderCapability 唯一事实源，不创建数据库副本。
-- 任何单个能力文件失败只导致能力级降级，不阻止应用平台服务启动。
+- 以内置 YAML 与启动目录 YAML 作为 ProviderCapability 事实源，不创建数据库副本。
+- 内置清单严格校验并保留 ID；目录文件失败只导致能力级降级，不覆盖内置能力。
 - ProviderCapability 与 ComfyUI workflow 使用联合能力来源；ComfyUI 节点能力只由 EngineInstance 当前 object_info 提供，不复制到工作流、校验、模板或运行。
 - 将用户私有 ComfyUI 工作流的导入、解析、实例校验和一次性模板转换与 ApplicationTemplate 后续版本演进分离。
 
@@ -14,7 +14,8 @@
 
 ```mermaid
 flowchart LR
-    C["provider_capability_directory"] --> L["ProviderCapability Loader"]
+    BI["Embedded ProviderCapability"] --> L["ProviderCapability Loader"]
+    C["provider_capability_directory"] --> L
     S["provider-capability.schema.yaml"] --> L
     L --> R["只读 ProviderCapability Registry"]
     RR["runtime-registry.yaml"] --> T["Runtime Registry"]
@@ -56,13 +57,14 @@ flowchart LR
 ```mermaid
 flowchart TD
     A["注册 ApplicationEngineType"] --> B["注册 EngineAdapter 与 OperationExecutor"]
-    B --> C["读取 provider_capability_directory 第一层 YAML"]
+    B --> BI["严格加载 builtin 清单"]
+    BI --> C["读取 provider_capability_directory 第一层 YAML"]
     C --> D{"目录可读"}
-    D -->|"否"| E["Registry=degraded；能力集合为空；服务继续启动"]
+    D -->|"否"| E["Registry=degraded；保留 builtin；服务继续启动"]
     D -->|"是"| F["逐文件解析 YAML 与 schema_version"]
     F --> G["JSON Schema 校验"]
     G --> H["ID 去重和 model/operation/variant 校验"]
-    H --> I["EngineType/Adapter/Executor 一致性校验"]
+    H --> I["保留 ID、kind 与 EngineType/Adapter/Executor 校验"]
     I --> J{"文件全部通过"}
     J -->|"是且 enabled=true"| K["availability=available"]
     J -->|"是且 enabled=false"| L["availability=disabled"]
@@ -72,11 +74,11 @@ flowchart TD
     M --> N
 ```
 
-加载按文件原子执行。文件名排序只保证诊断稳定，不赋予覆盖优先级。重复 ID 的所有文件均不可用。运行中不监听目录；更新文件后必须重启。
+加载按文件原子执行。内置清单无效时启动失败；目录文件名排序只保证诊断稳定，不赋予覆盖优先级。目录重复 ID 全部不可用，目录使用内置保留 ID 时只隔离目录项。运行中不监听目录；更新目录文件后必须重启。
 
 ## 4. ProviderCapability 边界
 
-ProviderCapability 描述：
+`kind=catalog` 的 ProviderCapability 描述：
 
 - 平台、来源和人工核验日期；
 - 模型 ID、供应商模型 ID、生命周期和限制；
@@ -84,7 +86,7 @@ ProviderCapability 描述：
 - Model × Operation 的有效 Variant；
 - 输入输出 JSON Schema、必填项、枚举、范围和跨字段约束。
 
-ProviderCapability 不描述：
+`kind=engine_binding` 只描述 EngineType 的基础运行时身份，其 model、operation、variant 固定为空。ProviderCapability 均不描述：
 
 - 可执行代码或类名；
 - API Key 等实例凭证；
@@ -92,7 +94,31 @@ ProviderCapability 不描述：
 - 运行态 availability、失败原因、加载时间或来源文件路径；
 - AtomicTask、Attempt、WorkflowRuntime 或重试策略事实。
 
-`seedance.yaml` 使用 ByteDance Seed 定义模型能力、BytePlus ModelArk 定义可执行 API 参数；`deepseek.yaml` 只覆盖官方稳定 OpenAI-compatible Chat Completions。
+`seedance.yaml` 使用 ByteDance Seed 定义模型能力、BytePlus ModelArk 定义可执行 API 参数；`deepseek.yaml` 只覆盖官方稳定 OpenAI-compatible Chat Completions；`comfyui.yaml` 是编译进服务的 required_immutable 绑定能力，不参与 Provider 模板或运行表单 Variant 解析。
+
+### 4.1 三个正交维度
+
+| 字段 | 取值 | 架构影响 |
+| --- | --- | --- |
+| kind | catalog / engine_binding | 决定是否存在模型目录以及是否允许进入 Provider 模板路径。 |
+| origin | builtin / directory | 由加载器派生，决定失败策略与 ID 覆盖规则。 |
+| binding_policy | manual / required_immutable | 决定绑定由管理员维护还是由启动 bootstrap 与实例创建事务维护。 |
+
+ComfyUI 固定组合为 `engine_binding + builtin + required_immutable`。系统绑定只用于实例身份和管理投影；API Workflow、workflow contract 和当前 object_info 仍是 ComfyUI 模板与运行的能力事实。
+
+### 4.2 系统绑定收敛
+
+```mermaid
+flowchart LR
+    R["Builtin ComfyUI capability"] --> B["Required binding bootstrap"]
+    E["Existing comfyui engines"] --> B
+    B --> U["Idempotent upsert by engine + capability"]
+    C["Create comfyui engine"] --> T["Engine + binding transaction"]
+    T -->|"binding failed"| X["Rollback engine"]
+    T -->|"committed"| U
+```
+
+API Server 与 TaskWorker 都执行相同 bootstrap。唯一索引保证多副本只形成一条绑定；upsert 将 revision、enabled 和空 restrictions 恢复为当前内置事实。绑定管理 API 依据 ProviderCapability 的 binding_policy 派生 `system_managed` 并拒绝修改。EngineInstance 删除由外键 cascade 清理绑定。
 
 ## 5. EngineAdapter 与 OperationExecutor
 

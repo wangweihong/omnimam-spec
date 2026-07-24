@@ -141,6 +141,19 @@
   related_rules: [BR-AIAPP-130, BR-AIAPP-136]
   related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_RESERVED
+  value: 130231
+  http: 200
+  cn: 外部 ProviderCapability 清单使用了系统内置保留 ID，不能覆盖内置能力。
+  en: An external ProviderCapability manifest uses a reserved builtin ID and cannot override the builtin capability.
+  owning_domain: application-platform
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-133, BR-AIAPP-188]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
 - code: ERR_AIAPP_ENGINE_INSTANCE_NOT_FOUND
   value: 130420
   http: 200
@@ -230,6 +243,32 @@
   retryable: false
   deprecated: false
   related_rules: [BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_SYSTEM_ENGINE_BINDING_IMMUTABLE
+  value: 130427
+  http: 200
+  cn: 系统维护的 EngineCapabilityBinding 不允许创建、修改、禁用或删除。
+  en: A system-managed EngineCapabilityBinding cannot be created, modified, disabled, or deleted.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-141, BR-AIAPP-189]
+  related_user_stories: [US-AIAPP-041]
+
+- code: ERR_AIAPP_REQUIRED_ENGINE_BINDING_FAILED
+  value: 130428
+  http: 200
+  cn: 创建 EngineInstance 时未能原子写入系统必需能力绑定，实例未创建。
+  en: The required system capability binding could not be written atomically while creating the EngineInstance; the instance was not created.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-189]
   related_user_stories: [US-AIAPP-041]
 
 - code: ERR_AIAPP_TEMPLATE_SOURCE_INVALID

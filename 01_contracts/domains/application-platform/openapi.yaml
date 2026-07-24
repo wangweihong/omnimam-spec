@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.4.0
+  version: 1.5.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -31,7 +31,7 @@ paths:
       x-permission: aiapp.provider_capability.read
       x-s1-refs:
         user_stories: [US-AIAPP-039, US-AIAPP-040]
-        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139]
+        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139, BR-AIAPP-188]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -60,7 +60,7 @@ paths:
       x-permission: aiapp.provider_capability.read
       x-s1-refs:
         user_stories: [US-AIAPP-039, US-AIAPP-040]
-        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136]
+        business_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-188]
       parameters:
         - $ref: '#/components/parameters/provider_capability_id'
       responses:
@@ -82,7 +82,7 @@ paths:
       x-permission: aiapp.provider_capability.read_diagnostics
       x-s1-refs:
         user_stories: [US-AIAPP-040]
-        business_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-139]
+        business_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-139, BR-AIAPP-188]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -150,7 +150,7 @@ paths:
       x-permission: aiapp.engine_instance.manage
       x-s1-refs:
         user_stories: [US-AIAPP-041]
-        business_rules: [BR-AIAPP-140]
+        business_rules: [BR-AIAPP-140, BR-AIAPP-189]
       requestBody:
         required: true
         content:
@@ -308,7 +308,7 @@ paths:
       x-permission: aiapp.engine_binding.manage
       x-s1-refs:
         user_stories: [US-AIAPP-040, US-AIAPP-041]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141, BR-AIAPP-188, BR-AIAPP-189]
       parameters:
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
@@ -331,7 +331,7 @@ paths:
       x-permission: aiapp.engine_binding.manage
       x-s1-refs:
         user_stories: [US-AIAPP-041]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141, BR-AIAPP-189]
       requestBody:
         required: true
         content:
@@ -355,7 +355,7 @@ paths:
       x-permission: aiapp.engine_binding.manage
       x-s1-refs:
         user_stories: [US-AIAPP-041]
-        business_rules: [BR-AIAPP-137, BR-AIAPP-141]
+        business_rules: [BR-AIAPP-137, BR-AIAPP-141, BR-AIAPP-189]
       parameters: [{$ref: '#/components/parameters/binding_id'}]
       requestBody:
         required: true
@@ -378,7 +378,7 @@ paths:
       x-permission: aiapp.engine_binding.manage
       x-s1-refs:
         user_stories: [US-AIAPP-041]
-        business_rules: [BR-AIAPP-137, BR-AIAPP-141]
+        business_rules: [BR-AIAPP-137, BR-AIAPP-141, BR-AIAPP-189]
       parameters: [{$ref: '#/components/parameters/binding_id'}]
       responses:
         '200':
@@ -1340,12 +1340,25 @@ components:
         notes: {type: array, items: {type: string}}
     ProviderCapability:
       type: object
-      required: [schema_version, id, name, application_engine_type_id, revision, enabled, provider, sources, models, operations, variants, availability, loaded_at]
+      required: [schema_version, id, name, kind, origin, binding_policy, application_engine_type_id, revision, enabled, provider, sources, models, operations, variants, availability, loaded_at]
       properties:
         schema_version: {type: string}
         id: {type: string}
         name: {type: string}
         description: {type: string}
+        kind:
+          type: string
+          enum: [catalog, engine_binding]
+          description: catalog 提供模型/Operation/Variant 目录；engine_binding 只表示引擎基础运行时身份。
+        origin:
+          type: string
+          enum: [builtin, directory]
+          readOnly: true
+          description: 由加载器派生；外部清单不能声明 builtin。
+        binding_policy:
+          type: string
+          enum: [manual, required_immutable]
+          description: manual 由管理员维护绑定；required_immutable 由系统为匹配 EngineType 的实例维护且不可修改。
         application_engine_type_id: {type: string}
         revision: {type: string}
         enabled: {type: boolean}
@@ -1373,7 +1386,9 @@ components:
       required: [source_file, result, loaded_at]
       properties:
         provider_capability_id: {type: string, nullable: true}
-        source_file: {type: string}
+        source_file:
+          type: string
+          description: 目录文件路径或内置清单的 embedded:// 虚拟路径。
         result: {type: string, enum: [loaded, disabled, failed]}
         error_code: {type: string}
         error_value: {type: integer}
@@ -1620,7 +1635,7 @@ components:
           x-naming-exception: 第三方 ComfyUI 原始字段名保持不变。
     EngineCapabilityBinding:
       type: object
-      required: [id, name, engine_instance_id, provider_capability_id, provider_capability_revision, enabled, effective_status, restrictions, created_at, updated_at, resource_version]
+      required: [id, name, engine_instance_id, provider_capability_id, provider_capability_revision, enabled, effective_status, restrictions, system_managed, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
@@ -1631,6 +1646,10 @@ components:
         enabled: {type: boolean}
         effective_status: {type: string, enum: [available, disabled, unavailable]}
         restrictions: {type: object, additionalProperties: true}
+        system_managed:
+          type: boolean
+          readOnly: true
+          description: true 表示 required_immutable 系统绑定，不能通过绑定管理 API 修改或删除。
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
         resource_version: {type: integer}

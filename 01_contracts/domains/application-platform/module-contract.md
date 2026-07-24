@@ -1,15 +1,15 @@
 # Application Platform Module Contract
 
-本契约实现 `product-spec.md` 当前草案。S1 引用：`US-AIAPP-039..050`、`BR-AIAPP-130..180`。
+本契约实现 `product-spec.md` 当前草案。S1 引用：`US-AIAPP-039..050`、`BR-AIAPP-130..189`。
 
 ## 1. 模块边界
 
 | 模块 | 职责 | 非职责 | S1 引用 |
 | --- | --- | --- | --- |
 | engine-type-registry | 从 `runtime-registry.yaml` 注册 CapabilityDefinition、ApplicationEngineType、EngineAdapter 和 OperationExecutor | 不保存账号、Provider 模型清单或管理员配置 | BR-AIAPP-140、151 |
-| provider-capability-loader | 从单一目录原子加载 YAML、验证 Schema 和执行依赖、建立只读注册表与诊断 | 不递归、不覆盖、不写库、不热加载、不阻止服务启动 | US-AIAPP-039、040；BR-AIAPP-130..139 |
+| provider-capability-loader | 先严格加载内置 YAML，再从单一目录原子加载外部 YAML，验证 Schema 和执行依赖并建立只读注册表与诊断 | 不递归、不允许目录覆盖内置 ID、不写库、不热加载 | US-AIAPP-039、040；BR-AIAPP-130..139、188 |
 | engine-instance | 管理真实连接环境、鉴权配置、手动/周期健康检测、ComfyUI 当前 object_info 和安全失败摘要，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力、维护 object-info 历史或向普通用户暴露凭证及原始上游失败载荷 | US-AIAPP-041、044、045、049；BR-AIAPP-140、162、163、169、170、175、176 |
-| engine-binding | 绑定实例与当前加载能力并应用收紧限制 | 不复制能力清单，不允许 restrictions 扩张能力 | US-AIAPP-041；BR-AIAPP-135、137、141 |
+| engine-binding | 管理 manual 绑定，并为匹配 EngineType 的实例原子创建、启动补齐 required_immutable 系统绑定 | 不复制能力清单，不允许 restrictions 扩张能力或修改系统绑定 | US-AIAPP-041；BR-AIAPP-135、137、141、189 |
 | comfyui-workflow | 单文件导入双来源工作流、显式生成 API、按目标实例当前目录派生解析结果、兼容校验和一次性模板转换 | 不维护 object-info/解析缓存、版本树、lifecycle、共享工作流、节点编辑或后续模板版本 | US-AIAPP-044..047；BR-AIAPP-153、156、159、160、164、165、169、171..174、176 |
 | comfyui-workflow-test-run | 保存试运行快照并通过 Task Center 创建三节点 DAG，聚合任务投影和受控临时预览 | 不持久化媒体正文、不登记 Artifact/Asset、不拥有任务状态机 | US-AIAPP-048；BR-AIAPP-166..168 |
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
@@ -19,13 +19,29 @@
 
 ## 2. ProviderCapability 启动契约
 
-- 配置输入：`provider_capability_directory`，默认 `./provider-capabilities`。
+- 内置输入：编译进服务的 `provider-capabilities/*.yaml`；结构或语义无效时服务拒绝启动。
+- 目录输入：`provider_capability_directory`，默认 `./provider-capabilities`。
 - 扫描范围：目录第一层 `.yaml` / `.yml` 普通文件；按文件名排序只用于产生稳定诊断，不产生覆盖优先级。
-- 加载顺序：YAML 解析 → `schema_version` → JSON Schema → ID 去重 → model/operation/variant 引用 → EngineType/Adapter/Executor 一致性。
-- 原子性：任一步失败时整个文件为 `unavailable`；其他文件继续加载。
-- 目录失败：注册表为 `degraded` 且能力集合为空，服务启动继续。
+- 加载顺序：内置清单 → 目录 YAML 解析 → `schema_version` → JSON Schema → ID 去重/保留 ID → kind 对应语义 → EngineType/Adapter/Executor 一致性。
+- 原子性：目录文件任一步失败时整个文件为 `unavailable`；其他目录文件及内置能力继续可用。
+- 目录失败：注册表为 `degraded`，目录能力为空但内置能力保留，服务启动继续。
 - 运行期：注册表不可变；修改文件后必须重启。运行态诊断不写回文件或数据库。
-- `runtime-registry.yaml` 是内置类型与执行映射契约；`provider-capabilities/provider-capability.schema.yaml` 是清单结构事实源；`seedance.yaml` 和 `deepseek.yaml` 是当前内置平台清单。清单中的 EngineType 和 CapabilityDefinition 必须能在 Registry 中解析。
+- `runtime-registry.yaml` 是内置类型与执行映射契约；`provider-capabilities/provider-capability.schema.yaml` 是清单结构事实源；`comfyui.yaml` 是内置 engine_binding，`seedance.yaml` 和 `deepseek.yaml` 是目录 catalog。catalog 的 EngineType、CapabilityDefinition 和 Executor 必须能解析；engine_binding 必须解析 EngineType 与 Adapter。
+
+### 2.1 字段维度与固定组合
+
+- `kind`：`catalog` 提供模型/Operation/Variant；`engine_binding` 只提供引擎身份。
+- `origin`：加载器只读派生为 `builtin` 或 `directory`，不接受外部清单声明。
+- `binding_policy`：`manual` 允许管理员管理绑定；`required_immutable` 只允许系统创建和维护。
+- DeepSeek、Seedance 固定为 `catalog + directory + manual`；ComfyUI 固定为 `engine_binding + builtin + required_immutable`。
+- `kind=engine_binding` 不得进入 Provider ApplicationTemplate、RuntimeForm Variant 或 Provider OperationExecutor 路径。
+
+### 2.2 ComfyUI 系统绑定
+
+- 新建 comfyui EngineInstance 与唯一系统绑定在同一数据库事务提交，任一失败必须整体回滚。
+- API Server 和 TaskWorker 启动时幂等补齐既有实例；唯一索引与 upsert 保证多副本收敛，并将 revision、enabled 和 restrictions 恢复为当前内置事实。
+- 系统绑定的 `system_managed` 为只读派生字段；绑定管理 API 不允许创建、更新、禁用或删除它。
+- EngineInstance 删除时绑定通过 `ON DELETE CASCADE` 清理；历史运行继续依赖自身不可变快照。
 
 ## 3. 适配器与执行器契约
 
@@ -55,7 +71,7 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 ## 4. 数据与一致性
 
 - ProviderCapability、ApplicationEngineType、加载结果和 RuntimeFormSchema 不建表。
-- Binding 保存稳定能力 ID 与绑定时 revision，但每次解析和运行仍读取当前注册表；能力不可用时 Binding 保留且不生效。
+- Binding 保存稳定能力 ID 与绑定时 revision；manual 绑定每次解析和运行读取当前注册表，required_immutable 绑定由启动 reconcile 自动更新到内置 revision。
 - ComfyUIWorkflow 是 owner 私有的非版本化导入资源；导入不选择或保存实例，也不读取 object_info。源文件不可修改，重新导入创建新 ID，不定义 archive、restore 或 lifecycle。
 - API Workflow 使用 RFC 8785 JSON Canonicalization Scheme 计算 SHA-256，重复 checksum 查询限制在 owner 范围内；object_info 不计算或保存 checksum。
 - 节点、输入候选、输出候选和依赖按请求中的目标实例当前目录计算，不写入工作流表。

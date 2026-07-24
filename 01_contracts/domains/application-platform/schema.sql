@@ -51,7 +51,7 @@ CREATE TABLE aiapp_engine_capability_bindings (
   description TEXT DEFAULT '',
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
-  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id) ON DELETE CASCADE,
   engine_instance_snapshot_json TEXT NOT NULL,
   provider_capability_id TEXT NOT NULL,
   provider_capability_revision TEXT NOT NULL,
@@ -61,6 +61,8 @@ CREATE TABLE aiapp_engine_capability_bindings (
 
 CREATE UNIQUE INDEX idx_aiapp_binding_engine_capability ON aiapp_engine_capability_bindings(engine_instance_id, provider_capability_id);
 CREATE INDEX idx_aiapp_binding_capability ON aiapp_engine_capability_bindings(provider_capability_id, enabled);
+
+-- system_managed is derived from the current ProviderCapability binding_policy and is not persisted.
 
 -- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-169, BR-AIAPP-173, BR-AIAPP-174, BR-AIAPP-186, BR-AIAPP-187.
 -- A workflow import is deliberately not versioned. Re-import creates another row.
