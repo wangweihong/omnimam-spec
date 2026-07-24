@@ -2,18 +2,18 @@
 
 ## 当前项目目标
 
-发布 ComfyUI 系统内置 ProviderCapability 与 required_immutable 默认绑定契约，同时保持 workflow contract 作为具体 ComfyUI 能力事实源。
+发布 ComfyUI API-ready 工作流直接选择引擎、可重复转换独立应用模板，以及 ApplicationEngineType 多语言能力选项契约。
 
 ## 本次完成
 
-1. ProviderCapability 增加 `kind`、只读 `origin` 和 `binding_policy` 三个正交维度。
-2. 新增 `comfyui-workflow-runtime` 内置 engine_binding 清单，不声明虚构 model、operation 或 variant。
-3. 定义所有现有及新建 comfyui EngineInstance 必须具有唯一系统绑定；新建实例与绑定原子提交，启动时幂等回填并支持多副本收敛。
-4. 系统绑定固定 enabled、空 restrictions、当前内置 revision，不能由管理员创建、更新、禁用或删除。
-5. 外部目录不能覆盖内置保留 ID；目录失败只使 registry degraded，内置能力继续可用。
-6. EngineCapabilityBinding 响应增加只读 `system_managed`，绑定外键调整为 `ON DELETE CASCADE`。
-7. Application Platform OpenAPI 升级为 1.5.0，新增三个稳定业务错误。
-8. 规格变更提交为 `cff0403`，`spec-v1.7.8` 已发布。
+1. 所有 `api_conversion_status=ready` 的 ComfyUIWorkflow 均可直接选择当前可用 ComfyUI EngineInstance 转换模板，包括 Visual-to-API 后的工作流。
+2. 转换请求以 `engine_instance_id` 替换 `workflow_validation_id`；历史 WorkflowValidation 只用于独立诊断。
+3. 同一工作流可使用不同幂等键创建多个独立 ApplicationTemplate 与 v1 draft，相同 owner、工作流和幂等键返回首次结果。
+4. 移除工作流 converted 状态、单一模板引用、转换筛选和 TemplateVersion 的 validation 来源。
+5. ApplicationEngineType 返回 `operation_executors` 与按 key 字典序排列的 `capability_definitions.zh-CN/en-US` 名称数组。
+6. 设计态 schema 将转换幂等键放在 ApplicationTemplate，不新增转换历史表。
+7. 明确 Server 必须破坏性删除重建全部 Application Platform 表，不迁移或回填旧 aiapp 数据。
+8. Application Platform OpenAPI 升级为 1.6.0，规格变更提交为 `0c89181`，`spec-v1.7.9` 已发布。
 
 ## 文件变化
 
@@ -22,10 +22,8 @@
 - `01_contracts/domains/application-platform/schema.sql`
 - `01_contracts/domains/application-platform/errors.yaml`
 - `01_contracts/domains/application-platform/module-contract.md`
-- `01_contracts/domains/application-platform/provider-capabilities/provider-capability.schema.yaml`
-- `01_contracts/domains/application-platform/provider-capabilities/comfyui.yaml`
-- `01_contracts/domains/application-platform/provider-capabilities/deepseek.yaml`
-- `01_contracts/domains/application-platform/provider-capabilities/seedance.yaml`
+- `01_contracts/domains/application-platform/events.yaml`
+- `01_contracts/domains/application-platform/runtime-registry.yaml`
 - `02_architecture/domains/application-platform.md`
 - `CHANGELOG.md`
 - `RELEASE.md`
@@ -33,27 +31,27 @@
 
 ## 关键设计决策
 
-- `kind` 描述能力用途，`origin` 描述加载来源，`binding_policy` 描述绑定生命周期，三者不能互相替代。
-- ComfyUI 固定为 `engine_binding + builtin + required_immutable`；DeepSeek、Seedance 固定为 `catalog + directory + manual`。
-- 系统绑定是实例身份与管理投影，不参与 Provider 模板、Variant 或 OperationExecutor 路径。
-- ComfyUI API Workflow、workflow contract 和目标实例当前 object_info 继续拥有具体模板与运行能力事实。
+- 转换所选 EngineInstance 只用于当前 object_info 实时校验，不自动写入模板 `engine_restrictions`。
+- 工作流不承担转换历史或单一转换状态；模板版本保留 `source_comfyui_workflow_id`，模板内部字段承担幂等重试。
+- 能力 value 始终来自 `operation_executors` key；中英文数组必须与排序后的 key 等长同序。
+- 已发布旧错误码只标记 deprecated，不在新 DTO、数据库或运行路径保留兼容分支。
 
 ## API、Schema 与配置变化
 
-- ProviderCapability 响应新增 `kind`、`origin`、`binding_policy`。
-- EngineCapabilityBinding 响应新增只读 `system_managed`。
-- 新增 `ERR_AIAPP_PROVIDER_CAPABILITY_ID_RESERVED`、`ERR_AIAPP_SYSTEM_ENGINE_BINDING_IMMUTABLE`、`ERR_AIAPP_REQUIRED_ENGINE_BINDING_FAILED`。
-- `aiapp_engine_capability_bindings.engine_instance_id` 外键使用 `ON DELETE CASCADE`。
-- 不新增 endpoint、权限码、事件或运行时配置。
+- `ComfyUIWorkflowConvertRequest` 新增 `engine_instance_id` 并移除 `workflow_validation_id`。
+- `ComfyUIWorkflow` 移除 converted 相关字段，列表移除 converted 查询参数。
+- `ApplicationTemplateVersion` 移除 `source_workflow_validation_id`。
+- `ApplicationEngineType` 移除 `capability_definition_ids`，新增 `operation_executors` 和多语言 `capability_definitions`。
+- `comfyui_workflow_converted` 事件改为携带 `engine_instance_id`。
 
 ## 待办与风险
 
-- Server 必须在 pin 新 release 后实现 embedded loader、原子创建、启动 reconcile、不可变保护和实际外键 migration。
-- Web 如展示绑定操作，需要根据 `system_managed` 隐藏或禁用编辑、禁用和删除动作。
+- Server 和 Web 必须 pin `spec-v1.7.9` 后再正式实现。
+- Server 启动将删除全部现有 Application Platform 数据；部署前必须明确接受该破坏性行为。
 
 ## 推荐下一任务
 
-在 omnimam-server 更新 submodule pin 到 `spec-v1.7.8` 并实现后端契约与回归测试。
+在 omnimam-server 与 omnimam-web 更新 submodule pin 到 `spec-v1.7.9`，完成后端与转换界面实现和端到端验收。
 
 Next Prompt:
 

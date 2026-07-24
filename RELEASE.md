@@ -1,5 +1,26 @@
 # Release Records
 
+## spec-v1.7.9
+
+- commit: 0c89181
+- status: released
+- confirmed_by: user（2026-07-24 明确要求 ComfyUI API-ready 工作流直接选择引擎并支持多次模板转换，同时删除重建 Application Platform 数据）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/events.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/application-platform/runtime-registry.yaml
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: Server 必须删除重建全部 Application Platform 表，不回填旧数据；转换直接选择当前可用 ComfyUI EngineInstance 实时校验，同一 API-ready 工作流可用不同幂等键创建多个模板。Web 必须使用引擎资源选择器和 `operation_executors` 派生的多语言能力下拉。
+
 ## spec-v1.7.8
 
 - commit: cff0403
