@@ -13,6 +13,7 @@
 5. 外部目录不能覆盖内置保留 ID；目录失败只使 registry degraded，内置能力继续可用。
 6. EngineCapabilityBinding 响应增加只读 `system_managed`，绑定外键调整为 `ON DELETE CASCADE`。
 7. Application Platform OpenAPI 升级为 1.5.0，新增三个稳定业务错误。
+8. 规格变更提交为 `cff0403`，`spec-v1.7.8` 已发布。
 
 ## 文件变化
 
@@ -27,6 +28,7 @@
 - `01_contracts/domains/application-platform/provider-capabilities/seedance.yaml`
 - `02_architecture/domains/application-platform.md`
 - `CHANGELOG.md`
+- `RELEASE.md`
 - `docs/HANDOFF.md`
 
 ## 关键设计决策
@@ -46,13 +48,12 @@
 
 ## 待办与风险
 
-- 规格尚未提交、记录 release、打 tag 或推送。
 - Server 必须在 pin 新 release 后实现 embedded loader、原子创建、启动 reconcile、不可变保护和实际外键 migration。
 - Web 如展示绑定操作，需要根据 `system_managed` 隐藏或禁用编辑、禁用和删除动作。
 
 ## 推荐下一任务
 
-完成规格校验并发布 `spec-v1.7.8`，随后在 omnimam-server 更新 submodule pin 并实现后端契约。
+在 omnimam-server 更新 submodule pin 到 `spec-v1.7.8` 并实现后端契约与回归测试。
 
 Next Prompt:
 

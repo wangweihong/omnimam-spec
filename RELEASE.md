@@ -1,5 +1,28 @@
 # Release Records
 
+## spec-v1.7.8
+
+- commit: cff0403
+- status: released
+- confirmed_by: user（2026-07-24 明确要求实施 ComfyUI 系统内置 ProviderCapability、不可变默认绑定及字段文档）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/schema.sql
+  - 01_contracts/domains/application-platform/errors.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/application-platform/provider-capabilities/provider-capability.schema.yaml
+  - 01_contracts/domains/application-platform/provider-capabilities/comfyui.yaml
+  - 01_contracts/domains/application-platform/provider-capabilities/deepseek.yaml
+  - 01_contracts/domains/application-platform/provider-capabilities/seedance.yaml
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: Server 必须将 comfyui-workflow-runtime 编译进服务，为全部现有及新建 comfyui EngineInstance 原子维护 required_immutable 系统绑定，并拒绝外部保留 ID 覆盖和系统绑定写操作；ComfyUI workflow contract 仍是具体模板与运行能力事实源。
+
 ## spec-v1.7.7
 
 - commit: a26b029
