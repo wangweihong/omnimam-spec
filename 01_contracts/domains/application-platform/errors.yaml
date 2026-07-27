@@ -271,6 +271,19 @@
   related_rules: [BR-AIAPP-189]
   related_user_stories: [US-AIAPP-041]
 
+- code: ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED
+  value: 130429
+  http: 200
+  cn: 已存在同名的 ApplicationEngineInstance。
+  en: An ApplicationEngineInstance with the same name already exists.
+  owning_domain: application-platform
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
 - code: ERR_AIAPP_TEMPLATE_SOURCE_INVALID
   value: 130620
   http: 200

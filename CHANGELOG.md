@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-27
+
+- ApplicationEngineInstance 名称明确为全局唯一；创建或更新为已有名称时返回专用业务错误 `ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED`，不再误报为鉴权配置错误。
+
 ## 2026-07-24
 
 - ComfyUI 模板转换改为直接选择当前可用 EngineInstance 并实时校验，不再选择历史 compatible Validation；所有 API-ready 工作流均可转换，同一工作流可使用不同幂等键创建多个独立模板。

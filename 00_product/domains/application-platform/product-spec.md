@@ -2586,7 +2586,7 @@ ProviderCapability 加载失败属于能力级降级，不属于服务启动失�
 8. `BR-AIAPP-137`：EngineCapabilityBinding 引用稳定能力 ID；manual 绑定创建、表单解析和运行提交必须重新验证当前注册表状态与修订，required_immutable 绑定由系统按当前内置 revision 自动维护。
 9. `BR-AIAPP-138`：ApplicationRun 必须按能力来源快照 ProviderCapability ID/revision 或 ComfyUI workflow contract revision；能力变化不得改写历史运行快照。
 10. `BR-AIAPP-139`：运行态 availability、失败原因、加载时间和来源文件不得写回 ProviderCapability YAML 或数据库。
-11. `BR-AIAPP-140`：ApplicationEngineType 是系统内置类型；ApplicationEngineInstance 保存真实连接环境，创建、更新和健康检测不得改变类型已注册的执行能力。实例的 auth_type 必须属于对应 ApplicationEngineType 支持的鉴权方式，auth_config 必须与 auth_type 严格匹配并拒绝缺失字段、未知字段或跨类型字段；none 必须省略 auth_config，鉴权更新必须成组提交 auth_type 与对应 auth_config。
+11. `BR-AIAPP-140`：ApplicationEngineType 是系统内置类型；ApplicationEngineInstance 保存真实连接环境，名称必须全局唯一，创建或重命名为已有名称时必须拒绝。创建、更新和健康检测不得改变类型已注册的执行能力。实例的 auth_type 必须属于对应 ApplicationEngineType 支持的鉴权方式，auth_config 必须与 auth_type 严格匹配并拒绝缺失字段、未知字段或跨类型字段；none 必须省略 auth_config，鉴权更新必须成组提交 auth_type 与对应 auth_config。
 12. `BR-AIAPP-141`：EngineCapabilityBinding 必须连接相同 ApplicationEngineType 的实例与能力；manual 绑定的 restrictions 只能缩小能力，required_immutable 绑定必须保持 enabled 且 restrictions 为空，不能由管理员创建、修改、禁用或删除。
 13. `BR-AIAPP-142`：ApplicationTemplate、ApplicationVersion 和 RuntimeFormSchema 必须从当前有效能力逐层裁剪；已发布版本不原地修改，运行时表单是临时解析结果。
 14. `BR-AIAPP-143`：ApplicationRun 在调用任务中心前固定应用版本、模板版本、EngineInstance、能力来源 revision、输入和输出映射快照；AtomicTask 是执行状态事实源。
