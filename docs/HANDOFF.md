@@ -9,6 +9,7 @@
 1. `BR-AIAPP-140` 明确 ApplicationEngineInstance 名称全局唯一，创建或重命名为已有名称时必须拒绝。
 2. 新增 engine 模块错误 `ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED`，数值 `130429`，HTTP 200，不可重试。
 3. 错误码追溯到现有 `BR-AIAPP-140` 与 `US-AIAPP-041`，不复用鉴权、资源版本或其他领域错误。
+4. 规格变更提交为 `d0c773a`，`spec-v1.7.10` 已发布并允许作为正式实现依据。
 
 ## 文件变化
 
@@ -30,11 +31,11 @@
 
 ## 待办与风险
 
-- 发布新 release 后，omnimam-server 必须更新 submodule 与 `SSOT_VERSION`，生成错误码注册表，并修复 EngineInstance 创建和更新映射。
+- omnimam-server 必须 pin `spec-v1.7.10`，生成错误码注册表，并修复 EngineInstance 创建和更新映射。
 
 ## 推荐下一任务
 
-发布本次规格并在 omnimam-server 实现创建、更新同名错误映射。
+在 omnimam-server pin `spec-v1.7.10` 并实现创建、更新同名错误映射。
 
 Next Prompt:
 

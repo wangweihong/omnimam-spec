@@ -1,5 +1,19 @@
 # Release Records
 
+## spec-v1.7.10
+
+- commit: d0c773a
+- status: released
+- confirmed_by: user（2026-07-27 明确授权新增并发布 ApplicationEngineInstance 同名专用错误码）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/errors.yaml
+- implementation_gate: Server 必须将 EngineInstance 创建和更新的名称唯一索引冲突映射为 `ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED`，不得继续映射为鉴权配置错误。
+
 ## spec-v1.7.9
 
 - commit: 0c89181
