@@ -2,47 +2,51 @@
 
 ## 当前项目目标
 
-发布 ApplicationRun 持久化列表与 AtomicTask 终态投影契约，作为 Server/Web 修复应用运行数据不可见问题的正式依据。
+以 `spec-v1.7.14` 消除 Canvas ApplicationVersion 到 ApplicationRun、AtomicTask 与 Artifact 输出之间的运行边界歧义。
 
 ## 本次完成
 
-1. `BR-AIAPP-194` 与 `AC-AIAPP-043-06..07` 明确应用详情运行历史、权限、排序和终态投影语义。
-2. 新增 `GET /api/v1/applications/{application_id}/runs`，分页返回包含 AtomicTask 摘要和 Artifact 引用的 ApplicationRun。
-3. 明确终态必须在 AtomicTask 持久化后按递增 resource version 单调投影，重复或乱序通知不得回退或重复创建 Artifact 引用。
-4. 同步模块契约、领域架构、Changelog 和 release 记录；Application Platform OpenAPI 升级为 1.7.0。
+1. 规范内部 functionRef 为 `application-platform.run`。
+2. 明确 Canvas 只创建 DAG 内唯一 AtomicTask，Worker 在 Conductor 解析最终输入后幂等创建并绑定 ApplicationRun。
+3. 明确目录、发布和运行通过 Application Platform 受控接口复核可见性、开关、schema 与 Engine/runtime。
+4. 扩展 `application_version_published` 与 ApplicationRun Artifact 引用消费契约，闭合 NodeDefinition 登记和 Canvas 输出投影。
 
 ## 文件变化
 
 - `00_product/domains/application-platform/product-spec.md`
-- `01_contracts/domains/application-platform/openapi.yaml`
+- `00_product/domains/workflow-canvas/product-spec.md`
+- `00_product/domains/sse/product-spec.md`
+- `01_contracts/domains/application-platform/events.yaml`
 - `01_contracts/domains/application-platform/module-contract.md`
+- `01_contracts/domains/workflow-canvas/module-contract.md`
+- `01_contracts/domains/task-center/module-contract.md`
 - `02_architecture/domains/application-platform.md`
+- `02_architecture/domains/workflow-canvas.md`
 - `CHANGELOG.md`
 - `RELEASE.md`
 - `docs/HANDOFF.md`
 
 ## 关键设计决策
 
-- 运行历史属于 Application Platform，不允许 Web 从 Task Center 扇出或拼装。
-- 列表复用完整 ApplicationRun 投影，任务摘要和 Artifact 引用由服务端批量组合。
-- AtomicTask 是执行状态事实源；ApplicationRun 只接受更高 task resource version 的投影。
-- Artifact 引用使用稳定输出身份幂等创建，投影重试不能改变 AtomicTask 终态。
+- Canvas ApplicationRun 的稳定来源键是 owner + `canvas_run_id + execution_key`。
+- Application Platform 绑定既有 DAG AtomicTask，不调用任务创建接口。
+- 发布事件负责目录登记，事件投影不替代实时可用性校验。
+- Canvas 输出按 AtomicTask、output key、sequence 与 Artifact resource version 单调投影。
 
 ## API、Schema 与配置变化
 
-- Application Platform OpenAPI 1.7.0。
-- 新增 `GET /api/v1/applications/{application_id}/runs`，支持分页以及 `created_at|updated_at` 排序。
-- 数据库 schema、权限码、错误码和配置不变。
+- 公共 OpenAPI、SQL schema、错误码、权限码和配置不变。
+- Application Platform 事件 payload 与跨域内部模块契约扩展。
 
 ## 待办与风险
 
-- omnimam-server 更新 SSOT pin，实现列表 API 与终态完成通知/回调，并覆盖乱序、重放、权限和分页测试。
-- omnimam-web 更新 SSOT pin，应用详情加载并分页展示运行历史。
-- 对真实 ComfyUI 运行验证 SUCCESS、输出和图片 Artifact 在刷新后仍可见。
+- omnimam-server pin `spec-v1.7.14` 并实现完整运行、事件和输出投影链路。
+- omnimam-web pin 同一版本；如公共 API 不变则无需 UI 代码变化。
+- 使用真实 Conductor/Worker/Provider 验证重试、重启和上游连线输入。
 
 ## 推荐下一任务
 
-在 omnimam-server pin `spec-v1.7.13`，先补失败测试，再实现 ApplicationRun 列表和 AtomicTask 持久化后的终态投影。
+在 omnimam-server 实现失败测试、既有 AtomicTask 绑定、发布消费者、Artifact 输出投影和恢复测试。
 
 Next Prompt:
 

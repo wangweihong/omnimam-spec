@@ -1,5 +1,30 @@
 # Release Records
 
+## spec-v1.7.14
+
+- commit: ca64ac47cae099886c3216d5f7eb02d3b6f92d7d
+- status: released
+- confirmed_by: user（2026-07-28 明确要求实现 Canvas Application execution、发布联动与 Artifact 输出闭环）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+  - workflow-canvas
+  - task-center
+  - sse
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+  - 00_product/domains/workflow-canvas/product-spec.md
+  - 00_product/domains/sse/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/events.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/workflow-canvas/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+  - 02_architecture/domains/workflow-canvas.md
+- implementation_gate: Canvas 只创建 DAG 内唯一 `application-platform.run` AtomicTask；Worker 在最终输入解析后以 CanvasRun 与 execution key 幂等创建并绑定 ApplicationRun，禁止第二个任务。ApplicationVersion 发布必须可靠驱动节点目录登记，发布/运行实时复核受控可用性；ApplicationRun Artifact 引用必须单调投影为 Canvas READY 输出。
+
 ## spec-v1.7.13
 
 - commit: e9814d0
