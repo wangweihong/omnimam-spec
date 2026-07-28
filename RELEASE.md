@@ -2,7 +2,7 @@
 
 ## spec-v1.7.13
 
-- commit: pending
+- commit: e9814d0
 - status: released
 - confirmed_by: user（2026-07-28 明确授权修复应用任务已执行但运行记录和运行结果不可见的问题）
 - allowed_as_formal_implementation_basis: true
