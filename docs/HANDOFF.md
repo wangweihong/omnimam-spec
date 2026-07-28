@@ -11,6 +11,7 @@
 3. 批量请求限制为 1 至 200 个唯一素材 ID；批量和清空均逐项提交并返回结果，失败项不回滚成功项。
 4. 扩展 `asset.delete` 权限，新增批量请求无效与删除执行失败错误码。
 5. 同步 Asset Library 模块契约、架构与变更记录；OpenAPI 升级为 0.7.0。
+6. 规格内容提交为 `03b5dc8`，release 记录随后以 `spec-v1.7.12` 发布并允许作为正式实现依据。
 
 ## 文件变化
 
@@ -21,6 +22,7 @@
 - `01_contracts/domains/asset-library/module-contract.md`
 - `02_architecture/domains/asset-library.md`
 - `CHANGELOG.md`
+- `RELEASE.md`
 - `docs/HANDOFF.md`
 
 ## 关键设计决策
@@ -40,13 +42,12 @@
 
 ## 待办与风险
 
-- 规格尚需提交并登记 release。
 - omnimam-server 与 omnimam-web 必须更新 SSOT pin 并实现对应接口、确认交互和回归测试。
 - 同步清空超大回收站可能形成长请求；首期按用户明确范围实现，后续根据观测数据评估异步任务化。
 
 ## 推荐下一任务
 
-提交并发布下一版 spec，然后在 omnimam-server 实现并验证单项/批量软删除、直接硬删除和回收站清空完整链路。
+在 omnimam-server pin `spec-v1.7.12`，实现并验证单项/批量软删除、直接硬删除和回收站清空完整链路。
 
 Next Prompt:
 

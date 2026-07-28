@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.7.12
+
+- commit: 03b5dc8
+- status: released
+- confirmed_by: user（2026-07-28 明确要求增加素材批量删除、单项/批量直接硬删除和回收站清空功能）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - asset-library
+- S1:
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/errors.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+- architecture:
+  - 02_architecture/domains/asset-library.md
+- implementation_gate: Server 必须保持单删默认软删除，只有显式 hard_delete 才绕过回收站；批量删除最多 200 个唯一 ID，批量和清空回收站均逐项隔离并返回结果；所有硬删除路径复用强引用检查且只清理无共享引用 Blob。Web 必须对不可逆操作进行明确确认并读取逐项结果。
+
 ## spec-v1.7.11
 
 - commit: 00b78aa
