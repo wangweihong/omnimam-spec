@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.7.13
+
+- commit: pending
+- status: released
+- confirmed_by: user（2026-07-28 明确授权修复应用任务已执行但运行记录和运行结果不可见的问题）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - application-platform
+- S1:
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+- architecture:
+  - 02_architecture/domains/application-platform.md
+- implementation_gate: Server 必须提供按 Application 分页读取运行历史的接口，并仅在 AtomicTask 终态持久化后按递增 resource version 单调、幂等投影状态、输出和 Artifact 引用；Web 必须直接读取该同域接口展示持久化运行记录，不得通过 Task Center 扇出或降级拼装。
+
 ## spec-v1.7.12
 
 - commit: 03b5dc8

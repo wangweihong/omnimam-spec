@@ -159,7 +159,7 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 
 Binding 中的 ProviderCapability ID 没有数据库外键，创建、解析和运行时通过注册表校验。ApplicationRun 按能力来源保存 ProviderCapability revision 或 ComfyUI API Workflow、模板 revision 与实际参数执行快照，但不保存 object_info；ComfyUI 运行可执行性始终按所选实例当前目录重新判断。
 
-ApplicationRun 查询在 application-platform 内组合创建时保存的 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability 与非敏感 EngineInstance 摘要；旧数据缺少快照时才读取当前同域投影。AtomicTask 摘要通过 Task Center service 边界读取。查询不跨领域私有表，不返回 Engine 鉴权、object_info、任务参数或输出；关联资源不可见或缺失时只省略摘要并保留原 ID。ApplicationRun 内已有的 Artifact 投影直接承担列表展示和 Asset 导航，不允许客户端再按行扇出 Artifact 详情请求。
+ApplicationRun 查询在 application-platform 内组合创建时保存的 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability 与非敏感 EngineInstance 摘要；旧数据缺少快照时才读取当前同域投影。Application 详情通过同域分页接口读取持久化运行历史，默认 `created_at desc`。AtomicTask 摘要通过 Task Center service 边界批量读取。查询不跨领域私有表，不返回 Engine 鉴权、object_info、任务参数或输出；关联资源不可见或缺失时只省略摘要并保留原 ID。ApplicationRun 内已有的 Artifact 投影直接承担列表展示和 Asset 导航，不允许客户端再按行扇出 Artifact 详情请求。
 
 ComfyUIWorkflow 不维护版本树或 lifecycle。每次导入生成新资源，只保存源文件、API Workflow 和元数据，不选择或保存 EngineInstance，也不读取 object_info；单文件由服务端识别 visual 或 API 来源，visual 来源显式指定健康 ComfyUI 实例并使用其当前目录转换后才形成 API 执行事实。节点、候选项和依赖按目标实例当前目录即时计算，输出候选的 extractable 只来自 `object_info.output_node=true`。兼容性校验只保存独立诊断；每次模板转换直接选择目标实例实时校验，并把 API Workflow 和模板契约深拷贝到新的首个 draft ApplicationTemplateVersion，工作流不保存转换状态或转换历史。
 
@@ -244,7 +244,7 @@ sequenceDiagram
     Exec->>Provider: 调用供应商 API
     Provider-->>Exec: 任务或结果
     Exec-->>Task: 状态、进度、标准输出
-    Task-->>App: resource_version 投影事件
+    Task-->>App: 终态持久化后的 resource_version 投影事件
     App->>Asset: 受控交付标准输出并幂等形成 Artifact
     Asset-->>App: 返回 artifact_id
     App->>Asset: 以 artifact_id 幂等登记 AssetVersion
@@ -252,6 +252,8 @@ sequenceDiagram
 ```
 
 Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/processing/ready/failed/deleted`；预览就绪是独立事实。ApplicationPlatform 只保存 Artifact 引用和只读版本投影，不发布竞争性的 Artifact 生命周期事件。
+
+终态投影只接受大于当前 `task_resource_version` 的 AtomicTask 版本；同版本重放必须幂等，旧版本不得回退状态或输出。Artifact 引用以运行、输出 key 和序号稳定去重，投影失败可重试但不得改写 AtomicTask 事实。
 
 ## 10. 失败隔离
 

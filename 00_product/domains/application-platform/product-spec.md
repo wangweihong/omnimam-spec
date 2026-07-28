@@ -2640,6 +2640,7 @@ ProviderCapability 加载失败属于能力级降级，不属于服务启动失�
 62. `BR-AIAPP-191`：模板转换必须直接选择 ComfyUI EngineInstance，并使用其当前未过期 object_info 实时校验；历史 WorkflowValidation 不作为请求输入，所选实例只用于本次校验，不自动限制模板运行范围。
 63. `BR-AIAPP-192`：同一工作流允许使用不同幂等键多次转换；同一 owner、工作流和幂等键返回首次结果，同一 owner 跨工作流复用该键必须失败，任一失败不得留下部分模板或版本。
 64. `BR-AIAPP-193`：ApplicationEngineType 的能力选项必须从 `operation_executors` key 派生，并按 key 字典序返回等长的 `zh-CN`、`en-US` 名称数组；客户端只能选择这些 key，不允许手工输入能力 ID。
+65. `BR-AIAPP-194`：Application 详情必须提供按 Application 范围分页读取的持久化 ApplicationRun 历史，默认按 `created_at desc` 排序并遵循 private/global 与 owner 可见性；AtomicTask 终态持久化后，Application Platform 必须按递增 `task_resource_version` 单调、幂等投影状态、输出和失败摘要，成功输出幂等形成 ApplicationArtifact 引用，页面导航或刷新不得丢失运行记录。
 
 ### 16.2 用户故事与验收标准
 
@@ -2683,6 +2684,8 @@ ProviderCapability 加载失败属于能力级降级，不属于服务启动失�
 * `AC-AIAPP-043-03`：ComfyUI 表单和运行不要求 ProviderCapability 字段；目录平台必须固定实际使用的能力 ID 与 revision。
 * `AC-AIAPP-043-04`：AtomicTask 创建失败时 ApplicationRun 保留可恢复状态，使用相同幂等键重试不会创建重复 AtomicTask。
 * `AC-AIAPP-043-05`：AtomicTask 成功输出形成 Artifact；重复登记返回同一 UserAsset，登记失败不改变 AtomicTask 终态。
+* `AC-AIAPP-043-06`：应用详情可以分页读取当前应用的持久化运行历史，默认最新运行在前；无权访问其他用户 private Application 的用户不能通过列表发现其运行。
+* `AC-AIAPP-043-07`：AtomicTask 终态及标准输出持久化后，ApplicationRun 最终投影为相同终态并展示对应 Artifact；重复或乱序完成通知不得回退状态、重复创建引用或覆盖较新的投影。
 
 `US-AIAPP-044`：作为应用创建者，我希望导入和管理自己的 ComfyUI 工作流，使平台能稳定解析节点、输入输出候选和运行依赖，而不要求我在导入时立即创建模板。
 

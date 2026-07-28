@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Application Platform API
-  version: 1.6.0
+  version: 1.7.0
   description: >-
     ApplicationEngineType、目录加载 ProviderCapability、EngineInstance、Binding、
     ComfyUI 工作流导入与转换、应用模板、应用版本、RuntimeFormSchema 与 ApplicationRun 的 S2 契约。
@@ -1140,6 +1140,34 @@ paths:
                   - $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/applications/{application_id}/runs:
+    get:
+      tags: [application-runs]
+      operationId: list_application_runs
+      summary: 分页查询 Application 的持久化运行历史
+      description: 默认按 created_at desc 返回；每项包含当前 AtomicTask 摘要与 ApplicationArtifact 引用，不要求客户端逐项扇出查询。
+      x-permission: aiapp.application.run
+      x-s1-refs:
+        user_stories: [US-AIAPP-043, US-AIAPP-050]
+        business_rules: [BR-AIAPP-143, BR-AIAPP-149, BR-AIAPP-150, BR-AIAPP-194]
+      parameters:
+        - $ref: '#/components/parameters/application_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - name: sort_field
+          in: query
+          schema: {type: string, enum: [created_at, updated_at], default: created_at}
+        - name: sort_order
+          in: query
+          schema: {type: string, enum: [asc, desc], default: desc}
+      responses:
+        '200':
+          description: 查询完成或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApplicationRunListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [application-runs]
       operationId: create_application_run
@@ -2461,6 +2489,12 @@ components:
         - required: [workflow_contract_revision]
           properties:
             capability_source_type: {enum: [comfyui_workflow]}
+    ApplicationRunListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/ApplicationRun'}}
     ApplicationArtifactRef:
       type: object
       description: ApplicationRun 内嵌的 Artifact 一跳只读投影，已包含当前页面所需的输出名、媒体类型、处理/登记状态和 Asset 导航 ID；客户端不得再按 artifact_id 逐项读取 Artifact 详情。

@@ -2,6 +2,8 @@
 
 ## 2026-07-28
 
+- Application 详情新增按应用分页读取持久化 ApplicationRun 历史的契约，默认按创建时间倒序并复用现有运行权限和可见性边界。
+- 明确 AtomicTask 终态持久化后按 resource version 单调、幂等投影 ApplicationRun 状态、输出和 Artifact 引用；Application Platform OpenAPI 升级为 1.7.0。
 - Asset Library 增加单项与批量删除模式：默认软删除，显式 `hard_delete=true` 可从 active、archived 或 deleted 直接硬删除并绕过回收站。
 - 新增 `POST /api/v1/assets/batch-delete` 与 `POST /api/v1/assets/trash/empty`；批量请求最多 200 个唯一素材 ID，清空回收站逐项处理当前用户全部 deleted 素材。
 - Asset Library OpenAPI 升级为 0.7.0，扩展 `asset.delete` 权限并新增批量请求无效与删除执行失败错误码；schema 和事件目录不变。

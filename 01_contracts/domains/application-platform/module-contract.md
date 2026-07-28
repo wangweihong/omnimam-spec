@@ -1,6 +1,6 @@
 # Application Platform Module Contract
 
-本契约实现 `product-spec.md` 当前草案。S1 引用：`US-AIAPP-039..050`、`BR-AIAPP-130..189`。
+本契约实现 `product-spec.md` 当前草案。S1 引用：`US-AIAPP-039..050`、`BR-AIAPP-130..194`。
 
 ## 1. 模块边界
 
@@ -15,7 +15,7 @@
 | application-template | 维护 ProviderCapability 或 ComfyUI workflow 来源的模板草稿与不可变模板版本 | 不执行外部任务，不把 ComfyUI 伪装为 ProviderCapability，不绕过工作流转换创建 ComfyUI 首版 | US-AIAPP-042、046；BR-AIAPP-142、144、145、147、159、161 |
 | application | 管理 private/global Application、独立能力开关与不可变语义版本 | 不原地修改已发布版本，普通用户不得设置 global | US-AIAPP-042；BR-AIAPP-142、147、148 |
 | runtime-form | 按联合能力来源计算 ApplicationVersion、Engine 约束和权限的字段交集、修正与违规 | 不持久化 RuntimeFormSchema，不信任前端选项范围 | US-AIAPP-043；BR-AIAPP-135、137、142、145、146 |
-| application-run | 创建不可变执行快照、幂等创建 AtomicTask、维护状态投影和 ApplicationRun 输出到 Artifact 的引用映射 | 不拥有 AtomicTask 状态机、Artifact 内容/生命周期、Asset 或 Representation | US-AIAPP-043、050；BR-AIAPP-138、143、149、150、181..184 |
+| application-run | 创建不可变执行快照、幂等创建 AtomicTask、按 Application 分页读取持久化运行历史，并在 AtomicTask 终态持久化后单调投影状态与 ApplicationRun 输出到 Artifact 的引用映射 | 不拥有 AtomicTask 状态机、Artifact 内容/生命周期、Asset 或 Representation | US-AIAPP-043、050；BR-AIAPP-138、143、149、150、181..184、194 |
 
 ## 2. ProviderCapability 启动契约
 
