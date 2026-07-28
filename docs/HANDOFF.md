@@ -10,6 +10,7 @@
 2. 新增 `POST /api/v1/task-schedules/{task_schedule_id}/run`，返回完整 ScheduleExecution。
 3. ScheduleExecution 增加 trigger_source、triggered_by、idempotency_key 与 MANUAL 部分唯一索引。
 4. 扩展 schedule 权限、执行记录事件、模块契约和架构；不新增错误码或权限码。
+5. 规格内容提交为 `00b78aa`，release 记录提交后以 `spec-v1.7.11` 发布并允许作为正式实现依据。
 
 ## 文件变化
 
@@ -38,7 +39,7 @@
 
 ## 待办与风险
 
-- 发布 `spec-v1.7.11` 后，omnimam-server 与 omnimam-web 必须更新 SSOT pin 并实现接口、Worker 控制流、UI 和恢复测试。
+- omnimam-server 与 omnimam-web 必须更新 SSOT pin 并实现接口、Worker 控制流、UI 和恢复测试。
 
 ## 推荐下一任务
 

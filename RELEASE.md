@@ -1,5 +1,25 @@
 # Release Records
 
+## spec-v1.7.11
+
+- commit: 00b78aa
+- status: released
+- confirmed_by: user（2026-07-28 明确要求实现 TaskSchedule 立即执行能力并提交代码）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/events.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- architecture:
+  - 02_architecture/domains/task-center.md
+- implementation_gate: Server 必须使用固定手动控制工作流异步执行 MATERIALIZED/RECONCILE，按请求键和 ScheduleExecution ID 双层幂等并复用活动锁；Web 只对受权 ACTIVE/PAUSED 计划展示立即执行，确认后进入返回的执行记录。
+
 ## spec-v1.7.10
 
 - commit: d0c773a
