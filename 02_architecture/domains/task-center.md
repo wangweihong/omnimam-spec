@@ -11,6 +11,8 @@ flowchart LR
   Outbox --> API
   API --> DB["Task Center Projection DB"]
   API --> Runtime["WorkflowRuntime"]
+  API --> Manual["Fixed Manual Controller"]
+  Manual --> Runtime
   Runtime --> Reconcile["Fixed Reconcile Controller"]
   Reconcile --> Registry["ReconcileRegistry"]
   Runtime --> Conductor["Conductor OSS"]
@@ -51,6 +53,8 @@ flowchart LR
 
 cron 由 Conductor Scheduler 触发，单次 `run_at` 由持久化 WAIT launcher 触发。Task Center 在每次触发入口先写唯一 ScheduleExecution 并获取 schedule 活动锁；存在非终态轮次时写 `SKIPPED_OVERLAP`。停机期间的历史周期不补发。
 
+立即执行入口为 ACTIVE/PAUSED 计划原子创建 MANUAL ScheduleExecution，以请求幂等键在计划内去重，并通过固定 `task_center_manual_schedule_controller` 异步启动；它不调用 Conductor 原生 scheduler run-now，也不复用会为 `run_at` 插入 WAIT 的 launcher。手动和周期触发共用活动锁，PAUSED 手动运行不改变暂停状态和 next trigger。控制 Worker 以 ScheduleExecution ID 为稳定相关键路由 MATERIALIZED 或 RECONCILE 管线。
+
 MATERIALIZED 轮次创建 AtomicTask、TaskGroup 或 DAGTaskGroup。RECONCILE 轮次固定使用可复用内部 definition `task_center_reconcile_controller` 版本 1，由控制 handler 读取 ScheduleReconcileState，调用 ReconcileRegistry，再事务更新轻量 execution、checkpoint、累计统计和 outbox。巡检返回的修复动作经 functionRef 与稳定幂等键校验后才能创建 AtomicTask。
 
 调度触发创建的目标继承 TaskSchedule 的租户和创建者边界。查询 ScheduleExecution 时按 target type 批量读取实际目标并形成轻量摘要；查询全局 AtomicTask、TaskGroup 和 DAGTaskGroup 时通过 ScheduleExecution 批量反查来源计划。触发失败、重叠跳过或目标已不可用时使用计划模板摘要降级，不伪造目标资源。
@@ -69,6 +73,7 @@ RECONCILE 历史由 retention worker 按状态、数量与时长幂等清理；�
 
 - 业务创建、幂等记录和 outbox 同事务提交。
 - 运行时启动使用稳定 correlation ID，可在 API 重启后重放而不产生重复执行。
+- MANUAL ScheduleExecution 的幂等键只负责 API 去重；ScheduleExecution ID 同时作为控制工作流与目标创建的稳定幂等来源。启动失败写 TRIGGER_FAILED，未绑定或非终态执行由 reconciler 恢复。
 - 自动重试增加 TaskAttempt；手动重试增加 AtomicTask 或新 Group/DAG。
 - AtomicTask、TaskAttempt 和 Group/DAG 变化在业务事务中写可重放事件，携带 owner/project/namespace 和 `resource_version`；SSE 等投影消费者不直接依赖 Conductor 事件或 API。
 - 投影仅接受更高运行时序列，业务 `resource_version` 单调递增。

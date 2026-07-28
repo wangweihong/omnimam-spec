@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.4.0
+  version: 1.5.0
   description: AtomicTask、组合任务、DAG 可观测详情、Schedule、Attempt、执行日志与汇总查询契约。
 servers:
   - url: /
@@ -447,6 +447,21 @@ paths:
         '200':
           description: TaskSchedule。
           content: {application/json: {schema: {$ref: '#/components/schemas/TaskSchedule'}}}
+  /api/v1/task-schedules/{task_schedule_id}/run:
+    post:
+      tags: [task-schedules]
+      summary: 立即执行一次 TaskSchedule
+      operationId: run_task_schedule
+      x-permission: task.schedule.manage
+      x-s1-refs: {user_stories: [US-TASK-025], business_rules: [BR-TASK-143, BR-TASK-144, BR-TASK-145, BR-TASK-146]}
+      parameters: [{$ref: '#/components/parameters/task_schedule_id'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TaskScheduleRunRequest'}}}
+      responses:
+        '200':
+          description: 已持久化的 MANUAL ScheduleExecution；重复幂等键返回同一记录，重叠返回 SKIPPED_OVERLAP。
+          content: {application/json: {schema: {$ref: '#/components/schemas/ScheduleExecution'}}}
   /api/v1/task-schedules/{task_schedule_id}/executions:
     get:
       tags: [task-schedules]
@@ -536,6 +551,9 @@ components:
     ScheduleExecutionStatus:
       type: string
       enum: [TRIGGERED, RUNNING, SUCCESS, FAILED, CANCELED, SKIPPED_OVERLAP, TRIGGER_FAILED]
+    ScheduleExecutionTriggerSource:
+      type: string
+      enum: [SCHEDULE, MANUAL]
     RetryPolicy:
       type: object
       properties:
@@ -1100,14 +1118,23 @@ components:
       properties:
         total: {type: integer}
         items: {type: array, items: {$ref: '#/components/schemas/TaskSchedule'}}
+    TaskScheduleRunRequest:
+      type: object
+      required: [idempotency_key]
+      properties:
+        idempotency_key: {type: string, format: uuid, minLength: 1, maxLength: 128}
+      additionalProperties: false
     ScheduleExecution:
       type: object
-      required: [id, schedule_id, execution_mode, scheduled_at, status, created_at]
+      required: [id, schedule_id, execution_mode, trigger_source, triggered_by, scheduled_at, status, created_at]
       properties:
         id: {type: string}
         schedule_id: {type: string}
         schedule: {$ref: '#/components/schemas/TaskScheduleSummary', nullable: true, readOnly: true}
         execution_mode: {$ref: '#/components/schemas/TaskScheduleExecutionMode'}
+        trigger_source: {$ref: '#/components/schemas/ScheduleExecutionTriggerSource'}
+        triggered_by: {type: string}
+        idempotency_key: {type: string, nullable: true}
         scheduled_at: {type: string, format: date-time}
         triggered_at: {type: string, format: date-time}
         target_type: {type: string, enum: [ATOMIC_TASK, TASK_GROUP, DAG_TASK_GROUP]}

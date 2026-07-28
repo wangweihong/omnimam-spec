@@ -109,6 +109,8 @@ task_schedule_execution_recorded:
     schedule_execution_id: string
     scheduled_at: string(date-time)
     execution_mode: string
+    trigger_source: string
+    triggered_by: string
     status: string
     target_type: string|null
     target_id: string|null
@@ -118,8 +120,8 @@ task_schedule_execution_recorded:
   idempotency_key: schedule_execution_id:status
   retry_policy: 由 outbox 重试并支持按 schedule_execution_id 重放。
   failure_policy: ScheduleExecution 数据库记录为事实源；事件失败不重复启动目标。
-  related_user_stories: [US-TASK-011, US-TASK-013, US-TASK-017]
-  related_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-114]
+  related_user_stories: [US-TASK-011, US-TASK-013, US-TASK-017, US-TASK-025]
+  related_rules: [BR-TASK-084, BR-TASK-085, BR-TASK-114, BR-TASK-143, BR-TASK-145]
 
 representation_build_requested:
   producer: asset-library.asset-version

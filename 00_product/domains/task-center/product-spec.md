@@ -174,7 +174,9 @@ SKIPPED_OVERLAP
 TRIGGER_FAILED
 ```
 
-ScheduleExecution 保存 scheduledAt、triggeredAt、executionMode、最终状态和跳过/失败原因。MATERIALIZED 轮次保存 targetType 和 targetId；RECONCILE 轮次的两者均为空，并保存 scanned、findings、actionsCreated、deferred、durationMs、checkpointAdvanced 和 cycleCompleted 的轻量摘要。`scheduleId + scheduledAt` 全局唯一。
+ScheduleExecution 保存 scheduledAt、triggeredAt、executionMode、triggerSource、triggeredBy、最终状态和跳过/失败原因。MATERIALIZED 轮次保存 targetType 和 targetId；RECONCILE 轮次的两者均为空，并保存 scanned、findings、actionsCreated、deferred、durationMs、checkpointAdvanced 和 cycleCompleted 的轻量摘要。周期触发使用 `triggerSource=SCHEDULE`；用户点击立即执行使用 `triggerSource=MANUAL`，并保存请求幂等键。`scheduleId + scheduledAt` 全局唯一，同一计划内的手动幂等键也必须唯一。
+
+ACTIVE 和 PAUSED 计划均可立即执行一次，PAUSED 的立即执行不恢复后续触发。COMPLETED 和 DELETED 计划拒绝立即执行。手动执行沿用计划权限和单活动轮次规则：存在 TRIGGERED 或 RUNNING 轮次时仍创建并返回 `SKIPPED_OVERLAP` 历史，不启动目标。立即执行不修改 cron、runAt、暂停状态或 nextTriggerAt；SYSTEM RECONCILE 计划只允许系统管理员手动执行。
 
 ### 4.7 ScheduleReconcileState
 
@@ -370,6 +372,10 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 68. `BR-TASK-140`：Attempt 日志查询支持不透明 cursor、前后方向、关键字、级别、来源和稳定排序，日志下载复用相同授权、过滤、脱敏和保留期语义；下载不得绕过 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
 69. `BR-TASK-141`：DAG 触发来源固定为 API、SCHEDULE、CANVAS、DOMAIN_EVENT 或 RETRY，并保存触发时刻与可选来源标识/名称快照；来源资源删除或不可见不得影响 DAG 详情读取。
 70. `BR-TASK-142`：系统提供的 AtomicTask、TaskGroup、DAGTaskGroup 和 TaskSchedule 名称必须持久化稳定名称 key 与受控参数，查询时保留兼容 `name` 并额外返回至少包含 `zh-CN` 和 `en-US` 的 `name_i18n`；用户自定义名称不得翻译或返回伪造多语言映射。名称映射必须在资源本体及 retry、owner、target、schedule source、timeline 一跳摘要中保持一致；旧数据不作名称启发式回填。
+71. `BR-TASK-143`：ACTIVE 和 PAUSED TaskSchedule 可通过受权立即执行入口创建一次 MANUAL ScheduleExecution；COMPLETED 和 DELETED 必须返回既有计划状态阻止错误，PAUSED 手动执行不得恢复计划。
+72. `BR-TASK-144`：立即执行请求必须携带计划内唯一幂等键；同一键重复或并发提交返回同一 ScheduleExecution，不得重复启动运行时或创建目标。
+73. `BR-TASK-145`：手动与周期触发共用同一活动轮次约束；发生重叠时必须创建并返回 SKIPPED_OVERLAP，且不得修改计划 cron、runAt、暂停状态、nextTriggerAt 或其他未来触发事实。
+74. `BR-TASK-146`：手动轮次使用固定可恢复控制工作流异步执行 MATERIALIZED 或 RECONCILE 逻辑，运行时启动失败保存 TRIGGER_FAILED；Worker/API/运行时重启后使用 ScheduleExecution ID 恢复且不得重复创建目标。
 
 ---
 
@@ -514,6 +520,15 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 - `AC-TASK-024-02`：用户自定义名称及无可验证系统名称元数据的历史资源不返回 `name_i18n`。
 - `AC-TASK-024-03`：同一系统命名资源在列表、详情及 retry、owner、target、schedule source、timeline 摘要中返回一致译文。
 - `AC-TASK-024-04`：手动重试、Group/DAG 子任务与调度派生资源保留系统名称 key 和参数；后续新增语言不需修改响应结构。
+
+### US-TASK-025 立即执行调度计划
+
+作为计划管理者，我希望不改变后续调度配置即可立即运行一次计划，并从返回的执行记录进入本轮详情。
+
+- `AC-TASK-025-01`：ACTIVE 和 PAUSED 计划可立即执行，返回包含 triggerSource、triggeredBy 和实际目标摘要的 ScheduleExecution；SYSTEM 计划只允许系统管理员操作。
+- `AC-TASK-025-02`：同一幂等键重复点击或并发请求返回同一执行记录；与已有轮次重叠时返回 SKIPPED_OVERLAP 且不创建目标。
+- `AC-TASK-025-03`：立即执行支持 MATERIALIZED 与 RECONCILE，不改变 cron、runAt、暂停状态、nextTriggerAt 或未来触发。
+- `AC-TASK-025-04`：运行时暂时不可用时记录 TRIGGER_FAILED；服务恢复对账不会重复创建目标或漏掉已接受的手动轮次。
 
 ---
 

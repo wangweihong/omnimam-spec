@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-28
+
+- TaskSchedule 新增立即执行一次能力，ACTIVE/PAUSED 的 MATERIALIZED 与 RECONCILE 计划均可运行，且不改变未来 cron、runAt、暂停状态或 nextTriggerAt。
+- 新增 `POST /api/v1/task-schedules/{task_schedule_id}/run`，请求要求计划内幂等键，响应返回完整 ScheduleExecution；SYSTEM 计划只允许系统管理员运行。
+- ScheduleExecution 新增 trigger_source、triggered_by、idempotency_key，并增加 MANUAL 部分唯一索引；手动与周期轮次共用重叠锁和恢复机制。
+- Task Center OpenAPI 升级为 1.5.0，扩展 schedule 权限、执行记录事件、模块契约和领域架构。
+
 ## 2026-07-27
 
 - ApplicationEngineInstance 名称明确为全局唯一；创建或更新为已有名称时返回专用业务错误 `ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED`，不再误报为鉴权配置错误。

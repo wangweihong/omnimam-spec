@@ -247,7 +247,7 @@ CREATE TABLE task_schedule_reconcile_states (
 CREATE INDEX idx_schedule_reconcile_states_checkpoint
   ON task_schedule_reconcile_states(last_completed_at, updated_at);
 
--- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, BR-TASK-084..086, BR-TASK-111, BR-TASK-114..116.
+-- s1_refs: US-TASK-011, US-TASK-013, US-TASK-017, US-TASK-025, BR-TASK-084..086, BR-TASK-111, BR-TASK-114..116, BR-TASK-143..146.
 CREATE TABLE task_schedule_executions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -258,6 +258,9 @@ CREATE TABLE task_schedule_executions (
   resource_version INTEGER DEFAULT 0,
   schedule_id TEXT NOT NULL REFERENCES task_schedules(id),
   execution_mode TEXT NOT NULL CHECK (execution_mode IN ('MATERIALIZED','RECONCILE')),
+  trigger_source TEXT NOT NULL DEFAULT 'SCHEDULE' CHECK (trigger_source IN ('SCHEDULE','MANUAL')),
+  triggered_by TEXT NOT NULL,
+  idempotency_key TEXT,
   scheduled_at TIMESTAMPTZ NOT NULL,
   triggered_at TIMESTAMPTZ,
   target_type TEXT NOT NULL DEFAULT '' CHECK (target_type IN ('','ATOMIC_TASK','TASK_GROUP','DAG_TASK_GROUP')),
@@ -271,6 +274,10 @@ CREATE TABLE task_schedule_executions (
   CHECK (
     (execution_mode = 'MATERIALIZED' AND target_type <> '') OR
     (execution_mode = 'RECONCILE' AND target_type = '' AND target_id = '')
+  ),
+  CHECK (
+    (trigger_source = 'SCHEDULE' AND idempotency_key IS NULL) OR
+    (trigger_source = 'MANUAL' AND idempotency_key IS NOT NULL AND idempotency_key <> '')
   )
 );
 
@@ -278,6 +285,9 @@ CREATE INDEX idx_schedule_executions_status ON task_schedule_executions(schedule
 CREATE UNIQUE INDEX idx_schedule_executions_active
   ON task_schedule_executions(schedule_id)
   WHERE status IN ('TRIGGERED','RUNNING');
+CREATE UNIQUE INDEX idx_schedule_executions_manual_idempotency
+  ON task_schedule_executions(schedule_id, idempotency_key)
+  WHERE trigger_source = 'MANUAL';
 CREATE INDEX idx_schedule_executions_reconcile_retention
   ON task_schedule_executions(schedule_id, execution_mode, status, completed_at DESC, scheduled_at DESC);
 

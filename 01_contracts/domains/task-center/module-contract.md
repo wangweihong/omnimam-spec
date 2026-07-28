@@ -48,6 +48,9 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - RECONCILE TaskSchedule 只保存已注册 reconcile_ref、受控 config、并发、单轮上限和两级超时，不得有 materialized target。
 - cron 是六段表达式并要求 IANA 时区；单次 `run_at` 使用持久化 WAIT launcher。
 - V1 `misfire_policy` 和 `overlap_policy` 固定为 `SKIP`。
+- `POST /task-schedules/{id}/run` 要求计划内幂等键，可执行 ACTIVE 或 PAUSED 的 MATERIALIZED/RECONCILE 计划；SYSTEM 计划仅系统管理员可运行。COMPLETED/DELETED 使用既有状态阻止错误。
+- 手动轮次先原子创建 `trigger_source=MANUAL` 的 ScheduleExecution；同一幂等键返回原记录，与任何活动轮次重叠则保存 `SKIPPED_OVERLAP`。手动 scheduled_at 使用请求接受时间且不得改变未来调度事实。
+- 手动执行使用固定 `task_center_manual_schedule_controller` definition 和 ScheduleExecution ID 作为运行时稳定相关键；HTTP 请求不内联执行目标。Worker 按 execution_mode 复用 MATERIALIZED 物化或 RECONCILE 管线，运行时启动失败写 `TRIGGER_FAILED`。
 - 每个 `schedule_id + scheduled_at` 先创建唯一 ScheduleExecution，再由活动锁判断是否启动目标。
 - Schedule 触发创建的目标继承 Schedule 的 project、namespace 和 createdBy；直接 AtomicTask 目标使用 TASK_SCHEDULE owner 关系，Group/DAG 通过 ScheduleExecution 关联。
 - Group/DAG 内部 childKey 在所属组合中唯一；周期 Schedule 每轮可复用模板 key，轮次唯一性由 ScheduleExecution 保证，不对 TASK_SCHEDULE owner 应用 owner/childKey 唯一索引。
@@ -68,6 +71,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Conductor 与业务表使用独立数据库或 schema，互不直接写入。
 - 运行时事件按 `runtime_event_id` 幂等落入 `runtime_projection_events`；资源只接受更高 `runtime_sequence` 或确定性更强的终态。
 - reconciler 周期枚举全部非终态 execution，修复漏事件、乱序和 API/运行时重启窗口。
+- reconciler 同时恢复已接受但尚未绑定非终态运行时的 MANUAL execution；目标创建以 ScheduleExecution ID 派生稳定幂等键并在计划活动锁内执行，Worker/API/运行时重启不得重复物化目标。
 - 状态、进度或结果变化递增 `resource_version`；消费者按资源 ID 与版本投影。
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
 - AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
