@@ -358,6 +358,36 @@ asset_storage_backend_not_found:
   related_user_stories: [US-USER-ASSET-48]
   related_rules: [BR-USER-ASSET-82]
 
+asset_batch_delete_request_invalid:
+  code: asset_batch_delete_request_invalid
+  value: 150613
+  cn: 批量删除请求为空、超过 200 项或包含重复素材 ID。
+  en: The batch-delete request is empty, exceeds 200 items, or contains duplicate asset IDs.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-49]
+  related_rules: [BR-USER-ASSET-86, BR-USER-ASSET-87]
+
+asset_delete_failed:
+  code: asset_delete_failed
+  value: 150614
+  cn: 素材删除的数据库提交、回收站查询或无引用内容清理未完成。
+  en: The asset deletion database commit, trash query, or unreferenced content cleanup did not complete.
+  owning_domain: asset-library
+  owning_module: access
+  range: 150600-150799
+  severity: error
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-USER-ASSET-15, US-USER-ASSET-49, US-USER-ASSET-50]
+  related_rules: [BR-USER-ASSET-85, BR-USER-ASSET-87, BR-USER-ASSET-88]
+
 artifact_registration_invalid:
   code: artifact_registration_invalid
   value: 150800

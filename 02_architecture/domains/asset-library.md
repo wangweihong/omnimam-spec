@@ -5,13 +5,14 @@
 - S1：`00_product/domains/asset-library/product-spec.md`
 - S2：`01_contracts/domains/asset-library/`
 
-当前 S2 已包含标签查询、批量打标与 Application Artifact 登记 OpenAPI、错误码、权限码、事件、设计态 `schema.sql` 和 `module-contract.md`。
+当前 S2 已包含素材单项/批量软删除与硬删除、回收站清空、标签查询、批量打标与 Application Artifact 登记 OpenAPI、错误码、权限码、事件、设计态 `schema.sql` 和 `module-contract.md`。
 
 ## 2. 模块划分
 
 | 模块 | 架构职责 | 主要资源 |
 | --- | --- | --- |
 | `asset` | 维护用户素材基础信息、媒体类型、来源、存储引用、归属和轻量引用摘要 | `user_assets` |
+| `asset-deletion` | 编排单项/批量软删除、直接硬删除、回收站恢复/清空、强引用检查和无共享引用 Blob 清理 | `user_assets`、`asset_versions`、`asset_representations`、`blobs` |
 | `labeling` | 维护 Labels/Tags、来源、约束和批量写入 | `user_asset_labels`、`user_asset_tags` |
 | `selector-parser` | 将统一选择器转换为受限 AST，不拼接 SQL | 无持久化资源 |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件或明确的无结构化意图 | 无持久化资源 |
@@ -187,20 +188,15 @@ sequenceDiagram
 - `user_asset_labels` 与 `user_asset_tags` 是标签事实源；Label key 和 Tag 使用区分大小写的唯一性，软删除记录不占用有效唯一约束。
 - 选择器 AST 只能编译为参数化查询，且必须与 `owner_user_id`、`deleted_at IS NULL` 基础范围合取。
 - 批量打标按素材独立提交；单项失败不会回滚其他素材，单项成功递增素材 `resource_version`。
+- 批量删除和清空回收站按素材独立提交并保持稳定顺序；软删除仅更新素材状态，硬删除先执行强引用检查，再删除业务事实并通过 StorageAdapter 清理无共享引用 Blob，单项失败不回滚其他成功项。
 - 画布输出资产通过 `canvas_asset_outputs` 建立输出包与素材集合之间的关系。
 - 查询投影层以固定批次组合 UserAsset 当前版本、Collection 父级/固定版本、Artifact 登记素材与 AssetRelation 两端素材；所有同域查询继续按 `owner_user_id` 和删除状态过滤。
 - Artifact producer、AtomicTask、ApplicationRun 和 CanvasRun 摘要由各事实源的受控批量读取能力或不可变快照提供。关联缺失或不可见时只省略摘要，不使 Artifact 查询失败，也不允许 asset-library 穿透目标领域私有表。
 - Task Center 反向解析任务输出 Artifact 时调用 `artifact-summary` 批量投影，每批最多 200 项。投影只读 `artifacts` 及其同域登记素材摘要，不返回 Blob、metadata、内容地址或不可见性差异，也不成为新的授权事实源。
 
-## 6. API 与事件缺口
+## 6. API 与事件覆盖
 
-当前 S2 缺少以下契约：
-
-- 上传、停止上传、预览、下载、重命名、删除和完整分组管理的 OpenAPI。
-- 上传失败、处理失败、内容访问拒绝等非标签场景错误码。
-- 只读状态、素材管理与画布输出相关权限码。
-- 上传完成、预览生成完成、处理失败、画布输出登记等事件。
-- 非标签模块的完整边界、跨域调用规则和分组操作接口。
+当前 S2 已覆盖上传、停止上传、预览、下载、重命名、单项/批量删除、直接硬删除、回收站清空、完整分组管理以及对应错误与权限。删除模式不新增领域事件；需要客户端实时刷新的场景继续以删除动作响应和列表重新查询为准。
 
 ## 7. 架构风险
 

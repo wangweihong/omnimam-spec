@@ -5,9 +5,9 @@ document_name: product-spec.md
 domain_id: asset-library
 domain_name: 素材管理
 product: OmniMAM
-version: 0.2.0-draft
+version: 0.3.0-draft
 status: Draft
-updated_at: 2026-07-20
+updated_at: 2026-07-28
 ```
 
 ---
@@ -332,7 +332,7 @@ Collection
 14. 正式运行必须记录解析后的 AssetVersion。
 15. Artifact 不自动等同于 Asset。
 16. 任务状态以 Task Center 的 AtomicTask 为事实源，TaskAttempt 只表示一次自动执行尝试。
-17. 删除 Asset 不等于立即删除 Blob。
+17. 软删除 Asset 不等于立即删除 Blob；显式硬删除只有在强引用检查通过后才删除业务事实与无共享引用的 Blob。
 18. 第一阶段业务代码不得直接调用本地文件系统。
 19. 第一阶段必须通过 StorageAdapter 使用本地存储。
 20. 后续 S3 和 MinIO 实现不得改变 Asset、AssetVersion 和 AssetRepresentation 的业务结构。
@@ -2036,6 +2036,9 @@ GET    /api/v1/assets
 GET    /api/v1/assets/{asset_id}
 PATCH  /api/v1/assets/{asset_id}
 DELETE /api/v1/assets/{asset_id}
+DELETE /api/v1/assets/{asset_id}?hard_delete=true
+POST   /api/v1/assets/batch-delete
+POST   /api/v1/assets/trash/empty
 POST   /api/v1/assets/{asset_id}/restore
 DELETE /api/v1/assets/{asset_id}/permanent
 ```
@@ -2215,7 +2218,7 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 
 # 25. 删除与回收站
 
-删除 Asset 时：
+软删除 Asset 时：
 
 1. 将状态设为 deleted。
 2. 设置 deleted_at。
@@ -2225,7 +2228,19 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 6. 保留 Blob。
 7. 保留来源关系和引用关系。
 
-永久删除前必须检查：
+用户可以在单素材删除或批量删除确认中选择硬删除。硬删除不要求素材先进入回收站；它从 active、archived 或 deleted 状态直接执行永久删除，并返回被删除与因共享引用而保留的 Blob 标识。
+
+批量删除遵循以下规则：
+
+1. 每次提交 1 至 200 个互不重复的素材 ID。
+2. 整批统一选择软删除或硬删除，避免同一确认动作混合不可逆语义。
+3. 每个素材独立校验、独立提交并按请求顺序返回结果；单项失败不回滚其他已成功项。
+4. 软删除成功项返回 deleted 状态素材；硬删除成功项返回永久删除结果。
+5. 不存在、不属于当前用户、强引用阻塞或删除执行失败必须作为对应单项业务错误返回。
+
+清空回收站只遍历当前用户全部 deleted 素材，并对每项执行硬删除。接口返回逐项结果；被强引用或删除失败的素材继续保留在回收站，其他素材不受影响。空回收站返回 total、success、fail 均为 0 的成功响应。
+
+永久删除、直接硬删除和清空回收站前必须检查：
 
 * 是否被画布引用。
 * 是否被应用版本引用。
@@ -2466,7 +2481,10 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 
 * Asset 可以移入回收站。
 * Asset 可以恢复。
-* 永久删除前执行引用检查。
+* 单素材删除可以显式选择硬删除并绕过回收站。
+* 批量删除支持统一选择软删除或硬删除，并逐项返回成功或失败。
+* 用户可以清空自己的回收站；被强引用或删除失败的素材保留并返回失败原因。
+* 永久删除和硬删除前执行引用检查。
 * Blob 仍被引用时不会物理删除。
 
 ## 29.8 存储扩展性
@@ -2565,6 +2583,11 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 81. `BR-USER-ASSET-81`：asset-library 必须为 Task Center 等受控调用方提供有界 Artifact 批量可读摘要；每项先按调用主体与 owner 校验，仅返回标识、输出键、类型、媒体类型、处理/登记状态、预览可用性和可选登记素材摘要，不返回内容、metadata、存储引用、永久 URL 或不可见性差异。
 82. `BR-USER-ASSET-82`：Blob 与 StorageBackend 是全局存储基础设施事实；Blob 详情以及 StorageBackend 列表、详情、创建和更新只允许 `ADMIN`、`SUPER_ADMIN`，普通用户不得通过任一入口枚举这些资源。
 83. `BR-USER-ASSET-83`：管理员存储检查响应原样返回 Blob `object_key`、StorageBackend `root` 和完整 `config`；这些敏感字段不得进入普通素材、Representation、Artifact、任务输出或跨域摘要。
+84. `BR-USER-ASSET-84`：删除默认执行软删除；只有用户在确认动作中显式选择 `hard_delete=true` 时才允许从 active、archived 或 deleted 状态直接永久删除且不进入回收站。
+85. `BR-USER-ASSET-85`：硬删除与回收站永久删除使用相同的强引用检查；存在阻塞引用时不删除该素材的任何业务事实，只有不再被其他 Representation 或 Artifact 使用的 Blob 才物理删除。
+86. `BR-USER-ASSET-86`：批量删除每次接受 1 至 200 个互不重复的素材 ID，整批统一选择软删除或硬删除，逐项独立提交并保持请求顺序；单项失败不回滚其他成功项。
+87. `BR-USER-ASSET-87`：批量删除响应必须逐项区分成功、不可见、强引用阻塞和删除执行失败；客户端不得仅依据 HTTP 200 或总成功数推断全部素材已删除。
+88. `BR-USER-ASSET-88`：清空回收站只处理当前用户全部 deleted 素材并逐项硬删除；阻塞或失败项继续保留，空回收站返回空的成功批量结果，其他用户素材不得被枚举或修改。
 
 # 31. 稳定用户故事编号
 
@@ -2666,3 +2689,19 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 - Blob 详情返回存储后端 ID、object key、SHA256、大小、MIME 类型和状态。
 - StorageBackend 详情返回类型、根位置、完整配置、启用、只读和配额状态。
 - StorageBackend 列表、详情、创建和更新以及 Blob 详情全部执行管理员鉴权，普通用户无法通过列表绕过详情权限。
+
+## US-USER-ASSET-49 批量删除自己的素材
+
+作为素材用户，我希望一次选择多个自己的素材并统一软删除或硬删除，以便高效清理素材库并看清每项结果。
+
+- 批量请求最多包含 200 个唯一素材 ID，并保持请求顺序返回。
+- 硬删除必须显式确认并执行强引用检查，失败项不影响其他素材。
+- 响应逐项提供软删除后的素材、永久删除结果或业务错误。
+
+## US-USER-ASSET-50 清空自己的回收站
+
+作为素材用户，我希望一次清空自己的回收站，同时保留仍被强引用或删除失败的素材及其失败原因。
+
+- 只遍历当前用户的 deleted 素材，不泄露其他用户数据。
+- 每项独立执行硬删除，成功项永久删除，失败项继续留在回收站。
+- 空回收站返回空的成功批量结果。

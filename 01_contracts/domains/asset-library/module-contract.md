@@ -5,6 +5,7 @@
 | 模块 | 职责 | S1 来源 |
 | --- | --- | --- |
 | `asset` | 维护用户素材 metadata、`sha256`、上传去重命中、轻量引用摘要和素材返回 | `US-USER-ASSET-31`、`US-USER-ASSET-40`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42`、`BR-USER-ASSET-57`、`BR-USER-ASSET-58` |
+| `asset-deletion` | 执行单项/批量软删除、直接硬删除、回收站恢复/永久删除与清空，统一强引用检查并协调无共享引用 Blob 清理 | `US-USER-ASSET-15`、`US-USER-ASSET-40`、`US-USER-ASSET-49`、`US-USER-ASSET-50`、`BR-USER-ASSET-25`、`BR-USER-ASSET-26`、`BR-USER-ASSET-57`、`BR-USER-ASSET-58`、`BR-USER-ASSET-84`..`BR-USER-ASSET-88` |
 | `upload` | 维护普通/分片上传会话、分片校验、StorageAdapter 写入、完成事务和取消清理 | `US-USER-ASSET-05`..`US-USER-ASSET-09`、`US-USER-ASSET-31`、`BR-USER-ASSET-11`..`BR-USER-ASSET-19`、`BR-USER-ASSET-41`、`BR-USER-ASSET-42` |
 | `content-access` | 沿 Representation 所属链路执行所有权校验，提供受控读取、下载和短期访问地址 | `US-USER-ASSET-11`..`US-USER-ASSET-13`、`BR-USER-ASSET-07`、`BR-USER-ASSET-21`..`BR-USER-ASSET-23`、`BR-USER-ASSET-27` |
 | `storage-inspection` | 为管理员提供 Blob 物理详情与 StorageBackend 列表、详情和配置管理 | `US-USER-ASSET-48`、`BR-USER-ASSET-82`、`BR-USER-ASSET-83` |

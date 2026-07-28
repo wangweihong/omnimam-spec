@@ -35,12 +35,12 @@ asset.delete:
   module: asset
   resource: asset
   action: delete
-  description: 将当前用户素材移入回收站、恢复或在引用检查后永久删除。
-  frontend_usage: 控制删除确认、回收站恢复和永久删除入口。
-  backend_enforcement: 软删除保留版本、Representation、Blob 与引用；永久删除必须执行强引用检查且只物理删除无引用 Blob。
+  description: 单项或批量将当前用户素材移入回收站、恢复，或在引用检查后直接硬删除、从回收站永久删除及清空回收站。
+  frontend_usage: 控制单项/批量删除确认、硬删除选择、回收站恢复、永久删除和清空入口。
+  backend_enforcement: 软删除保留版本、Representation、Blob 与引用；硬删除、永久删除和清空回收站必须执行强引用检查且只物理删除无共享引用 Blob；批量与清空操作逐项隔离且只处理当前用户素材。
   default_roles: []
-  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26, BR-USER-ASSET-57, BR-USER-ASSET-58]
-  related_user_stories: [US-USER-ASSET-15, US-USER-ASSET-40]
+  related_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26, BR-USER-ASSET-57, BR-USER-ASSET-58, BR-USER-ASSET-84, BR-USER-ASSET-85, BR-USER-ASSET-86, BR-USER-ASSET-87, BR-USER-ASSET-88]
+  related_user_stories: [US-USER-ASSET-15, US-USER-ASSET-40, US-USER-ASSET-49, US-USER-ASSET-50]
 
 asset.content.read:
   module: representation

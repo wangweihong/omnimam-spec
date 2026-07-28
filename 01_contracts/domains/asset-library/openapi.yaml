@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Asset Library API
-  version: 0.6.0
+  version: 0.7.0
   description: 素材、上传、Collection、Artifact、AssetVersion、AssetRepresentation、内容访问与周期修复协作契约。
 servers:
   - url: /api/v1
@@ -171,22 +171,25 @@ paths:
                   - {$ref: '#/components/schemas/BusinessError'}
     delete:
       tags: [assets]
-      summary: 将素材移入回收站
+      summary: 软删除素材或显式硬删除素材
       operationId: delete_asset
+      description: 默认将素材移入回收站；`hard_delete=true` 时从任意素材状态直接执行永久删除，并执行与回收站永久删除相同的强引用和 Blob 共享检查。
       x-permission: asset.delete
       x-s1-refs:
         user_stories: [US-USER-ASSET-15]
-        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26, BR-USER-ASSET-84, BR-USER-ASSET-85]
       parameters:
         - {name: asset_id, in: path, required: true, schema: {type: string}}
+        - {name: hard_delete, in: query, required: false, description: 为 true 时不进入回收站并直接执行永久删除。, schema: {type: boolean, default: false}}
       responses:
         '200':
-          description: 已软删除素材或业务错误。
+          description: 已软删除素材、永久删除结果或业务错误。
           content:
             application/json:
               schema:
                 oneOf:
                   - {$ref: '#/components/schemas/UserAsset'}
+                  - {$ref: '#/components/schemas/PermanentDeleteResult'}
                   - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/assets/{asset_id}/restore:
@@ -230,6 +233,51 @@ paths:
               schema:
                 oneOf:
                   - {$ref: '#/components/schemas/PermanentDeleteResult'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/batch-delete:
+    post:
+      tags: [assets]
+      summary: 批量软删除或硬删除素材
+      operationId: batch_delete_assets
+      description: 每项独立校验和提交并保持请求顺序；`hard_delete=true` 时所有项均绕过回收站并执行永久删除检查。单项失败不回滚其他成功项。
+      x-permission: asset.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-15, US-USER-ASSET-49]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-25, BR-USER-ASSET-26, BR-USER-ASSET-84, BR-USER-ASSET-85, BR-USER-ASSET-86, BR-USER-ASSET-87]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchDeleteAssetsRequest'}
+      responses:
+        '200':
+          description: 逐项删除结果或请求级业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchDeleteAssetsResponse'}
+                  - {$ref: '#/components/schemas/BusinessError'}
+
+  /api/v1/assets/trash/empty:
+    post:
+      tags: [assets]
+      summary: 清空当前用户回收站
+      operationId: empty_asset_trash
+      description: 查询当前用户全部 deleted 素材并逐项执行硬删除；强引用阻塞或删除失败项保留在回收站，空回收站返回空批量结果。
+      x-permission: asset.delete
+      x-s1-refs:
+        user_stories: [US-USER-ASSET-15, US-USER-ASSET-50]
+        business_rules: [BR-USER-ASSET-03, BR-USER-ASSET-85, BR-USER-ASSET-87, BR-USER-ASSET-88]
+      responses:
+        '200':
+          description: 回收站逐项清理结果或请求级业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchDeleteAssetsResponse'}
                   - {$ref: '#/components/schemas/BusinessError'}
 
   /api/v1/assets/batch-labels:
@@ -1766,6 +1814,18 @@ components:
       required: [id]
       properties:
         id: { type: string, minLength: 1 }
+    BatchDeleteAssetsRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      description: items 中 id 必须唯一；hard_delete 对整批生效，默认软删除。
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: {$ref: '#/components/schemas/BatchAssetItem'}
+        hard_delete: {type: boolean, default: false}
     BatchLabelRequest:
       type: object
       additionalProperties: false
@@ -1845,6 +1905,26 @@ components:
         deleted: {type: boolean}
         deleted_blob_ids: {type: array, items: {type: string}}
         retained_blob_ids: {type: array, items: {type: string}, description: 仍被其他 Representation 或 Artifact 引用的 Blob。}
+    BatchDeleteAssetResult:
+      type: object
+      additionalProperties: false
+      required: [id, success, hard_delete]
+      properties:
+        id: {type: string}
+        success: {type: boolean}
+        hard_delete: {type: boolean}
+        asset: {$ref: '#/components/schemas/UserAsset', nullable: true, description: 软删除成功时返回；硬删除或失败时为空。}
+        permanent_delete: {$ref: '#/components/schemas/PermanentDeleteResult', nullable: true, description: 硬删除成功时返回；软删除或失败时为空。}
+        error: {$ref: '#/components/schemas/BusinessError', nullable: true}
+    BatchDeleteAssetsResponse:
+      type: object
+      additionalProperties: false
+      required: [total, success, fail, results]
+      properties:
+        total: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        results: {type: array, items: {$ref: '#/components/schemas/BatchDeleteAssetResult'}}
     CreateCanonicalVersionRequest:
       type: object
       additionalProperties: false

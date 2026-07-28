@@ -2,6 +2,9 @@
 
 ## 2026-07-28
 
+- Asset Library 增加单项与批量删除模式：默认软删除，显式 `hard_delete=true` 可从 active、archived 或 deleted 直接硬删除并绕过回收站。
+- 新增 `POST /api/v1/assets/batch-delete` 与 `POST /api/v1/assets/trash/empty`；批量请求最多 200 个唯一素材 ID，清空回收站逐项处理当前用户全部 deleted 素材。
+- Asset Library OpenAPI 升级为 0.7.0，扩展 `asset.delete` 权限并新增批量请求无效与删除执行失败错误码；schema 和事件目录不变。
 - TaskSchedule 新增立即执行一次能力，ACTIVE/PAUSED 的 MATERIALIZED 与 RECONCILE 计划均可运行，且不改变未来 cron、runAt、暂停状态或 nextTriggerAt。
 - 新增 `POST /api/v1/task-schedules/{task_schedule_id}/run`，请求要求计划内幂等键，响应返回完整 ScheduleExecution；SYSTEM 计划只允许系统管理员运行。
 - ScheduleExecution 新增 trigger_source、triggered_by、idempotency_key，并增加 MANUAL 部分唯一索引；手动与周期轮次共用重叠锁和恢复机制。
