@@ -64,6 +64,8 @@ sequenceDiagram
   Run->>Task: 幂等创建唯一 DAGTaskGroup
   Task-->>Run: group_id + stable child keys
   Task->>Worker: 调度 READY AtomicTask
+  Worker->>Worker: Conductor 解析上游输入
+  Worker->>Run: 幂等创建并绑定 ApplicationRun（仅 APPLICATION）
   Worker->>Asset: producer key 交付正式输出
   Task-->>Projector: Task/Attempt/DAG 可靠事件
   Asset-->>Projector: Artifact 可靠事件
@@ -75,6 +77,8 @@ sequenceDiagram
 NodeRun 到任务的基数是 1:N：普通节点通常一个 AtomicTask，fan-out/复合节点多个，Data/Viewer/REUSED/client-generated 可以为零。动态任务通过 DAG owner、稳定 child key 和 shard key 批量绑定，不能从 Worker 名或运行时内部 ID 猜测。
 
 Task Center 和 Asset Library 事件属于不同聚合。投影分别按资源版本单调应用，AtomicTask 成功后仍需等待必需结构化输出持久化与 Artifact READY；漏事件通过事实源批量查询和持久游标对账。
+
+APPLICATION 节点不会在 DAG 创建阶段预建输入不完整的 ApplicationRun。唯一 AtomicTask 由 Canvas 编译进入 DAG；Worker 在最终参数解析后调用 Application Platform 内部契约，以 CanvasRun 与 execution key 恢复同一 ApplicationRun/AtomicTask 绑定。
 
 ## 4. 数据所有权
 

@@ -42,6 +42,13 @@ application_version_published:
     application_version_id: string
     application_template_version_id: string
     semantic_version: string
+    application_name: string
+    owner_user_id: string
+    visibility: string(private|global)
+    canvas_enabled: boolean
+    run_enabled: boolean
+    input_schema: object
+    output_schema: object
     published_at: string(date-time)
   idempotency_key: application_version_id:semantic_version
   retry_policy: 发布失败后保留 outbox 记录并重试。
@@ -66,6 +73,10 @@ application_run_created:
     provider_operation_id: string|null
     workflow_contract_revision: string|null
     execution_snapshot: object
+    origin_type: string(api|canvas)
+    canvas_run_id: string|null
+    canvas_node_run_id: string|null
+    execution_key: string|null
     task_creation_status: string
     occurred_at: string(date-time)
   idempotency_key: application_run_id:created
@@ -76,7 +87,7 @@ application_run_created:
 
 application_run_atomic_task_bound:
   producer: application-platform.application-run
-  consumers: [application-platform.application-run-view, audit-service]
+  consumers: [application-platform.application-run-view, workflow-canvas, audit-service]
   trigger_condition: task-center 使用 application_run_id 与幂等键创建或返回唯一 AtomicTask，application-platform 成功绑定 atomic_task_id。
   payload:
     application_run_id: string

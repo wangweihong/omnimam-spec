@@ -83,7 +83,8 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 ## 6. 跨域协作
 
-- application-platform 创建 `application.execute` AtomicTask，并在 ApplicationRun 保存 `atomic_task_id` 与只读状态投影。
+- 独立应用运行由 application-platform 创建 `application-platform.run` AtomicTask；Canvas Application 节点由 Workflow Canvas 创建 DAG 内同名 AtomicTask，Application Platform 只能通过受控绑定接口把 ApplicationRun 绑定到该现有任务，不得创建第二个任务。
+- DAG Worker 输入中的 `arguments` 是 Conductor 已解析 `input_mapping` 与上游输出后的最终参数。Task Center 绑定 ApplicationRun 时持久化该快照，并校验 AtomicTask、CanvasRun、CanvasNodeRun 和 execution key 不漂移。
 - SSE 领域消费 Task Center 可靠事件，建立当前用户的短期可重放投影；SSE 不得成为任务事实源，也不得直接消费 Conductor 原生事件。
 - asset-library 在上传或 Artifact 登记事务写 `asset_version_representation_requested`；task-center 按 `asset-representations:<asset_version_id>:<profile_version>` 幂等创建 Representation build DAGTaskGroup。
 - asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`；task-center 按 `artifact-process:<artifact_id>:<processing_profile_version>` 幂等创建 `asset-library.artifact.process` AtomicTask。

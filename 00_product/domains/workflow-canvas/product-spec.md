@@ -245,7 +245,7 @@ passive
 DataNode 和 ViewerNode，不创建 AtomicTask
 
 atomic
-固定一个已注册 functionRef，或固定一个已发布 ApplicationVersion 并解析为受控 application.execute
+固定一个已注册 functionRef，或固定一个已发布 ApplicationVersion 并解析为受控 application-platform.run
 
 expanded
 由编译器展开为多个已注册 functionRef 的 AtomicTask 节点，编排节点本身不由 Worker 执行
@@ -2668,6 +2668,9 @@ A、B 并行且 C 等待汇合
 32. `BR-WORKFLOW-032`：CanvasRun 任务创建使用稳定幂等键；Task Center 暂时不可用时保留可恢复创建状态，不得回退到本地调度或创建第二个 DAGTaskGroup。
 33. `BR-WORKFLOW-033`：输入解析优先级固定为当前运行绑定的上游输出、runtime inputs、节点字面量和定义默认值；运行中不得重新读取可变“最新输出”。
 34. `BR-WORKFLOW-034`：CanvasVersion、CanvasRun、Task/Attempt 和 Artifact 历史各由所属领域保留，编辑、重试、事件重放和对账不得覆盖已成立历史。
+35. `BR-WORKFLOW-035`：APPLICATION 节点只编译一个 DAG 内 `application-platform.run` AtomicTask；Conductor 解析完上游输入后，Application Platform 以 `canvas_run_id + execution_key` 幂等创建并绑定 ApplicationRun，禁止创建第二个 AtomicTask。
+36. `BR-WORKFLOW-036`：ApplicationVersion 发布事件只负责幂等登记应用节点定义；目录读取、Canvas 发布和每次运行必须通过 Application Platform 消费方接口重新校验可见性、`canvas_enabled`、`run_enabled`、schema/端口和当前 Engine/runtime 可执行性。
+37. `BR-WORKFLOW-037`：ApplicationRun Artifact 引用必须按 `atomic_task_id + output_key + sequence` 匹配 Canvas 输出槽位，并只接受更高 Artifact resource version；READY 输出与 `canvas_node_output_available` 必须同事务形成。
 
 ### 49.2 用户故事与验收
 

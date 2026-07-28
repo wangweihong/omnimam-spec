@@ -2,6 +2,8 @@
 
 本文是 application-platform v1.3.0 的架构参考。产品语义以 S1 为准，实现接口与数据结构以 S2 为准。
 
+Canvas Application 节点复用 Workflow Canvas 已创建的 DAG AtomicTask。`application-platform.run` Worker 先取得 Conductor 已解析参数，再调用 Application Platform 幂等固化 ApplicationRun，并经 Task Center 绑定同一任务；只有绑定双方都可读后才进入 Provider。发布事件负责节点目录登记，实时可用性仍由受控查询边界判定。Artifact 引用 outbox 驱动 Canvas 输出槽位单调投影。
+
 ## 1. 架构目标
 
 - 将 ApplicationEngineType、EngineAdapter、OperationExecutor 与易变的平台能力清单分离。

@@ -888,7 +888,7 @@ AtomicTask task_001 version 5
   "aggregate_id": "task_001",
   "aggregate_version": 1,
   "payload": {
-    "function_ref": "application.execute",
+    "function_ref": "application-platform.run",
     "status": "PENDING",
     "display_name": "生成角色参考图",
     "created_at": "2026-07-20T12:00:00Z"

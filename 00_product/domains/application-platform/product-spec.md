@@ -1150,7 +1150,17 @@ ApplicationTemplate + ApplicationRun + ApplicationEngineInstance
 
 `ApplicationExecutor` 不维护模型清单、平台参数范围或供应商生命周期；这些事实来自模板、`ProviderCapability` 当前加载修订或 ComfyUI 工作流能力契约。
 
-ApplicationRun 创建 AtomicTask 的顺序为：先固定并保存 ApplicationRun 执行快照，再以 ApplicationRun ID 和幂等键请求 task-center 创建 `application.execute` AtomicTask，成功后绑定 `atomic_task_id`。创建失败时 ApplicationRun 保留为 `task_creation_failed`，不得伪造 AtomicTask 状态；重试必须返回或绑定同一 AtomicTask，不能重复创建执行。
+独立运行创建 AtomicTask 的顺序为：先固定并保存 ApplicationRun 执行快照，再以 ApplicationRun ID 和幂等键请求 task-center 创建 `application-platform.run` AtomicTask，成功后绑定 `atomic_task_id`。创建失败时 ApplicationRun 保留为 `task_creation_failed`，不得伪造 AtomicTask 状态；重试必须返回或绑定同一 AtomicTask，不能重复创建执行。
+
+Canvas Application 节点使用另一条受控入口：Workflow Canvas 只在 DAG 中创建一个 `application-platform.run` AtomicTask，不提前创建输入不完整的 ApplicationRun。该 AtomicTask 进入 Worker 且 Conductor 已解析全部上游映射后，Application Platform 必须在调用 Provider 前以 `canvas_run_id + execution_key` 为稳定来源键幂等创建 ApplicationRun，固定最终输入、当前可执行 Engine/runtime 和来源快照，并把 ApplicationRun 绑定到这个已经存在的 AtomicTask。自动重试、Worker 重启或绑定窗口恢复只能返回并修复同一 ApplicationRun/AtomicTask 关系，禁止创建第二个 AtomicTask。
+
+`application-platform.run` 是内部可执行 functionRef 的唯一规范名称；历史文档中的 `application.execute` 只表示逻辑动作，不得继续注册或编译为运行时任务名。
+
+ApplicationVersion 只有同时满足发布、调用方可见、`canvas_enabled=true`、`run_enabled=true`、输入输出 schema 可转换为 NodeDefinition 端口且当前至少存在一个可执行 Engine/runtime 时，才可被新 Canvas 草稿发现、发布或启动。Application Platform 通过消费方接口返回权限裁剪后的版本契约；Workflow Canvas 不得直接读取 Application Platform 私有表。
+
+ApplicationVersion 发布必须与可靠 `application_version_published` 事件原子提交。Workflow Canvas 消费该事件幂等登记不可变应用节点定义；应用可见性、`canvas_enabled`、`run_enabled` 或运行能力变化仍在目录读取、发布和启动边界实时复核，事件或缓存不得替代 Application Platform 事实查询。
+
+ApplicationRun 的 Artifact 引用变化通过可靠事件携带 `atomic_task_id + output_key + sequence + artifact_resource_version`。Workflow Canvas 以任务绑定和输出端口为边界单调投影，只有满足端口可用条件的 Artifact 才把输出槽位推进为 READY。
 
 ApplicationRun 的每个标准输出通过 asset-library 形成 Artifact。ApplicationPlatform 保存不可变的输出声明和 `application_run_id + output_key + sequence -> artifact_id` 映射，不保存 Artifact 内容、处理状态或登记状态事实。同一输出键和序号重复交付必须命中同一 Artifact。
 

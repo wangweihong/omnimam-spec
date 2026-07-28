@@ -73,13 +73,21 @@
 ## 8. 跨域协作
 
 - task-center：提供内容寻址 workflow definition 注册、DAGTaskGroup 幂等创建/查询/取消、AtomicTask 批量摘要、状态事件与对账能力。
-- application-platform：提供已发布 ApplicationVersion 可见性、输入输出 schema 和到受控 `application.execute` 的解析。
+- application-platform：提供已发布 ApplicationVersion 的权限裁剪 Canvas 契约、输入输出 schema、实时运行能力和到受控 `application-platform.run` 的解析。
 - function registry：提供允许 Canvas 使用的 functionRef、binding version、输入输出 schema 和运行可用性。
 - asset-library：提供 Artifact 受控交付、producer key 幂等、可用性/权限校验、批量摘要和生命周期事件。
 - sse：消费 Canvas 可靠事件，写入当前用户短期 UserEvent 并通过唯一用户级连接投递；不拥有 Canvas 事实。
 - identity：提供认证主体、project、namespace、visibility 和权限判断。
 
 所有跨域协作通过受控 API 与可靠事件完成，不允许读取或写入其他领域私有表。
+
+### Canvas Application execution
+
+- `application_version_published` 消费者按 `application_id + semantic_version` 幂等登记不可变 NodeDefinition；事件重放不得产生第二个定义版本。
+- 目录读取、发布与启动均调用 Application Platform 消费方接口复核版本发布状态、private/global 可见性、`canvas_enabled`、`run_enabled`、NodeDefinition 端口与版本 schema 一致性、字面量/最终输入合法性和当前 Engine/runtime 可执行性。
+- DAG 编译只创建一个 `application-platform.run` AtomicTask，并把 `canvas_run_id`、`canvas_node_run_id`、`execution_key`、`application_version_id` 和输入映射交给运行时；不提前创建 ApplicationRun。
+- Worker 取得 Conductor 已解析参数后、Provider 调用前，Application Platform 以 `canvas_run_id + execution_key` 幂等创建 ApplicationRun 并通过 Task Center 受控绑定同一 AtomicTask。绑定窗口失败由同一命令恢复，不得创建第二个 AtomicTask。
+- `application_run_artifact_ref_changed` 按 AtomicTask 绑定定位 NodeRun，并按 output key/sequence 匹配输出槽位；只接受更高 Artifact resource version。Artifact READY 时输出绑定与 `canvas_node_output_available` outbox 同事务提交。
 
 ## 9. 首期禁用能力
 

@@ -2,6 +2,7 @@
 
 ## 2026-07-28
 
+- 明确 Canvas Application execution：DAG 内唯一 `application-platform.run` AtomicTask 在输入解析后幂等创建并绑定 ApplicationRun，补齐发布事件消费、实时可用性校验和 Artifact 输出投影。
 - Application 详情新增按应用分页读取持久化 ApplicationRun 历史的契约，默认按创建时间倒序并复用现有运行权限和可见性边界。
 - 明确 AtomicTask 终态持久化后按 resource version 单调、幂等投影 ApplicationRun 状态、输出和 Artifact 引用；Application Platform OpenAPI 升级为 1.7.0。
 - Asset Library 增加单项与批量删除模式：默认软删除，显式 `hard_delete=true` 可从 active、archived 或 deleted 直接硬删除并绕过回收站。

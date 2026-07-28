@@ -86,6 +86,10 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - ApplicationRun 的 Artifact 引用是 application-platform 保存的有界只读投影，必须直接提供输出名、媒体类型、处理/登记状态、资源版本及可用的 Asset 导航 ID；客户端禁止按 `artifact_id` 逐项调用 asset-library。需要实时 Artifact 正文或受保护内容时才显式进入 asset-library 单资源流程。
 - AtomicTask 是执行状态事实源，ApplicationRun 只接受更高 `task_resource_version` 的投影。
 - ApplicationRun 先以 `task_creation_status=pending` 保存，再使用 `application_run_id + idempotency_key` 调用 task-center；成功绑定唯一 AtomicTask，失败保留快照并可恢复。
+- 公共 API 创建的独立运行先保存 ApplicationRun，再幂等创建唯一 `application-platform.run` AtomicTask。Canvas Application 节点不得走该任务创建路径。
+- Canvas Worker 在 DAG 已解析最终输入后调用内部 `EnsureCanvasApplicationRun`；稳定键为 owner、`canvas_run_id` 与 `execution_key`，返回的 ApplicationRun 必须绑定请求中已经存在的 AtomicTask。
+- `EnsureCanvasApplicationRun` 必须校验 AtomicTask functionRef、Canvas/Node 关联、ApplicationVersion、最终输入和当前 Engine/runtime；重复调用修复同一绑定，禁止请求 Task Center 创建新任务。
+- `application-platform.run` 是规范 functionRef；`application.execute` 不再是可注册运行时名称。
 - Artifact 由 asset-library 按稳定 producer key 保存；application-platform 只维护 `application_run_id + output_key + sequence -> artifact_id` 引用和更高 resource_version 的只读投影。
 - ApplicationExecutor 负责 Provider 交互和下载，只能向 asset-library 交付字节流、受控上传会话或可信存储引用；不得交付凭证、任意 URL、私网地址或原始响应。
 - Artifact 每次处理、预览或登记变化由 asset-library 同事务写 outbox；application-platform 不向 SSE 发布竞争性的 Artifact 生命周期事件。
@@ -107,6 +111,9 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - task-center 拥有 AtomicTask、TaskAttempt、重试、取消和最终执行状态；application-platform 调用 `POST /api/v1/atomic-tasks` 时传递 `application_run_id` 与幂等键，task-center 的后续事件必须回传 application_run_id。
 - asset-library 拥有 Artifact、Asset、AssetVersion 和 Representation；application-platform 输出并保存 Artifact 引用，通过 canonical Artifact API 受控交付内容，兼容期可使用旧登记入口。
 - workflow-canvas 固定引用已发布 ApplicationVersion，不保存 ProviderCapability 可变副本。
+- workflow-canvas 通过消费方接口读取权限裁剪后的 ApplicationVersion Canvas 契约，并在发布/运行时校验 `visibility`、`canvas_enabled`、`run_enabled`、schema 与实时运行能力；禁止读取 `aiapp_*` 私有表。
+- `application_version_published` 必须与版本发布事务原子写入 outbox；消费者按 ApplicationVersion ID 幂等登记 NodeDefinition。
+- `application_run_artifact_ref_changed` 是 Workflow Canvas 输出投影入口，至少携带 AtomicTask、output key、sequence 和 Artifact resource version。
 - ProviderCapability 加载仅是进程内启动步骤，不发布 `catalog_changed` 事件；运行中不存在目录变化事件。
 - 对外事件包括 Engine 健康、工作流转换、应用版本发布、ApplicationRun/AtomicTask 协作、ApplicationRun Artifact 引用映射、状态投影和平台能力纠正事项。Artifact 处理/登记事件由 asset-library 发布。工作流转换事务提交后通过 outbox 发布 `comfyui_workflow_converted`；object-info 刷新不发布目录正文事件。
 - WorkflowTestRun 只向 Task Center 提交已注册的 comfyui.submit、comfyui.poll、comfyui.collect_preview，任务参数只携带 test_run_id 和父节点输出映射。Application Platform 保存不可变的 EngineInstance 非敏感快照、输入参数覆盖快照和输出候选选择快照；collect_preview 只能按选择快照中的 node_id 收集轻量预览，不登记 Artifact/Asset。列表可按 detail=false 省略复杂快照、步骤和输出，但不得通过逐行查询 EngineInstance 拼装历史名称。
