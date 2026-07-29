@@ -20,6 +20,7 @@
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
+| `notification-center` | 可靠源事件消费、通知规则、用户收件箱、偏好、聚合与 Notification Outbox | 已有 S1/S2，`spec-v1.8.0` released |
 
 ## 3. 依赖方向
 
@@ -32,6 +33,7 @@ graph TD
   App["application-platform<br/>Adapter、模板、应用与 AppEngine"]
   Task["task-center<br/>业务任务与 Conductor 适配"]
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
+  Notify["notification-center<br/>通知规则与用户收件箱"]
   SSE["sse<br/>用户级短期事件投影"]
 
   Chat --> Model
@@ -42,6 +44,12 @@ graph TD
   Canvas --> Task
   Canvas --> App
   Canvas --> Asset
+  Notify --> Task
+  Notify --> App
+  Notify --> Asset
+  Notify --> Canvas
+  Notify --> Model
+  SSE --> Notify
   SSE --> Task
   SSE --> App
   SSE --> Asset
@@ -52,6 +60,7 @@ graph TD
   Asset --> Identity
   App --> Identity
   Task --> Identity
+  Notify --> Identity
   SSE --> Identity
 ```
 
@@ -63,7 +72,8 @@ graph TD
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `workflow-canvas` 发布不可变 CanvasVersion，并将多流、fan-out 和复合节点展平到唯一 task-center DAGTaskGroup；一个 CanvasNodeRun 可以映射零个、一个或多个 AtomicTask。
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
-- `sse` 只投影 task-center 任务事件、asset-library Artifact/AssetVersion 事件、workflow-canvas 运行语义事件和 ApplicationRun 引用关联；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
+- `notification-center` 消费已登记业务领域 source event，规范化为 NotificationEvent 并生成用户 Notification；不读取其他领域私表或从低层任务终态猜测上层业务结果。
+- `sse` 只投影 task-center、asset-library、workflow-canvas 和 notification-center 的可靠事件；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
 
 ## 4. 运行链路
 
@@ -112,6 +122,29 @@ sequenceDiagram
   Asset-->>SSE: Artifact、登记与 AssetVersion 可靠事件
   SSE-->>User: 用户级实时事件
   App-->>User: HTTP 事实查询与重同步
+```
+
+### 4.3 通知生成与实时提示链路
+
+```mermaid
+sequenceDiagram
+  participant Domain as 业务事实源领域
+  participant SourceOutbox as 领域 Outbox
+  participant Notify as Notification Worker
+  participant Inbox as Notification Inbox
+  participant NotifyOutbox as Notification Outbox
+  participant SSE as SSE Projector/Gateway
+  participant Web as OmniMAM Web
+
+  Domain->>Domain: 提交业务事实与 resource version
+  Domain->>SourceOutbox: 同事务写 source event
+  SourceOutbox-->>Notify: 至少一次投递
+  Notify->>Notify: 规范化、规则、接收者、去重与聚合
+  Notify->>Inbox: 创建或更新 Notification/计数
+  Notify->>NotifyOutbox: 同事务写通知变化事件
+  NotifyOutbox-->>SSE: notification_* source event
+  SSE-->>Web: /api/v1/events/stream 提示变化
+  Web->>Inbox: REST 重查完整通知与未读数
 ```
 
 ## 5. 数据与事件原则

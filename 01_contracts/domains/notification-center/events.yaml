@@ -1,0 +1,157 @@
+x-source-event-mappings:
+  active:
+    - source_event: task-center.atomic_task_status_changed
+      notification_topics: [task.atomic_task.succeeded, task.atomic_task.failed, task.atomic_task.timed_out, task.atomic_task.action_required]
+      notes: 仅 standalone AtomicTask 且满足预设价值规则的终态或需处理结果生成通知；Group/DAG 子任务及 ApplicationRun/CanvasRun 关联任务由上层业务域表达，普通成功默认不通知。
+    - source_event: workflow-canvas.canvas_run_status_changed
+      notification_topics: [canvas.run.succeeded, canvas.run.partially_succeeded, canvas.run.failed]
+      notes: 只接受更高 CanvasRun aggregate_version；PARTIAL_SUCCESS 独立映射。
+  contract_gap:
+    - source_event: task-center.task_group_status_changed
+      missing: notification-service 消费关系和 action_required 判定。
+    - source_event: asset-library.asset_version_processing_changed
+      missing: notification-service 消费关系和单项/批次映射。
+    - source_event: asset-library.artifact_processing_changed
+      missing: notification-service 消费关系。
+    - source_event: asset-library.artifact_registration_changed
+      missing: notification-service 消费关系。
+    - source_event: application-platform.application_run_projection_changed
+      missing: notification-service 消费关系和 initiator/owner 字段。
+    - source_event: application-platform.engine_instance_health_changed
+      missing: notification-service 消费关系、前态和管理员范围。
+    - source_event: model-management.model_health_status_changed
+      missing: notification-service 消费关系。
+  future_topics:
+    - asset.scan.completed
+    - asset.scan.partially_failed
+    - asset.scan.failed
+    - asset.import.completed
+    - asset.import.partially_failed
+    - storage.backend.unavailable
+    - storage.capacity.warning
+    - application.engine_instance.credential_expiring
+    - model.provider.credential_expiring
+    - system.update.available
+    - system.background_job.failed
+    - agent.run.succeeded
+    - agent.run.failed
+    - agent.approval.requested
+
+x-notification-topic-catalog:
+  task.atomic_task.succeeded: {category: task, activation_status: ACTIVE, enabled: true, default_severity: success, attention_status: informational, recipient: owner_or_initiator, aggregation: immediate, mandatory_in_app: false}
+  task.atomic_task.failed: {category: task, activation_status: ACTIVE, enabled: true, default_severity: error, attention_status: action_required, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  task.atomic_task.timed_out: {category: task, activation_status: ACTIVE, enabled: true, default_severity: error, attention_status: action_required, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  task.atomic_task.action_required: {category: task, activation_status: ACTIVE, enabled: true, default_severity: warning, attention_status: action_required, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  task.group.succeeded: {category: task, activation_status: CONTRACT_GAP, enabled: false, default_severity: success, attention_status: informational, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  task.group.failed: {category: task, activation_status: CONTRACT_GAP, enabled: false, default_severity: error, attention_status: action_required, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  task.group.action_required: {category: task, activation_status: CONTRACT_GAP, enabled: false, default_severity: warning, attention_status: action_required, recipient: owner_or_initiator, aggregation: per_source, mandatory_in_app: false}
+  canvas.run.succeeded: {category: canvas, activation_status: ACTIVE, enabled: true, default_severity: success, attention_status: informational, recipient: initiator, aggregation: immediate, mandatory_in_app: false}
+  canvas.run.partially_succeeded: {category: canvas, activation_status: ACTIVE, enabled: true, default_severity: warning, attention_status: action_required, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  canvas.run.failed: {category: canvas, activation_status: ACTIVE, enabled: true, default_severity: error, attention_status: action_required, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  asset.representation.completed: {category: asset, activation_status: CONTRACT_GAP, enabled: false, default_severity: success, attention_status: informational, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.representation.failed: {category: asset, activation_status: CONTRACT_GAP, enabled: false, default_severity: error, attention_status: action_required, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.representation.batch_completed: {category: asset, activation_status: CONTRACT_GAP, enabled: false, default_severity: info, attention_status: informational, recipient: owner, aggregation: 5_minutes, mandatory_in_app: false}
+  asset.representation.batch_failed: {category: asset, activation_status: CONTRACT_GAP, enabled: false, default_severity: error, attention_status: action_required, recipient: owner, aggregation: 5_minutes, mandatory_in_app: false}
+  application.run.completed: {category: application, activation_status: CONTRACT_GAP, enabled: false, default_severity: success, attention_status: informational, recipient: initiator, aggregation: immediate, mandatory_in_app: false}
+  application.run.failed: {category: application, activation_status: CONTRACT_GAP, enabled: false, default_severity: error, attention_status: action_required, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  application.artifact.ready: {category: application, activation_status: CONTRACT_GAP, enabled: false, default_severity: success, attention_status: informational, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  application.engine_instance.unavailable: {category: provider, activation_status: CONTRACT_GAP, enabled: false, default_severity: critical, attention_status: action_required, recipient: administrators, aggregation: per_source, mandatory_in_app: true}
+  application.engine_instance.recovered: {category: provider, activation_status: CONTRACT_GAP, enabled: false, default_severity: info, attention_status: resolved, recipient: administrators, aggregation: per_source, mandatory_in_app: true}
+  model.provider_model.unavailable: {category: provider, activation_status: CONTRACT_GAP, enabled: false, default_severity: warning, attention_status: action_required, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  model.provider_model.recovered: {category: provider, activation_status: CONTRACT_GAP, enabled: false, default_severity: info, attention_status: resolved, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.scan.completed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: info, attention_status: informational, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.scan.partially_failed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.scan.failed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: error, attention_status: action_required, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  asset.import.completed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: success, attention_status: informational, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  asset.import.partially_failed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  asset.metadata.failed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: owner, aggregation: 5_minutes, mandatory_in_app: false}
+  asset.batch.completed: {category: asset, activation_status: FUTURE, enabled: false, default_severity: info, attention_status: informational, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  application.engine_instance.credential_expiring: {category: provider, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: administrators, aggregation: per_source, mandatory_in_app: true}
+  model.provider.credential_expiring: {category: provider, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: owner, aggregation: per_source, mandatory_in_app: false}
+  storage.backend.unavailable: {category: storage, activation_status: FUTURE, enabled: false, default_severity: critical, attention_status: action_required, recipient: administrators, aggregation: per_source, mandatory_in_app: true}
+  storage.capacity.warning: {category: storage, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: administrators, aggregation: 1_hour, mandatory_in_app: true}
+  storage.scan.completed: {category: storage, activation_status: FUTURE, enabled: false, default_severity: info, attention_status: informational, recipient: administrators, aggregation: per_source, mandatory_in_app: false}
+  system.update.available: {category: system, activation_status: FUTURE, enabled: false, default_severity: info, attention_status: informational, recipient: system_broadcast, aggregation: per_source, mandatory_in_app: false}
+  system.background_job.failed: {category: system, activation_status: FUTURE, enabled: false, default_severity: critical, attention_status: action_required, recipient: administrators, aggregation: 1_hour, mandatory_in_app: true}
+  agent.run.succeeded: {category: agent, activation_status: FUTURE, enabled: false, default_severity: success, attention_status: informational, recipient: initiator, aggregation: immediate, mandatory_in_app: false}
+  agent.run.failed: {category: agent, activation_status: FUTURE, enabled: false, default_severity: error, attention_status: action_required, recipient: initiator, aggregation: per_source, mandatory_in_app: false}
+  agent.approval.requested: {category: agent, activation_status: FUTURE, enabled: false, default_severity: warning, attention_status: action_required, recipient: approver, aggregation: immediate, mandatory_in_app: true}
+
+notification_created:
+  producer: notification-center.inbox
+  consumers: [sse-event-projector]
+  trigger_condition: 当前用户的 Notification 首次持久化，且 Notification 与 notification_outbox 已在同一事务提交。
+  payload:
+    notification_id: string
+    recipient_user_id: string
+    notification_topic: string
+    category: string
+    severity: string
+    inbox_status: string(unread)
+    attention_status: string(informational|action_required|resolved)
+    source_type: string
+    source_id: string
+    navigation_available: boolean
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: notification_id:resource_version:created
+  retry_policy: 由 notification_outbox 持续重试；SSE projector 按 source event 和 notification resource_version 幂等。
+  failure_policy: Notification 是收件箱事实；发布失败不回滚通知，客户端可通过列表和未读数查询恢复。
+  related_rules: [BR-NOTIFY-001, BR-NOTIFY-005, BR-NOTIFY-013, BR-NOTIFY-016, BR-NOTIFY-017, BR-NOTIFY-019]
+  related_user_stories: [US-NOTIFY-001, US-NOTIFY-004, US-NOTIFY-005, US-NOTIFY-007]
+
+notification_updated:
+  producer: notification-center.inbox
+  consumers: [sse-event-projector]
+  trigger_condition: Notification 的内容、严重程度、聚合计数、收件箱状态、处理状态、导航或保留事实发生单调更新。
+  payload:
+    notification_id: string
+    recipient_user_id: string
+    notification_topic: string
+    category: string
+    severity: string
+    inbox_status: string(unread|read|archived)
+    attention_status: string(informational|action_required|resolved)
+    occurrence_count: integer
+    navigation_available: boolean
+    changed_fields: array<string>
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: notification_id:resource_version:updated
+  retry_policy: 由 notification_outbox 持续重试；消费者丢弃相同或更低 resource_version。
+  failure_policy: Notification 数据库事实不回滚；SSE 失败时客户端通过 REST 重同步，不从 UserEvent 覆盖更高版本通知。
+  related_rules: [BR-NOTIFY-006, BR-NOTIFY-007, BR-NOTIFY-008, BR-NOTIFY-009, BR-NOTIFY-013, BR-NOTIFY-016, BR-NOTIFY-017]
+  related_user_stories: [US-NOTIFY-001, US-NOTIFY-002, US-NOTIFY-004, US-NOTIFY-005, US-NOTIFY-006, US-NOTIFY-007]
+
+notification_deleted:
+  producer: notification-center.retention
+  consumers: [sse-event-projector]
+  trigger_condition: Notification 按保留策略完成逻辑删除或物理清理，且当前用户客户端需要移除本地投影。
+  payload:
+    notification_id: string
+    recipient_user_id: string
+    resource_version: integer
+    deleted_at: string(date-time)
+    occurred_at: string(date-time)
+  idempotency_key: notification_id:resource_version:deleted
+  retry_policy: 由 notification_outbox 持续重试；重复删除事件幂等。
+  failure_policy: 清理不影响源业务事实；SSE 丢失时列表重同步会移除已清理通知。
+  related_rules: [BR-NOTIFY-016, BR-NOTIFY-017, BR-NOTIFY-018]
+  related_user_stories: [US-NOTIFY-004, US-NOTIFY-007]
+
+notification_unread_count_changed:
+  producer: notification-center.counter
+  consumers: [sse-event-projector]
+  trigger_condition: 当前用户的 unread、critical unread 或 unresolved action_required 计数发生变化，并与计数投影和 outbox 原子提交。
+  payload:
+    recipient_user_id: string
+    unread_count: integer
+    critical_count: integer
+    action_required_count: integer
+    counter_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:counter_version:unread_count_changed
+  retry_policy: 由 notification_outbox 持续重试；SSE projector 按 recipient_user_id 和 counter_version 幂等。
+  failure_policy: notification_recipient_counters 是计数投影事实；发布失败不回滚收件箱操作，客户端可重查未读数。
+  related_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-016, BR-NOTIFY-017]
+  related_user_stories: [US-NOTIFY-001, US-NOTIFY-002, US-NOTIFY-004]

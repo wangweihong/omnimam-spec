@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-29
+
+- 优化 notification-center S1 草案，移除活动语义中的 TaskRun、通知私有 SSE 和业务领域直写 Notification 表设计，统一为所属领域事实与 Outbox、通知候选、通知收件箱、Notification Outbox、SSE UserEvent 的可靠链路。
+- 建立 `source_event`、`notification_topic`、`UserEvent` 三层事件语义，并增加跨 task-center、asset-library、application-platform、workflow-canvas、model-management 的接入状态矩阵；前瞻扫描、存储、安全、Agent 和多渠道能力继续保留并显式标记。
+- 将通知收件箱状态与处理状态正交化，补充稳定去重、聚合、手动重试解决关联、接收者来源、管理员角色和结构化导航目标规则。
+- 站内实时通知统一复用 `/api/v1/events/stream`，目标 REST 示例对齐从 0 开始的分页、`total + items` 列表与对象数组批量请求；正式 release 仍待后续确认。
+- 为 notification-center S1 增加 `BR-NOTIFY-001..024`、`US-NOTIFY-001..007` 和验收标准，补齐标记未读与取消归档的生命周期接口语义。
+- 新增 notification-center 完整 S2：10 个站内收件箱/偏好 operation、8 张设计态表、13 个业务错误、6 个权限、4 个可靠出站事件和模块边界契约。
+- 登记 notification-center `180200-180999` 错误码区间，并固化 ACTIVE、CONTRACT_GAP、FUTURE notification topic 的默认严重程度、接收者、聚合和 mandatory in-app 策略。
+- SSE OpenAPI 升级为 0.2.0，增加 `notification.created/updated/deleted/unread_count_changed` UserEvent、Notification payload、存储引用和 notification-center 跨域投影边界。
+- 新增 notification-center 领域架构并更新全局依赖图，明确独立 Notification Worker、双 Outbox、收件箱计数和统一 SSE 恢复链路；上述协调变更由用户确认为 `spec-v1.8.0` release。
+
 ## 2026-07-28
 
 - 明确 Canvas Application execution：DAG 内唯一 `application-platform.run` AtomicTask 在输入解析后幂等创建并绑定 ApplicationRun，补齐发布事件消费、实时可用性校验和 Artifact 输出投影。

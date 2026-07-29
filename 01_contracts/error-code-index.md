@@ -13,6 +13,7 @@
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、访问、标签、上传、Collection、Artifact、AssetVersion 与 Representation 错误码 |
 | workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | NodeDefinition、Canvas 草稿、不可变版本、scope/复用运行、输出可用性和访问错误码 |
 | sse | `01_contracts/domains/sse/errors.yaml` | 实时连接、游标重放、事件投影和访问错误码 |
+| notification-center | `01_contracts/domains/notification-center/errors.yaml` | 通知收件箱、偏好、源事件处理和访问控制错误码 |
 
 ## 2. 错误码区间分配
 
@@ -58,6 +59,10 @@
 | 170400-170599 | sse | replay | 恢复游标冲突、不可见与过期错误 |
 | 170600-170799 | sse | projection | 上游事件字段与版本投影错误 |
 | 170800-170999 | sse | access | 实时流与历史事件访问控制错误 |
+| 180200-180399 | notification-center | inbox | 通知查询、状态操作和批量请求错误 |
+| 180400-180599 | notification-center | preference | 基础偏好、强制主题和未启用渠道错误 |
+| 180600-180799 | notification-center | ingestion | source event、接收者解析和规则处理错误 |
+| 180800-180999 | notification-center | access | 通知资源和管理员接收范围访问错误 |
 
 ## 3. 分配规则
 

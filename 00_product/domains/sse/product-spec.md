@@ -10,12 +10,12 @@
 | 目标版本   | V1                              |
 | 通信方案   | HTTP REST + Server-Sent Events  |
 | 事件订阅范围 | 当前登录用户                          |
-| 第一阶段范围 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact 处理/登记、CanvasRun/CanvasNodeRun 与连接状态 |
-| 后续阶段范围 | CanvasFlowRun/流和分片高级事件、Agent 实时事件、通知中心 |
+| 第一阶段范围 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact 处理/登记、CanvasRun/CanvasNodeRun、Notification 与连接状态 |
+| 后续阶段范围 | CanvasFlowRun/流和分片高级事件、Agent 实时事件、通知外部渠道增强 |
 | 适用客户端  | OmniMAM Web 应用                  |
 | 不适用范围  | Worker 通信、服务间 RPC、多人协同编辑、高频双向控制 |
 
-本文档必须与 task-center、application-platform、asset-library 和 workflow-canvas S1/S2 保持一致。SSE 仅投影业务事实，不得恢复已废弃的 TaskRun 执行路径。Artifact、AssetVersion、Representation 和 Asset 登记事实归 asset-library，CanvasRun/CanvasFlowRun/CanvasNodeRun 事实归 workflow-canvas，ApplicationPlatform 只维护 ApplicationRun 输出引用投影，SSE 统一对客户端的事件投影。
+本文档必须与 task-center、application-platform、asset-library、workflow-canvas 和 notification-center S1/S2 保持一致。SSE 仅投影业务事实，不得恢复已废弃的 TaskRun 执行路径。Artifact、AssetVersion、Representation 和 Asset 登记事实归 asset-library，CanvasRun/CanvasFlowRun/CanvasNodeRun 事实归 workflow-canvas，Notification 与收件箱计数归 notification-center，ApplicationPlatform 只维护 ApplicationRun 输出引用投影，SSE 统一对客户端的事件投影。
 
 ---
 
@@ -79,7 +79,7 @@ SSE 功能用于建立从 OmniMAM 服务端到 Web 应用端的单向实时事�
 9. 不将 SSE 作为业务状态事实源。
 10. 支持一个用户同时运行多个异步任务。
 11. 支持事件去重、重放和重新同步。
-12. 为后续 Canvas、Agent 和通知中心事件提供扩展基础。
+12. 为 Canvas、Notification、后续 Agent 和其他领域事件提供统一扩展基础。
 
 ---
 
@@ -550,6 +550,19 @@ atomic_task.succeeded
 * `asset_version.ready`
 * `asset_version.ready_with_warnings`
 * `asset_version.processing_failed`
+
+---
+
+### 8.7 Notification 事件
+
+notification-center 首期启用后，统一用户事件流增加：
+
+* `notification.created`
+* `notification.updated`
+* `notification.deleted`
+* `notification.unread_count_changed`
+
+这些事件只提示当前用户通知收件箱或计数发生变化。完整 Notification 仍通过 notification-center REST API 查询；通知中心不得建立私有 SSE 连接。
 
 ---
 
@@ -2716,6 +2729,7 @@ artifact.registration_succeeded
 * CanvasRun 状态、进度和变化流摘要。
 * CanvasNodeRun READY、排队、运行、进度、输出可用和终态事件。
 * Canvas 节点渐进制品展示。
+* Notification 创建、更新、删除和未读计数变化；仅在 notification-center 首期能力启用后生效。
 * Last-Event-ID。
 * 自动重连。
 * 事件去重。
@@ -2801,14 +2815,13 @@ Canvas 事件仍然通过同一条用户级 SSE 连接发送，不为每个画�
 
 ---
 
-### 第四阶段：通知和可靠性增强
+### 第四阶段：通知渠道和可靠性增强
 
 实现：
 
-* 全局通知中心。
-* 任务完成通知。
-* 任务失败通知。
-* Agent 审批提醒。
+* Email、Webhook、mobile push 和通知摘要的实时结果反馈。
+* 广播通知游标与大规模接收者优化。
+* Agent 审批提醒；前提是 Agent 事实模型和 notification topic 已建立。
 * 更完整的 Outbox。
 * 更细粒度的事件重放。
 * 慢客户端治理。
@@ -2833,7 +2846,7 @@ Canvas 事件仍然通过同一条用户级 SSE 连接发送，不为每个画�
 8. `BR-SSE-008`：用户事件默认保留 24 小时且可配置；事件过期不得删除或改写业务事实。
 9. `BR-SSE-009`：业务领域在事实变更事务中写入 outbox 或等价可靠投递记录；业务服务不得直接向某条 SSE 连接写数据。
 10. `BR-SSE-010`：事件信封必须包含 `event_id`、`event_type`、`event_version`、`occurred_at`、`aggregate_type`、`aggregate_id`、`aggregate_version` 和 `payload`；与当前事件无关的关联 ID 可省略。
-11. `BR-SSE-011`：第一阶段投影 AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact 处理、Asset 登记和 AssetVersion 处理事实；任务语义必须对齐 task-center，不得恢复 TaskRun。
+11. `BR-SSE-011`：第一阶段投影 AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、Artifact、AssetVersion、CanvasRun、CanvasNodeRun 和 Notification 变化；各对象语义必须对齐所属事实源，不得恢复 TaskRun 或建立竞争状态。
 12. `BR-SSE-012`：事件不得包含 Provider 密钥、Authorization Header、凭证、内部栈、私网地址、大型正文、长期公开 URL 或用户无权查看的原始响应。
 13. `BR-SSE-013`：长期访问令牌不得放入 SSE URL；使用 Bearer Token 时必须采用可写 Header 的 Fetch SSE 客户端或短期一次性连接令牌。
 14. `BR-SSE-014`：服务端必须发送心跳、限制单连接缓冲并关闭慢客户端；客户端通过重连和重放恢复，不得无限占用服务端内存。
@@ -2841,6 +2854,7 @@ Canvas 事件仍然通过同一条用户级 SSE 连接发送，不为每个画�
 16. `BR-SSE-016`：SSE 不可用时业务执行不受影响；当前页面可降级为低频事实轮询，连接恢复后必须先重同步再继续增量消费。
 17. `BR-SSE-017`：Artifact 与 AssetVersion 源事件由 asset-library outbox 发布；ApplicationPlatform 和 Task Center 不得发布竞争性的 Artifact 生命周期事实。
 18. `BR-SSE-018`：Artifact、AssetVersion 与 AtomicTask 分别按 aggregate_version 幂等投影，不同聚合不保证严格顺序，客户端不得从 AtomicTask 终态推断素材 ready。
+19. `BR-SSE-019`：notification-center 的可靠 outbox 事件必须投影为 `notification.created|updated|deleted|unread_count_changed` UserEvent，并复用唯一用户级事件流；完整通知和未读计数仍以 notification-center REST 事实查询为准。
 
 ### 35.2 用户故事与验收
 
@@ -2880,6 +2894,14 @@ Canvas 事件仍然通过同一条用户级 SSE 连接发送，不为每个画�
 
 - `AC-SSE-005-01`：SSE 不可用时页面显示降级状态并低频轮询，任务继续在服务端执行。
 - `AC-SSE-005-02`：未知字段、未知事件和单条解析失败只记录诊断，不关闭整条连接。
+
+#### US-SSE-006 实时更新通知收件箱
+
+作为通知中心用户，我希望通知创建、更新、删除和未读计数变化通过现有全局连接到达，而无需建立第二条通知连接。
+
+- `AC-SSE-006-01`：notification-center outbox 事件按当前 recipient 投影为四类 notification UserEvent，重复或旧版本不回退本地通知。
+- `AC-SSE-006-02`：UserEvent 只携带通知 ID、主题、严重程度、状态或计数摘要；客户端通过 notification-center API 获取完整事实。
+- `AC-SSE-006-03`：游标失效时客户端重查通知列表和未读计数，再继续消费统一事件流。
 
 ---
 

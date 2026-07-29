@@ -1,0 +1,602 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Notification Center API
+  version: 0.1.0
+  description: 当前登录用户的站内通知收件箱、未读计数和基础通知偏好契约。实时推送复用 SSE 领域，不提供通知私有事件流。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: notifications
+    description: 当前用户的通知查询与收件箱状态管理。
+  - name: notification-preferences
+    description: 当前用户的站内通知偏好。
+
+paths:
+  /api/v1/notifications:
+    get:
+      tags: [notifications]
+      summary: 查询当前用户通知列表
+      operationId: list_notifications
+      x-permission: notification.inbox.read
+      x-error-codes: [ERR_NOTIFICATION_QUERY_INVALID, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-001, US-NOTIFY-005]
+        business_rules: [BR-NOTIFY-001, BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-013, BR-NOTIFY-022]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/inbox_statuses'}
+        - {$ref: '#/components/parameters/categories'}
+        - {$ref: '#/components/parameters/severities'}
+        - {$ref: '#/components/parameters/attention_statuses'}
+        - {$ref: '#/components/parameters/notification_topics'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200':
+          description: 当前用户通知列表；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NotificationListResponse'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/unread-count:
+    get:
+      tags: [notifications]
+      summary: 查询当前用户未读计数
+      operationId: get_notification_unread_count
+      x-permission: notification.inbox.read
+      x-error-codes: [ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-001, US-NOTIFY-004]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-016, BR-NOTIFY-017]
+      responses:
+        '200':
+          description: 当前用户通知计数投影；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NotificationUnreadCount'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/read:
+    post:
+      tags: [notifications]
+      summary: 批量标记通知已读
+      operationId: batch_read_notifications
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_BATCH_INVALID, ERR_NOTIFICATION_NOT_VISIBLE, ERR_NOTIFICATION_STATE_CONFLICT, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017, BR-NOTIFY-022]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchNotificationRequest'}
+      responses:
+        '200':
+          description: 保持请求顺序的逐项结果；单项失败不回滚其他项。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/BatchNotificationResponse'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/read-all:
+    post:
+      tags: [notifications]
+      summary: 将当前范围内全部通知标记已读
+      operationId: read_all_notifications
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReadAllNotificationsRequest'}
+      responses:
+        '200':
+          description: 标记结果和最新计数；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NotificationBulkActionSummary'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/{notification_id}/read:
+    post:
+      tags: [notifications]
+      summary: 标记单条通知已读
+      operationId: read_notification
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_NOT_VISIBLE, ERR_NOTIFICATION_STATE_CONFLICT, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017]
+      parameters: [{$ref: '#/components/parameters/notification_id'}]
+      responses:
+        '200':
+          description: 更新后的通知；已归档通知返回状态冲突，其他业务拒绝返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Notification'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/{notification_id}/unread:
+    post:
+      tags: [notifications]
+      summary: 标记单条通知未读
+      operationId: unread_notification
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_NOT_VISIBLE, ERR_NOTIFICATION_STATE_CONFLICT, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017]
+      parameters: [{$ref: '#/components/parameters/notification_id'}]
+      responses:
+        '200':
+          description: 更新后的通知；已归档通知返回状态冲突业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Notification'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/{notification_id}/archive:
+    post:
+      tags: [notifications]
+      summary: 归档单条通知
+      operationId: archive_notification
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_NOT_VISIBLE, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017, BR-NOTIFY-018]
+      parameters: [{$ref: '#/components/parameters/notification_id'}]
+      responses:
+        '200':
+          description: 更新后的通知；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Notification'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notifications/{notification_id}/unarchive:
+    post:
+      tags: [notifications]
+      summary: 取消归档单条通知
+      operationId: unarchive_notification
+      x-permission: notification.inbox.manage
+      x-error-codes: [ERR_NOTIFICATION_NOT_VISIBLE, ERR_NOTIFICATION_STATE_CONFLICT, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-002]
+        business_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017]
+      parameters: [{$ref: '#/components/parameters/notification_id'}]
+      responses:
+        '200':
+          description: 恢复为 read 的通知；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/Notification'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+  /api/v1/notification-preferences:
+    get:
+      tags: [notification-preferences]
+      summary: 查询当前用户通知偏好
+      operationId: get_notification_preferences
+      x-permission: notification.preference.read
+      x-error-codes: [ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-003]
+        business_rules: [BR-NOTIFY-011, BR-NOTIFY-012, BR-NOTIFY-014, BR-NOTIFY-015]
+      responses:
+        '200':
+          description: 显式偏好、默认值、强制主题和当前渠道能力。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NotificationPreferenceSet'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+    put:
+      tags: [notification-preferences]
+      summary: 整体保存当前用户基础通知偏好
+      operationId: put_notification_preferences
+      x-permission: notification.preference.manage
+      x-error-codes: [ERR_NOTIFICATION_PREFERENCE_INVALID, ERR_NOTIFICATION_MANDATORY_TOPIC_DISABLED, ERR_NOTIFICATION_CHANNEL_UNSUPPORTED, ERR_NOTIFICATION_PERMISSION_DENIED]
+      x-s1-refs:
+        user_stories: [US-NOTIFY-003]
+        business_rules: [BR-NOTIFY-011, BR-NOTIFY-012, BR-NOTIFY-014, BR-NOTIFY-015]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/NotificationPreferenceSetRequest'}
+      responses:
+        '200':
+          description: 保存后的有效偏好；业务拒绝时返回 ErrorResponse。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/NotificationPreferenceSet'}
+                  - {$ref: '#/components/schemas/ErrorResponse'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    notification_id:
+      name: notification_id
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    page_num:
+      name: page_num
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    page_size:
+      name: page_size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    keyword:
+      name: keyword
+      in: query
+      schema: {type: string, maxLength: 200, default: ''}
+      description: 对标题和内容摘要执行当前用户范围内的模糊搜索。
+    search_fields:
+      name: search_fields
+      in: query
+      schema: {type: string, default: 'title,content'}
+      description: 逗号分隔，仅允许 title、content。
+    sort_field:
+      name: sort_field
+      in: query
+      schema: {type: string, enum: [created_at, last_occurred_at, severity], default: created_at}
+    sort_order:
+      name: sort_order
+      in: query
+      schema: {type: string, enum: [asc, desc], default: desc}
+    inbox_statuses:
+      name: inbox_statuses
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的 unread、read、archived。
+    categories:
+      name: categories
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的 NotificationCategory。
+    severities:
+      name: severities
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的 info、success、warning、error、critical。
+    attention_statuses:
+      name: attention_statuses
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的 informational、action_required、resolved。
+    notification_topics:
+      name: notification_topics
+      in: query
+      schema: {type: string, default: ''}
+      description: 逗号分隔的已登记 notification_topic；未启用前瞻主题不会产生通知。
+    created_after:
+      name: created_after
+      in: query
+      schema: {type: string, format: date-time}
+    created_before:
+      name: created_before
+      in: query
+      schema: {type: string, format: date-time}
+
+  schemas:
+    NotificationCategory:
+      type: string
+      enum: [system, task, asset, application, provider, storage, security, agent, canvas]
+    NotificationSeverity:
+      type: string
+      enum: [info, success, warning, error, critical]
+    NotificationInboxStatus:
+      type: string
+      enum: [unread, read, archived]
+    NotificationAttentionStatus:
+      type: string
+      enum: [informational, action_required, resolved]
+    NotificationSourceType:
+      type: string
+      enum:
+        - atomic_task
+        - task_group
+        - dag_task_group
+        - application_run
+        - artifact
+        - asset
+        - asset_version
+        - application_engine_instance
+        - provider_model
+        - storage_backend
+        - canvas_run
+        - scan_run
+        - asset_batch
+        - user_action
+        - agent_run
+        - system
+
+    NavigationTargetParams:
+      type: object
+      maxProperties: 10
+      additionalProperties:
+        type: string
+        maxLength: 128
+    NavigationTarget:
+      type: object
+      additionalProperties: false
+      required: [type, target_type, target_id, view, params]
+      properties:
+        type: {type: string, enum: [navigate]}
+        target_type: {$ref: '#/components/schemas/NotificationSourceType'}
+        target_id: {type: string, minLength: 1, maxLength: 128}
+        view: {type: string, minLength: 1, maxLength: 64}
+        params: {$ref: '#/components/schemas/NavigationTargetParams'}
+      description: 结构化同源导航语义，不授权目标资源，也不接受源事件任意 URL。
+
+    Notification:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - category
+        - notification_topic
+        - severity
+        - title
+        - content
+        - inbox_status
+        - attention_status
+        - source_type
+        - source_id
+        - occurrence_count
+        - first_occurred_at
+        - last_occurred_at
+        - resource_version
+        - created_at
+        - updated_at
+      properties:
+        id: {type: string}
+        category: {$ref: '#/components/schemas/NotificationCategory'}
+        notification_topic:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$'
+        severity: {$ref: '#/components/schemas/NotificationSeverity'}
+        title: {type: string, minLength: 1, maxLength: 200}
+        content: {type: string, minLength: 1, maxLength: 4000}
+        inbox_status: {$ref: '#/components/schemas/NotificationInboxStatus'}
+        attention_status: {$ref: '#/components/schemas/NotificationAttentionStatus'}
+        source_type: {$ref: '#/components/schemas/NotificationSourceType'}
+        source_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 稳定源引用。通知自身已保存可读历史摘要且 navigation_target/action_path 提供导航，因此不递归展开多态源摘要。
+        navigation_target: {$ref: '#/components/schemas/NavigationTarget', nullable: true}
+        action_path:
+          type: string
+          nullable: true
+          maxLength: 1024
+          description: 服务端从 navigation_target 派生的同源白名单路径；目标不可见或类型未知时为 null。
+        occurrence_count: {type: integer, minimum: 1}
+        first_occurred_at: {type: string, format: date-time}
+        last_occurred_at: {type: string, format: date-time}
+        read_at: {type: string, format: date-time, nullable: true}
+        archived_at: {type: string, format: date-time, nullable: true}
+        resolved_at: {type: string, format: date-time, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    NotificationListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Notification'}
+
+    NotificationUnreadCount:
+      type: object
+      additionalProperties: false
+      required: [unread_count, critical_count, action_required_count, resource_version, updated_at]
+      properties:
+        unread_count: {type: integer, minimum: 0}
+        critical_count: {type: integer, minimum: 0}
+        action_required_count: {type: integer, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        updated_at: {type: string, format: date-time}
+
+    BatchNotificationItem:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 128}
+    BatchNotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/BatchNotificationItem'}
+      description: items.id 必须唯一；请求级结构错误整体失败，可见性与单项状态错误逐项返回。
+    BatchNotificationItemResult:
+      type: object
+      additionalProperties: false
+      required: [id, success]
+      properties:
+        id: {type: string}
+        success: {type: boolean}
+        data: {$ref: '#/components/schemas/Notification', nullable: true}
+        error: {$ref: '#/components/schemas/ErrorResponse', nullable: true}
+    BatchNotificationResponse:
+      type: object
+      additionalProperties: false
+      required: [total, success, fail, results, unread_count]
+      properties:
+        total: {type: integer, minimum: 0}
+        success: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        results:
+          type: array
+          items: {$ref: '#/components/schemas/BatchNotificationItemResult'}
+        unread_count: {type: integer, minimum: 0}
+
+    ReadAllNotificationsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        category: {$ref: '#/components/schemas/NotificationCategory'}
+    NotificationBulkActionSummary:
+      type: object
+      additionalProperties: false
+      required: [affected_count, unread_count, critical_count, action_required_count, resource_version, updated_at]
+      properties:
+        affected_count: {type: integer, minimum: 0}
+        unread_count: {type: integer, minimum: 0}
+        critical_count: {type: integer, minimum: 0}
+        action_required_count: {type: integer, minimum: 0}
+        resource_version: {type: integer, minimum: 0}
+        updated_at: {type: string, format: date-time}
+
+    NotificationPreferenceItem:
+      type: object
+      additionalProperties: false
+      required: [id, category, in_app_enabled, minimum_severity, merge_repeated, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        category: {$ref: '#/components/schemas/NotificationCategory'}
+        notification_topic:
+          type: string
+          nullable: true
+          pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$'
+        in_app_enabled: {type: boolean}
+        minimum_severity: {$ref: '#/components/schemas/NotificationSeverity'}
+        merge_repeated: {type: boolean}
+        mandatory: {type: boolean, readOnly: true}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    NotificationPreferenceItemRequest:
+      type: object
+      additionalProperties: false
+      required: [category, in_app_enabled, minimum_severity, merge_repeated]
+      properties:
+        category: {$ref: '#/components/schemas/NotificationCategory'}
+        notification_topic:
+          type: string
+          nullable: true
+          pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$'
+        in_app_enabled: {type: boolean}
+        minimum_severity: {$ref: '#/components/schemas/NotificationSeverity'}
+        merge_repeated: {type: boolean}
+    NotificationPreferenceDefaults:
+      type: object
+      additionalProperties: false
+      required: [in_app_enabled, minimum_severity, merge_repeated]
+      properties:
+        in_app_enabled: {type: boolean, default: true}
+        minimum_severity: {$ref: '#/components/schemas/NotificationSeverity'}
+        merge_repeated: {type: boolean, default: true}
+    NotificationChannelCapabilities:
+      type: object
+      additionalProperties: false
+      required: [in_app, email, webhook, mobile_push, digest, quiet_hours]
+      properties:
+        in_app: {type: boolean, enum: [true]}
+        email: {type: boolean, enum: [false]}
+        webhook: {type: boolean, enum: [false]}
+        mobile_push: {type: boolean, enum: [false]}
+        digest: {type: boolean, enum: [false]}
+        quiet_hours: {type: boolean, enum: [false]}
+    NotificationPreferenceSetRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 0
+          maxItems: 100
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/NotificationPreferenceItemRequest'}
+      description: 整体替换当前用户显式偏好；空数组恢复全部默认值。category + notification_topic 必须唯一。
+    NotificationPreferenceSet:
+      type: object
+      additionalProperties: false
+      required: [defaults, capabilities, mandatory_topics, total, items]
+      properties:
+        defaults: {$ref: '#/components/schemas/NotificationPreferenceDefaults'}
+        capabilities: {$ref: '#/components/schemas/NotificationChannelCapabilities'}
+        mandatory_topics:
+          type: array
+          uniqueItems: true
+          items: {type: string}
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/NotificationPreferenceItem'}
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, value, message, messages, retryable]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        messages:
+          type: object
+          additionalProperties: false
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: {type: string}
+            en-US: {type: string}
+        detail: {type: string}
+        causes:
+          type: array
+          items: {type: object, additionalProperties: true}
+        retryable: {type: boolean}
+        data: {type: object, additionalProperties: true}

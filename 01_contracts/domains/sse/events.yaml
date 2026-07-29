@@ -180,6 +180,45 @@ x-canvas-node-defaults: &canvas_node_defaults
   related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-011, BR-WORKFLOW-014, BR-WORKFLOW-022, BR-WORKFLOW-023, BR-WORKFLOW-024, BR-WORKFLOW-025]
   related_user_stories: [US-SSE-002, US-SSE-003, US-SSE-004, US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-006]
 
+x-notification-defaults: &notification_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [notification-center.notification_created, notification-center.notification_updated, notification-center.notification_deleted]
+  payload:
+    notification_id: string
+    notification_topic: string|null
+    category: string|null
+    severity: string|null
+    inbox_status: string|null
+    attention_status: string|null
+    occurrence_count: integer|null
+    navigation_available: boolean|null
+    changed_fields: array<string>
+    deleted_at: string(date-time)|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:notification_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试；消费者按 Notification resource_version 幂等。
+  failure_policy: Notification 仍以 notification-center 为事实源；投影失败不回滚收件箱，客户端重查通知列表恢复。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-015, BR-SSE-019, BR-NOTIFY-012, BR-NOTIFY-016, BR-NOTIFY-017]
+  related_user_stories: [US-SSE-004, US-SSE-005, US-SSE-006, US-NOTIFY-004]
+
+x-notification-count-defaults: &notification_count_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [notification-center.notification_unread_count_changed]
+  payload:
+    unread_count: integer
+    critical_count: integer
+    action_required_count: integer
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:aggregate_version:notification.unread_count_changed
+  retry_policy: 由用户事件投影 outbox 重试；消费者按 counter_version 幂等。
+  failure_policy: 计数投影以 notification-center 为准；失败不回滚收件箱操作，客户端重查未读数恢复。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-019, BR-NOTIFY-008, BR-NOTIFY-016, BR-NOTIFY-017]
+  related_user_stories: [US-SSE-004, US-SSE-006, US-NOTIFY-001, US-NOTIFY-002, US-NOTIFY-004]
+
 connection.ready:
   producer: sse-event-gateway
   consumers: [omnimam-web]
@@ -407,3 +446,16 @@ canvas.node.skipped:
 canvas.node.cancelled:
   <<: *canvas_node_defaults
   trigger_condition: CanvasNodeRun 进入 CANCELED。
+
+notification.created:
+  <<: *notification_defaults
+  trigger_condition: Notification 首次持久化并发布 notification_created。
+notification.updated:
+  <<: *notification_defaults
+  trigger_condition: Notification 内容、状态、严重程度、聚合计数或导航可用性发生更高版本更新。
+notification.deleted:
+  <<: *notification_defaults
+  trigger_condition: Notification 按保留策略清理并发布 notification_deleted；payload.deleted_at 非空。
+notification.unread_count_changed:
+  <<: *notification_count_defaults
+  trigger_condition: 当前用户的 unread、critical unread 或 unresolved action_required 计数发生变化。
