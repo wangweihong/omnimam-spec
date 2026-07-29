@@ -1,5 +1,34 @@
 # Release Records
 
+## spec-v1.8.0
+
+- commit: 0c9bfbf4ff42a1856f54d2201b267b47739c7188
+- status: released
+- confirmed_by: user（2026-07-29 明确要求提交并发布 release）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - notification-center
+  - sse
+- S1:
+  - 00_product/domains/notification-center/product-spec.md
+  - 00_product/domains/sse/product-spec.md
+- S2:
+  - 01_contracts/domains/notification-center/openapi.yaml
+  - 01_contracts/domains/notification-center/schema.sql
+  - 01_contracts/domains/notification-center/errors.yaml
+  - 01_contracts/domains/notification-center/permissions.yaml
+  - 01_contracts/domains/notification-center/events.yaml
+  - 01_contracts/domains/notification-center/module-contract.md
+  - 01_contracts/domains/sse/openapi.yaml
+  - 01_contracts/domains/sse/schema.sql
+  - 01_contracts/domains/sse/events.yaml
+  - 01_contracts/domains/sse/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/notification-center.md
+  - 02_architecture/global-architecture.md
+- implementation_gate: 首期只启用 standalone `atomic_task_status_changed` 与 `canvas_run_status_changed` 对应 ACTIVE topic；Group、Asset、Application、Engine、ProviderModel 的 CONTRACT_GAP 以及全部 FUTURE topic 必须保持禁用。Server 必须实现 Notification/recipient counter/Notification Outbox 原子提交、独立 Worker 幂等聚合和双 Outbox 恢复；Web 只复用 `/api/v1/events/stream` 获取提示并通过 Notification REST API 重查完整事实，不得建立通知私有 SSE。
+
 ## spec-v1.7.14
 
 - commit: ca64ac47cae099886c3216d5f7eb02d3b6f92d7d

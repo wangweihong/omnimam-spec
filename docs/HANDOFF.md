@@ -13,6 +13,7 @@
 5. 扩展 SSE S1/S2，增加四类 notification UserEvent，继续复用 `/api/v1/events/stream`、event_id、aggregate_version 和重同步机制。
 6. 登记 `180200-180999` 错误码区间，并补充 notification-center 领域架构和全局依赖链路。
 7. 用户已明确确认提交并 release，notification-center OpenAPI 发布为 0.1.0，SSE OpenAPI 发布为 0.2.0。
+8. 正式规范提交为 `0c9bfbf4ff42a1856f54d2201b267b47739c7188`，`RELEASE.md` 已登记 `spec-v1.8.0`。
 
 ## 文件变化
 
@@ -27,9 +28,10 @@
 - `02_architecture/domains/notification-center.md`
 - `02_architecture/global-architecture.md`
 - `CHANGELOG.md`
+- `RELEASE.md`
 - `docs/HANDOFF.md`
 
-用户已有的 `AGENTS.md` 工作区改动未修改。`RELEASE.md` 未变更。
+用户已有的 `AGENTS.md` 工作区改动未修改。
 
 ## 关键设计决策
 
