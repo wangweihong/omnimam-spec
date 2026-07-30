@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-为 `omnimam-spec` 增加轻量上下文索引层并发布 `spec-v1.8.1`。状态：发布流程执行中，已完成发布前核验，正在创建 release 提交、Git tag 并推送远端。
+为 `omnimam-spec` 增加轻量上下文索引层并发布 `spec-v1.8.1`。状态：已完成发布、tag 创建和远端推送。
 
 ## 本次已完成
 
@@ -12,17 +12,20 @@
 - 新增根 `README.md`，声明 AI Context 读取入口和 Context 非 SSOT 规则。
 - 更新 `AGENTS.md` 的仓库边界、按需加载顺序和 Context 维护触发条件，保留任务开始前已有的 Completion & Handoff Rules。
 - 更新 `CHANGELOG.md`，记录 2026-07-30 未发布的上下文索引改造。
+- 在 `RELEASE.md` 登记 `spec-v1.8.1`，标记为已发布但不允许作为正式实现依据。
+- 创建 release 提交 `d941878d9d32c023e4e1b6fa06693a57bf48afc3`，创建并推送轻量 tag `spec-v1.8.1`。
+- 推送 `master` 到 `origin`，远端分支已更新到 release 提交。
 
 ## 当前进行中
 
-- 创建 `release: publish spec-v1.8.1` 提交、轻量 tag `spec-v1.8.1`，并推送 `master` 与 tag。
+- 无。
 
 ## 文件变化
 
 - 新增：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`README.md`。
 - 新增：`domains/ai-chatting/context.md`、`domains/application-platform/context.md`、`domains/asset-library/context.md`、`domains/identity/context.md`、`domains/model-management/context.md`、`domains/notification-center/context.md`、`domains/sse/context.md`、`domains/task-center/context.md`、`domains/workflow-canvas/context.md`。
 - 修改：`AGENTS.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 正在修改：`RELEASE.md`；仍不修改 `00_product/`、`01_contracts/`、`02_architecture/`。
+- 已修改并发布：`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`；仍不修改 `00_product/`、`01_contracts/`、`02_architecture/`。
 - 保留用户已有工作区改动：`archive/`、已删除的 `skills/archive/s1-origin.md` 与 `skills/archive/s1-origin-2.md`，以及 `AGENTS.md` 的 Handoff 规则。
 
 ## 关键设计决策
@@ -43,11 +46,13 @@
 - 汉字数：Global Context 1612、Context Map 1085；Domain Context 为 775～924，全部满足约定范围。
 - 已验证 70 个 Context 文件或目录引用真实存在；规划领域没有虚构 Context，identity 没有虚构 S2 路径。
 - 新文件尾随空格检查和代码围栏平衡检查通过；`git diff --check` 通过。
-- `00_product/`、`01_contracts/`、`02_architecture/`、`RELEASE.md` 的任务 diff 为空。
+- `git diff --check` 与发布前暂存区检查通过，发布提交只包含 `CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
+- `spec-v1.8.1` 与 release 提交均指向 `d941878d9d32c023e4e1b6fa06693a57bf48afc3`；`RELEASE.md` 记录继续指向内容提交 `183895c654529707f590c923ba1e64ec5104138d`。
+- `git push origin master` 与 `git push origin spec-v1.8.1` 均成功。
 
 ## 待办、问题与风险
 
-- 发布提交、tag、远端推送和最终状态核验尚未完成。
+- 发布已完成；工作区仍保留用户已有的 `archive/` 未跟踪文件与 `skills/archive/` 删除变更，未纳入本次 release。
 - identity 只有 S1，S2 仍待未来从正式产品语义推导。
 - SSE、workflow-canvas、asset-library 等正文头部状态可能滞后于后续 Release；索引已要求以 `RELEASE.md` 的具体记录和 implementation gate 为准，本次未重写原 Spec。
 - 后续修改核心对象、领域职责、边界、核心规则、状态或事实源路径时，必须同步维护对应 Context。
