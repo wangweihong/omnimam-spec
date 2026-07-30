@@ -1,5 +1,38 @@
 # Release Records
 
+## spec-v1.8.1
+
+- commit: 183895c654529707f590c923ba1e64ec5104138d
+- status: released
+- confirmed_by: user（2026-07-30 明确要求直接发布 `spec-v1.8.1`）
+- allowed_as_formal_implementation_basis: false
+- release_kind: context-navigation
+- domains:
+  - ai-chatting
+  - application-platform
+  - asset-library
+  - identity
+  - model-management
+  - notification-center
+  - sse
+  - task-center
+  - workflow-canvas
+- context:
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+  - domains/ai-chatting/context.md
+  - domains/application-platform/context.md
+  - domains/asset-library/context.md
+  - domains/identity/context.md
+  - domains/model-management/context.md
+  - domains/notification-center/context.md
+  - domains/sse/context.md
+  - domains/task-center/context.md
+  - domains/workflow-canvas/context.md
+- S1: []
+- S2: []
+- implementation_gate: 本版本只发布 AI/开发者的上下文摘要与读取导航，不修改产品语义或实现合同。Context 必须让位于对应 S1/S2；任何实现、合并、验收和正式发布仍须使用已有或后续经用户确认且 `allowed_as_formal_implementation_basis: true` 的 Spec release。
+
 ## spec-v1.8.0
 
 - commit: 0c9bfbf4ff42a1856f54d2201b267b47739c7188

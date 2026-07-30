@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-为 `omnimam-spec` 增加轻量上下文索引层。状态：已完成并通过验证；Context 仅用于摘要与导航，未修改正式 S1/S2 或 Release。
+为 `omnimam-spec` 增加轻量上下文索引层并发布 `spec-v1.8.1`。状态：发布流程执行中，已完成发布前核验，正在创建 release 提交、Git tag 并推送远端。
 
 ## 本次已完成
 
@@ -15,14 +15,14 @@
 
 ## 当前进行中
 
-- 无。
+- 创建 `release: publish spec-v1.8.1` 提交、轻量 tag `spec-v1.8.1`，并推送 `master` 与 tag。
 
 ## 文件变化
 
 - 新增：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`README.md`。
 - 新增：`domains/ai-chatting/context.md`、`domains/application-platform/context.md`、`domains/asset-library/context.md`、`domains/identity/context.md`、`domains/model-management/context.md`、`domains/notification-center/context.md`、`domains/sse/context.md`、`domains/task-center/context.md`、`domains/workflow-canvas/context.md`。
 - 修改：`AGENTS.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 未修改：`00_product/`、`01_contracts/`、`02_architecture/`、`RELEASE.md`。
+- 正在修改：`RELEASE.md`；仍不修改 `00_product/`、`01_contracts/`、`02_architecture/`。
 - 保留用户已有工作区改动：`archive/`、已删除的 `skills/archive/s1-origin.md` 与 `skills/archive/s1-origin-2.md`，以及 `AGENTS.md` 的 Handoff 规则。
 
 ## 关键设计决策
@@ -47,7 +47,7 @@
 
 ## 待办、问题与风险
 
-- 本次改造无未完成任务。
+- 发布提交、tag、远端推送和最终状态核验尚未完成。
 - identity 只有 S1，S2 仍待未来从正式产品语义推导。
 - SSE、workflow-canvas、asset-library 等正文头部状态可能滞后于后续 Release；索引已要求以 `RELEASE.md` 的具体记录和 implementation gate 为准，本次未重写原 Spec。
 - 后续修改核心对象、领域职责、边界、核心规则、状态或事实源路径时，必须同步维护对应 Context。

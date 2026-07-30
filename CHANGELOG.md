@@ -6,6 +6,7 @@
 - 新增 `CONTEXT_MAP.md`，建立单领域关键词、跨域任务和全局入口到最小文档集合的映射；`application-engine`、`capability-catalog`、`mcp-server` 因无独立正式目录而标记为规划中。
 - 为 ai-chatting、application-platform、asset-library、identity、model-management、notification-center、sse、task-center、workflow-canvas 新增根级 Domain Context，并明确 identity 尚缺 S2。
 - 新增根 `README.md` 的 AI Context 入口，并更新 `AGENTS.md` 的仓库边界、按需加载顺序和 Context 维护触发条件；本次不修改 S1/S2、架构参考或 Release。
+- 上述上下文导航层由用户确认为 `spec-v1.8.1` release；该版本不包含 S1/S2 变更，不能作为正式实现依据。
 
 ## 2026-07-29
 
