@@ -1,72 +1,61 @@
 # OmniMAM Spec Handoff
 
-## 当前项目目标
+## 当前目标与状态
 
-以 `spec-v1.8.0` 发布 notification-center S1/S2，并与现行领域事件、统一 SSE UserEvent 和全局架构保持一致。
+为 `omnimam-spec` 增加轻量上下文索引层。状态：已完成并通过验证；Context 仅用于摘要与导航，未修改正式 S1/S2 或 Release。
 
-## 本次完成
+## 本次已完成
 
-1. 在 notification-center S1 增加 `BR-NOTIFY-001..024`、`US-NOTIFY-001..007`、验收标准、标记未读和取消归档语义。
-2. 创建 notification-center OpenAPI、设计态 schema、错误码、权限码、事件目录和模块契约六类 S2 文档。
-3. 建立 ACTIVE、CONTRACT_GAP、FUTURE topic catalog，保留全部前瞻主题并阻止未就绪主题提前启用。
-4. 定义独立 Notification Worker、NotificationEvent 候选、去重/聚合、解决关联、收件箱计数、偏好、双 Outbox 和未来渠道隔离。
-5. 扩展 SSE S1/S2，增加四类 notification UserEvent，继续复用 `/api/v1/events/stream`、event_id、aggregate_version 和重同步机制。
-6. 登记 `180200-180999` 错误码区间，并补充 notification-center 领域架构和全局依赖链路。
-7. 用户已明确确认提交并 release，notification-center OpenAPI 发布为 0.1.0，SSE OpenAPI 发布为 0.2.0。
-8. 正式规范提交为 `0c9bfbf4ff42a1856f54d2201b267b47739c7188`，`RELEASE.md` 已登记 `spec-v1.8.0`。
+- 新增 `GLOBAL_CONTEXT.md`，说明项目目标、Spec 分层、9 个实际领域、核心对象、事实归属、跨域边界和最小读取规则。
+- 新增 `CONTEXT_MAP.md`，建立单领域关键词、跨域任务和全局入口到最小文档集合的映射。
+- 为 ai-chatting、application-platform、asset-library、identity、model-management、notification-center、sse、task-center、workflow-canvas 创建统一九章节 Domain Context。
+- 新增根 `README.md`，声明 AI Context 读取入口和 Context 非 SSOT 规则。
+- 更新 `AGENTS.md` 的仓库边界、按需加载顺序和 Context 维护触发条件，保留任务开始前已有的 Completion & Handoff Rules。
+- 更新 `CHANGELOG.md`，记录 2026-07-30 未发布的上下文索引改造。
+
+## 当前进行中
+
+- 无。
 
 ## 文件变化
 
-- `00_product/domains/notification-center/product-spec.md`
-- `00_product/domains/sse/product-spec.md`
-- `01_contracts/domains/notification-center/` 六个 S2 文件
-- `01_contracts/domains/sse/events.yaml`
-- `01_contracts/domains/sse/module-contract.md`
-- `01_contracts/domains/sse/openapi.yaml`
-- `01_contracts/domains/sse/schema.sql`
-- `01_contracts/error-code-index.md`
-- `02_architecture/domains/notification-center.md`
-- `02_architecture/global-architecture.md`
-- `CHANGELOG.md`
-- `RELEASE.md`
-- `docs/HANDOFF.md`
-
-用户已有的 `AGENTS.md` 工作区改动未修改。
+- 新增：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`README.md`。
+- 新增：`domains/ai-chatting/context.md`、`domains/application-platform/context.md`、`domains/asset-library/context.md`、`domains/identity/context.md`、`domains/model-management/context.md`、`domains/notification-center/context.md`、`domains/sse/context.md`、`domains/task-center/context.md`、`domains/workflow-canvas/context.md`。
+- 修改：`AGENTS.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 未修改：`00_product/`、`01_contracts/`、`02_architecture/`、`RELEASE.md`。
+- 保留用户已有工作区改动：`archive/`、已删除的 `skills/archive/s1-origin.md` 与 `skills/archive/s1-origin-2.md`，以及 `AGENTS.md` 的 Handoff 规则。
 
 ## 关键设计决策
 
-- 首期 ACTIVE 输入只有 `atomic_task_status_changed` 和 `canvas_run_status_changed`；Group、Asset、Application、Engine 和 ProviderModel 事件在缺口补齐前保持禁用。
-- AtomicTask 通知只处理 standalone task；Group/DAG 子任务和 ApplicationRun/CanvasRun 关联任务等待上层业务域表达，避免重复或错误通知。
-- source event、notification topic、Notification domain event 和 SSE UserEvent 分层命名；业务域与 Notification/SSE 各自拥有 Outbox。
-- Notification、recipient counter 和 Notification Outbox 原子提交；SSE 失败不回滚收件箱。
-- Email、Webhook、mobile push、摘要、静默时段和广播游标只保留 schema/边界，不作为首期可写或成功能力。
+- Domain Context 位于根级 `domains/<domain_id>/context.md`，不混入 S1 或 S2 目录。
+- 使用实际领域名 `ai-chatting`；`application-engine`、`capability-catalog`、`mcp-server` 因无独立正式目录只在 Context Map 标记为规划中。
+- Engine、Adapter、Executor 和 ProviderCapability 当前导航到 application-platform；Artifact 归 asset-library；AtomicTask 归 task-center。
+- TaskRun、ExecutionLease、Worker claim、DAGFlowTask 等旧术语只作为过期检索词，并明确让位于 AtomicTask 主线。
+- 产品语义以 S1 为准，实现合同以 S2 为准；Context 冲突时让位于正式 Spec，S1/S2 冲突必须修复并重新 release。
 
-## API、Schema 与配置变化
+## API、Schema、依赖与配置变化
 
-- 新增 10 个 `/api/v1/notifications*`、`/api/v1/notification-preferences` operation，全部仅作用于当前用户。
-- 批量已读最多 200 个唯一 ID，逐项返回结果；分页从 0 开始，默认 20、最大 100。
-- 新增 8 张设计态表：topic catalog、candidate event、notification、event link、recipient counter、preference、delivery 预留和 outbox。
-- 新增 13 个 `ERR_NOTIFICATION_*` 业务错误、6 个 notification 权限以及 4 个 notification domain event。
-- SSE 增加四个 notification UserEvent 和 `notification_id` 投影字段；OpenAPI 为 `0.2.0`。
+- 无 API、Schema、错误码、权限码、事件、模块合同、依赖、migration 或运行时配置变化。
 
-## 待办与风险
+## 验证结果
 
-- `spec-v1.8.0` 已 release，可作为 notification-center 与 SSE 协作的正式实现依据。
-- task_group、asset/version/artifact、application_run、engine health 和 model health 仍缺上游消费者或 payload 契约；对应 topic 必须保持 `CONTRACT_GAP`。
-- 扫描、导入、存储、凭证、安全、系统公告和 Agent 仍是 `FUTURE`，不得由通知中心反向发明事实。
-- 正式实现需要将 topic catalog 作为受控 seed/config 落地，并验证多副本 Worker 下的聚合唯一键、counter 重建和双 Outbox 恢复。
-- 设计态 schema 不是 migration；任何数据库上线需要服务仓库单独设计迁移和回填。
+- 9 个实际领域与 9 个 Domain Context 集合完全一致；每个文件都包含统一九章节及“不在本领域定义的内容”。
+- 汉字数：Global Context 1612、Context Map 1085；Domain Context 为 775～924，全部满足约定范围。
+- 已验证 70 个 Context 文件或目录引用真实存在；规划领域没有虚构 Context，identity 没有虚构 S2 路径。
+- 新文件尾随空格检查和代码围栏平衡检查通过；`git diff --check` 通过。
+- `00_product/`、`01_contracts/`、`02_architecture/`、`RELEASE.md` 的任务 diff 为空。
 
-## 已完成校验
+## 待办、问题与风险
 
-- notification-center 与 SSE YAML 可解析，本地 OpenAPI `$ref` 和权限引用完整。
-- Redocly 验证两个 OpenAPI 均有效；仅有仓库 HTTP 200 业务错误策略和缺 license 的预期 warning。
-- S1 refs、错误码全局唯一、错误码区间、topic catalog 状态、SSE source event 链接和 Markdown 基础结构通过检查。
+- 本次改造无未完成任务。
+- identity 只有 S1，S2 仍待未来从正式产品语义推导。
+- SSE、workflow-canvas、asset-library 等正文头部状态可能滞后于后续 Release；索引已要求以 `RELEASE.md` 的具体记录和 implementation gate 为准，本次未重写原 Spec。
+- 后续修改核心对象、领域职责、边界、核心规则、状态或事实源路径时，必须同步维护对应 Context。
 
-## 推荐下一任务
+## 推荐下一步
 
-在服务端实现 `spec-v1.8.0` 的 ACTIVE notification topic、收件箱 API、计数、偏好、双 Outbox 和 SSE 投影；CONTRACT_GAP/FUTURE 保持禁用。
+在下一次实际 Spec 任务中按 `GLOBAL_CONTEXT.md` → `CONTEXT_MAP.md` → 一个 Domain Context → 1～3 个正式 Spec 的顺序验证 Token 收敛效果；若关键词无法定位，再调整 Context Map，而不是扩大默认读取范围。
 
-## Next Prompt
+Next Prompt:
 
-Read `docs/HANDOFF.md` and implement the released `spec-v1.8.0` in omnimam-server. Start with ACTIVE standalone AtomicTask and CanvasRun topics, NotificationEvent/Notification/counter/topic catalog persistence, inbox and preference APIs, Notification Outbox, and SSE projection. Keep every CONTRACT_GAP/FUTURE topic disabled and do not invent missing upstream facts.
+Read docs/HANDOFF.md, verify the current implementation, and continue with the next outstanding task. Do not repeat completed work.

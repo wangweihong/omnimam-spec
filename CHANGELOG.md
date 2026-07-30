@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-30
+
+- 新增 `GLOBAL_CONTEXT.md`，以轻量摘要说明 OmniMAM 目标、Spec 分层、实际领域、核心对象、事实归属、跨域边界和最小读取规则；Context 不构成新的事实层。
+- 新增 `CONTEXT_MAP.md`，建立单领域关键词、跨域任务和全局入口到最小文档集合的映射；`application-engine`、`capability-catalog`、`mcp-server` 因无独立正式目录而标记为规划中。
+- 为 ai-chatting、application-platform、asset-library、identity、model-management、notification-center、sse、task-center、workflow-canvas 新增根级 Domain Context，并明确 identity 尚缺 S2。
+- 新增根 `README.md` 的 AI Context 入口，并更新 `AGENTS.md` 的仓库边界、按需加载顺序和 Context 维护触发条件；本次不修改 S1/S2、架构参考或 Release。
+
 ## 2026-07-29
 
 - 优化 notification-center S1 草案，移除活动语义中的 TaskRun、通知私有 SSE 和业务领域直写 Notification 表设计，统一为所属领域事实与 Outbox、通知候选、通知收件箱、Notification Outbox、SSE UserEvent 的可靠链路。
