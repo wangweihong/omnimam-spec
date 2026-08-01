@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-将已完成的 `mcp` S1/S2、Context 和架构提交并发布为 `spec-v1.9.2`。状态：已完成并发布。
+将已完成的 `mcp` S1/S2、Context 和架构提交并发布为 `spec-v1.9.2`。状态：已完成，Release commit、tag、`origin/master` 和远端 tag 均已发布。
 
 ## 本次已完成
 
@@ -59,7 +59,9 @@
 - MCP S1、MCP 领域架构和全局架构共 8 张 Mermaid 图经 Mermaid CLI 渲染通过。
 - Markdown 围栏、Context 路径和 `git diff --check` 通过；Release 记录中的文件与实施门禁已复核。
 - 最终 Spec commit：`45ea82d4fd42b1697f4cd9af24c2ccb1ac965373`。
-- `spec-v1.9.2` 已登记为 released，`allowed_as_formal_implementation_basis: true`，并创建同名不可变 tag。
+- Release commit：`32ae994`；annotated tag `spec-v1.9.2` 指向该提交。
+- `spec-v1.9.2` 已登记为 released，`allowed_as_formal_implementation_basis: true`。
+- `origin/master` 与远端 `spec-v1.9.2` tag 已推送成功。
 
 ## 待办、问题与风险
 
