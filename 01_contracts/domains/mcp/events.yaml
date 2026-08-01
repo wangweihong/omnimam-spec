@@ -1,0 +1,14 @@
+x-contract-status:
+  domain: mcp
+  outbound_events: []
+  inbound_events: []
+  reason: >-
+    MCP v1 is a synchronous protocol adapter. It reads source-domain facts
+    through controlled APIs and does not own business lifecycle events.
+    McpTaskBinding creation/expiry is protocol-local and does not notify
+    business domains. Security audit is written through the Identity audit
+    boundary, not published as an MCP domain event.
+  related_rules: [BR-MCP-001, BR-MCP-009, BR-MCP-012, BR-MCP-018]
+  related_user_stories: [US-MCP-003, US-MCP-004, US-MCP-007]
+
+events: {}

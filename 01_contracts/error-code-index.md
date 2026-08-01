@@ -15,6 +15,7 @@
 | workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | NodeDefinition、Canvas 草稿、不可变版本、scope/复用运行、输出可用性和访问错误码 |
 | sse | `01_contracts/domains/sse/errors.yaml` | 实时连接、游标重放、事件投影和访问错误码 |
 | notification-center | `01_contracts/domains/notification-center/errors.yaml` | 通知收件箱、偏好、源事件处理和访问控制错误码 |
+| mcp | `01_contracts/domains/mcp/errors.yaml` | MCP 协议、Tool/Resource 分发、Task 映射和访问控制错误码 |
 
 ## 2. 错误码区间分配
 
@@ -64,6 +65,10 @@
 | 180400-180599 | notification-center | preference | 基础偏好、强制主题和未启用渠道错误 |
 | 180600-180799 | notification-center | ingestion | source event、接收者解析和规则处理错误 |
 | 180800-180999 | notification-center | access | 通知资源和管理员接收范围访问错误 |
+| 190200-190399 | mcp | protocol | MCP 版本、JSON-RPC、传输 Header 和响应协商错误 |
+| 190400-190599 | mcp | dispatch | 固定 Tool、参数 Schema、Resource URI 和分页游标错误 |
+| 190600-190799 | mcp | task-mapping | MCP Tasks 协商、Binding、可见性、过期和取消错误 |
+| 190800-190999 | mcp | access | JWT、MCP 权限、Origin、请求限制、配额和审计错误 |
 
 ## 3. 分配规则
 

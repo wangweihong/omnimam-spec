@@ -37,6 +37,18 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 
 `EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 modelgateway 的正式能力事实源。
 
+## Agent 协议访问
+
+| 术语 | 定义 | 主要事实源 |
+| --- | --- | --- |
+| MCP Server | OmniMAM 面向受权 Agent 的标准协议访问层；只做协议适配、授权、结果转换和任务映射，不拥有业务执行事实 | mcp |
+| MCP Tool | 固定注册的 Agent 命令界面；当前只覆盖 Capability 发现、Application 查询/运行、ApplicationRun 查询/取消和 Asset 查询/上传 | mcp |
+| MCP Resource | 通过 `omnimam://` URI 读取领域对象权限裁剪投影的协议资源，不替代源领域事实或动态搜索 | mcp |
+| MCP Task | ApplicationRun 所绑定 AtomicTask 的协议级长任务投影，不是独立任务系统 | mcp |
+| McpTaskBinding | `mcp_task_id` 到已持久化 ApplicationRun 的稳定映射；不复制 ApplicationRun 或 AtomicTask 状态 | mcp |
+
+CapabilityDefinition 在 MCP v1 中只读发现；Agent 只能通过已发布且允许直接运行的 Application 创建异步业务执行，不存在独立 CapabilityInvocation 或泛化 Invocation。
+
 ## 实时事件
 
 | 术语 | 定义 | 主要事实源 |

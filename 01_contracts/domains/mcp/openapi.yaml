@@ -1,0 +1,1188 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: OmniMAM MCP Server API
+  version: 0.1.0
+  description: >-
+    OmniMAM MCP `2026-07-28` Streamable HTTP、11 个固定 Tool、6 类 Resource
+    和 MCP Tasks 映射合同。Capability 只读发现；唯一异步业务执行入口是已发布
+    Application。OAuth/PAT、直接 Capability 执行、泛化 Invocation、
+    input_required、tasks/update、动态 Tool 和直接 StorageBackend 上传未开放。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: mcp
+    description: MCP `2026-07-28` 标准协议入口。
+
+x-mcp-path-exception:
+  path: /mcp
+  confirmed_by: user
+  reason: 第三方 MCP Streamable HTTP 标准传输端点，不是 OmniMAM REST 资源 API。
+  related_rules: [BR-MCP-002, BR-MCP-020]
+
+x-mcp-tool-contracts:
+  omnimam.capabilities.list:
+    input_schema: {$ref: '#/components/schemas/CapabilitiesListArguments'}
+    output_schema: {$ref: '#/components/schemas/CapabilityListResult'}
+    delegated_permissions: [aiapp.provider_capability.read]
+  omnimam.capabilities.get:
+    input_schema: {$ref: '#/components/schemas/CapabilitiesGetArguments'}
+    output_schema: {$ref: '#/components/schemas/CapabilityDetail'}
+    delegated_permissions: [aiapp.provider_capability.read]
+  omnimam.applications.list:
+    input_schema: {$ref: '#/components/schemas/ApplicationsListArguments'}
+    output_schema: {$ref: '#/components/schemas/ApplicationListResult'}
+    delegated_permissions: [aiapp.application.read]
+  omnimam.applications.get:
+    input_schema: {$ref: '#/components/schemas/ApplicationsGetArguments'}
+    output_schema: {$ref: '#/components/schemas/ApplicationDetail'}
+    delegated_permissions: [aiapp.application.read]
+  omnimam.applications.run:
+    input_schema: {$ref: '#/components/schemas/ApplicationsRunArguments'}
+    output_schema: {$ref: '#/components/schemas/ApplicationRunAccepted'}
+    delegated_permissions: [aiapp.application.read, aiapp.application.run]
+  omnimam.application_runs.get:
+    input_schema: {$ref: '#/components/schemas/ApplicationRunsGetArguments'}
+    output_schema: {$ref: '#/components/schemas/ApplicationRunProjection'}
+    delegated_permissions: [aiapp.application.run]
+  omnimam.application_runs.cancel:
+    input_schema: {$ref: '#/components/schemas/ApplicationRunsCancelArguments'}
+    output_schema: {$ref: '#/components/schemas/ApplicationRunCancelResult'}
+    delegated_permissions: [aiapp.application.run, task.atomic.operate]
+  omnimam.assets.search:
+    input_schema: {$ref: '#/components/schemas/AssetsSearchArguments'}
+    output_schema: {$ref: '#/components/schemas/AssetListResult'}
+    delegated_permissions: [asset.read]
+  omnimam.assets.get:
+    input_schema: {$ref: '#/components/schemas/AssetsGetArguments'}
+    output_schema: {$ref: '#/components/schemas/AssetDetailProjection'}
+    delegated_permissions: [asset.read]
+  omnimam.assets.prepare_upload:
+    input_schema: {$ref: '#/components/schemas/AssetsPrepareUploadArguments'}
+    output_schema: {$ref: '#/components/schemas/AssetUploadPrepared'}
+    delegated_permissions: [asset.upload]
+  omnimam.assets.complete_upload:
+    input_schema: {$ref: '#/components/schemas/AssetsCompleteUploadArguments'}
+    output_schema: {$ref: '#/components/schemas/AssetUploadCompleted'}
+    delegated_permissions: [asset.upload]
+
+paths:
+  /mcp:
+    post:
+      tags: [mcp]
+      operationId: handle_mcp_request
+      summary: 处理 MCP `2026-07-28` JSON-RPC 请求
+      description: >-
+        已确认的 `/api/v1` 路径例外。每个请求重新携带版本、客户端能力和 JWT；
+        不创建 Mcp-Session-Id。HTTP 400/403 仅用于 MCP 规范要求的传输拒绝，
+        所有进入 JSON-RPC 调度的业务错误使用 HTTP 200。
+      x-permission: mcp.protocol.access
+      x-delegated-permissions:
+        discovery: mcp.discovery.read
+        resource_read: mcp.resource.read + target-domain read permission
+        task_get: mcp.task.read + aiapp.application.run
+        task_cancel: mcp.task.cancel + aiapp.application.run + task.atomic.operate
+        tool_call: 见根级 x-mcp-tool-contracts
+      x-s1-refs:
+        user_stories: [US-MCP-001, US-MCP-002, US-MCP-003, US-MCP-004, US-MCP-005, US-MCP-006, US-MCP-007]
+        business_rules: [BR-MCP-001, BR-MCP-002, BR-MCP-003, BR-MCP-004, BR-MCP-005, BR-MCP-006, BR-MCP-007, BR-MCP-008, BR-MCP-009, BR-MCP-010, BR-MCP-011, BR-MCP-012, BR-MCP-013, BR-MCP-014, BR-MCP-015, BR-MCP-016, BR-MCP-017, BR-MCP-018, BR-MCP-019, BR-MCP-020]
+      parameters:
+        - $ref: '#/components/parameters/mcp_protocol_version'
+        - $ref: '#/components/parameters/mcp_method'
+        - $ref: '#/components/parameters/mcp_name'
+        - $ref: '#/components/parameters/origin'
+        - $ref: '#/components/parameters/traceparent'
+        - $ref: '#/components/parameters/tracestate'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/McpJsonRpcRequest'}
+      responses:
+        '200':
+          description: JSON-RPC 响应或与当前请求关联的 SSE 响应流。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpJsonRpcResponse'}
+            text/event-stream:
+              schema:
+                type: string
+                description: 当前 JSON-RPC 请求的 MCP SSE 响应；不是独立 GET 事件流。
+        '400':
+          description: >-
+            MCP 传输例外：必需协议 Header 缺失、Header/Body 不一致或请求无法作为
+            JSON-RPC 解析。不得用于 OmniMAM 业务校验。
+          x-protocol-exception: MCP `2026-07-28` Streamable HTTP server validation。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpJsonRpcErrorResponse'}
+        '403':
+          description: MCP 传输安全例外：Origin 校验失败。
+          x-protocol-exception: MCP Streamable HTTP Origin 防护。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpJsonRpcErrorResponse'}
+        '404':
+          description: 路由不存在，仅表示 `/mcp` 未部署或未匹配。
+        '500':
+          description: 未预期服务异常。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/McpJsonRpcErrorResponse'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    mcp_protocol_version:
+      name: MCP-Protocol-Version
+      in: header
+      required: true
+      x-naming-exception: MCP `2026-07-28` official transport header.
+      schema: {type: string, const: '2026-07-28'}
+    mcp_method:
+      name: Mcp-Method
+      in: header
+      required: true
+      x-naming-exception: MCP `2026-07-28` official transport header.
+      schema:
+        type: string
+        enum:
+          - server/discover
+          - tools/list
+          - tools/call
+          - resources/list
+          - resources/templates/list
+          - resources/read
+          - tasks/get
+          - tasks/cancel
+      description: 必须与 JSON-RPC Body method 相同。
+    mcp_name:
+      name: Mcp-Name
+      in: header
+      required: false
+      x-naming-exception: MCP `2026-07-28` official transport header.
+      schema: {type: string, maxLength: 2048}
+      description: >-
+        tools/call 时必须等于 params.name；resources/read 时必须等于 params.uri；
+        其他 method 省略。Base64 sentinel 值先解码再比较。
+    origin:
+      name: Origin
+      in: header
+      required: false
+      x-naming-exception: Standard HTTP header.
+      schema: {type: string, format: uri, maxLength: 2048}
+    traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema: {type: string, maxLength: 128}
+    tracestate:
+      name: tracestate
+      in: header
+      required: false
+      schema: {type: string, maxLength: 512}
+
+  schemas:
+    McpJsonRpcRequest:
+      oneOf:
+        - $ref: '#/components/schemas/DiscoverRequest'
+        - $ref: '#/components/schemas/ToolsListRequest'
+        - $ref: '#/components/schemas/ToolsCallRequest'
+        - $ref: '#/components/schemas/ResourcesListRequest'
+        - $ref: '#/components/schemas/ResourceTemplatesListRequest'
+        - $ref: '#/components/schemas/ResourcesReadRequest'
+        - $ref: '#/components/schemas/TasksGetRequest'
+        - $ref: '#/components/schemas/TasksCancelRequest'
+      discriminator:
+        propertyName: method
+
+    McpRequestBase:
+      type: object
+      x-naming-exception: jsonrpc and official MCP params fields preserve MCP schema names.
+      required: [jsonrpc, id, method, params]
+      properties:
+        jsonrpc: {type: string, const: '2.0'}
+        id:
+          oneOf:
+            - {type: string, maxLength: 128}
+            - {type: integer}
+        method: {type: string}
+        params: {type: object}
+
+    McpRequestMeta:
+      type: object
+      additionalProperties: true
+      x-naming-exception: Keys are official MCP `_meta` names.
+      required:
+        - io.modelcontextprotocol/protocolVersion
+        - io.modelcontextprotocol/clientCapabilities
+      properties:
+        io.modelcontextprotocol/protocolVersion:
+          type: string
+          const: '2026-07-28'
+        io.modelcontextprotocol/clientCapabilities:
+          $ref: '#/components/schemas/McpClientCapabilities'
+        io.modelcontextprotocol/clientInfo:
+          $ref: '#/components/schemas/McpImplementation'
+        progressToken:
+          oneOf:
+            - {type: string, maxLength: 128}
+            - {type: integer}
+
+    McpClientCapabilities:
+      type: object
+      additionalProperties: true
+      properties:
+        extensions:
+          type: object
+          additionalProperties: {type: object}
+          properties:
+            io.modelcontextprotocol/tasks:
+              type: object
+              additionalProperties: false
+
+    McpImplementation:
+      type: object
+      additionalProperties: false
+      required: [name, version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 128}
+        title: {type: string, maxLength: 255}
+        version: {type: string, minLength: 1, maxLength: 64}
+        description: {type: string, maxLength: 1000}
+        websiteUrl:
+          type: string
+          format: uri
+          x-naming-exception: Official MCP Implementation field.
+
+    StandardRequestParams:
+      type: object
+      additionalProperties: false
+      required: [_meta]
+      properties:
+        _meta: {$ref: '#/components/schemas/McpRequestMeta'}
+
+    PaginatedRequestParams:
+      type: object
+      additionalProperties: false
+      required: [_meta]
+      properties:
+        _meta: {$ref: '#/components/schemas/McpRequestMeta'}
+        cursor: {type: string, maxLength: 512}
+
+    DiscoverRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: server/discover}
+            params: {$ref: '#/components/schemas/StandardRequestParams'}
+
+    ToolsListRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: tools/list}
+            params: {$ref: '#/components/schemas/PaginatedRequestParams'}
+
+    ToolsCallRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: tools/call}
+            params:
+              oneOf:
+                - $ref: '#/components/schemas/CallCapabilitiesListParams'
+                - $ref: '#/components/schemas/CallCapabilitiesGetParams'
+                - $ref: '#/components/schemas/CallApplicationsListParams'
+                - $ref: '#/components/schemas/CallApplicationsGetParams'
+                - $ref: '#/components/schemas/CallApplicationsRunParams'
+                - $ref: '#/components/schemas/CallApplicationRunsGetParams'
+                - $ref: '#/components/schemas/CallApplicationRunsCancelParams'
+                - $ref: '#/components/schemas/CallAssetsSearchParams'
+                - $ref: '#/components/schemas/CallAssetsGetParams'
+                - $ref: '#/components/schemas/CallAssetsPrepareUploadParams'
+                - $ref: '#/components/schemas/CallAssetsCompleteUploadParams'
+              discriminator:
+                propertyName: name
+
+    ResourcesListRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: resources/list}
+            params: {$ref: '#/components/schemas/PaginatedRequestParams'}
+
+    ResourceTemplatesListRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: resources/templates/list}
+            params: {$ref: '#/components/schemas/PaginatedRequestParams'}
+
+    ResourcesReadRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          properties:
+            method: {const: resources/read}
+            params: {$ref: '#/components/schemas/ResourceReadParams'}
+
+    TasksGetRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          x-naming-exception: taskId is defined by the MCP Tasks extension.
+          properties:
+            method: {const: tasks/get}
+            params: {$ref: '#/components/schemas/TaskRequestParams'}
+
+    TasksCancelRequest:
+      allOf:
+        - $ref: '#/components/schemas/McpRequestBase'
+        - type: object
+          x-naming-exception: taskId is defined by the MCP Tasks extension.
+          properties:
+            method: {const: tasks/cancel}
+            params: {$ref: '#/components/schemas/TaskRequestParams'}
+
+    ToolCallParamsBase:
+      type: object
+      additionalProperties: false
+      required: [_meta, name, arguments]
+      properties:
+        _meta: {$ref: '#/components/schemas/McpRequestMeta'}
+        name: {type: string}
+        arguments: {type: object}
+
+    CallCapabilitiesListParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.capabilities.list}
+            arguments: {$ref: '#/components/schemas/CapabilitiesListArguments'}
+    CallCapabilitiesGetParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.capabilities.get}
+            arguments: {$ref: '#/components/schemas/CapabilitiesGetArguments'}
+    CallApplicationsListParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.applications.list}
+            arguments: {$ref: '#/components/schemas/ApplicationsListArguments'}
+    CallApplicationsGetParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.applications.get}
+            arguments: {$ref: '#/components/schemas/ApplicationsGetArguments'}
+    CallApplicationsRunParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.applications.run}
+            arguments: {$ref: '#/components/schemas/ApplicationsRunArguments'}
+    CallApplicationRunsGetParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.application_runs.get}
+            arguments: {$ref: '#/components/schemas/ApplicationRunsGetArguments'}
+    CallApplicationRunsCancelParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.application_runs.cancel}
+            arguments: {$ref: '#/components/schemas/ApplicationRunsCancelArguments'}
+    CallAssetsSearchParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.assets.search}
+            arguments: {$ref: '#/components/schemas/AssetsSearchArguments'}
+    CallAssetsGetParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.assets.get}
+            arguments: {$ref: '#/components/schemas/AssetsGetArguments'}
+    CallAssetsPrepareUploadParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.assets.prepare_upload}
+            arguments: {$ref: '#/components/schemas/AssetsPrepareUploadArguments'}
+    CallAssetsCompleteUploadParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.assets.complete_upload}
+            arguments: {$ref: '#/components/schemas/AssetsCompleteUploadArguments'}
+
+    CapabilitiesListArguments:
+      type: object
+      additionalProperties: false
+      properties:
+        domain: {type: string, maxLength: 64}
+        query: {type: string, maxLength: 255}
+        status: {type: string, enum: [available], default: available}
+        cursor: {type: string, maxLength: 512}
+        limit: {type: integer, minimum: 1, maximum: 100, default: 50}
+
+    CapabilitiesGetArguments:
+      type: object
+      additionalProperties: false
+      required: [capability_id]
+      properties:
+        capability_id: {type: string, minLength: 1, maxLength: 255}
+
+    ApplicationsListArguments:
+      type: object
+      additionalProperties: false
+      properties:
+        query: {type: string, maxLength: 255}
+        capability_id: {type: string, maxLength: 255}
+        cursor: {type: string, maxLength: 512}
+        limit: {type: integer, minimum: 1, maximum: 100, default: 50}
+
+    ApplicationsGetArguments:
+      type: object
+      additionalProperties: false
+      required: [application_id]
+      properties:
+        application_id: {type: string, minLength: 1, maxLength: 255}
+
+    ApplicationsRunArguments:
+      type: object
+      additionalProperties: false
+      required: [application_id, input, idempotency_key]
+      properties:
+        application_id: {type: string, minLength: 1, maxLength: 255}
+        application_version_id: {type: string, minLength: 1, maxLength: 255}
+        input:
+          type: object
+          additionalProperties: true
+          maxProperties: 256
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+        metadata:
+          type: object
+          maxProperties: 64
+          additionalProperties:
+            type: [string, number, boolean, 'null']
+
+    ApplicationRunsGetArguments:
+      type: object
+      additionalProperties: false
+      required: [application_run_id]
+      properties:
+        application_run_id: {type: string, minLength: 1, maxLength: 255}
+
+    ApplicationRunsCancelArguments:
+      type: object
+      additionalProperties: false
+      required: [application_run_id]
+      properties:
+        application_run_id: {type: string, minLength: 1, maxLength: 255}
+        reason: {type: string, maxLength: 500, default: ''}
+
+    AssetsSearchArguments:
+      type: object
+      additionalProperties: false
+      properties:
+        query: {type: string, maxLength: 500}
+        media_types:
+          type: array
+          uniqueItems: true
+          maxItems: 10
+          items: {$ref: '#/components/schemas/MediaType'}
+        tags:
+          type: array
+          uniqueItems: true
+          maxItems: 50
+          items: {type: string, minLength: 1, maxLength: 128}
+        sort: {type: string, enum: [created_at_asc, created_at_desc, updated_at_asc, updated_at_desc], default: created_at_desc}
+        cursor: {type: string, maxLength: 512}
+        limit: {type: integer, minimum: 1, maximum: 100, default: 20}
+
+    AssetsGetArguments:
+      type: object
+      additionalProperties: false
+      required: [asset_id]
+      properties:
+        asset_id: {type: string, minLength: 1, maxLength: 255}
+        include_representations: {type: boolean, default: true}
+
+    AssetsPrepareUploadArguments:
+      type: object
+      additionalProperties: false
+      required: [filename, media_type, size_bytes, checksum, idempotency_key]
+      properties:
+        filename: {type: string, minLength: 1, maxLength: 255}
+        media_type: {type: string, minLength: 1, maxLength: 255}
+        size_bytes: {type: integer, format: int64, minimum: 1}
+        checksum: {$ref: '#/components/schemas/Checksum'}
+        metadata:
+          type: object
+          maxProperties: 64
+          additionalProperties:
+            type: [string, number, boolean, 'null']
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+
+    AssetsCompleteUploadArguments:
+      type: object
+      additionalProperties: false
+      required: [upload_id, idempotency_key]
+      properties:
+        upload_id: {type: string, minLength: 1, maxLength: 255}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+
+    Checksum:
+      type: object
+      additionalProperties: false
+      required: [algorithm, value]
+      properties:
+        algorithm: {type: string, const: sha256}
+        value: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+
+    ResourceReadParams:
+      type: object
+      additionalProperties: false
+      required: [_meta, uri]
+      properties:
+        _meta: {$ref: '#/components/schemas/McpRequestMeta'}
+        uri:
+          type: string
+          format: uri
+          maxLength: 2048
+          pattern: '^omnimam://(capabilities|applications|application-runs|assets|artifacts)/'
+
+    TaskRequestParams:
+      type: object
+      additionalProperties: false
+      x-naming-exception: taskId is defined by the MCP Tasks extension.
+      required: [_meta, taskId]
+      properties:
+        _meta: {$ref: '#/components/schemas/McpRequestMeta'}
+        taskId: {type: string, minLength: 1, maxLength: 255}
+
+    McpJsonRpcResponse:
+      oneOf:
+        - $ref: '#/components/schemas/McpJsonRpcSuccessResponse'
+        - $ref: '#/components/schemas/McpJsonRpcErrorResponse'
+
+    McpJsonRpcSuccessResponse:
+      type: object
+      x-naming-exception: JSON-RPC and MCP result fields preserve official names.
+      required: [jsonrpc, id, result]
+      properties:
+        jsonrpc: {type: string, const: '2.0'}
+        id:
+          oneOf:
+            - {type: string}
+            - {type: integer}
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/DiscoverResult'
+            - $ref: '#/components/schemas/ToolsListResult'
+            - $ref: '#/components/schemas/ToolCallResult'
+            - $ref: '#/components/schemas/ResourcesListResult'
+            - $ref: '#/components/schemas/ResourceTemplatesListResult'
+            - $ref: '#/components/schemas/ResourceReadResult'
+            - $ref: '#/components/schemas/McpTask'
+
+    McpJsonRpcErrorResponse:
+      type: object
+      required: [jsonrpc, id, error]
+      properties:
+        jsonrpc: {type: string, const: '2.0'}
+        id:
+          oneOf:
+            - {type: string}
+            - {type: integer}
+            - {type: 'null'}
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: integer}
+            message: {type: string}
+            data:
+              oneOf:
+                - $ref: '#/components/schemas/McpBusinessError'
+                - type: object
+                  additionalProperties: true
+
+    DiscoverResult:
+      type: object
+      x-naming-exception: Fields preserve official MCP DiscoverResult names.
+      required: [resultType, supportedVersions, capabilities, cacheScope, ttlMs]
+      properties:
+        resultType: {type: string, const: complete}
+        supportedVersions:
+          type: array
+          items: {type: string, const: '2026-07-28'}
+          minItems: 1
+          maxItems: 1
+        capabilities:
+          type: object
+          additionalProperties: false
+          required: [tools, resources, extensions]
+          properties:
+            tools:
+              type: object
+              additionalProperties: false
+              properties:
+                listChanged: {type: boolean, const: false}
+            resources:
+              type: object
+              additionalProperties: false
+              properties:
+                listChanged: {type: boolean, const: false}
+                subscribe: {type: boolean, const: false}
+            extensions:
+              type: object
+              additionalProperties: false
+              properties:
+                io.modelcontextprotocol/tasks:
+                  type: object
+                  additionalProperties: false
+        instructions:
+          type: string
+          maxLength: 2000
+        cacheScope: {type: string, const: private}
+        ttlMs: {type: integer, minimum: 0, maximum: 3600000}
+
+    ToolsListResult:
+      type: object
+      x-naming-exception: inputSchema/outputSchema preserve official MCP Tool names.
+      required: [resultType, tools]
+      properties:
+        resultType: {type: string, const: complete}
+        tools:
+          type: array
+          maxItems: 11
+          items: {$ref: '#/components/schemas/McpToolDefinition'}
+        nextCursor: {type: string, maxLength: 512}
+
+    McpToolDefinition:
+      type: object
+      required: [name, title, description, inputSchema, outputSchema]
+      properties:
+        name:
+          type: string
+          enum:
+            - omnimam.capabilities.list
+            - omnimam.capabilities.get
+            - omnimam.applications.list
+            - omnimam.applications.get
+            - omnimam.applications.run
+            - omnimam.application_runs.get
+            - omnimam.application_runs.cancel
+            - omnimam.assets.search
+            - omnimam.assets.get
+            - omnimam.assets.prepare_upload
+            - omnimam.assets.complete_upload
+        title: {type: string, maxLength: 255}
+        description: {type: string, maxLength: 2000}
+        inputSchema: {$ref: '#/components/schemas/JsonSchema202012'}
+        outputSchema: {$ref: '#/components/schemas/JsonSchema202012'}
+
+    JsonSchema202012:
+      type: object
+      required: [type]
+      properties:
+        $schema: {type: string, const: 'https://json-schema.org/draft/2020-12/schema'}
+        type: {}
+      additionalProperties: true
+
+    ToolCallResult:
+      oneOf:
+        - $ref: '#/components/schemas/ToolCompleteResult'
+        - $ref: '#/components/schemas/ToolTaskResult'
+
+    ToolCompleteResult:
+      type: object
+      x-naming-exception: resultType, structuredContent and isError preserve official MCP fields.
+      required: [resultType, content, structuredContent, isError]
+      properties:
+        resultType: {type: string, const: complete}
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/ContentBlock'}
+        structuredContent:
+          oneOf:
+            - $ref: '#/components/schemas/CapabilityListResult'
+            - $ref: '#/components/schemas/CapabilityDetail'
+            - $ref: '#/components/schemas/ApplicationListResult'
+            - $ref: '#/components/schemas/ApplicationDetail'
+            - $ref: '#/components/schemas/ApplicationRunAccepted'
+            - $ref: '#/components/schemas/ApplicationRunProjection'
+            - $ref: '#/components/schemas/ApplicationRunCancelResult'
+            - $ref: '#/components/schemas/AssetListResult'
+            - $ref: '#/components/schemas/AssetDetailProjection'
+            - $ref: '#/components/schemas/AssetUploadPrepared'
+            - $ref: '#/components/schemas/AssetUploadCompleted'
+            - $ref: '#/components/schemas/McpBusinessError'
+        isError: {type: boolean}
+
+    ToolTaskResult:
+      type: object
+      x-naming-exception: resultType and structuredContent preserve official MCP fields.
+      required: [resultType, task, structuredContent]
+      properties:
+        resultType: {type: string, const: task}
+        task: {$ref: '#/components/schemas/McpTask'}
+        structuredContent: {$ref: '#/components/schemas/ApplicationRunAccepted'}
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/ContentBlock'}
+
+    ContentBlock:
+      oneOf:
+        - $ref: '#/components/schemas/TextContent'
+        - $ref: '#/components/schemas/ResourceLink'
+
+    TextContent:
+      type: object
+      additionalProperties: false
+      required: [type, text]
+      properties:
+        type: {type: string, const: text}
+        text: {type: string, maxLength: 4000}
+
+    ResourceLink:
+      type: object
+      additionalProperties: false
+      required: [type, uri, name]
+      properties:
+        type: {type: string, const: resource_link}
+        uri: {type: string, format: uri}
+        name: {type: string, maxLength: 255}
+        description: {type: string, maxLength: 1000}
+        mimeType:
+          type: string
+          maxLength: 255
+          x-naming-exception: Official MCP ResourceLink field.
+
+    CapabilityListResult:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/CapabilitySummary'}
+        next_cursor: {type: string}
+
+    CapabilitySummary:
+      type: object
+      additionalProperties: false
+      required: [capability_id, name, description, status, supports_direct_invoke, schema_uri, applications]
+      properties:
+        capability_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [available, unavailable, disabled]}
+        supports_direct_invoke: {type: boolean, const: false}
+        schema_uri: {type: string, format: uri}
+        applications:
+          type: array
+          items: {$ref: '#/components/schemas/ApplicationNavigationSummary'}
+
+    CapabilityDetail:
+      allOf:
+        - $ref: '#/components/schemas/CapabilitySummary'
+        - type: object
+          required: [input_schema, output_schema]
+          properties:
+            input_schema: {$ref: '#/components/schemas/JsonSchema202012'}
+            output_schema: {$ref: '#/components/schemas/JsonSchema202012'}
+
+    ApplicationNavigationSummary:
+      type: object
+      additionalProperties: false
+      required: [application_id, name, published_version_id, run_enabled]
+      properties:
+        application_id: {type: string}
+        name: {type: string}
+        published_version_id: {type: string}
+        run_enabled: {type: boolean}
+
+    ApplicationListResult:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ApplicationSummary'}
+        next_cursor: {type: string}
+
+    ApplicationSummary:
+      type: object
+      additionalProperties: false
+      required: [application_id, name, description, published_version_id, run_enabled, schema_uri]
+      properties:
+        application_id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        published_version_id: {type: string}
+        run_enabled: {type: boolean, const: true}
+        availability: {type: string, enum: [available, unavailable]}
+        schema_uri: {type: string, format: uri}
+
+    ApplicationDetail:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationSummary'
+        - type: object
+          required: [published_version, input_schema, output_schema]
+          properties:
+            published_version: {$ref: '#/components/schemas/ApplicationVersionSummary'}
+            input_schema: {$ref: '#/components/schemas/JsonSchema202012'}
+            output_schema: {$ref: '#/components/schemas/JsonSchema202012'}
+
+    ApplicationVersionSummary:
+      type: object
+      additionalProperties: false
+      required: [application_version_id, version]
+      properties:
+        application_version_id: {type: string}
+        version: {type: integer, minimum: 1}
+
+    ApplicationRunAccepted:
+      type: object
+      additionalProperties: false
+      required: [application_run_id, application_id, application_version_id, status, status_uri]
+      properties:
+        application_run_id: {type: string}
+        application_id: {type: string}
+        application_version_id: {type: string}
+        status: {type: string, enum: [queued, running]}
+        status_uri: {type: string, format: uri}
+        mcp_task_id: {type: string, description: 仅协商 Tasks 扩展并成功创建 Binding 时返回。}
+
+    ApplicationRunProjection:
+      type: object
+      additionalProperties: false
+      required:
+        - application_run_id
+        - application
+        - application_version
+        - status
+        - progress
+        - outputs
+        - created_at
+        - resource_version
+      properties:
+        application_run_id: {type: string}
+        application: {$ref: '#/components/schemas/ApplicationSummary'}
+        application_version: {$ref: '#/components/schemas/ApplicationVersionSummary'}
+        atomic_task: {$ref: '#/components/schemas/AtomicTaskProjection'}
+        status: {type: string, enum: [queued, running, cancel_requested, succeeded, failed, cancelled]}
+        progress: {type: number, minimum: 0, maximum: 1}
+        outputs:
+          type: array
+          items: {$ref: '#/components/schemas/ArtifactProjection'}
+        error: {$ref: '#/components/schemas/McpBusinessError'}
+        created_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time}
+        completed_at: {type: string, format: date-time}
+        resource_version: {type: integer, minimum: 0}
+
+    AtomicTaskProjection:
+      type: object
+      additionalProperties: false
+      required: [atomic_task_id, status, progress, resource_version]
+      properties:
+        atomic_task_id: {type: string}
+        status:
+          type: string
+          enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, CANCEL_REQUESTED, SUCCESS, FAILED, CANCELED, TIMEOUT, SKIPPED]
+        progress: {type: number, minimum: 0, maximum: 1}
+        phase: {type: string}
+        resource_version: {type: integer, minimum: 0}
+
+    ApplicationRunCancelResult:
+      type: object
+      additionalProperties: false
+      required: [application_run_id, accepted, status]
+      properties:
+        application_run_id: {type: string}
+        accepted: {type: boolean}
+        status: {type: string, enum: [cancel_requested, succeeded, failed, cancelled]}
+
+    ArtifactProjection:
+      type: object
+      additionalProperties: false
+      required: [artifact_id, output_key, sequence, media_type, processing_status, registration_status, uri]
+      properties:
+        artifact_id: {type: string}
+        output_key: {type: string}
+        sequence: {type: integer, minimum: 0}
+        media_type: {type: string}
+        processing_status: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}
+        registration_status: {type: string, enum: [pending, registered, failed]}
+        asset_id: {type: string}
+        uri: {type: string, format: uri}
+
+    AssetListResult:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/AssetSummary'}
+        next_cursor: {type: string}
+
+    AssetSummary:
+      type: object
+      additionalProperties: false
+      required: [asset_id, display_name, media_type, status, thumbnail_status, uri, created_at]
+      properties:
+        asset_id: {type: string}
+        display_name: {type: string}
+        media_type: {$ref: '#/components/schemas/MediaType'}
+        format: {type: string}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        width: {type: integer, minimum: 0}
+        height: {type: integer, minimum: 0}
+        duration_seconds: {type: number, minimum: 0}
+        status: {type: string, enum: [active, archived]}
+        thumbnail_status: {type: string, enum: [none, pending, ready, failed]}
+        uri: {type: string, format: uri}
+        thumbnail_url: {type: string, format: uri, description: 短期受控 URL；不可持久化。}
+        created_at: {type: string, format: date-time}
+
+    AssetDetailProjection:
+      allOf:
+        - $ref: '#/components/schemas/AssetSummary'
+        - type: object
+          required: [current_version, representations, tags]
+          properties:
+            current_version: {$ref: '#/components/schemas/AssetVersionProjection'}
+            representations:
+              type: array
+              items: {$ref: '#/components/schemas/RepresentationProjection'}
+            tags:
+              type: array
+              items: {type: string}
+
+    AssetVersionProjection:
+      type: object
+      additionalProperties: false
+      required: [asset_version_id, version, status]
+      properties:
+        asset_version_id: {type: string}
+        version: {type: integer, minimum: 1}
+        status: {type: string, enum: [processing, ready, ready_with_warnings, failed]}
+
+    RepresentationProjection:
+      type: object
+      additionalProperties: false
+      required: [representation_id, type, media_type, uri]
+      properties:
+        representation_id: {type: string}
+        type: {type: string, enum: [original, thumbnail, preview, playback, manifest]}
+        media_type: {type: string}
+        width: {type: integer, minimum: 0}
+        height: {type: integer, minimum: 0}
+        uri: {type: string, format: uri}
+        access_url: {type: string, format: uri, description: 短期受控 URL；不可持久化。}
+
+    AssetUploadPrepared:
+      type: object
+      additionalProperties: false
+      required: [upload_id, method, content_upload_url, required_headers, authorization_required, expires_at]
+      properties:
+        upload_id: {type: string}
+        method: {type: string, const: POST}
+        content_upload_url:
+          type: string
+          format: uri
+          pattern: '/api/v1/asset-uploads/[^/]+/content$'
+        required_headers:
+          type: object
+          additionalProperties: false
+          required: [Content-Type]
+          x-naming-exception: Content-Type is a standard HTTP header name returned as data.
+          properties:
+            Content-Type: {type: string}
+        authorization_required: {type: boolean, const: true}
+        expires_at: {type: string, format: date-time}
+
+    AssetUploadCompleted:
+      type: object
+      additionalProperties: false
+      required: [upload_id, asset, status, uri]
+      properties:
+        upload_id: {type: string}
+        asset: {$ref: '#/components/schemas/AssetSummary'}
+        status: {type: string, enum: [processing, ready, ready_with_warnings, failed]}
+        uri: {type: string, format: uri}
+
+    MediaType:
+      type: string
+      enum: [image, video, audio, text, document, model_3d, prompt, prompt_template, pdf, other]
+
+    ResourcesListResult:
+      type: object
+      x-naming-exception: resultType and nextCursor preserve official MCP fields.
+      required: [resultType, resources]
+      properties:
+        resultType: {type: string, const: complete}
+        resources:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/McpResource'}
+        nextCursor: {type: string}
+
+    McpResource:
+      type: object
+      required: [uri, name, mimeType]
+      properties:
+        uri: {type: string, format: uri}
+        name: {type: string}
+        description: {type: string}
+        mimeType:
+          type: string
+          x-naming-exception: Official MCP Resource field.
+
+    ResourceTemplatesListResult:
+      type: object
+      x-naming-exception: resultType, resourceTemplates and nextCursor preserve official MCP fields.
+      required: [resultType, resourceTemplates]
+      properties:
+        resultType: {type: string, const: complete}
+        resourceTemplates:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items: {$ref: '#/components/schemas/McpResourceTemplate'}
+        nextCursor: {type: string}
+
+    McpResourceTemplate:
+      type: object
+      required: [uriTemplate, name, mimeType]
+      properties:
+        uriTemplate:
+          type: string
+          enum:
+            - omnimam://capabilities/{capability_id}
+            - omnimam://applications/{application_id}
+            - omnimam://application-runs/{application_run_id}
+            - omnimam://assets/{asset_id}
+            - omnimam://assets/{asset_id}/representations/{representation}
+            - omnimam://artifacts/{artifact_id}
+          x-naming-exception: Official MCP ResourceTemplate field.
+        name: {type: string}
+        description: {type: string}
+        mimeType:
+          type: string
+          const: application/json
+          x-naming-exception: Official MCP ResourceTemplate field.
+
+    ResourceReadResult:
+      type: object
+      x-naming-exception: resultType, cacheScope and ttlMs preserve official MCP fields.
+      required: [resultType, contents, cacheScope, ttlMs]
+      properties:
+        resultType: {type: string, const: complete}
+        contents:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: {$ref: '#/components/schemas/TextResourceContents'}
+        cacheScope: {type: string, const: private}
+        ttlMs: {type: integer, minimum: 0, maximum: 300000}
+
+    TextResourceContents:
+      type: object
+      required: [uri, mimeType, text]
+      properties:
+        uri: {type: string, format: uri}
+        mimeType:
+          type: string
+          const: application/json
+          x-naming-exception: Official MCP ResourceContents field.
+        text:
+          type: string
+          contentMediaType: application/json
+          description: >-
+            JSON encoded CapabilityDetail, ApplicationDetail,
+            ApplicationRunProjection, AssetDetailProjection,
+            ArtifactProjection or RepresentationProjection.
+
+    McpTask:
+      type: object
+      x-naming-exception: Fields are defined by the MCP Tasks extension.
+      required: [taskId, status, ttlMs, pollIntervalMs]
+      properties:
+        taskId: {type: string}
+        status: {type: string, enum: [working, completed, failed, cancelled]}
+        ttlMs: {type: integer, minimum: 1}
+        pollIntervalMs: {type: integer, minimum: 100}
+        cancelRequested: {type: boolean, default: false}
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/ApplicationRunProjection'
+            - $ref: '#/components/schemas/McpBusinessError'
+
+    McpBusinessError:
+      type: object
+      additionalProperties: false
+      required: [code, value, message, messages, retryable, source_domain]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        messages:
+          type: object
+          additionalProperties: false
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: {type: string}
+            en-US: {type: string}
+        detail: {type: string}
+        retryable: {type: boolean}
+        source_domain:
+          type: string
+          enum: [mcp, identity, modelgateway, application-platform, task-center, asset-library]
+        causes:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              path: {type: string}
+              reason: {type: string}
+              expected: {}
+              actual: {}

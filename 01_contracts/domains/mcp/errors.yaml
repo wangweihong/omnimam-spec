@@ -1,0 +1,350 @@
+- code: ERR_MCP_PROTOCOL_VERSION_UNSUPPORTED
+  value: 190200
+  http: 200
+  cn: MCP 协议版本不受支持。
+  en: The requested MCP protocol version is not supported.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002]
+  related_user_stories: [US-MCP-001]
+
+- code: ERR_MCP_REQUEST_INVALID
+  value: 190201
+  http: 200
+  cn: MCP JSON-RPC 请求结构无效。
+  en: The MCP JSON-RPC request is invalid.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002, BR-MCP-018]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_REQUIRED_HEADER_MISSING
+  value: 190202
+  http: 200
+  cn: MCP 请求缺少必需的传输 Header。
+  en: A required MCP transport header is missing.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_HEADER_BODY_MISMATCH
+  value: 190203
+  http: 200
+  cn: MCP Header 与 JSON-RPC Body 不一致。
+  en: MCP transport headers do not match the JSON-RPC body.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_METHOD_UNSUPPORTED
+  value: 190204
+  http: 200
+  cn: 当前 MCP 方法不受支持。
+  en: The MCP method is not supported.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002, BR-MCP-019]
+  related_user_stories: [US-MCP-004]
+
+- code: ERR_MCP_NAME_INVALID
+  value: 190205
+  http: 200
+  cn: MCP Tool 名称或 Resource URI 元数据无效。
+  en: The MCP tool name or resource URI metadata is invalid.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002, BR-MCP-004]
+  related_user_stories: [US-MCP-001, US-MCP-005]
+
+- code: ERR_MCP_RESPONSE_MEDIA_UNSUPPORTED
+  value: 190206
+  http: 200
+  cn: 客户端未声明可接受的 MCP 响应媒体类型。
+  en: The client did not advertise an acceptable MCP response media type.
+  owning_domain: mcp
+  owning_module: protocol
+  range: 190200-190399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002]
+  related_user_stories: [US-MCP-004]
+
+- code: ERR_MCP_TOOL_NOT_VISIBLE
+  value: 190400
+  http: 200
+  cn: Tool 不存在或当前主体不可见。
+  en: The tool does not exist or is not visible to the current principal.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-004, BR-MCP-016]
+  related_user_stories: [US-MCP-001, US-MCP-007]
+
+- code: ERR_MCP_TOOL_ARGUMENT_INVALID
+  value: 190401
+  http: 200
+  cn: Tool 参数不符合已发布输入 Schema。
+  en: Tool arguments do not conform to the published input schema.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-006, BR-MCP-008]
+  related_user_stories: [US-MCP-002, US-MCP-006]
+
+- code: ERR_MCP_TOOL_RESULT_INVALID
+  value: 190402
+  http: 200
+  cn: 下游结果无法转换为 Tool 输出 Schema。
+  en: A downstream result cannot be converted to the tool output schema.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-001, BR-MCP-009, BR-MCP-018]
+  related_user_stories: [US-MCP-002, US-MCP-003, US-MCP-005]
+
+- code: ERR_MCP_RESOURCE_URI_INVALID
+  value: 190403
+  http: 200
+  cn: Resource URI 格式或类型无效。
+  en: The resource URI format or type is invalid.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-014]
+  related_user_stories: [US-MCP-005]
+
+- code: ERR_MCP_RESOURCE_NOT_VISIBLE
+  value: 190404
+  http: 200
+  cn: Resource 不存在或当前主体不可见。
+  en: The resource does not exist or is not visible to the current principal.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-014, BR-MCP-016]
+  related_user_stories: [US-MCP-003, US-MCP-005]
+
+- code: ERR_MCP_RESOURCE_TYPE_UNSUPPORTED
+  value: 190405
+  http: 200
+  cn: 当前 Resource 类型不受支持。
+  en: The requested resource type is not supported.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-014, BR-MCP-019]
+  related_user_stories: [US-MCP-005]
+
+- code: ERR_MCP_CURSOR_INVALID
+  value: 190406
+  http: 200
+  cn: MCP 分页游标无效或已过期。
+  en: The MCP pagination cursor is invalid or expired.
+  owning_domain: mcp
+  owning_module: dispatch
+  range: 190400-190599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-004, BR-MCP-016]
+  related_user_stories: [US-MCP-001, US-MCP-005]
+
+- code: ERR_MCP_TASK_EXTENSION_NOT_NEGOTIATED
+  value: 190600
+  http: 200
+  cn: 客户端未为当前请求协商 MCP Tasks 扩展。
+  en: The MCP Tasks extension was not negotiated for this request.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-010, BR-MCP-011, BR-MCP-019]
+  related_user_stories: [US-MCP-004]
+
+- code: ERR_MCP_TASK_NOT_VISIBLE
+  value: 190601
+  http: 200
+  cn: MCP Task 不存在或当前主体不可见。
+  en: The MCP task does not exist or is not visible to the current principal.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-010, BR-MCP-016]
+  related_user_stories: [US-MCP-003, US-MCP-004]
+
+- code: ERR_MCP_TASK_BINDING_UNAVAILABLE
+  value: 190602
+  http: 200
+  cn: MCP Task 尚未形成完整的 ApplicationRun/AtomicTask 映射。
+  en: The MCP task does not have a complete ApplicationRun/AtomicTask binding.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-009, BR-MCP-010]
+  related_user_stories: [US-MCP-004]
+
+- code: ERR_MCP_TASK_BINDING_EXPIRED
+  value: 190603
+  http: 200
+  cn: MCP Task 映射已过期，请通过 ApplicationRun 查询事实。
+  en: The MCP task binding has expired; query the ApplicationRun instead.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-011, BR-MCP-012]
+  related_user_stories: [US-MCP-003, US-MCP-004]
+
+- code: ERR_MCP_TASK_NOT_CANCELLABLE
+  value: 190604
+  http: 200
+  cn: MCP Task 当前状态不允许请求取消。
+  en: The MCP task cannot be canceled in its current state.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-013]
+  related_user_stories: [US-MCP-003, US-MCP-004]
+
+- code: ERR_MCP_TASK_SOURCE_UNAVAILABLE
+  value: 190605
+  http: 200
+  cn: MCP Task 对应的 ApplicationRun 或 AtomicTask 当前不可读取。
+  en: The ApplicationRun or AtomicTask backing the MCP task is unavailable.
+  owning_domain: mcp
+  owning_module: task-mapping
+  range: 190600-190799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-009, BR-MCP-012]
+  related_user_stories: [US-MCP-003, US-MCP-004]
+
+- code: ERR_MCP_AUTHENTICATION_REQUIRED
+  value: 190800
+  http: 200
+  cn: 当前请求缺少有效 Identity JWT。
+  en: The request does not contain a valid Identity JWT.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-003]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_PERMISSION_DENIED
+  value: 190801
+  http: 200
+  cn: 当前主体无权使用该 MCP 协议能力。
+  en: The current principal is not allowed to use this MCP protocol capability.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-003, BR-MCP-016]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_ORIGIN_REJECTED
+  value: 190802
+  http: 200
+  cn: 请求 Origin 不在允许范围内。
+  en: The request Origin is not allowed.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-002, BR-MCP-003]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_REQUEST_TOO_LARGE
+  value: 190803
+  http: 200
+  cn: MCP 请求体或 Header 超过允许上限。
+  en: The MCP request body or headers exceed the configured limit.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MCP-018]
+  related_user_stories: [US-MCP-007]
+
+- code: ERR_MCP_RATE_LIMITED
+  value: 190804
+  http: 200
+  cn: MCP 请求超过速率或费用限制。
+  en: The MCP request exceeds a rate or cost limit.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-006, BR-MCP-018]
+  related_user_stories: [US-MCP-002, US-MCP-006, US-MCP-007]
+
+- code: ERR_MCP_CONCURRENCY_LIMITED
+  value: 190805
+  http: 200
+  cn: MCP ApplicationRun 并发超过允许上限。
+  en: The MCP ApplicationRun concurrency limit has been reached.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-006, BR-MCP-018]
+  related_user_stories: [US-MCP-002, US-MCP-007]
+
+- code: ERR_MCP_AUDIT_UNAVAILABLE
+  value: 190806
+  http: 200
+  cn: 安全审计边界当前不可用，受控操作未执行。
+  en: The security audit boundary is unavailable and the controlled operation was not executed.
+  owning_domain: mcp
+  owning_module: access
+  range: 190800-190999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MCP-018]
+  related_user_stories: [US-MCP-007]

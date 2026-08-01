@@ -22,6 +22,7 @@
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
 | `notification-center` | 可靠源事件消费、通知规则、用户收件箱、偏好、聚合与 Notification Outbox | 已有 S1/S2，`spec-v1.8.0` released |
+| `mcp` | MCP `2026-07-28`、固定 Tool/Resource、ApplicationRun Task 映射与 Agent 访问控制 | 已有 S1/S2，待 Release |
 
 ## 3. 依赖方向
 
@@ -37,6 +38,7 @@ graph TD
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
   Notify["notification-center<br/>通知规则与用户收件箱"]
   SSE["sse<br/>用户级短期事件投影"]
+  MCP["mcp<br/>Agent 协议访问层"]
 
   Chat --> Model
   Chat --> Asset
@@ -58,6 +60,10 @@ graph TD
   SSE --> App
   SSE --> Asset
   SSE --> Canvas
+  MCP --> Gateway
+  MCP --> App
+  MCP --> Task
+  MCP --> Asset
 
   Model --> Identity
   Chat --> Identity
@@ -67,6 +73,7 @@ graph TD
   Task --> Identity
   Notify --> Identity
   SSE --> Identity
+  MCP --> Identity
 ```
 
 说明：
@@ -80,6 +87,7 @@ graph TD
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
 - `notification-center` 消费已登记业务领域 source event，规范化为 NotificationEvent 并生成用户 Notification；不读取其他领域私表或从低层任务终态猜测上层业务结果。
 - `sse` 只投影 task-center、asset-library、workflow-canvas 和 notification-center 的可靠事件；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
+- `mcp` 通过固定 Tool 和 Resource URI 读取受控领域投影，只通过 Application 创建异步运行，并将 ApplicationRun 的 AtomicTask 映射为 MCP Task；不订阅业务事件或复制业务状态。
 
 ## 4. 运行链路
 
@@ -160,11 +168,12 @@ sequenceDiagram
 
 - 各领域只拥有自身核心资源表，跨领域通过资源 ID、只读投影或引用关系协作。
 - S2 `schema.sql` 是设计态 schema，不是实际 migration。
-- 需要异步状态的领域应通过事件契约表达状态变化；若事件文件为空，应视为 S2 待补齐，而不是默认无事件。
+- 需要异步状态的领域应通过事件契约表达状态变化；事件文件为空且未声明同步适配边界时视为 S2 待补齐。MCP v1 已显式声明为同步协议适配层，不发布领域事件。
 - 批量、分页、错误响应和 `/api/v1` 路径语义遵循 S2 规则。
 
 ## 6. 当前架构缺口
 
 - `identity` 只有 S1，尚缺 S2 契约，其他领域的权限集成只能按 S1 语义描述。
+- `mcp` S1/S2 与架构参考已经建立但尚未 Release；JWT 验签和审计仍受 identity 缺少 S2 的实施门禁约束。
 - `asset-library` 的素材列表、批量打标、Artifact、AssetVersion 和 Representation 已有 S2；普通素材上传、下载、重命名、删除与完整分组 API 仍待补。
 - workflow-canvas 首期编译保留直接 DAG 依赖并支持节点最早释放；多流、fan-out 和复合节点必须展平到唯一 DAGTaskGroup，不能使用 Group 嵌套或同层整体等待改变依赖语义。
