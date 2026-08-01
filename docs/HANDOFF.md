@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-提交并发布已完成验证的 `agent` 与 `appstudio` S1/S2 为 `spec-v1.10.0`。状态：发布进行中；Spec 内容提交 `28ceccbb623dea1387719958f953416585b83bd6` 已创建，`RELEASE.md` 已登记，待创建发布提交、tag 并推送。
+提交并发布 `agent` 与 `appstudio` S1/S2 为 `spec-v1.10.0`。状态：已完成；Spec 内容提交、Release 记录、发布提交、annotated tag、`origin/master` 与远端 tag 均已发布。
 
 ## 本次已完成
 
@@ -14,11 +14,12 @@
 - 登记 Agent `200200-201199` 与 AppStudio `210200-211399` 错误区间，所有新增 API 使用 `/api/v1` 和 HTTP 200 业务错误模型。
 - 同步 Agent/AppStudio Domain Context、Global Context、Context Map 与 Changelog。
 - 创建 Spec 内容提交 `28ceccbb623dea1387719958f953416585b83bd6`，并将其登记为 `spec-v1.10.0` 的正式实现依据。
+- 创建发布提交 `7a070b2296a1aae6e320055c49bc40042ebf576a`，annotated tag `spec-v1.10.0` 指向该提交。
+- 使用 atomic push 发布 `master` 与 `spec-v1.10.0`，远端两项均成功更新。
 
 ## 当前进行中
 
-- 复核 `RELEASE.md` 与 handoff，创建 `release: publish spec-v1.10.0` 提交。
-- 创建 annotated tag `spec-v1.10.0`，推送 `master` 与 tag，并核对远端引用。
+- 无。
 
 ## 文件变化
 
@@ -59,16 +60,17 @@
 - 新增 S2 的 BR/US 引用均真实存在且无缩写编号；事件必填合同完整，Markdown 围栏和 Context 路径有效。
 - 未发现 TaskRun、ExecutionLease、ApplicationBuild、ApplicationRuntime、DeployService 或 Worker claim 残留；`git diff --check` 通过。
 - Spec 内容提交为 `28ceccbb623dea1387719958f953416585b83bd6`；工作区原有 `archive/`、`设计图/` 和 `skills/archive/` 调整未回退。
+- 发布提交为 `7a070b2296a1aae6e320055c49bc40042ebf576a`；annotated tag `spec-v1.10.0` 指向该提交并已推送。
 
 ## 待办、问题与风险
 
-- `RELEASE.md` 已记录用户确认并允许作为正式实现依据，但发布提交与远端 tag 尚未完成，发布流程未结束。
+- `spec-v1.10.0` 已在 `RELEASE.md` 中标记 `allowed_as_formal_implementation_basis: true`，可以按实施门禁作为正式实现、合并与验收依据。
 - 两域仍没有 `02_architecture/domains/agent.md` 与 `02_architecture/domains/appstudio.md`；本任务只要求 S2，未扩展到领域架构。
 - Redocly 的 4XX warning 是仓库 HTTP 状态码规范与通用推荐规则的预期差异，不是 OpenAPI 结构错误。
 
 ## 推荐下一步
 
-复核 `RELEASE.md` 中的 commit、文件清单与实施门禁，创建发布提交和 annotated tag `spec-v1.10.0`。
+下游实现开始前读取 `RELEASE.md` 的 `spec-v1.10.0` 实施门禁、两个 Domain Context 及目标 S1/S2；不得自行开放已明确延期的 Provider、Workspace 或源码能力。
 
 Next Prompt:
 
