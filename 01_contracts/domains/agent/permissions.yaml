@@ -1,0 +1,103 @@
+agent.read:
+  domain: agent
+  module: agent-core
+  resource: agent
+  action: read
+  subject: owner, system_admin
+  description: 查询当前主体可见的 Agent 及一跳状态摘要。
+  frontend_usage: 控制 Agent 列表、详情和状态入口。
+  backend_enforcement: 按 owner_user_id 或管理员范围过滤；不存在与不可见统一处理。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-001, BR-AGENT-014]
+  related_user_stories: [US-AGENT-001]
+
+agent.manage:
+  domain: agent
+  module: agent-core
+  resource: agent
+  action: create, update, disable, enable, suspend, delete
+  subject: owner, system_admin
+  description: 创建并管理 Agent 生命周期和非敏感配置。
+  frontend_usage: 控制 Agent 创建、编辑、启停、挂起和删除动作。
+  backend_enforcement: 同时校验 Agent 所有权、类型与 Workspace 固定绑定；删除不得穿透 AppStudio。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-014]
+  related_user_stories: [US-AGENT-001, US-AGENT-006]
+
+agent.invoke:
+  domain: agent
+  module: interaction
+  resource: agent_session, agent_invocation, agent_message
+  action: create, read, close, invoke, cancel
+  subject: owner, system_admin
+  description: 管理 Session 并执行、查询或取消 AgentInvocation。
+  frontend_usage: 控制对话、发送消息、轮次状态和取消入口。
+  backend_enforcement: 校验 Agent/Session 所有权、Agent 状态、单写入 Invocation 不变量，并叠加 task.atomic.operate 取消权限。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-004, BR-AGENT-005, BR-AGENT-006, BR-AGENT-010]
+  related_user_stories: [US-AGENT-002, US-AGENT-003, US-AGENT-007]
+
+agent.runtime.operate:
+  domain: agent
+  module: runtime
+  resource: agent_runtime
+  action: read, start, suspend, rebuild
+  subject: owner, system_admin
+  description: 查询并操作当前 Agent 的受控 Runtime。
+  frontend_usage: 控制 Runtime 状态和显式生命周期动作。
+  backend_enforcement: 同时校验 agent.read、Agent 所有权、活动 Invocation、Provider 可用性和幂等键。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-005, BR-AGENT-007, BR-AGENT-008]
+  related_user_stories: [US-AGENT-004]
+
+agent.runtime.logs.read:
+  domain: agent
+  module: runtime
+  resource: agent_runtime_log
+  action: read
+  subject: owner, system_admin
+  description: 读取当前 AgentRuntime 的权限裁剪、脱敏日志。
+  frontend_usage: 控制 Runtime 诊断日志入口。
+  backend_enforcement: 同时校验 agent.runtime.operate；移除 Secret、Provider 原始凭证、宿主路径和基础设施地址。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-008]
+  related_user_stories: [US-AGENT-004]
+
+agent.workspace.read:
+  domain: agent
+  module: workspace
+  resource: agent_workspace, agent_workspace_snapshot
+  action: read
+  subject: owner, authorized_user, system_admin
+  description: 查询 AgentWorkspace 和 Snapshot 元数据，不返回 storage_ref。
+  frontend_usage: 控制 Platform Agent Workspace 列表、详情与 Snapshot 历史。
+  backend_enforcement: 按 Owner 与授权关系过滤；禁止用于读取 StudioWorkspace 或任意文件内容。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-002, BR-AGENT-003]
+  related_user_stories: [US-AGENT-005]
+
+agent.workspace.manage:
+  domain: agent
+  module: workspace
+  resource: agent_workspace, agent_workspace_snapshot
+  action: create, delete, snapshot, restore
+  subject: owner, authorized_user, system_admin
+  description: 管理 AgentWorkspace 生命周期和 Snapshot。
+  frontend_usage: 控制 Workspace 创建、删除、Snapshot 和恢复动作。
+  backend_enforcement: 同时校验 agent.workspace.read、Owner、状态、容量与活动 Runtime；不得作用于 StudioWorkspace。
+  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-003, BR-AGENT-014]
+  related_user_stories: [US-AGENT-005]
+
+agent.runtime_provider.admin:
+  domain: agent
+  module: runtime-provider
+  resource: agent_runtime_provider
+  action: read, reconcile, repair
+  subject: system_admin
+  description: 查看 AgentRuntimeProvider 健康与容量并触发对账或修复。
+  frontend_usage: 控制运维 Provider 健康、容量和修复入口。
+  backend_enforcement: 仅管理员可用；修复通过 Task Center 创建稳定幂等 AtomicTask，不接受任意 Provider 配置。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AGENT-008, BR-AGENT-012]
+  related_user_stories: [US-AGENT-008]

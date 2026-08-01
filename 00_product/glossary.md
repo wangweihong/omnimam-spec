@@ -37,6 +37,29 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 
 `EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 modelgateway 的正式能力事实源。
 
+## Agent 与生成应用
+
+| 术语 | 定义 | 主要事实源 |
+| --- | --- | --- |
+| Agent | 持久化 platform 或 coding 智能代理；固定引用一个 Workspace，但不等于运行容器 | agent |
+| AgentSession | 用户与 Agent 的持续交互会话；继承 Agent 的固定 Workspace 引用 | agent |
+| AgentInvocation | AgentSession 中的一轮用户交互，关联一个 AtomicTask；需要用户补充时结束当前轮次 | agent |
+| AgentWorkspace | Platform Agent 使用的独立持久化工作区，保存受权输入、产物和可恢复本地状态 | agent |
+| AgentRuntime | 按需运行 Hermes 或 OpenCode 的 Agent 执行实例，不承载 StudioApplication | agent |
+| AgentRuntimeProvider | 创建、恢复、检查 AgentRuntime 的系统注册组件 | agent |
+| StudioApplication | Agent 辅助开发的生成式 Web/BFF 应用身份；独立于 AI 能力 Application | appstudio |
+| StudioWorkspace | StudioApplication 的可编辑源码、当前 Revision 和预览关联事实 | appstudio |
+| StudioChangeSet | Coding Agent 或用户基于 `base_revision` 提交的原子文件变更及校验结果 | appstudio |
+| StudioSourceSnapshot | 从一个 Workspace Revision 创建、供正式 Build 使用的不可变源码版本 | appstudio |
+| StudioApplicationVersion | 固定 StudioSourceSnapshot、Blueprint Revision 和运行 Profile 的发布版本 | appstudio |
+| StudioBuild | Source Snapshot 到可运行 Bundle 的业务投影，引用 TaskGroup/AtomicTask 和 Artifact | appstudio |
+| StudioPreviewRuntime | 基于当前 StudioWorkspace Revision 的编辑态快速预览，不可直接发布 | appstudio |
+| StudioRelease | 固定 StudioBuild、Artifact ID/digest 和环境的发布事实 | appstudio |
+| StudioRuntimeInstance | StudioRelease 当前部署实例、健康状态与访问入口事实 | appstudio |
+| StudioDeploymentProvider | 从固定 Artifact 部署 StudioRuntimeInstance 的系统注册组件 | appstudio |
+
+`Application` 和 `StudioApplication` 是不同产品对象：前者封装可运行 AI 能力，后者表示 Agent 辅助开发的 Web/BFF 应用。Coding Agent 可以固定引用一个 StudioWorkspace，但不能拥有其源码、Build、Release 或 Runtime 生命周期。
+
 ## Agent 协议访问
 
 | 术语 | 定义 | 主要事实源 |

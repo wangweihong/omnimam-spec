@@ -26,6 +26,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `workflow-canvas` | 管理画布草稿、不可变版本、节点与边、编译和运行投影。 |
 | `notification-center` | 消费可靠领域事件并维护用户通知、计数、偏好与聚合。 |
 | `sse` | 将已持久业务事实投影为当前用户可短期重放的实时事件。 |
+| `agent` | 管理 Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime。 |
+| `appstudio` | 管理生成式 Web/BFF 应用的源码、构建、发布和运行实例。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
 当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，但本次迁移尚未写入 `RELEASE.md`，不能作为新的正式实现依据。用户私有模型事实继续由 `model-management` 承载。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
@@ -50,11 +52,21 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `ApplicationNode` | 固定引用已发布 ApplicationVersion 的画布节点；归 workflow-canvas。 |
 | `Notification` | 面向用户的事件投影、已读状态和处理入口；归 notification-center。 |
 | `UserEvent` | 业务事实的短期实时提示与恢复游标；归 sse。 |
+| `Agent` | 持久化 platform/coding 智能代理；归 agent。 |
+| `AgentInvocation` | AgentSession 中的一轮交互及 AtomicTask 业务投影；归 agent。 |
+| `AgentWorkspace` | Platform Agent 的持久化工作区；归 agent。 |
+| `AgentRuntime` | 按需运行 Hermes/OpenCode 的执行实例；归 agent。 |
+| `StudioApplication` | Agent 辅助开发的生成式 Web/BFF 应用身份；归 appstudio，独立于 AI 能力 Application。 |
+| `StudioWorkspace` | StudioApplication 的可编辑源码与 Revision 事实；归 appstudio。 |
+| `StudioSourceSnapshot` | 供正式构建使用的不可变源码版本；归 appstudio。 |
+| `StudioBuild` | Snapshot 到 Build Artifact 的业务投影；归 appstudio，执行状态引用 task-center。 |
+| `StudioRelease` | 固定 Artifact digest 和环境的发布事实；归 appstudio。 |
+| `StudioRuntimeInstance` | StudioRelease 当前部署实例和访问入口事实；归 appstudio。 |
 | `McpTaskBinding` | MCP Task 到已持久化 ApplicationRun 的协议映射；归 mcp，不拥有执行状态。 |
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；身份、会话和授权归 `identity`。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioWorkspace、Snapshot、Build、Release 和 StudioRuntimeInstance 归 `appstudio`；身份、会话和授权归 `identity`。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -66,6 +78,9 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - notification-center 消费已登记的可靠 source event，不从低层任务终态猜测上层 Application、Asset 或 Canvas 结果。
 - sse 只发送变化提示；客户端仍通过各事实源 REST API 重查完整状态。AI Chat token/delta 流属于 ai-chatting 请求协议，不进入通用 UserEvent 历史。
 - mcp 使用固定 Tool 和 Resource URI 向受权 Agent 投影领域事实；Capability 只读发现，异步执行只通过已发布 Application 创建 ApplicationRun，并将其 AtomicTask 映射为 MCP Task。
+- Platform Agent 使用 agent 所有的 AgentWorkspace；Coding Agent 创建时固定引用 appstudio 的一个 StudioWorkspace，所有源码写入通过带 `base_revision` 的 ChangeSet 完成。
+- appstudio 复用 agent 的 AgentSession/AgentInvocation，通过 task-center 执行 Build/Deployment，并只保存 asset-library Artifact 的稳定 ID 与不可变 digest 快照。
+- AgentRuntimeProvider 只承载 Hermes/OpenCode；StudioDeploymentProvider 只承载 StudioApplication Release。两者可以在后续实现中复用基础设施适配，但不得形成共享业务状态。
 
 ## 7. 当前重要约束
 
@@ -76,10 +91,12 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - S2 `schema.sql` 是设计态 Schema，不是 migration；本仓库不保存正式实现代码、运行时配置或 CI/CD 实现。
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
 - MCP v1 复用 Identity JWT/RBAC，不提供直接 Capability 执行、OAuth/PAT、交互式 Task 或直接 StorageBackend 上传。
+- `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
+- `agent` 与 `appstudio` 已形成未 Release S1 和完整 S2；两域合同仍须经用户 Release 确认后才能作为正式实现、合并或验收依据。
 
 ## 8. 非目标与延期范围
 
-本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；Agent 是端类型但不是独立事实域。各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而本次新增的 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 与 `appstudio` S1/S2 尚未 Release。各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 

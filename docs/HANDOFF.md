@@ -2,76 +2,72 @@
 
 ## 当前目标与状态
 
-将已完成的 `mcp` S1/S2、Context 和架构提交并发布为 `spec-v1.9.2`。状态：已完成，Release commit、tag、`origin/master` 和远端 tag 均已发布。
+提交并发布已完成验证的 `agent` 与 `appstudio` S1/S2 为 `spec-v1.10.0`。状态：发布进行中；远端 `origin/master` 已同步，正在创建 Spec 内容提交，尚未写入 Release 记录或创建 tag。
 
 ## 本次已完成
 
-- 新增 OpenAPI 3.1 合同，固定 `POST /mcp`、MCP `2026-07-28` 每请求元数据、8 个 method、11 个 Tool、6 类 Resource URI 和 Tasks 扩展。
-- 为 `tools/call` 建立 11 个 `name const + arguments schema` 分支，并定义 JSON Schema 2020-12 输入输出、Tool Complete/Task Result、Resource 和 Task DTO。
-- 明确 `/mcp` 是用户确认的 `/api/v1` 路径例外；HTTP 400/403 只用于 MCP 强制传输拒绝，业务错误继续使用 HTTP 200。
-- 新增 `McpTaskBinding` 设计态表，只保存短期 Task 映射，不复制 ApplicationRun/AtomicTask 状态，不建立跨域 FK。
-- 登记 `190200-190999` 四段 MCP 错误区间，新增 27 个协议、分发、Task 映射和访问错误。
-- 新增 5 个 MCP 权限，并固化 11 个 Tool 对 Model Gateway、Application Platform、Task Center 和 Asset Library 既有权限的叠加映射。
-- 新增显式无领域事件合同；MCP v1 同步读取源领域事实，安全审计写入 Identity audit 边界。
-- 新增完整模块合同与 `02_architecture/domains/mcp.md`，同步全局架构、MCP S1、Domain/Global Context、Context Map、Changelog 和错误码索引。
-- 将 MCP 素材内容上传方法与 Asset Library 正式合同对齐为 `POST /api/v1/asset-uploads/{upload_id}/content`。
+- 为 Agent S1 新增 `BR-AGENT-001..014` 与 `US-AGENT-001..008`，为 AppStudio S1 新增 `BR-APPSTUDIO-001..014` 与 `US-APPSTUDIO-001..009`；只增加追溯锚点，不改变既有产品语义。
+- 新增 Agent 完整 S2：31 个 REST/SSE operation、10 张设计表、21 个错误码、8 个权限码、7 个可靠事件与模块合同。
+- 新增 AppStudio 完整 S2：31 个 REST operation、15 张设计表、27 个错误码、9 个权限码、7 个可靠事件与模块合同。
+- 固定 Coding Agent 的有界 Workspace Tool 授权、ChangeSet `base_revision` 原子写入、Session/Invocation/AtomicTask、Runtime 幂等与一跳摘要规则。
+- 固定 Workspace/Revision、Snapshot/Version、Build/Task/Artifact、Preview、RuntimeConfig/Secret 引用、Release/健康切换/回滚端到端合同。
+- 登记 Agent `200200-201199` 与 AppStudio `210200-211399` 错误区间，所有新增 API 使用 `/api/v1` 和 HTTP 200 业务错误模型。
+- 同步 Agent/AppStudio Domain Context、Global Context、Context Map 与 Changelog；`RELEASE.md` 保持不变。
 
 ## 当前进行中
 
-- 无。
+- 仅暂存 Agent/AppStudio S1/S2、Context、全局索引与 handoff，创建 Spec 内容提交。
+- 使用内容提交的完整 commit hash 更新 `RELEASE.md`，随后创建发布提交、annotated tag 并推送 `master` 与 tag。
 
 ## 文件变化
 
-- 新增：`01_contracts/domains/mcp/openapi.yaml`、`schema.sql`、`errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md`。
-- 新增：`02_architecture/domains/mcp.md`。
-- 修改：`00_product/domains/mcp/product-spec.md`、`domains/mcp/context.md`。
-- 修改：`01_contracts/error-code-index.md`、`02_architecture/global-architecture.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 修改：`RELEASE.md`，新增 `spec-v1.9.2` 正式发布记录。
-- 保留用户已有无关改动：`agent/`、`appstudio/`、`archive/`、`设计图/`、`skills/archive/`。
+- 修改：`00_product/domains/agent/product-spec.md`、`00_product/domains/appstudio/product-spec.md`。
+- 新增：`01_contracts/domains/agent/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
+- 新增：`01_contracts/domains/appstudio/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
+- 修改：`01_contracts/error-code-index.md`、`domains/agent/context.md`、`domains/appstudio/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 未修改：`RELEASE.md`、领域架构、正式 migration、实现代码和运行配置。
+- 保留用户已有无关改动：`archive/`、`设计图/`、`skills/archive/`。
 
 ## 关键设计决策
 
-- Capability 只读发现；不存在 `omnimam.capabilities.invoke`、CapabilityInvocation 或泛化 Invocation。
-- 唯一异步执行入口是已发布且 `run_enabled=true` 的 Application；Application Platform 先持久化 ApplicationRun/AtomicTask，MCP 再创建 Binding。
-- MCP Task TTL 只清理 `McpTaskBinding`，不得删除或改写 ApplicationRun、AtomicTask、Artifact、Asset 或审计事实。
-- MCP 权限只控制协议能力，不能替代 `aiapp.*`、`task.*`、`asset.*` 权限和资源可见性。
-- 下游业务错误保留源领域 `code/value/messages/retryable`；`ERR_MCP_*` 只表示 MCP 自身失败。
-- MCP v1 不发布领域事件，不支持 OAuth/PAT、`input_required`、`tasks/update`、动态 Tool 或直接 StorageBackend 上传。
+- `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 AppStudio 的生成式 Web/BFF 应用。
+- Platform Agent 使用 AgentWorkspace；Coding Agent 固定引用一个 StudioWorkspace，Session/Invocation 不得切换。
+- Coding Agent 不直接挂载 AppStudio 存储，只使用绑定当前用户、Agent、Session、Invocation、Workspace、动作和有效期的 Tool 授权。
+- Agent 只拥有交互、Memory、AgentWorkspace 和 AgentRuntime；AppStudio 拥有源码、Build、Release 和生成应用 Runtime。
+- AgentRuntimeProvider 与 StudioDeploymentProvider 是不同产品组件，不形成共享业务状态。
+- Task Center 拥有 AtomicTask、TaskAttempt、TaskGroup、调度、重试、取消和执行状态；Agent/AppStudio 只保存稳定引用与业务投影。
+- asset-library 拥有 Artifact 身份、内容、处理、存储、保留和登记；AppStudio 不保存 Artifact `storage_uri`。
+- Build 只能读取不可变 Snapshot；正式 Runtime 只能读取固定 digest 的 Build Artifact；健康检查通过前不得切换当前入口。
+- Notification Center 只消费可靠源事件并维护收件箱事实；Agent/AppStudio 不定义通知已读或聚合状态。
 
 ## API、Schema、依赖与配置变化
 
-- `POST /mcp` 支持 `server/discover`、`tools/list/call`、`resources/list/templates/list/read`、`tasks/get/cancel`。
-- 官方 MCP camelCase 和 Header 使用 `x-naming-exception`；OmniMAM Tool 参数和业务投影使用 lower_snake_case。
-- 设计态 Schema 新增单表 `mcp_task_bindings`，包含通用资源字段、Principal、ApplicationRun、AtomicTask、扩展 ID、TTL 和幂等唯一约束。
-- 新增 `mcp.protocol.access`、`mcp.discovery.read`、`mcp.resource.read`、`mcp.task.read`、`mcp.task.cancel`。
-- 当前无运行时配置文件、正式 migration、生产代码或 CI/CD 变化。
+- Agent OpenAPI 3.0.3 定义 23 个 path/31 个 operation；AppStudio 定义 23 个 path/31 个 operation。
+- Agent Schema 定义 10 张表；AppStudio Schema 定义 15 张表。跨域 ID 均不建外键，目标事实通过受控模块接口解析。
+- Agent 新增 21 个 `ERR_AGENT_*`、8 个 `agent.*` 权限和 7 个可靠事件；AppStudio 新增 27 个 `ERR_APPSTUDIO_*`、9 个 `appstudio.*` 权限和 7 个可靠事件。
+- `X-Workspace-Tool-Authorization`、`Last-Event-ID` 和 BCP 47 语言标签均声明命名例外；其他请求/响应字段使用 `lower_snake_case`。
+- 没有新增运行时依赖、正式 migration、运行配置或实现代码。
 
 ## 验证结果
 
-- 41 份当前 S2 YAML 全部可解析。
-- MCP OpenAPI 157 个本地 `$ref` 全部可解析；8 个 method、11 个 Tool catalog/call 分支和 6 个 Resource Template 完整一致。
-- Redocly CLI 对 OpenAPI 3.1 校验通过。
-- 对照官方 MCP `2026-07-28` JSON Schema，RequestMeta 必填字段、Tool input/output Schema 和 Tool Result 字段对齐。
-- 全仓 98 个错误码 code/value 唯一且区间已登记；其中 MCP 27 个。
-- 全仓 64 个权限码唯一且 S1 引用可解析；其中 MCP 5 个，所有委托权限真实存在。
-- 全仓 67 张设计表无重名；MCP Schema 只有 `mcp_task_bindings`，无跨域 FK。
-- MCP S2 中全部 BR/US 引用可解析，无缩写编号残留。
-- MCP S1、MCP 领域架构和全局架构共 8 张 Mermaid 图经 Mermaid CLI 渲染通过。
-- Markdown 围栏、Context 路径和 `git diff --check` 通过；Release 记录中的文件与实施门禁已复核。
-- 最终 Spec commit：`45ea82d4fd42b1697f4cd9af24c2ccb1ac965373`。
-- Release commit：`32ae994`；annotated tag `spec-v1.9.2` 指向该提交。
-- `spec-v1.9.2` 已登记为 released，`allowed_as_formal_implementation_basis: true`。
-- `origin/master` 与远端 `spec-v1.9.2` tag 已推送成功。
+- 49 份当前 S2 YAML 全部可解析。
+- 两域各 31 个 operation 均有权限、S1 引用、HTTP 200 响应和真实错误码；Agent 217 个、AppStudio 261 个本地 `$ref` 全部可解析。
+- Redocly CLI `2.43.2` 对两份 OpenAPI 校验为零 error；保留 76 条推荐性 warning，其中 62 条是与仓库 HTTP 200 业务错误规则冲突的 4XX 建议，其余为 license/tag 描述元数据。
+- 全仓 293 个错误码 code/value 唯一，均落入已登记领域区间；83 个权限码唯一，新增委托权限真实存在。
+- 全仓 92 张设计表无重名；新增 25 张表包含通用资源字段、字段名为 `lower_snake_case`，且不存在跨域外键。
+- 新增 S2 的 BR/US 引用均真实存在且无缩写编号；事件必填合同完整，Markdown 围栏和 Context 路径有效。
+- 未发现 TaskRun、ExecutionLease、ApplicationBuild、ApplicationRuntime、DeployService 或 Worker claim 残留；`git diff --check` 通过。
+- `RELEASE.md` 未修改；工作区原有 `archive/`、`设计图/` 和 `skills/archive/` 调整未回退。
 
 ## 待办、问题与风险
 
-- Identity 当前只有 S1、缺少 S2；MCP JWT 验签、撤销检查和 AuditLog 的具体实现仍受该门禁约束。
-- 后续启用 OAuth/PAT、Capability 直接执行或交互式 MCP Task 必须先修改 S1，不能由实现自行扩展。
-- 本地 `spec-v1.9.0`、`spec-v1.9.1` tag 属于其他 worktree 分支且未在当前 master/远端发布，本次未移动或覆盖这些 tag。
+- `agent` 与 `appstudio` S1/S2 尚未获得用户 Release 确认，不能用于正式实现、合并或验收。
+- 两域仍没有 `02_architecture/domains/agent.md` 与 `02_architecture/domains/appstudio.md`；本任务只要求 S2，未扩展到领域架构。
+- Redocly 的 4XX warning 是仓库 HTTP 状态码规范与通用推荐规则的预期差异，不是 OpenAPI 结构错误。
 
 ## 推荐下一步
 
-按 `spec-v1.9.2` 实现门禁补齐 Identity S2 的 JWT/Audit 边界，再实施 MCP Server。
+按限定文件清单暂存并复核 staged diff，然后创建 `spec: define agent and appstudio contracts` 内容提交。
 
 Next Prompt:
 

@@ -1,0 +1,145 @@
+agent_lifecycle_changed:
+  producer: agent-service
+  consumers: [sse-event-projector, notification-service, audit-service]
+  trigger_condition: Agent 创建，或 status、disabled、Workspace 固定引用发生已持久化变化。
+  payload:
+    agent_id: string
+    owner_user_id: string
+    kind: string(platform|coding)
+    workspace_type: string(agent|studio)
+    workspace_id: string
+    from_status: string|null
+    to_status: string
+    disabled: boolean
+    status_reason_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: agent_id:resource_version
+  retry_policy: 由 agent outbox 持续重试；消费者丢弃相同或更低 resource_version。
+  failure_policy: 发布失败不得回滚 Agent；outbox 支持按聚合 ID 重放。
+  related_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-011, BR-AGENT-014]
+  related_user_stories: [US-AGENT-001, US-AGENT-006]
+
+agent_invocation_status_changed:
+  producer: agent-interaction-service
+  consumers: [task-center, sse-event-projector, notification-service, audit-service]
+  trigger_condition: AgentInvocation 创建或 status、结果、失败分类发生已持久化单调变化。
+  payload:
+    invocation_id: string
+    agent_id: string
+    session_id: string
+    owner_user_id: string
+    atomic_task_id: string
+    from_status: string|null
+    to_status: string
+    output_summary: string|null
+    error_code: string|null
+    waiting_user: boolean
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: invocation_id:resource_version
+  retry_policy: 由 agent outbox 重试；Task Center 和投影消费者按 Invocation 版本幂等。
+  failure_policy: Invocation 表是业务投影事实源；事件不得用于反向覆盖 AtomicTask 的更新状态。
+  related_rules: [BR-AGENT-004, BR-AGENT-010, BR-AGENT-011]
+  related_user_stories: [US-AGENT-002, US-AGENT-003]
+
+agent_session_status_changed:
+  producer: agent-interaction-service
+  consumers: [sse-event-projector, notification-service, audit-service]
+  trigger_condition: AgentSession 创建、关闭、恢复失败或进入错误状态。
+  payload:
+    session_id: string
+    agent_id: string
+    owner_user_id: string
+    from_status: string|null
+    to_status: string
+    status_reason_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: session_id:resource_version
+  retry_policy: 由 agent outbox 重试，消费者按资源版本幂等。
+  failure_policy: 发布失败不丢弃 Session、Message 或 Memory；可从 Session 事实重放。
+  related_rules: [BR-AGENT-006, BR-AGENT-011]
+  related_user_stories: [US-AGENT-002, US-AGENT-007]
+
+agent_runtime_status_changed:
+  producer: agent-runtime-service
+  consumers: [sse-event-projector, notification-service, audit-service, operations-monitor]
+  trigger_condition: AgentRuntime 创建，或 state、activity_state、健康与失败分类发生已持久化变化。
+  payload:
+    runtime_id: string
+    agent_id: string
+    owner_user_id: string
+    runtime_provider_id: string
+    from_state: string|null
+    to_state: string
+    activity_state: string
+    error_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: runtime_id:resource_version
+  retry_policy: 由 agent outbox 重试；消费者按 Runtime 版本幂等。
+  failure_policy: 发布失败不回滚 Runtime 操作；状态对账可修复事实并重放事件。
+  related_rules: [BR-AGENT-005, BR-AGENT-007, BR-AGENT-011, BR-AGENT-012]
+  related_user_stories: [US-AGENT-004]
+
+agent_runtime_provider_status_changed:
+  producer: agent-runtime-reconciler
+  consumers: [operations-monitor, notification-service, audit-service]
+  trigger_condition: AgentRuntimeProvider 在 ACTIVE、DEGRADED、UNAVAILABLE、DISABLED 间变化，或容量不足、对账失败被持久化。
+  payload:
+    runtime_provider_id: string
+    provider_type: string
+    from_status: string|null
+    to_status: string
+    reason_code: string|null
+    capacity_summary: object
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: runtime_provider_id:resource_version
+  retry_policy: 由 agent outbox 重试，运维消费者按资源版本幂等。
+  failure_policy: Provider 状态事实保留；通知失败不将全部 Agent 标记为 ERROR。
+  related_rules: [BR-AGENT-008, BR-AGENT-011, BR-AGENT-012]
+  related_user_stories: [US-AGENT-008]
+
+agent_workspace_status_changed:
+  producer: agent-workspace-service
+  consumers: [sse-event-projector, notification-service, audit-service, operations-monitor]
+  trigger_condition: AgentWorkspace 创建，或状态、容量告警、删除与恢复结果发生已持久化变化。
+  payload:
+    workspace_id: string
+    owner_type: string
+    owner_id: string
+    owner_user_id: string|null
+    from_status: string|null
+    to_status: string
+    size_bytes: integer
+    quota_exceeded: boolean
+    error_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: workspace_id:resource_version
+  retry_policy: 由 agent outbox 重试，消费者按 Workspace 版本幂等。
+  failure_policy: Workspace 是持久事实；事件失败不得删除数据，可由维护任务重放。
+  related_rules: [BR-AGENT-003, BR-AGENT-011, BR-AGENT-012]
+  related_user_stories: [US-AGENT-005]
+
+agent_workspace_snapshot_status_changed:
+  producer: agent-workspace-service
+  consumers: [sse-event-projector, notification-service, audit-service]
+  trigger_condition: AgentWorkspace Snapshot 创建、完成、失败或恢复结果已持久化。
+  payload:
+    snapshot_id: string
+    workspace_id: string
+    owner_user_id: string|null
+    from_status: string|null
+    to_status: string
+    content_digest: string|null
+    error_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: snapshot_id:resource_version
+  retry_policy: 由 agent outbox 重试，消费者按 Snapshot 版本幂等。
+  failure_policy: 失败 Snapshot 不得成为恢复源；发布失败不修改 Workspace 当前状态。
+  related_rules: [BR-AGENT-003, BR-AGENT-011]
+  related_user_stories: [US-AGENT-005]

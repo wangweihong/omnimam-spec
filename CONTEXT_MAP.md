@@ -22,9 +22,13 @@
 | `workflow-canvas` | `domains/workflow-canvas/context.md` | 画布结构、版本、编译和运行 | Canvas、节点、边、部分执行 |
 | `notification-center` | `domains/notification-center/context.md` | 通知收件箱、偏好、聚合 | 完成、失败、待处理通知 |
 | `sse` | `domains/sse/context.md` | 用户级实时事件投影 | EventSource、断线恢复、重同步 |
+| `agent` | `domains/agent/context.md` | Agent、Session、Memory、AgentWorkspace 与 AgentRuntime | Platform Agent、Coding Agent、Hermes、OpenCode |
+| `appstudio` | `domains/appstudio/context.md` | 生成应用源码、构建、发布与运行 | StudioApplication、StudioWorkspace、StudioBuild、StudioRelease |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 
 `modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
+
+`agent` 与 `appstudio` 当前已有未 Release S1、完整 S2 和 Domain Context，但没有领域架构。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`。Coding Agent 修改生成应用时必须同时读取两者，并按需继续读取 task-center 与 asset-library。两域尚未 Release，不能作为正式实现、合并或验收依据。
 
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 
@@ -46,6 +50,10 @@
 | 模型提供商、ProviderModel、默认模型、用户模型健康检测 | `domains/model-management/context.md` | 平台 Engine 健康检测读 modelgateway；对话使用读 ai-chatting |
 | Topic、Message、Assistant、QuickPhrase、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 model-management |
 | MCP、server/discover、Streamable HTTP、stdio Proxy、MCP Tool、MCP Resource、MCP Task | `domains/mcp/context.md` | 调用应用再读 application-platform；任务映射再读 task-center |
+| AgentSession、AgentInvocation、AgentMemory、Hermes、OpenCode、AgentRuntime | `domains/agent/context.md` | Coding Agent 修改源码再读 appstudio |
+| AgentWorkspace、workspace_type、AgentRuntimeProvider | `domains/agent/context.md` | 周期执行再读 task-center |
+| StudioApplication、StudioWorkspace、StudioChangeSet、Source Snapshot | `domains/appstudio/context.md` | Agent 修改再读 agent |
+| StudioBuild、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行再读 task-center；Artifact 再读 asset-library |
 
 ## 4. 跨域任务映射
 
@@ -61,6 +69,9 @@
 | 实时状态展示 | sse、对应事实领域 | notification-center |
 | Agent 通过 MCP 运行应用 | mcp、application-platform | task-center、modelgateway、asset-library |
 | Agent 通过 MCP 查询或上传素材 | mcp、asset-library | identity |
+| Coding Agent 修改 StudioApplication | agent、appstudio | task-center |
+| StudioApplication 构建与发布 | appstudio、task-center | asset-library、notification-center |
+| StudioBuild 交付 Artifact | appstudio、asset-library | task-center |
 
 ## 5. 全局文档入口
 

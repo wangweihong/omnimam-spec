@@ -2,6 +2,18 @@
 
 ## 2026-08-01
 
+- 原地对齐未发布的 `agent` 与 `appstudio` S1：Agent 只拥有交互、Memory、AgentWorkspace 与 AgentRuntime；AppStudio 独占 StudioApplication 的源码、Revision、Snapshot、Build、Release 与 StudioRuntimeInstance。
+- Agent 新增 `workspace_type=agent|studio` 语义；Platform Agent 使用 AgentWorkspace，Coding Agent 创建时固定绑定一个 StudioWorkspace，多个 Agent 通过 ChangeSet `base_revision` 乐观并发控制共享源码。
+- AppStudio 直接复用 AgentSession/AgentInvocation，不建立第二套 Agent 执行记录；StudioChangeSet 保存 agent、session、invocation 引用，Agent 删除或挂起不得影响 AppStudio 事实。
+- Agent 运行抽象收敛为 `AgentRuntimeProvider`，AppStudio 部署抽象统一为 `StudioDeploymentProvider`；生成应用 Build、Release 和 Runtime 不再由 Agent 维护。
+- 将 AgentInvocation 和 AppStudio Build/Deployment 对齐 AtomicTask/TaskGroup，移除 TaskRun、独立 Lease 和 Worker claim 旧语义；周期检查使用 RECONCILE，耗时修复才创建 AtomicTask。
+- Build Bundle 由 asset-library 作为 `studio_application_bundle` Artifact 管理，AppStudio 只保存 Artifact ID 与 digest 历史快照，不拥有内容、存储位置、处理或登记状态。
+- 将两份 S1 的精确 HTTP 路径和 Go 接口改写为产品动作与组件职责，补齐 Revision、Snapshot、Build、Artifact、Release、回滚和 Secret 失败结果。
+- 为 Agent S1 新增 `BR-AGENT-001..014`、`US-AGENT-001..008`，为 AppStudio S1 新增 `BR-APPSTUDIO-001..014`、`US-APPSTUDIO-001..009`，作为结构化合同追溯锚点，不改变既有产品语义。
+- 新增 Agent 完整 S2：31 个 REST/SSE operation、10 张设计态表、21 个业务错误、8 个权限码、7 个可靠领域事件和模块合同；固定 Session/Invocation/AtomicTask、AgentWorkspace、AgentRuntimeProvider 与 AppStudio Tool 边界。
+- 新增 AppStudio 完整 S2：31 个 REST operation、15 张设计态表、27 个业务错误、9 个权限码、7 个可靠领域事件和模块合同；固定 Workspace/Revision、Snapshot/Version、Build/Artifact、Preview、RuntimeConfig、Release/RuntimeInstance 链路。
+- 登记 Agent `200200-201199` 和 AppStudio `210200-211399` 错误码区间，所有普通业务失败继续使用 HTTP 200 和稳定 code/value；全部 API 使用 `/api/v1`。
+- 新增 `domains/agent/context.md`、`domains/appstudio/context.md`，同步 Global Context、Context Map 和全局术语；两域 S1/S2 仍未 Release，且本次不新增领域架构或正式 migration。
 - 将 `00_product/domains/mcp/product-spec.md` 的 S0 Draft 原位整理为 `mcp` 领域 S1 草案，协议基线为 MCP `2026-07-28`；新增 Domain Context、全局领域导航和 MCP 术语。
 - MCP v1 固定为 Capability 只读发现、Application 查询/运行、ApplicationRun 查询/取消和 Asset 查询/受控上传；异步执行只映射既有 ApplicationRun/AtomicTask，不新增 CapabilityInvocation、泛化 Invocation 或独立任务队列。
 - 新增 MCP 完整 S2：OpenAPI 3.1 固化 `POST /mcp`、8 个协议 method、11 个固定 Tool、6 类 Resource URI 和 Tasks 扩展；`/mcp` 作为用户确认的标准协议路径例外，不使用 `/api/v1`。

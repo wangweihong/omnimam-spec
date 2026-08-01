@@ -16,6 +16,8 @@
 | sse | `01_contracts/domains/sse/errors.yaml` | 实时连接、游标重放、事件投影和访问错误码 |
 | notification-center | `01_contracts/domains/notification-center/errors.yaml` | 通知收件箱、偏好、源事件处理和访问控制错误码 |
 | mcp | `01_contracts/domains/mcp/errors.yaml` | MCP 协议、Tool/Resource 分发、Task 映射和访问控制错误码 |
+| agent | `01_contracts/domains/agent/errors.yaml` | Agent、Session/Invocation、Workspace、Runtime 与访问控制错误码 |
+| appstudio | `01_contracts/domains/appstudio/errors.yaml` | StudioApplication、Workspace、源码版本、Build、Release/Runtime 与访问控制错误码 |
 
 ## 2. 错误码区间分配
 
@@ -69,6 +71,17 @@
 | 190400-190599 | mcp | dispatch | 固定 Tool、参数 Schema、Resource URI 和分页游标错误 |
 | 190600-190799 | mcp | task-mapping | MCP Tasks 协商、Binding、可见性、过期和取消错误 |
 | 190800-190999 | mcp | access | JWT、MCP 权限、Origin、请求限制、配额和审计错误 |
+| 200200-200399 | agent | agent-core | Agent 身份、类型、Workspace 固定绑定、状态和配额错误 |
+| 200400-200599 | agent | interaction | Session、Invocation、并发、取消和 Task 映射错误 |
+| 200600-200799 | agent | workspace | AgentWorkspace、Snapshot、Owner 和 StudioWorkspace 授权错误 |
+| 200800-200999 | agent | runtime | AgentRuntimeProvider、Runtime 状态、操作和脱敏日志错误 |
+| 201000-201199 | agent | access | Agent 领域访问控制错误 |
+| 210200-210399 | appstudio | application | StudioApplication 状态和初始化模板错误 |
+| 210400-210599 | appstudio | workspace | Workspace Tool、文件、ChangeSet、Revision 冲突和安全校验错误 |
+| 210600-210799 | appstudio | source-version | Source Snapshot 与 StudioApplicationVersion 错误 |
+| 210800-210999 | appstudio | build | StudioBuild、Task 和 Build Artifact 错误 |
+| 211000-211199 | appstudio | release-runtime | RuntimeConfig、Preview、Release、部署、健康与回滚错误 |
+| 211200-211399 | appstudio | access | AppStudio 领域访问控制错误 |
 
 ## 3. 分配规则
 

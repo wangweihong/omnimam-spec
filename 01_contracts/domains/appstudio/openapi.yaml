@@ -1,0 +1,1193 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM AppStudio API
+  version: 0.1.0-draft
+  description: >-
+    StudioApplication 源码、Workspace Revision、Snapshot、Build、Release 和 Runtime 的 S2 合同。
+    业务错误使用 HTTP 200 和稳定 code/value；404 仅表示路由不存在，500 仅表示未预期异常。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - {name: studio-applications}
+  - {name: studio-workspaces}
+  - {name: studio-source-versions}
+  - {name: studio-builds}
+  - {name: studio-preview}
+  - {name: studio-releases}
+
+paths:
+  /api/v1/studio-applications:
+    get:
+      tags: [studio-applications]
+      summary: 查询 StudioApplication 列表
+      operationId: list_studio_applications
+      x-permission: appstudio.application.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: statuses, in: query, description: 状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: StudioApplication 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplicationListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-applications]
+      summary: 创建 StudioApplication、源码仓库和默认 Workspace
+      operationId: create_studio_application
+      x-permission: appstudio.application.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-002]}
+      x-error-codes: [ERR_APPSTUDIO_TEMPLATE_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateRequest'}}}}
+      responses:
+        '200': {description: 已创建的 StudioApplication 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplication'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}:
+    get:
+      tags: [studio-applications]
+      summary: 获取 StudioApplication 详情
+      operationId: get_studio_application
+      x-permission: appstudio.application.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-002, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      responses:
+        '200': {description: StudioApplication 详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplication'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    patch:
+      tags: [studio-applications]
+      summary: 更新 StudioApplication
+      operationId: update_studio_application
+      x-permission: appstudio.application.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-002]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_APPLICATION_STATE_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationUpdateRequest'}}}}
+      responses:
+        '200': {description: 更新后的 StudioApplication 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplication'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}/archive:
+    post:
+      tags: [studio-applications]
+      summary: 归档 StudioApplication
+      operationId: archive_studio_application
+      x-permission: appstudio.application.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_APPLICATION_STATE_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      responses:
+        '200': {description: 归档后的应用；历史 Snapshot、Build、Release 不删除，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplication'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}/workspaces:
+    get:
+      tags: [studio-workspaces]
+      summary: 查询 StudioWorkspace 列表
+      operationId: list_studio_workspaces
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-002], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: statuses, in: query, description: Workspace 状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: Workspace 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioWorkspaceListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}:
+    get:
+      tags: [studio-workspaces]
+      summary: 获取 StudioWorkspace 详情
+      operationId: get_studio_workspace
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-002], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+      responses:
+        '200': {description: Workspace 详情，不返回 storage_ref，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioWorkspace'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/files:
+    get:
+      tags: [studio-workspaces]
+      summary: 列出 StudioWorkspace 文件
+      operationId: list_studio_workspace_files
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-002], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {name: search_fields, in: query, schema: {type: string, default: 'path,name'}}
+        - {name: sort_field, in: query, schema: {type: string, enum: [path,updated_at,size_bytes], default: path}}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: path_prefix, in: query, schema: {type: string}, description: 相对 Workspace 根目录的路径前缀。}
+      responses:
+        '200': {description: 文件索引列表或业务错误；不包含文件内容和存储位置。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioSourceFileListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/file-content:
+    get:
+      tags: [studio-workspaces]
+      summary: 读取 StudioWorkspace 文件内容
+      operationId: read_studio_workspace_file
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-002], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_FILE_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+        - {name: path, in: query, required: true, schema: {type: string, minLength: 1}, description: 受控相对路径，不允许绝对路径或 `..`。}
+        - {name: revision, in: query, required: false, schema: {type: integer, minimum: 1}, description: 省略时读取当前 Revision。}
+      responses:
+        '200': {description: 文件内容、digest 与 Revision，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioFileContent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/search:
+    get:
+      tags: [studio-workspaces]
+      summary: 搜索 StudioWorkspace 文件内容
+      operationId: search_studio_workspace_files
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-002], business_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+        - {name: keyword, in: query, required: true, schema: {type: string, minLength: 1, maxLength: 512}}
+        - {name: search_fields, in: query, schema: {type: string, default: 'path,content'}}
+        - {name: sort_field, in: query, schema: {type: string, enum: [path,line_no], default: path}}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: path_prefix, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 权限裁剪的匹配片段或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioSearchResultListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/change-sets:
+    get:
+      tags: [studio-workspaces]
+      summary: 查询 StudioChangeSet 历史
+      operationId: list_studio_change_sets
+      x-permission: appstudio.workspace.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-003], business_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-004]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: statuses, in: query, description: ChangeSet 状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: ChangeSet 历史或业务错误；不返回完整源码正文。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioChangeSetListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-workspaces]
+      summary: 原子应用 StudioChangeSet
+      operationId: apply_studio_change_set
+      x-permission: appstudio.workspace.write
+      x-s1-refs: {user_stories: [US-APPSTUDIO-003], business_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-004, BR-APPSTUDIO-010, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT, ERR_APPSTUDIO_CHANGESET_INVALID, ERR_APPSTUDIO_PROTECTED_FILE_CHANGE, ERR_APPSTUDIO_DANGEROUS_CHANGE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioChangeSetCreateRequest'}}}}
+      responses:
+        '200': {description: 已应用 ChangeSet 或完整失败结果；任何失败都不产生 target_revision。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioChangeSet'}, {$ref: '#/components/schemas/RevisionConflictError'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/restore:
+    post:
+      tags: [studio-workspaces]
+      summary: 从历史 Revision 创建新的恢复 Revision
+      operationId: restore_studio_workspace_revision
+      x-permission: appstudio.workspace.write
+      x-s1-refs: {user_stories: [US-APPSTUDIO-003], business_rules: [BR-APPSTUDIO-004]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/workspace_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceRestoreRequest'}}}}
+      responses:
+        '200': {description: 新 Revision 摘要或业务错误；历史 Revision 不删除。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/WorkspaceRevision'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/source-snapshots:
+    get:
+      tags: [studio-source-versions]
+      summary: 查询 Workspace Source Snapshot
+      operationId: list_studio_source_snapshots
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-004], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200': {description: Snapshot 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioSourceSnapshotListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-source-versions]
+      summary: 从当前 Workspace Revision 创建不可变 Snapshot
+      operationId: create_studio_source_snapshot
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-004], business_rules: [BR-APPSTUDIO-004, BR-APPSTUDIO-005]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT, ERR_APPSTUDIO_SNAPSHOT_CREATION_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/workspace_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioSourceSnapshotCreateRequest'}}}}
+      responses:
+        '200': {description: Snapshot 或业务错误；失败不得留下可供 Build 使用的部分 Snapshot。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioSourceSnapshot'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-source-snapshots/{source_snapshot_id}:
+    get:
+      tags: [studio-source-versions]
+      summary: 获取 StudioSourceSnapshot
+      operationId: get_studio_source_snapshot
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-004, US-APPSTUDIO-005], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006]}
+      x-error-codes: [ERR_APPSTUDIO_SNAPSHOT_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/source_snapshot_id'}]
+      responses:
+        '200': {description: Snapshot 详情，不返回 storage_ref，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioSourceSnapshot'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}/versions:
+    get:
+      tags: [studio-source-versions]
+      summary: 查询 StudioApplicationVersion
+      operationId: list_studio_application_versions
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-004], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200': {description: Version 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplicationVersionListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-source-versions]
+      summary: 创建 StudioApplicationVersion
+      operationId: create_studio_application_version
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-004], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_SNAPSHOT_NOT_VISIBLE, ERR_APPSTUDIO_VERSION_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationVersionCreateRequest'}}}}
+      responses:
+        '200': {description: 固定 Snapshot 的 Version 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioApplicationVersion'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}/builds:
+    get:
+      tags: [studio-builds]
+      summary: 查询 StudioBuild 列表
+      operationId: list_studio_builds
+      x-permission: appstudio.build.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-005], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-007, BR-APPSTUDIO-008]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: statuses, in: query, description: Build 状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: Build 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioBuildListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-builds]
+      summary: 从 Source Snapshot 创建 StudioBuild
+      operationId: create_studio_build
+      x-permission: appstudio.build.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-005], business_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006, BR-APPSTUDIO-007, BR-APPSTUDIO-008, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_SNAPSHOT_NOT_VISIBLE, ERR_APPSTUDIO_BUILD_SOURCE_INVALID, ERR_APPSTUDIO_BUILD_TASK_UNAVAILABLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioBuildCreateRequest'}}}}
+      responses:
+        '200': {description: 已绑定 TaskGroup/AtomicTask 的 Build 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioBuild'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-builds/{studio_build_id}:
+    get:
+      tags: [studio-builds]
+      summary: 获取 StudioBuild 详情
+      operationId: get_studio_build
+      x-permission: appstudio.build.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-005], business_rules: [BR-APPSTUDIO-007, BR-APPSTUDIO-008, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_BUILD_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_build_id'}]
+      responses:
+        '200': {description: Build、Task 与 Artifact 一跳摘要或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioBuild'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-builds/{studio_build_id}/cancel:
+    post:
+      tags: [studio-builds]
+      summary: 请求取消 StudioBuild
+      operationId: cancel_studio_build
+      x-permission: appstudio.build.manage
+      x-delegated-permissions: [task.group.operate, task.atomic.operate]
+      x-s1-refs: {user_stories: [US-APPSTUDIO-005], business_rules: [BR-APPSTUDIO-007, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_BUILD_NOT_VISIBLE, ERR_APPSTUDIO_BUILD_STATE_INVALID, ERR_APPSTUDIO_BUILD_TASK_UNAVAILABLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_build_id'}]
+      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      responses:
+        '200': {description: 已转发取消请求的 Build；最终状态由 Task Center 确认。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioBuild'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/preview-runtime:
+    get:
+      tags: [studio-preview]
+      summary: 获取当前 StudioPreviewRuntime
+      operationId: get_studio_preview_runtime
+      x-permission: appstudio.preview.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-006], business_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-009]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+      responses:
+        '200': {description: 当前 Preview Runtime；不存在时 data 为 null，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/NullablePreviewRuntimeResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-workspaces/{workspace_id}/preview-checks:
+    post:
+      tags: [studio-preview]
+      summary: 运行编辑态 Preview 检查
+      operationId: run_studio_preview_check
+      x-permission: appstudio.preview.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-006], business_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-009]}
+      x-error-codes: [ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE, ERR_APPSTUDIO_WORKSPACE_STATE_INVALID, ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED, ERR_APPSTUDIO_PREVIEW_FAILED, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/workspace_id'}
+        - {$ref: '#/components/parameters/workspace_tool_authorization'}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PreviewCheckRequest'}}}}
+      responses:
+        '200': {description: Preview Runtime 和诊断摘要，或业务错误；不产生正式 Artifact。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioPreviewRuntime'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-application-versions/{studio_application_version_id}/runtime-configs/{environment}:
+    get:
+      tags: [studio-releases]
+      summary: 获取 StudioRuntimeConfig
+      operationId: get_studio_runtime_config
+      x-permission: appstudio.runtime_config.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-009], business_rules: [BR-APPSTUDIO-010, BR-APPSTUDIO-011]}
+      x-error-codes: [ERR_APPSTUDIO_VERSION_INVALID, ERR_APPSTUDIO_RELEASE_CONFIG_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_version_id'}
+        - {$ref: '#/components/parameters/environment'}
+      responses:
+        '200': {description: 公开配置与 Secret/Integration 引用摘要，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRuntimeConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [studio-releases]
+      summary: 整体保存 StudioRuntimeConfig
+      operationId: replace_studio_runtime_config
+      x-permission: appstudio.runtime_config.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-009], business_rules: [BR-APPSTUDIO-010, BR-APPSTUDIO-011]}
+      x-error-codes: [ERR_APPSTUDIO_VERSION_INVALID, ERR_APPSTUDIO_RELEASE_CONFIG_INVALID, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_version_id'}
+        - {$ref: '#/components/parameters/environment'}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRuntimeConfigReplaceRequest'}}}}
+      responses:
+        '200': {description: 保存后的配置引用，或业务错误；响应不包含解析后的 Secret。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRuntimeConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-applications/{studio_application_id}/releases:
+    get:
+      tags: [studio-releases]
+      summary: 查询 StudioRelease 列表
+      operationId: list_studio_releases
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008], business_rules: [BR-APPSTUDIO-008, BR-APPSTUDIO-009, BR-APPSTUDIO-011, BR-APPSTUDIO-012]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters:
+        - {$ref: '#/components/parameters/studio_application_id'}
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: environments, in: query, description: 'preview,production 逗号分隔。', schema: {type: string}}
+        - {name: statuses, in: query, description: Release 状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: Release 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioReleaseListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [studio-releases]
+      summary: 从成功 StudioBuild 创建 Release
+      operationId: create_studio_release
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-009], business_rules: [BR-APPSTUDIO-008, BR-APPSTUDIO-009, BR-APPSTUDIO-010, BR-APPSTUDIO-011, BR-APPSTUDIO-013]}
+      x-error-codes: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_BUILD_NOT_VISIBLE, ERR_APPSTUDIO_BUILD_STATE_INVALID, ERR_APPSTUDIO_BUILD_ARTIFACT_INVALID, ERR_APPSTUDIO_RELEASE_CONFIG_INVALID, ERR_APPSTUDIO_DEPLOYMENT_PROVIDER_UNAVAILABLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioReleaseCreateRequest'}}}}
+      responses:
+        '200': {description: 已固定 Artifact digest 的 Release 或业务错误；新实例健康前不切换访问入口。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRelease'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-releases/{studio_release_id}:
+    get:
+      tags: [studio-releases]
+      summary: 获取 StudioRelease 详情
+      operationId: get_studio_release
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008], business_rules: [BR-APPSTUDIO-009, BR-APPSTUDIO-011, BR-APPSTUDIO-012]}
+      x-error-codes: [ERR_APPSTUDIO_RELEASE_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_release_id'}]
+      responses:
+        '200': {description: Release 与 Runtime 一跳摘要或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRelease'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-releases/{studio_release_id}/rollback:
+    post:
+      tags: [studio-releases]
+      summary: 从历史 Release 创建回滚 Release
+      operationId: rollback_studio_release
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-008], business_rules: [BR-APPSTUDIO-008, BR-APPSTUDIO-011, BR-APPSTUDIO-012]}
+      x-error-codes: [ERR_APPSTUDIO_RELEASE_NOT_VISIBLE, ERR_APPSTUDIO_ROLLBACK_SOURCE_INVALID, ERR_APPSTUDIO_RELEASE_CONFIG_INVALID, ERR_APPSTUDIO_DEPLOYMENT_PROVIDER_UNAVAILABLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_release_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRollbackRequest'}}}}
+      responses:
+        '200': {description: 新的回滚 Release 或业务错误；原 Release 历史不变。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRelease'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/studio-runtime-instances/{studio_runtime_instance_id}:
+    get:
+      tags: [studio-releases]
+      summary: 获取 StudioRuntimeInstance
+      operationId: get_studio_runtime_instance
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008], business_rules: [BR-APPSTUDIO-009, BR-APPSTUDIO-011, BR-APPSTUDIO-012]}
+      x-error-codes: [ERR_APPSTUDIO_RELEASE_NOT_VISIBLE, ERR_APPSTUDIO_ACCESS_DENIED]
+      parameters: [{$ref: '#/components/parameters/studio_runtime_instance_id'}]
+      responses:
+        '200': {description: RuntimeInstance 权限裁剪详情或业务错误；不返回 provider_runtime_id。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/StudioRuntimeInstance'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    studio_application_id: {name: studio_application_id, in: path, required: true, schema: {type: string}}
+    workspace_id: {name: workspace_id, in: path, required: true, schema: {type: string}}
+    source_snapshot_id: {name: source_snapshot_id, in: path, required: true, schema: {type: string}}
+    studio_build_id: {name: studio_build_id, in: path, required: true, schema: {type: string}}
+    studio_application_version_id: {name: studio_application_version_id, in: path, required: true, schema: {type: string}}
+    studio_release_id: {name: studio_release_id, in: path, required: true, schema: {type: string}}
+    studio_runtime_instance_id: {name: studio_runtime_instance_id, in: path, required: true, schema: {type: string}}
+    environment: {name: environment, in: path, required: true, schema: {type: string, enum: [preview, production]}}
+    workspace_tool_authorization:
+      name: X-Workspace-Tool-Authorization
+      in: header
+      required: false
+      schema: {type: string}
+      x-naming-exception: AppStudio 内部安全 Header 的稳定协议名；仅此 Header 使用连字符与首字母大写。
+      description: >-
+        Coding Agent 调用时必填的短期有界授权；用户交互请求使用 Identity/RBAC，不发送此 Header。
+        服务端必须绑定 Principal、Agent、Session、Invocation、Workspace、动作和有效期，且不得记录其值。
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, default: '', maxLength: 256}}
+    search_fields: {name: search_fields, in: query, schema: {type: string, default: 'name,description'}}
+    sort_field: {name: sort_field, in: query, schema: {type: string, default: created_at}, description: '允许 created_at,updated_at,name；逗号分隔多字段。'}
+    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
+    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
+    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
+  requestBodies:
+    ActionReason:
+      required: false
+      content: {application/json: {schema: {$ref: '#/components/schemas/ActionReason'}}}
+  responses:
+    UnexpectedError:
+      description: 未预期服务器异常。
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, value, message, messages, retryable]
+      properties:
+        code: {type: string, pattern: '^ERR_APPSTUDIO_'}
+        value: {type: integer}
+        message: {type: string}
+        messages:
+          type: object
+          additionalProperties: false
+          x-naming-exception: BCP 47 语言标签必须保留 `zh-CN` 与 `en-US`。
+          required: [zh-CN, en-US]
+          properties: {zh-CN: {type: string}, en-US: {type: string}}
+        retryable: {type: boolean}
+        detail: {type: string}
+        data: {type: object, additionalProperties: true}
+    RevisionConflictError:
+      allOf:
+        - {$ref: '#/components/schemas/ErrorResponse'}
+        - type: object
+          properties:
+            code: {type: string, enum: [ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT]}
+            value: {type: integer, enum: [210403]}
+            data:
+              type: object
+              additionalProperties: false
+              required: [workspace_id, base_revision, current_revision]
+              properties:
+                workspace_id: {type: string}
+                base_revision: {type: integer}
+                current_revision: {type: integer}
+                current_revision_summary: {$ref: '#/components/schemas/WorkspaceRevision'}
+    ActionReason:
+      type: object
+      additionalProperties: false
+      properties: {reason: {type: string, maxLength: 512}}
+    EndpointSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        url: {type: string, format: uri}
+        hostname: {type: string}
+      description: 只返回当前用户可访问的受控入口；不含私网地址、签名 Query 或 Provider 配置。
+    StudioApplicationSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, runtime_profile]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [CREATING, READY, ERROR, ARCHIVED]}
+        runtime_profile: {type: string}
+    StudioWorkspaceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, current_revision]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [initializing, ready, modifying, previewing, conflicted, locked, archived]}
+        current_revision: {type: integer}
+    StudioReleaseSummary:
+      type: object
+      additionalProperties: false
+      required: [id, environment, status, artifact_digest]
+      properties:
+        id: {type: string}
+        environment: {type: string, enum: [preview, production]}
+        status: {type: string, enum: [pending, deploying, ready, failed, superseded]}
+        artifact_digest: {type: string}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+    StudioApplication:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, owner_user_id, status, technology_profile, runtime_profile, default_workspace_id, default_workspace, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        owner_user_id: {type: string, description: 当前资源所有者；无需递归展开 Identity。}
+        status: {type: string, enum: [CREATING, READY, ERROR, ARCHIVED]}
+        status_reason_code: {type: string, nullable: true}
+        technology_profile: {type: string}
+        runtime_profile: {type: string}
+        source_repository_id: {type: string, description: AppStudio 内部逻辑仓库 ID；客户端无需读取存储实现。}
+        default_workspace_id: {type: string}
+        default_workspace: {$ref: '#/components/schemas/StudioWorkspaceSummary'}
+        current_production_release_id: {type: string, nullable: true}
+        current_production_release: {type: object, allOf: [{$ref: '#/components/schemas/StudioReleaseSummary'}], nullable: true}
+        current_preview_release_id: {type: string, nullable: true}
+        current_preview_release: {type: object, allOf: [{$ref: '#/components/schemas/StudioReleaseSummary'}], nullable: true}
+        archived_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioApplicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, template_id, idempotency_key]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 128}
+        description: {type: string, maxLength: 2048, default: ''}
+        template_id: {type: string, description: 平台受控生成应用模板 ID；不是 application-platform ApplicationTemplate。}
+        technology_profile: {type: string, default: typescript_light_bff}
+        runtime_profile: {type: string, default: web_light_bff}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioApplicationUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 128}
+        description: {type: string, maxLength: 2048}
+        resource_version: {type: integer, minimum: 0}
+    StudioApplicationListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioApplication'}}}
+    StudioPreviewRuntimeSummary:
+      type: object
+      additionalProperties: false
+      required: [id, workspace_revision, status]
+      properties:
+        id: {type: string}
+        workspace_revision: {type: integer}
+        status: {type: string, enum: [starting, running, refreshing, failed, stopped, expired]}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+    StudioWorkspace:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, studio_application_id, studio_application, source_repository_id, current_revision, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        studio_application_id: {type: string}
+        studio_application: {$ref: '#/components/schemas/StudioApplicationSummary'}
+        source_repository_id: {type: string, description: 同一 AppStudio 聚合内部 ID；不展开 storage_ref。}
+        base_snapshot_id: {type: string, nullable: true}
+        base_snapshot: {type: object, allOf: [{$ref: '#/components/schemas/StudioSourceSnapshotSummary'}], nullable: true}
+        current_revision: {type: integer}
+        preview_runtime_id: {type: string, nullable: true}
+        preview_runtime: {type: object, allOf: [{$ref: '#/components/schemas/StudioPreviewRuntimeSummary'}], nullable: true}
+        status: {type: string, enum: [initializing, ready, modifying, previewing, conflicted, locked, archived]}
+        status_reason_code: {type: string, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+      description: storage_ref、源码存储位置和锁实现细节永不公开。
+    StudioWorkspaceListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioWorkspace'}}}
+    StudioSourceFile:
+      type: object
+      additionalProperties: false
+      required: [id, path, name, file_type, size_bytes, indexed_revision, protected, updated_at]
+      properties:
+        id: {type: string}
+        path: {type: string}
+        name: {type: string}
+        file_type: {type: string, enum: [file, directory]}
+        content_digest: {type: string, nullable: true}
+        size_bytes: {type: integer, format: int64}
+        indexed_revision: {type: integer}
+        protected: {type: boolean}
+        updated_at: {type: string, format: date-time}
+    StudioSourceFileListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioSourceFile'}}}
+    StudioFileContent:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, revision, path, content, content_digest]
+      properties:
+        workspace_id: {type: string, description: 当前调用上下文已明确，无需展开。}
+        revision: {type: integer}
+        path: {type: string}
+        content: {type: string}
+        content_digest: {type: string}
+        truncated: {type: boolean, default: false}
+    StudioSearchResult:
+      type: object
+      additionalProperties: false
+      required: [path, line_no, preview]
+      properties:
+        path: {type: string}
+        line_no: {type: integer, minimum: 1}
+        preview: {type: string}
+    StudioSearchResultListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items, workspace_revision]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/StudioSearchResult'}}
+        workspace_revision: {type: integer}
+    AgentActorSummary:
+      type: object
+      additionalProperties: false
+      required: [agent_id, agent_name]
+      properties:
+        agent_id: {type: string}
+        agent_name: {type: string}
+        agent_session_id: {type: string, nullable: true}
+        agent_invocation_id: {type: string, nullable: true}
+      description: 由 Agent 受控批量摘要提供；Agent 不可见或删除时 actor 为 null，稳定 ID 仍保留。
+    StudioChangeSet:
+      type: object
+      additionalProperties: false
+      required: [id, name, workspace_id, base_revision, files_added, files_modified, files_deleted, summary, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        workspace_id: {type: string, description: 当前 Workspace 子资源上下文已明确。}
+        agent_id: {type: string, nullable: true}
+        agent_session_id: {type: string, nullable: true}
+        agent_invocation_id: {type: string, nullable: true}
+        actor: {type: object, allOf: [{$ref: '#/components/schemas/AgentActorSummary'}], nullable: true}
+        base_revision: {type: integer}
+        target_revision: {type: integer, nullable: true}
+        files_added: {type: integer}
+        files_modified: {type: integer}
+        files_deleted: {type: integer}
+        change_manifest: {type: array, items: {$ref: '#/components/schemas/ChangeSummaryItem'}}
+        summary: {type: string}
+        status: {type: string, enum: [validating, applied, rejected, conflict, failed]}
+        failure_code: {type: string, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ChangeSummaryItem:
+      type: object
+      additionalProperties: false
+      required: [operation, path]
+      properties:
+        operation: {type: string, enum: [create, modify, delete]}
+        path: {type: string}
+        content_digest: {type: string, nullable: true}
+    ChangeOperation:
+      type: object
+      additionalProperties: false
+      required: [operation, path]
+      properties:
+        operation: {type: string, enum: [create, modify, delete]}
+        path: {type: string, minLength: 1}
+        content: {type: string, description: create 使用；不得包含 Secret。}
+        patch: {type: string, description: modify 使用的受控 patch。}
+        expected_content_digest: {type: string}
+    StudioChangeSetCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [base_revision, changes, summary, idempotency_key]
+      properties:
+        base_revision: {type: integer, minimum: 1}
+        changes: {type: array, minItems: 1, maxItems: 200, items: {$ref: '#/components/schemas/ChangeOperation'}}
+        summary: {type: string, maxLength: 2048}
+        agent_id: {type: string, description: Coding Agent 调用时必须与 Tool 授权一致。}
+        agent_session_id: {type: string}
+        agent_invocation_id: {type: string}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioChangeSetListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioChangeSet'}}}
+    WorkspaceRevision:
+      type: object
+      additionalProperties: false
+      required: [id, workspace_id, revision, source_tree_digest, revision_reason, created_at]
+      properties:
+        id: {type: string}
+        workspace_id: {type: string, description: 当前 Workspace 子资源上下文已明确。}
+        revision: {type: integer}
+        parent_revision: {type: integer, nullable: true}
+        source_revision: {type: integer, nullable: true}
+        change_set_id: {type: string, nullable: true}
+        source_tree_digest: {type: string}
+        revision_reason: {type: string, enum: [initialize, change_set, restore]}
+        created_at: {type: string, format: date-time}
+    WorkspaceRestoreRequest:
+      type: object
+      additionalProperties: false
+      required: [base_revision, source_revision, idempotency_key]
+      properties:
+        base_revision: {type: integer, minimum: 1, description: 当前 Revision 乐观校验。}
+        source_revision: {type: integer, minimum: 1, description: 内容恢复来源。}
+        reason: {type: string, maxLength: 512}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioSourceSnapshotSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, workspace_revision, status, content_digest, created_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        workspace_revision: {type: integer}
+        status: {type: string, enum: [creating, ready, failed]}
+        content_digest: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+    StudioSourceSnapshot:
+      allOf:
+        - {$ref: '#/components/schemas/StudioSourceSnapshotSummary'}
+        - type: object
+          additionalProperties: false
+          required: [studio_application_id, workspace_id, manifest_digest, size_bytes, created_by, resource_version, updated_at]
+          properties:
+            studio_application_id: {type: string, description: 可通过同一响应的 application 摘要识别。}
+            application: {$ref: '#/components/schemas/StudioApplicationSummary'}
+            workspace_id: {type: string}
+            workspace: {$ref: '#/components/schemas/StudioWorkspaceSummary'}
+            manifest_digest: {type: string, nullable: true}
+            size_bytes: {type: integer, format: int64}
+            created_by: {type: string, description: 当前 Principal 稳定 ID；无需递归展开。}
+            error_code: {type: string, nullable: true}
+            completed_at: {type: string, format: date-time, nullable: true}
+            resource_version: {type: integer}
+            updated_at: {type: string, format: date-time}
+      description: storage_ref 永不公开。
+    StudioSourceSnapshotCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_revision, idempotency_key]
+      properties:
+        name: {type: string, maxLength: 128}
+        description: {type: string, maxLength: 2048}
+        workspace_revision: {type: integer, minimum: 1}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioSourceSnapshotListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioSourceSnapshot'}}}
+    StudioApplicationVersionSummary:
+      type: object
+      additionalProperties: false
+      required: [id, version, runtime_profile, status]
+      properties:
+        id: {type: string}
+        version: {type: string}
+        runtime_profile: {type: string}
+        status: {type: string, enum: [draft, ready, archived]}
+    StudioApplicationVersion:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, application, version, source_snapshot_id, source_snapshot, runtime_profile, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string}
+        application: {$ref: '#/components/schemas/StudioApplicationSummary'}
+        version: {type: string}
+        source_snapshot_id: {type: string}
+        source_snapshot: {$ref: '#/components/schemas/StudioSourceSnapshotSummary'}
+        blueprint_revision_id: {type: string, nullable: true, description: AppStudio Blueprint 稳定 ID；客户端无需递归展开。}
+        runtime_profile: {type: string}
+        status: {type: string, enum: [draft, ready, archived]}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioApplicationVersionCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [version, source_snapshot_id]
+      properties:
+        version: {type: string, minLength: 1, maxLength: 64}
+        name: {type: string, maxLength: 128}
+        description: {type: string, maxLength: 2048}
+        source_snapshot_id: {type: string}
+        blueprint_revision_id: {type: string}
+        runtime_profile: {type: string, default: web_light_bff}
+    StudioApplicationVersionListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioApplicationVersion'}}}
+    TaskGroupSummary:
+      type: object
+      additionalProperties: false
+      required: [id, status, progress, resource_version]
+      properties:
+        id: {type: string}
+        status: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1}
+        resource_version: {type: integer}
+      description: 由 Task Center 受控摘要返回；不可见或不可用时 task_group 为 null。
+    ArtifactSummary:
+      type: object
+      additionalProperties: false
+      required: [id, artifact_type, processing_status, content_digest, size_bytes]
+      properties:
+        id: {type: string}
+        artifact_type: {type: string, enum: [studio_application_bundle]}
+        processing_status: {type: string}
+        content_digest: {type: string}
+        size_bytes: {type: integer, format: int64}
+      description: 由 Asset Library 受控摘要返回；不含 storage_uri、任意下载 URL 或内容正文。
+    StudioBuild:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, application, source_snapshot_id, source_snapshot, build_profile, status, diagnostics_summary, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string}
+        application: {$ref: '#/components/schemas/StudioApplicationSummary'}
+        studio_application_version_id: {type: string, nullable: true}
+        application_version: {type: object, allOf: [{$ref: '#/components/schemas/StudioApplicationVersionSummary'}], nullable: true}
+        source_snapshot_id: {type: string}
+        source_snapshot: {$ref: '#/components/schemas/StudioSourceSnapshotSummary'}
+        task_group_id: {type: string, nullable: true}
+        task_group: {type: object, allOf: [{$ref: '#/components/schemas/TaskGroupSummary'}], nullable: true}
+        atomic_task_id: {type: string, nullable: true, description: 单任务 Build 兼容引用；执行详情仍由 Task Center 查询。}
+        build_profile: {type: string}
+        status: {type: string, enum: [pending, validating, building, packaging, succeeded, failed, cancelled]}
+        artifact_id: {type: string, nullable: true}
+        artifact: {type: object, allOf: [{$ref: '#/components/schemas/ArtifactSummary'}], nullable: true}
+        artifact_digest: {type: string, nullable: true}
+        artifact_size_snapshot: {type: integer, format: int64, nullable: true}
+        artifact_created_at_snapshot: {type: string, format: date-time, nullable: true}
+        diagnostics_summary: {type: object, additionalProperties: true}
+        error_code: {type: string, nullable: true}
+        started_at: {type: string, format: date-time, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioBuildCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [source_snapshot_id, build_profile, idempotency_key]
+      properties:
+        name: {type: string, maxLength: 128}
+        source_snapshot_id: {type: string}
+        studio_application_version_id: {type: string}
+        build_profile: {type: string, minLength: 1, maxLength: 128}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioBuildListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioBuild'}}}
+    StudioPreviewRuntime:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, workspace_id, workspace_revision, status, diagnostics_summary, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string}
+        workspace_id: {type: string}
+        workspace: {$ref: '#/components/schemas/StudioWorkspaceSummary'}
+        workspace_revision: {type: integer}
+        status: {type: string, enum: [starting, running, refreshing, failed, stopped, expired]}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+        diagnostics_summary: {type: object, additionalProperties: true}
+        last_active_at: {type: string, format: date-time, nullable: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+        error_code: {type: string, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+      description: endpoint_ref、process_id 和基础设施地址永不公开。
+    NullablePreviewRuntimeResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties: {data: {type: object, allOf: [{$ref: '#/components/schemas/StudioPreviewRuntime'}], nullable: true}}
+    PreviewCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_revision, checks, idempotency_key]
+      properties:
+        workspace_revision: {type: integer, minimum: 1}
+        checks: {type: string, description: 'preview,type_check,test 逗号分隔。'}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    SecretReferenceSummary:
+      type: object
+      additionalProperties: false
+      required: [reference, status]
+      properties:
+        reference: {type: string, pattern: '^secret://'}
+        status: {type: string, enum: [valid, invalid, unavailable]}
+      description: 只返回引用与校验状态，绝不返回 Secret 值。
+    IntegrationReferenceSummary:
+      type: object
+      additionalProperties: false
+      required: [reference, status]
+      properties:
+        reference: {type: string, pattern: '^integration://'}
+        status: {type: string, enum: [valid, invalid, unavailable]}
+    StudioRuntimeConfig:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, studio_application_version_id, environment, public_config, secret_references, integration_references, resource_profile, validation_status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string, description: Version 摘要已提供归属，无需递归展开 Application。}
+        studio_application_version_id: {type: string}
+        application_version: {$ref: '#/components/schemas/StudioApplicationVersionSummary'}
+        environment: {type: string, enum: [preview, production]}
+        public_config: {type: object, additionalProperties: true}
+        secret_references: {type: array, items: {$ref: '#/components/schemas/SecretReferenceSummary'}}
+        integration_references: {type: array, items: {$ref: '#/components/schemas/IntegrationReferenceSummary'}}
+        resource_profile: {type: string}
+        validation_status: {type: string, enum: [pending, valid, invalid]}
+        validation_error_code: {type: string, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioRuntimeConfigReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [public_config, secret_references, integration_references, resource_profile]
+      properties:
+        public_config: {type: object, additionalProperties: true}
+        secret_references: {type: array, items: {type: object, additionalProperties: false, required: [reference], properties: {reference: {type: string, pattern: '^secret://'}}}}
+        integration_references: {type: array, items: {type: object, additionalProperties: false, required: [reference], properties: {reference: {type: string, pattern: '^integration://'}}}}
+        resource_profile: {type: string, minLength: 1, maxLength: 128}
+        resource_version: {type: integer, minimum: 0}
+    StudioRuntimeInstanceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, status, health_status]
+      properties:
+        id: {type: string}
+        status: {type: string, enum: [PENDING, STARTING, READY, UNHEALTHY, STOPPING, STOPPED, FAILED]}
+        health_status: {type: string, enum: [unknown, checking, healthy, unhealthy]}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+    StudioRelease:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, application, studio_application_version_id, application_version, studio_build_id, build, artifact_id, artifact_digest, environment, deployment_provider_id, status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string}
+        application: {$ref: '#/components/schemas/StudioApplicationSummary'}
+        studio_application_version_id: {type: string}
+        application_version: {$ref: '#/components/schemas/StudioApplicationVersionSummary'}
+        studio_build_id: {type: string}
+        build: {$ref: '#/components/schemas/StudioBuildSummary'}
+        runtime_config_id: {type: string, description: 同一 Release 已固定的配置版本；Secret 值不展开。}
+        artifact_id: {type: string}
+        artifact: {type: object, allOf: [{$ref: '#/components/schemas/ArtifactSummary'}], nullable: true}
+        artifact_digest: {type: string}
+        environment: {type: string, enum: [preview, production]}
+        deployment_provider_id: {type: string, description: 系统注册组件 ID；Provider 私有配置不展开。}
+        deployment_task_id: {type: string, nullable: true, description: Task Center 稳定 ID；详情由 Task Center 查询。}
+        studio_runtime_instance_id: {type: string, nullable: true}
+        runtime_instance: {type: object, allOf: [{$ref: '#/components/schemas/StudioRuntimeInstanceSummary'}], nullable: true}
+        rollback_of_release_id: {type: string, nullable: true}
+        rollback_of_release: {type: object, allOf: [{$ref: '#/components/schemas/StudioReleaseSummary'}], nullable: true}
+        hostname: {type: string, nullable: true}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+        status: {type: string, enum: [pending, deploying, ready, failed, superseded]}
+        error_code: {type: string, nullable: true}
+        released_at: {type: string, format: date-time, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioBuildSummary:
+      type: object
+      additionalProperties: false
+      required: [id, status, source_snapshot_id, artifact_digest]
+      properties:
+        id: {type: string}
+        status: {type: string}
+        source_snapshot_id: {type: string, description: Release lineage 展示所需稳定 ID，无需递归 Snapshot。}
+        artifact_digest: {type: string}
+    StudioReleaseCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [studio_build_id, environment, runtime_config_id, deployment_provider_id, idempotency_key]
+      properties:
+        name: {type: string, maxLength: 128}
+        studio_build_id: {type: string}
+        environment: {type: string, enum: [preview, production]}
+        runtime_config_id: {type: string}
+        deployment_provider_id: {type: string}
+        hostname: {type: string}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioReleaseListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioRelease'}}}
+    StudioRollbackRequest:
+      type: object
+      additionalProperties: false
+      required: [runtime_config_id, deployment_provider_id, idempotency_key]
+      properties:
+        runtime_config_id: {type: string}
+        deployment_provider_id: {type: string}
+        reason: {type: string, maxLength: 512}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    StudioRuntimeInstance:
+      type: object
+      additionalProperties: false
+      required: [id, name, studio_application_id, studio_release_id, release, artifact_id, artifact_digest, deployment_provider_id, status, health_status, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        studio_application_id: {type: string, description: Release 摘要已表达应用归属，无需递归 Application。}
+        studio_release_id: {type: string}
+        release: {$ref: '#/components/schemas/StudioReleaseSummary'}
+        artifact_id: {type: string}
+        artifact: {type: object, allOf: [{$ref: '#/components/schemas/ArtifactSummary'}], nullable: true}
+        artifact_digest: {type: string}
+        deployment_provider_id: {type: string, description: Provider 稳定 ID；不展开基础设施私有配置。}
+        status: {type: string, enum: [PENDING, STARTING, READY, UNHEALTHY, STOPPING, STOPPED, FAILED]}
+        health_status: {type: string, enum: [unknown, checking, healthy, unhealthy]}
+        endpoint: {type: object, allOf: [{$ref: '#/components/schemas/EndpointSummary'}], nullable: true}
+        error_code: {type: string, nullable: true}
+        heartbeat_at: {type: string, format: date-time, nullable: true}
+        ready_at: {type: string, format: date-time, nullable: true}
+        stopped_at: {type: string, format: date-time, nullable: true}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+      description: provider_runtime_id、endpoint_ref、私网地址和运行凭证永不公开。
