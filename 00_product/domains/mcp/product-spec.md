@@ -4,7 +4,7 @@
 > 版本：v1.0.0
 > 日期：2026-08-01
 > 协议基线：Model Context Protocol `2026-07-28`
-> Release 状态：未确认，不可作为正式实现依据
+> Release 状态：`spec-v1.9.2` released，可按实施门禁作为正式实现依据
 
 ---
 
@@ -12,7 +12,7 @@
 
 - 原型路径：`00_product/domains/mcp/product-spec.md` 本次整理前的 S0 Draft。
 - 原型目标：验证 OmniMAM 通过标准 MCP 协议向本地和远程 Agent 暴露应用、能力目录、素材与异步运行投影的可行性。
-- 用户确认状态：已确认将当前 Draft 直接整理为 S1；尚未确认 Release。
+- 用户确认状态：已确认将当前 Draft 直接整理为 S1，并于 `spec-v1.9.2` 确认 Release。
 - 沉淀范围：MCP `2026-07-28`、Streamable HTTP、stdio Proxy、固定 Tools、Resources、Tasks 扩展、Capability 只读发现、Application 查询与运行、ApplicationRun 查询与取消、Asset 查询与受控上传、JWT/RBAC、审计、限流和追踪。
 - 未沉淀内容：直接 Capability 执行、泛化 Invocation、OAuth 2.1 授权服务器与外部 OAuth Subject、Personal Access Token、独立 MCP Scope/AccessGrant、交互式 `input_required`、`tasks/update`、MCP Prompts、MCP Apps、Sampling、动态 Tool、Provider/Engine 管理、任意 ComfyUI Workflow 提交、Canvas 编辑、直接 S3/MinIO 上传与生产代码结构。
 
@@ -1194,7 +1194,7 @@ Agent Trace
 
 ## 25. S2 合同状态
 
-当前已建立未 Release 的 MCP S2 草案：
+当前已建立并由 `spec-v1.9.2` Release 的 MCP S2：
 
 * `openapi.yaml` 定义 `POST /mcp`、JSON-RPC、Header、SSE、11 个固定 Tool、6 类 Resource URI 和 MCP Tasks。
 * `schema.sql` 只定义 `McpTaskBinding` 设计态持久化、TTL 和幂等约束。
@@ -1202,7 +1202,7 @@ Agent Trace
 * `events.yaml` 显式声明 v1 无 MCP 领域事件；业务事件继续由源领域拥有。
 * `module-contract.md` 定义 Identity、Model Gateway、Application Platform、Task Center 和 Asset Library 的受控协作边界。
 
-上述 S2 与本 S1 同样尚未 Release，不得作为正式实现依据。后续 S2 修订不得重新引入直接 Capability 执行、泛化 Invocation、OAuth/PAT、交互式 Task、独立任务队列、MCP 自有素材存储或底层执行结构。
+上述 S2 与本 S1 已由 `spec-v1.9.2` Release。后续 S2 修订不得重新引入直接 Capability 执行、泛化 Invocation、OAuth/PAT、交互式 Task、独立任务队列、MCP 自有素材存储或底层执行结构。
 
 ---
 
@@ -1229,7 +1229,7 @@ Agent Trace
 17. `BR-MCP-017`：创建 ApplicationRun、UploadSession 和完成上传必须把幂等语义委托给事实拥有领域。
 18. `BR-MCP-018`：所有请求必须携带可追踪审计上下文，且不得记录 Token、凭证、二进制或敏感输入。
 19. `BR-MCP-019`：当前无对应事实的 `input_required`、`tasks/update`、OAuth/PAT 和独立 AccessGrant 不得由 S2 或实现自行启用。
-20. `BR-MCP-020`：当前 S1 未经 Release，Tool/Resource 名称和逻辑字段不是正式实现合同。
+20. `BR-MCP-020`：Tool/Resource 名称和逻辑字段经 S2 与 Release 固化后必须保持稳定；实现不得自行增加、重命名或扩展未发布能力。
 
 ### 26.2 用户故事
 

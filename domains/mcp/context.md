@@ -57,7 +57,7 @@ MCP 不读取其他领域私有表，不复制运行快照或状态，也不接�
 
 ## 8. 当前状态
 
-本领域由 2026-08-01 的 S0 Draft 原位整理为 S1，并已建立完整 S2 与领域架构参考；尚未写入 `RELEASE.md`，不得作为正式实现、合并或验收依据。Capability 直接执行、OAuth/PAT、交互式 MCP Task、动态 Tool、MCP Prompts/Apps/Sampling 和直接 StorageBackend 上传均不在 v1。
+本领域由 2026-08-01 的 S0 Draft 原位整理为 S1，并已建立完整 S2 与领域架构参考；`spec-v1.9.2` 已允许其按实施门禁作为正式实现、合并和验收依据。Capability 直接执行、OAuth/PAT、交互式 MCP Task、动态 Tool、MCP Prompts/Apps/Sampling 和直接 StorageBackend 上传均不在 v1。
 
 ## 9. 不在本领域定义的内容
 

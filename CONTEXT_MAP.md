@@ -24,7 +24,7 @@
 | `sse` | `domains/sse/context.md` | 用户级实时事件投影 | EventSource、断线恢复、重同步 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 
-`modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已有未 Release S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
+`modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
 
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 

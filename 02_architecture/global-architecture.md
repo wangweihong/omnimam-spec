@@ -22,7 +22,7 @@
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
 | `notification-center` | 可靠源事件消费、通知规则、用户收件箱、偏好、聚合与 Notification Outbox | 已有 S1/S2，`spec-v1.8.0` released |
-| `mcp` | MCP `2026-07-28`、固定 Tool/Resource、ApplicationRun Task 映射与 Agent 访问控制 | 已有 S1/S2，待 Release |
+| `mcp` | MCP `2026-07-28`、固定 Tool/Resource、ApplicationRun Task 映射与 Agent 访问控制 | 已有 S1/S2，`spec-v1.9.2` released |
 
 ## 3. 依赖方向
 
@@ -174,6 +174,6 @@ sequenceDiagram
 ## 6. 当前架构缺口
 
 - `identity` 只有 S1，尚缺 S2 契约，其他领域的权限集成只能按 S1 语义描述。
-- `mcp` S1/S2 与架构参考已经建立但尚未 Release；JWT 验签和审计仍受 identity 缺少 S2 的实施门禁约束。
+- `mcp` S1/S2 与架构参考已由 `spec-v1.9.2` 发布；JWT 验签和审计仍受 identity 缺少 S2 的实施门禁约束。
 - `asset-library` 的素材列表、批量打标、Artifact、AssetVersion 和 Representation 已有 S2；普通素材上传、下载、重命名、删除与完整分组 API 仍待补。
 - workflow-canvas 首期编译保留直接 DAG 依赖并支持节点最早释放；多流、fan-out 和复合节点必须展平到唯一 DAGTaskGroup，不能使用 Group 嵌套或同层整体等待改变依赖语义。

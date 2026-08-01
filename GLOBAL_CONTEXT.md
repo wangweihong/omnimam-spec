@@ -28,7 +28,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `sse` | 将已持久业务事实投影为当前用户可短期重放的实时事件。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
-当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，但本次迁移尚未写入 `RELEASE.md`，不能作为新的正式实现依据。用户私有模型事实继续由 `model-management` 承载。`mcp` 已形成未 Release 的 S1、完整 S2 和架构参考；当前可用于产品与合同评审，但不能作为正式实现、合并或验收依据。
+当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，但本次迁移尚未写入 `RELEASE.md`，不能作为新的正式实现依据。用户私有模型事实继续由 `model-management` 承载。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
 
 ## 4. 核心业务对象
 
@@ -79,7 +79,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 8. 非目标与延期范围
 
-本次迁移不创建正式数据库 migration、不重命名兼容标识，也不修改 `RELEASE.md`；用户后续确认 Release 前，历史 Release 仍是正式实施门禁。`mcp` 当前 S1/S2 均未 Release；Agent 是端类型但不是独立事实域。各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；Agent 是端类型但不是独立事实域。各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 
