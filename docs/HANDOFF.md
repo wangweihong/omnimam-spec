@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-将已完成的 `mcp` S1/S2、Context 和架构提交并发布为 `spec-v1.9.2`。状态：发布进行中，发布前验证已完成，尚未创建 Spec commit。
+将已完成的 `mcp` S1/S2、Context 和架构提交并发布为 `spec-v1.9.2`。状态：已完成并发布。
 
 ## 本次已完成
 
@@ -18,7 +18,7 @@
 
 ## 当前进行中
 
-- 只暂存本次 MCP 相关文件，创建稳定 Spec commit；随后将该 commit 登记到 `RELEASE.md`、创建 Release commit 和不可变 tag。
+- 无。
 
 ## 文件变化
 
@@ -26,7 +26,7 @@
 - 新增：`02_architecture/domains/mcp.md`。
 - 修改：`00_product/domains/mcp/product-spec.md`、`domains/mcp/context.md`。
 - 修改：`01_contracts/error-code-index.md`、`02_architecture/global-architecture.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 未修改：`RELEASE.md`。
+- 修改：`RELEASE.md`，新增 `spec-v1.9.2` 正式发布记录。
 - 保留用户已有无关改动：`agent/`、`appstudio/`、`archive/`、`设计图/`、`skills/archive/`。
 
 ## 关键设计决策
@@ -57,18 +57,19 @@
 - 全仓 67 张设计表无重名；MCP Schema 只有 `mcp_task_bindings`，无跨域 FK。
 - MCP S2 中全部 BR/US 引用可解析，无缩写编号残留。
 - MCP S1、MCP 领域架构和全局架构共 8 张 Mermaid 图经 Mermaid CLI 渲染通过。
-- Markdown 围栏、Context 路径和 `git diff --check` 通过；`RELEASE.md` 无差异。
+- Markdown 围栏、Context 路径和 `git diff --check` 通过；Release 记录中的文件与实施门禁已复核。
+- 最终 Spec commit：`45ea82d4fd42b1697f4cd9af24c2ccb1ac965373`。
+- `spec-v1.9.2` 已登记为 released，`allowed_as_formal_implementation_basis: true`，并创建同名不可变 tag。
 
 ## 待办、问题与风险
 
-- MCP S1/S2 尚未 Release，不得作为正式实现、合并或验收依据。
 - Identity 当前只有 S1、缺少 S2；MCP JWT 验签、撤销检查和 AuditLog 的具体实现仍受该门禁约束。
 - 后续启用 OAuth/PAT、Capability 直接执行或交互式 MCP Task 必须先修改 S1，不能由实现自行扩展。
-- 本地 `spec-v1.9.0`、`spec-v1.9.1` tag 属于其他 worktree 分支且未在当前 master/远端发布，本次不得移动或覆盖，版本使用 `spec-v1.9.2`。
+- 本地 `spec-v1.9.0`、`spec-v1.9.1` tag 属于其他 worktree 分支且未在当前 master/远端发布，本次未移动或覆盖这些 tag。
 
 ## 推荐下一步
 
-执行精确 `git add` 和 Spec commit，取得 commit hash 后登记 `spec-v1.9.2` Release。
+按 `spec-v1.9.2` 实现门禁补齐 Identity S2 的 JWT/Audit 边界，再实施 MCP Server。
 
 Next Prompt:
 

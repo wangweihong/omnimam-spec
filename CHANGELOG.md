@@ -6,7 +6,8 @@
 - MCP v1 固定为 Capability 只读发现、Application 查询/运行、ApplicationRun 查询/取消和 Asset 查询/受控上传；异步执行只映射既有 ApplicationRun/AtomicTask，不新增 CapabilityInvocation、泛化 Invocation 或独立任务队列。
 - 新增 MCP 完整 S2：OpenAPI 3.1 固化 `POST /mcp`、8 个协议 method、11 个固定 Tool、6 类 Resource URI 和 Tasks 扩展；`/mcp` 作为用户确认的标准协议路径例外，不使用 `/api/v1`。
 - 新增 `McpTaskBinding` 设计态 Schema、27 个 `190xxx` 错误码、5 个 MCP 权限、显式无领域事件合同、模块合同和领域架构；下游业务错误与权限继续保留源领域 code/value 和权限码。
-- MCP 接入复用 Identity JWT/RBAC、ApplicationRun/AtomicTask 和 Asset Library UploadSession；OAuth/PAT、独立 MCP Scope、`input_required`/`tasks.update`、动态 Tool、直接 StorageBackend 上传继续延期。本次不修改 `RELEASE.md`。
+- MCP 接入复用 Identity JWT/RBAC、ApplicationRun/AtomicTask 和 Asset Library UploadSession；OAuth/PAT、独立 MCP Scope、`input_required`/`tasks.update`、动态 Tool、直接 StorageBackend 上传继续延期。
+- 上述 MCP S1/S2、Context 与架构由用户确认为 `spec-v1.9.2`，允许作为正式实现依据；Identity JWT/Audit 的精确合同仍受 Identity S2 门禁。
 - 新增 `modelgateway` 领域，将 CapabilityDefinition、ProviderCapability、ApplicationEngineType、ApplicationEngineInstance、EngineCapabilityBinding、EngineAdapter、OperationExecutor、Runtime Registry、健康检测和 ComfyUI 当前 `object_info` 从 application-platform 原样迁移。
 - 保留既有 API 路径、DTO、`AIAPP` BR/US/AC、`ERR_AIAPP_*` code/value、`aiapp.*` 权限、`aiapp_*` 表、事件名和调度 key；仅调整事实源文件、`owning_domain` 与事件 producer/consumer 归属。
 - ApplicationExecutor、ComfyUIWorkflow、应用模板/版本、RuntimeFormSchema 与 ApplicationRun 继续归 application-platform，并通过受控模块边界消费 Model Gateway。
