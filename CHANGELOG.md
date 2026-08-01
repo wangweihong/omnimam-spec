@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-01
+
+- 新增 `modelgateway` 领域，将 CapabilityDefinition、ProviderCapability、ApplicationEngineType、ApplicationEngineInstance、EngineCapabilityBinding、EngineAdapter、OperationExecutor、Runtime Registry、健康检测和 ComfyUI 当前 `object_info` 从 application-platform 原样迁移。
+- 保留既有 API 路径、DTO、`AIAPP` BR/US/AC、`ERR_AIAPP_*` code/value、`aiapp.*` 权限、`aiapp_*` 表、事件名和调度 key；仅调整事实源文件、`owning_domain` 与事件 producer/consumer 归属。
+- ApplicationExecutor、ComfyUIWorkflow、应用模板/版本、RuntimeFormSchema 与 ApplicationRun 继续归 application-platform，并通过受控模块边界消费 Model Gateway。
+- 移动 Runtime Registry 与 ProviderCapability Schema/清单，拆分 OpenAPI、设计态 Schema、错误码、权限、事件、模块契约和领域架构；同步全局 Context、导航、术语和错误码索引。
+- 删除未完成且未形成 S1 文件的 `model-integration` Context 草稿；用户模型事实继续归 model-management。本次不修改 `RELEASE.md`。
+
 ## 2026-07-30
 
 - 新增 `GLOBAL_CONTEXT.md`，以轻量摘要说明 OmniMAM 目标、Spec 分层、实际领域、核心对象、事实归属、跨域边界和最小读取规则；Context 不构成新的事实层。

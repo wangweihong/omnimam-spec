@@ -1,19 +1,3 @@
-engine_instance_health_changed:
-  producer: application-platform.engine-instance
-  consumers: [application-platform.engine-router]
-  trigger_condition: EngineInstance 健康检测结果相对已保存状态发生变化。
-  payload:
-    engine_instance_id: string
-    application_engine_type_id: string
-    health_status: string
-    checked_at: string(date-time)
-    failure_summary: string
-  idempotency_key: engine_instance_id:checked_at
-  retry_policy: 发布失败后按固定间隔重试，健康事实仍以 EngineInstance 表为准。
-  failure_policy: 不得因事件发布失败回滚已经完成的健康检测；路由读取前必须查询最新状态。
-  related_rules: [BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-041]
-
 comfyui_workflow_converted:
   producer: application-platform.comfyui-workflow
   consumers: [audit-service]
@@ -32,6 +16,7 @@ comfyui_workflow_converted:
   failure_policy: 事件发布失败不得回滚转换；数据库中的模板与首版是事实源。
   related_rules: [BR-AIAPP-156, BR-AIAPP-174, BR-AIAPP-190, BR-AIAPP-191, BR-AIAPP-192]
   related_user_stories: [US-AIAPP-046]
+
 
 application_version_published:
   producer: application-platform.application
@@ -55,6 +40,7 @@ application_version_published:
   failure_policy: 版本事实以数据库记录为准；消费者必须按 application_version_id 幂等处理。
   related_rules: [BR-AIAPP-142]
   related_user_stories: [US-AIAPP-042]
+
 
 application_run_created:
   producer: application-platform.application-run
@@ -85,6 +71,7 @@ application_run_created:
   related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149]
   related_user_stories: [US-AIAPP-043]
 
+
 application_run_atomic_task_bound:
   producer: application-platform.application-run
   consumers: [application-platform.application-run-view, workflow-canvas, audit-service]
@@ -100,6 +87,7 @@ application_run_atomic_task_bound:
   failure_policy: ApplicationRun 表中的绑定关系为事实源；事件失败不得重复创建 AtomicTask。
   related_rules: [BR-AIAPP-143, BR-AIAPP-149]
   related_user_stories: [US-AIAPP-043]
+
 
 application_run_projection_changed:
   producer: application-platform.application-run
@@ -119,6 +107,7 @@ application_run_projection_changed:
   failure_policy: 旧 resource_version 不得覆盖新投影；AtomicTask 始终是执行状态事实源。
   related_rules: [BR-AIAPP-143]
   related_user_stories: [US-AIAPP-043]
+
 
 application_run_artifact_ref_changed:
   producer: application-platform.application-run
@@ -143,24 +132,6 @@ application_run_artifact_ref_changed:
   related_rules: [BR-AIAPP-181, BR-AIAPP-182, BR-AIAPP-184]
   related_user_stories: [US-AIAPP-050]
 
-provider_capability_correction_required:
-  producer: application-platform.operation-executor
-  consumers: [application-platform.admin-diagnostics]
-  trigger_condition: 外部平台拒绝清单声明为有效的模型、Operation 或参数组合。
-  payload:
-    provider_capability_id: string
-    provider_capability_revision: string
-    model_id: string
-    operation_id: string
-    field: string
-    rejected_value: object
-    provider_error: object
-    occurred_at: string(date-time)
-  idempotency_key: provider_capability_id:provider_capability_revision:operation_id:occurred_at
-  retry_policy: 诊断事项发布失败后重试，不自动修改清单。
-  failure_policy: 运行按外部平台失败结束；维护人员核实文档并通过新 revision 与重启修正。
-  related_rules: [BR-AIAPP-130, BR-AIAPP-138]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-043]
 
 comfyui_workflow_api_converted:
   producer: application-platform.comfyui-workflow
@@ -178,6 +149,7 @@ comfyui_workflow_api_converted:
   failure_policy: 工作流表是转换事实源，事件失败不回滚转换。
   related_rules: [BR-AIAPP-164, BR-AIAPP-165]
   related_user_stories: [US-AIAPP-047]
+
 
 comfyui_workflow_test_run_changed:
   producer: application-platform.comfyui-workflow-test-run

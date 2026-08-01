@@ -8,7 +8,8 @@
 | --- | --- | --- |
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
 | model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
-| application-platform | `01_contracts/domains/application-platform/errors.yaml` | ProviderCapability 启动加载、引擎与绑定、ComfyUI 工作流、应用契约、运行和访问错误码 |
+| modelgateway | `01_contracts/domains/modelgateway/errors.yaml` | ProviderCapability 启动加载、引擎、绑定与 ComfyUI object_info 错误码 |
+| application-platform | `01_contracts/domains/application-platform/errors.yaml` | ComfyUI 工作流、应用契约、运行和兼容访问错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | AtomicTask、Group/DAG、Schedule、运行时、Attempt 与权限错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、访问、标签、上传、Collection、Artifact、AssetVersion 与 Representation 错误码 |
 | workflow-canvas | `01_contracts/domains/workflow-canvas/errors.yaml` | NodeDefinition、Canvas 草稿、不可变版本、scope/复用运行、输出可用性和访问错误码 |
@@ -31,12 +32,12 @@
 | 120600-120799 | model-management | default-model | 默认模型缺失、候选不可用和用途错误 |
 | 120800-120999 | model-management | health | 模型健康检测错误 |
 | 121000-121199 | model-management | access | 用户模型配置访问控制错误 |
-| 130200-130399 | application-platform | provider-capability | 目录、YAML、Schema、重复 ID、执行依赖和能力可用性错误 |
-| 130400-130599 | application-platform | engine | EngineInstance、鉴权、Binding、限制与健康可用性错误 |
+| 130200-130399 | modelgateway | provider-capability | 目录、YAML、Schema、重复 ID、执行依赖和能力可用性错误；保留既有数值区间 |
+| 130400-130599 | modelgateway | engine | EngineInstance、鉴权、Binding、限制与健康可用性错误；保留既有数值区间 |
 | 130600-130799 | application-platform | application | 模板来源、不可变版本、RuntimeForm 和输入校验错误 |
 | 130800-130999 | application-platform | application-run | ApplicationRun、AtomicTask 投影和平台能力不匹配错误 |
-| 131000-131199 | application-platform | access | 能力诊断、Engine、Application 和 Run 访问控制错误 |
-| 131200-131399 | application-platform | comfyui-workflow | ComfyUI 工作流导入、解析、实例校验、归档和模板转换错误 |
+| 131000-131199 | application-platform | access | Application Platform 与兼容 Gateway 权限访问错误 |
+| 131200-131399 | application-platform / modelgateway | comfyui-workflow / engine-object-info | 已发布兼容共享区间：131221、131222、131243、131244 归 modelgateway，其余现有错误归 application-platform |
 | 140200-140399 | task-center | orchestration | functionRef、TaskGroup 和 DAGTaskGroup 校验错误 |
 | 140400-140599 | task-center | atomic-task | AtomicTask、Group/DAG 状态、幂等和可见性错误 |
 | 140600-140799 | task-center | runtime | WorkflowRuntime 可用性和请求错误；140600 保留旧 Worker 错误 |
@@ -71,3 +72,4 @@
 - 新增错误码时，必须确认 value 落在已登记区间内。
 - 已 release 的 value 不得复用。
 - 废弃错误码必须在 domain `errors.yaml` 中标记 `deprecated: true`。
+- 领域迁移不得重编号；既有共享区间必须在说明中列出精确所有权，不能创建同义新 code/value。

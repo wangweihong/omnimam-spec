@@ -17,16 +17,17 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | 领域 | 一行职责 |
 | --- | --- |
 | `identity` | 统一认证、会话、Token、RBAC、权限资源与安全审计。 |
+| `modelgateway` | 管理能力目录、执行引擎、能力绑定、平台适配与 Operation 执行。 |
 | `model-management` | 管理当前用户私有的模型提供商、模型清单、健康状态与默认模型。 |
 | `ai-chatting` | 管理话题、消息、助手、生成运行、快捷短语与翻译。 |
-| `application-platform` | 管理能力目录、执行环境、模板、应用版本、运行表单与 ApplicationRun。 |
+| `application-platform` | 管理 ComfyUIWorkflow、模板、应用版本、运行表单与 ApplicationRun。 |
 | `task-center` | 管理 AtomicTask、执行尝试、组合编排、计划调度与执行状态。 |
 | `asset-library` | 管理 Artifact、Asset、版本、Representation、Blob 与素材生命周期。 |
 | `workflow-canvas` | 管理画布草稿、不可变版本、节点与边、编译和运行投影。 |
 | `notification-center` | 消费可靠领域事件并维护用户通知、计数、偏好与聚合。 |
 | `sse` | 将已持久业务事实投影为当前用户可短期重放的实时事件。 |
 
-`application-engine` 和 `capability-catalog` 当前不是独立正式领域：Engine、Adapter、Executor、`ProviderCapability` 和绑定事实归 `application-platform`。`mcp-server` 尚无正式领域 Spec，只能视为规划中的协议入口，不得据此推导实现合同。
+当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，但本次迁移尚未写入 `RELEASE.md`，不能作为新的正式实现依据。用户私有模型事实继续由 `model-management` 承载；`mcp-server` 尚无正式领域 Spec，只能视为规划中的协议入口，不得据此推导实现合同。
 
 ## 4. 核心业务对象
 
@@ -36,9 +37,11 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `Application` | 面向用户和画布的稳定业务应用身份；归 application-platform。 |
 | `ApplicationVersion` | 已发布应用的不可变输入输出与执行契约；归 application-platform。 |
 | `RuntimeFormSchema` | 按应用版本、能力、权限和可用性派生的运行表单；归 application-platform。 |
-| `ApplicationEngineInstance` | 一个真实执行账号或运行环境；归 application-platform。 |
-| `ProviderCapability` | 从只读目录加载的平台、模型、Operation 和参数约束事实；归 application-platform。 |
-| `EngineCapabilityBinding` | Engine 实例与平台能力的绑定及实例级收紧；归 application-platform。 |
+| `ApplicationEngineInstance` | 一个真实执行账号或运行环境；归 modelgateway。 |
+| `ProviderCapability` | 从只读目录加载的平台、模型、Operation 和参数约束事实；归 modelgateway。 |
+| `EngineCapabilityBinding` | Engine 实例与平台能力的绑定及实例级收紧；归 modelgateway。 |
+| `UserModelProvider` | 当前用户私有模型连接；归 model-management。 |
+| `UserProviderModel` | 当前用户私有 Provider 下的模型清单与特征；归 model-management。 |
 | `ApplicationRun` | 应用运行快照及 AtomicTask 状态的只读投影；归 application-platform。 |
 | `AtomicTask` | 一次异步执行的状态、进度、重试、超时和取消事实；归 task-center。 |
 | `Artifact` | 执行产生、尚未登记为正式素材的受控制品；归 asset-library。 |
@@ -49,13 +52,13 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 5. 全局事实归属
 
-应用、模板、版本、能力目录、Engine 配置和 ApplicationRun 归 `application-platform`；异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；模型服务配置归 `model-management`；对话和助手会话归 `ai-chatting`；身份、会话和授权归 `identity`。
+当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；身份、会话和授权归 `identity`。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
 ## 6. 核心跨域关系
 
-- Application 执行由 application-platform 固定版本和运行快照，再由 task-center 创建并执行 AtomicTask；ApplicationRun 不拥有底层状态机。
+- Application 执行由 application-platform 固定版本和运行快照，通过 modelgateway 解析能力并执行 Operation，再由 task-center 管理 AtomicTask；ApplicationRun 不拥有底层状态机。
 - Artifact 由受信任执行方交付给 asset-library，登记后形成或关联 Asset/AssetVersion；AtomicTask 成功不等于素材 ready。
 - workflow-canvas 固定 CanvasVersion 和 ApplicationVersion，将合法 DAG 编译到 task-center，并只保存运行映射与素材引用。
 - notification-center 消费已登记的可靠 source event，不从低层任务终态猜测上层 Application、Asset 或 Canvas 结果。
@@ -65,13 +68,14 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 - Task Center 当前以 `AtomicTask` 为唯一执行单元；旧 `TaskRun`、`ExecutionLease`、Worker claim 和自研 Dispatcher 路径已废弃。
 - `ProviderCapability` 来自只读目录，管理员手工导入和编辑能力的旧方案已废弃。
+- Application Platform 只能通过受控边界消费 Model Gateway，不能读取其私有表或复制可变 Registry 事实。
 - 已发布版本和历史快照不得被后续可变资源改写；跨域摘要最多展开一跳并执行同等权限过滤。
 - S2 `schema.sql` 是设计态 Schema，不是 migration；本仓库不保存正式实现代码、运行时配置或 CI/CD 实现。
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
 
 ## 8. 非目标与延期范围
 
-Context 改造不重写 S1/S2、不建立新领域、不补齐缺失合同，也不改变 Release。MCP Server 尚无正式 Spec；Agent 是端类型但不是当前独立事实域。各领域标记为延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次迁移不创建正式数据库 migration、不重命名兼容标识，也不修改 `RELEASE.md`；用户后续确认 Release 前，历史 Release 仍是正式实施门禁。MCP Server 尚无正式 Spec；Agent 是端类型但不是当前独立事实域。各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 

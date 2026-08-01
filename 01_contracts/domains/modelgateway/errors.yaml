@@ -1,0 +1,362 @@
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_DIRECTORY_UNREADABLE
+  value: 130220
+  http: 200
+  cn: ProviderCapability 目录不存在或不可读取，能力注册表已降级。
+  en: The ProviderCapability directory is missing or unreadable; the registry is degraded.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-131, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_YAML_INVALID
+  value: 130221
+  http: 200
+  cn: ProviderCapability 文件不是合法 YAML。
+  en: The ProviderCapability file is not valid YAML.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_INVALID
+  value: 130222
+  http: 200
+  cn: ProviderCapability 字段不符合当前 Schema。
+  en: ProviderCapability fields do not conform to the current schema.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_VERSION_UNSUPPORTED
+  value: 130223
+  http: 200
+  cn: ProviderCapability schema_version 不受支持。
+  en: The ProviderCapability schema_version is not supported.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_DUPLICATED
+  value: 130224
+  http: 200
+  cn: 多个 ProviderCapability 文件声明了相同 ID，所有冲突项均不可用。
+  en: Multiple ProviderCapability files declare the same ID; all conflicting entries are unavailable.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-133, BR-AIAPP-134]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ENGINE_TYPE_MISSING
+  value: 130225
+  http: 200
+  cn: ProviderCapability 引用的 ApplicationEngineType 未注册。
+  en: The ApplicationEngineType referenced by ProviderCapability is not registered.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ADAPTER_MISSING
+  value: 130226
+  http: 200
+  cn: ProviderCapability 对应的 EngineAdapter 未注册。
+  en: The EngineAdapter required by ProviderCapability is not registered.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_EXECUTOR_MISSING
+  value: 130227
+  http: 200
+  cn: ProviderCapability 中至少一个 Operation 缺少 OperationExecutor。
+  en: At least one ProviderCapability operation has no registered OperationExecutor.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_VARIANT_INVALID
+  value: 130228
+  http: 200
+  cn: ProviderCapability 的模型、Operation、Variant 或参数约束不一致。
+  en: ProviderCapability models, operations, variants, or parameter constraints are inconsistent.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_UNAVAILABLE
+  value: 130229
+  http: 200
+  cn: ProviderCapability 当前不可用，不能用于绑定、表单解析或运行。
+  en: ProviderCapability is unavailable and cannot be used for binding, form resolution, or execution.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137]
+  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-043]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_NOT_FOUND
+  value: 130230
+  http: 200
+  cn: ProviderCapability 不存在或当前不可见。
+  en: The ProviderCapability does not exist or is not visible.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-130, BR-AIAPP-136]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_RESERVED
+  value: 130231
+  http: 200
+  cn: 外部 ProviderCapability 清单使用了系统内置保留 ID，不能覆盖内置能力。
+  en: An external ProviderCapability manifest uses a reserved builtin ID and cannot override the builtin capability.
+  owning_domain: modelgateway
+  owning_module: provider-capability
+  range: 130200-130399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-133, BR-AIAPP-188]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+
+
+- code: ERR_AIAPP_ENGINE_INSTANCE_NOT_FOUND
+  value: 130420
+  http: 200
+  cn: ApplicationEngineInstance 不存在或当前用户不可见。
+  en: The ApplicationEngineInstance does not exist or is not visible to the current user.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_AUTH_CONFIG_INVALID
+  value: 130421
+  http: 200
+  cn: EngineInstance 鉴权配置与 ApplicationEngineType 不兼容。
+  en: EngineInstance authentication configuration is incompatible with its ApplicationEngineType.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_BINDING_INCOMPATIBLE
+  value: 130422
+  http: 200
+  cn: EngineInstance 与 ProviderCapability 的 ApplicationEngineType 不一致或能力不可用。
+  en: EngineInstance and ProviderCapability have incompatible ApplicationEngineTypes or unavailable capability.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_BINDING_RESTRICTION_EXPANDS
+  value: 130423
+  http: 200
+  cn: EngineCapabilityBinding restrictions 扩张了 ProviderCapability。
+  en: EngineCapabilityBinding restrictions expand ProviderCapability.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_UNAVAILABLE
+  value: 130424
+  http: 200
+  cn: 没有健康且具备当前有效能力的 EngineInstance。
+  en: No healthy EngineInstance has the currently effective capability.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-140, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041, US-AIAPP-043]
+
+
+- code: ERR_AIAPP_ENGINE_REFERENCE_BLOCKED
+  value: 130425
+  http: 200
+  cn: EngineInstance 已被历史运行引用，只能停用，不能删除。
+  en: The EngineInstance is referenced by historical runs and may only be disabled.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140, BR-AIAPP-143]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_BINDING_NOT_FOUND
+  value: 130426
+  http: 200
+  cn: EngineCapabilityBinding 不存在或当前不可见。
+  en: The EngineCapabilityBinding does not exist or is not visible.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-137, BR-AIAPP-141]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_SYSTEM_ENGINE_BINDING_IMMUTABLE
+  value: 130427
+  http: 200
+  cn: 系统维护的 EngineCapabilityBinding 不允许创建、修改、禁用或删除。
+  en: A system-managed EngineCapabilityBinding cannot be created, modified, disabled, or deleted.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-141, BR-AIAPP-189]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_REQUIRED_ENGINE_BINDING_FAILED
+  value: 130428
+  http: 200
+  cn: 创建 EngineInstance 时未能原子写入系统必需能力绑定，实例未创建。
+  en: The required system capability binding could not be written atomically while creating the EngineInstance; the instance was not created.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-189]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED
+  value: 130429
+  http: 200
+  cn: 已存在同名的 ApplicationEngineInstance。
+  en: An ApplicationEngineInstance with the same name already exists.
+  owning_domain: modelgateway
+  owning_module: engine
+  range: 130400-130599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+
+- code: ERR_AIAPP_COMFYUI_ENGINE_TYPE_INVALID
+  value: 131221
+  http: 200
+  cn: 指定的来源或目标 EngineInstance 不是 ComfyUI 类型。
+  en: The selected source or target EngineInstance is not a ComfyUI engine.
+  owning_domain: modelgateway
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-172]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
+
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_UNAVAILABLE
+  value: 131222
+  http: 200
+  cn: 指定 ComfyUI EngineInstance 不存在可用的当前 object_info，或目录已超过 48 小时。
+  en: The selected ComfyUI EngineInstance has no usable current object_info, or the catalog is older than 48 hours.
+  owning_domain: modelgateway
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-169, BR-AIAPP-176]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
+
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_NOT_ALLOWED
+  value: 131243
+  http: 200
+  cn: 只有已启用且健康在线的 ComfyUI EngineInstance 可以刷新 object_info。
+  en: Object-info refresh is allowed only for enabled, healthy online ComfyUI EngineInstances.
+  owning_domain: modelgateway
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-170, BR-AIAPP-176]
+  related_user_stories: [US-AIAPP-049]
+
+
+- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_FAILED
+  value: 131244
+  http: 200
+  cn: 未能从 ComfyUI EngineInstance 获取并校验完整 object_info，已保留最后一次成功目录。
+  en: A complete valid object_info could not be retrieved from the ComfyUI EngineInstance; the last successful catalog was retained.
+  owning_domain: modelgateway
+  owning_module: comfyui-workflow
+  range: 131200-131399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-169, BR-AIAPP-170]
+  related_user_stories: [US-AIAPP-049]

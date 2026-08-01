@@ -13,16 +13,17 @@
 | 领域 | Context | 核心职责 | 何时读取 |
 | --- | --- | --- | --- |
 | `identity` | `domains/identity/context.md` | 认证、会话、RBAC、审计 | 登录、Token、用户、权限 |
+| `modelgateway` | `domains/modelgateway/context.md` | 能力目录、执行引擎、绑定与 Operation 执行 | Capability、Engine、Binding、Adapter、Executor |
 | `model-management` | `domains/model-management/context.md` | 用户模型提供商和模型配置 | 模型、密钥引用、健康检测 |
 | `ai-chatting` | `domains/ai-chatting/context.md` | 会话、消息、助手和生成 | AI 对话、Assistant、翻译 |
-| `application-platform` | `domains/application-platform/context.md` | 能力目录、Engine、应用和运行 | Application、ComfyUI、能力绑定 |
+| `application-platform` | `domains/application-platform/context.md` | ComfyUIWorkflow、应用、表单和运行 | Application、模板、ApplicationRun |
 | `task-center` | `domains/task-center/context.md` | 异步执行、重试、编排和调度 | AtomicTask、DAG、Schedule |
 | `asset-library` | `domains/asset-library/context.md` | Artifact、Asset 和派生表现 | 素材、入库、预览、存储 |
 | `workflow-canvas` | `domains/workflow-canvas/context.md` | 画布结构、版本、编译和运行 | Canvas、节点、边、部分执行 |
 | `notification-center` | `domains/notification-center/context.md` | 通知收件箱、偏好、聚合 | 完成、失败、待处理通知 |
 | `sse` | `domains/sse/context.md` | 用户级实时事件投影 | EventSource、断线恢复、重同步 |
 
-规划中的 `application-engine`、`capability-catalog`、`mcp-server` 尚无独立正式目录和 Context。Engine、Adapter、Executor、`ProviderCapability` 当前先读 `domains/application-platform/context.md`；MCP 任务必须先确认正式产品范围，不得虚构合同。
+`modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp-server` 尚无独立正式目录和 Context，相关任务必须先确认正式产品范围，不得虚构合同。
 
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 
@@ -30,8 +31,10 @@
 
 | 关键词 | 优先读取 | 按需继续 |
 | --- | --- | --- |
+| Model Gateway、CapabilityDefinition、EngineAdapter、OperationExecutor、ProviderCapability、Binding | `domains/modelgateway/context.md` | 涉及应用消费再读 application-platform |
 | 应用、模板、版本、RuntimeFormSchema、ApplicationRun | `domains/application-platform/context.md` | 涉及画布再读 workflow-canvas |
-| ComfyUI、object_info、workflow 导入、EngineInstance、ProviderCapability | `domains/application-platform/context.md` | 涉及执行状态再读 task-center |
+| EngineInstance、ProviderCapability、健康检测、object_info | `domains/modelgateway/context.md` | 涉及 ComfyUIWorkflow 再读 application-platform |
+| ComfyUI Workflow、模板转换、试运行 | `domains/application-platform/context.md` | 涉及 Engine 当前事实再读 modelgateway |
 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、TaskSchedule、重试、取消 | `domains/task-center/context.md` | 涉及业务结果再读源领域 |
 | TaskRun、ExecutionLease、Worker claim、DAGFlowTask | `domains/task-center/context.md` | 这些是过期检索词，先核对废弃说明 |
 | Artifact、Asset、AssetVersion、Representation、Blob、扫描、缩略图 | `domains/asset-library/context.md` | 涉及生成任务再读 task-center |
@@ -39,15 +42,15 @@
 | Notification、未读、偏好、聚合、需要处理 | `domains/notification-center/context.md` | 涉及源状态再读生产事件领域 |
 | SSE、UserEvent、event_id、Last-Event-ID、重放 | `domains/sse/context.md` | 再读事件所属事实领域 |
 | 用户、登录、JWT、Refresh Token、RBAC、SSO、LDAP | `domains/identity/context.md` | 涉及领域权限再读目标领域 |
-| 模型提供商、ProviderModel、默认模型、健康检测 | `domains/model-management/context.md` | 对话使用再读 ai-chatting |
+| 模型提供商、ProviderModel、默认模型、用户模型健康检测 | `domains/model-management/context.md` | 平台 Engine 健康检测读 modelgateway；对话使用读 ai-chatting |
 | Topic、Message、Assistant、QuickPhrase、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 model-management |
 
 ## 4. 跨域任务映射
 
 | 任务 | 必须读取 | 按需读取 |
 | --- | --- | --- |
-| Application 执行 | application-platform、task-center | asset-library |
-| ComfyUI 工作流转应用 | application-platform | task-center |
+| Application 执行 | application-platform、modelgateway、task-center | asset-library |
+| ComfyUI 工作流转应用 | application-platform、modelgateway | task-center |
 | 应用转画布节点 | application-platform、workflow-canvas | task-center |
 | 任务结果登记素材 | task-center、asset-library | notification-center |
 | Canvas 执行应用节点 | workflow-canvas、application-platform | task-center、asset-library |

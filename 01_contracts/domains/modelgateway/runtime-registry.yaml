@@ -1,6 +1,6 @@
 schema_version: "1.0"
 description: >-
-  Application Platform 只读 Runtime Registry 契约。该文件登记内置能力定义、
+  Model Gateway 只读 Runtime Registry 契约。该文件登记内置能力定义、
   EngineType、Adapter、OperationExecutor 和鉴权结构，不是运行时配置，也不提供写 API。
 x-s1-refs:
   user_stories: [US-AIAPP-039, US-AIAPP-041, US-AIAPP-042]

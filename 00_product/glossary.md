@@ -6,9 +6,9 @@
 
 | 术语 | 定义 | 主要事实源 |
 | --- | --- | --- |
-| CapabilityDefinition | 平台统一的业务能力分类及基础输入输出语义，不包含供应商实现细节 | application-platform |
-| ProviderCapability | 系统启动时从只读 YAML 目录加载的平台、模型、Operation、Variant 和参数约束事实；加载失败时按能力隔离 | application-platform |
-| CapabilityVariant | 一个有效平台、Operation、模型及参数约束组合；不存在的组合表示不支持 | application-platform |
+| CapabilityDefinition | 平台统一的业务能力分类及基础输入输出语义，不包含供应商实现细节 | modelgateway |
+| ProviderCapability | 系统启动时从只读 YAML 目录加载的平台、模型、Operation、Variant 和参数约束事实；加载失败时按能力隔离 | modelgateway |
+| CapabilityVariant | 一个有效平台、Operation、模型及参数约束组合；不存在的组合表示不支持 | modelgateway |
 | Application | 面向用户和画布的业务应用身份，聚合所有者、可见性和版本 | application-platform |
 | ApplicationTemplate | 描述底层能力、参数映射、固定参数和输出提取的应用模板 | application-platform |
 | ComfyUIWorkflow | 用户私有、非版本化的 ComfyUI 工作流导入资源；用于解析、实例兼容性校验及一次性转换模板首版，不等于 ApplicationTemplate | application-platform |
@@ -22,11 +22,11 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 
 | 术语 | 定义 | 主要事实源 |
 | --- | --- | --- |
-| ApplicationEngineType | 一类执行平台的产品级注册信息，必须有真实注册的执行能力 | application-platform |
-| ApplicationEngineInstance | 某执行平台的真实账号或运行环境，包含连接引用、激活状态和健康状态 | application-platform |
-| EngineCapabilityBinding | Engine 实例与平台能力之间的绑定及实例级收紧限制 | application-platform |
-| Operation | 可由执行平台完成的一项标准业务操作；标识格式仍待 application-platform 确认 | application-platform |
-| OperationExecutor | 某项 Operation 在特定平台上的真实执行能力 | application-platform |
+| ApplicationEngineType | 一类执行平台的产品级注册信息，必须有真实注册的执行能力 | modelgateway |
+| ApplicationEngineInstance | 某执行平台的真实账号或运行环境，包含连接引用、激活状态和健康状态 | modelgateway |
+| EngineCapabilityBinding | Engine 实例与平台能力之间的绑定及实例级收紧限制 | modelgateway |
+| Operation | 可由执行平台完成的一项标准业务操作；标识格式仍待 modelgateway 确认 | modelgateway |
+| OperationExecutor | 某项 Operation 在特定平台上的真实执行能力 | modelgateway |
 | ApplicationRun | 一次应用运行的业务输入、版本和执行环境快照，以及 AtomicTask 的只读投影 | application-platform |
 | AtomicTask | 一次异步执行的状态、进度、重试、超时和取消事实源 | task-center |
 | TaskAttempt | AtomicTask 的一次具体执行尝试及其失败、外部任务和恢复信息 | task-center |
@@ -35,7 +35,7 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | TaskSchedule | 周期或单次触发 AtomicTask、TaskGroup 或 DAGTaskGroup 的计划资源 | task-center |
 | Worker | 由 WorkflowRuntime 分发并执行已注册 AtomicTask handler 的工作器 | task-center |
 
-`EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 application-platform 的正式能力事实源。
+`EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 modelgateway 的正式能力事实源。
 
 ## 实时事件
 

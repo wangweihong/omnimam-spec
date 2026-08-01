@@ -2,19 +2,18 @@
 
 ## 当前目标与状态
 
-为 `omnimam-spec` 增加轻量上下文索引层并发布 `spec-v1.8.1`。状态：已完成发布、tag 创建和远端推送。
+将 Gateway 核心从 `application-platform` 原样迁移到新领域 `modelgateway`，保留业务术语、行为和兼容标识。状态：已完成实现与结构化验证，尚未 Release。
 
 ## 本次已完成
 
-- 新增 `GLOBAL_CONTEXT.md`，说明项目目标、Spec 分层、9 个实际领域、核心对象、事实归属、跨域边界和最小读取规则。
-- 新增 `CONTEXT_MAP.md`，建立单领域关键词、跨域任务和全局入口到最小文档集合的映射。
-- 为 ai-chatting、application-platform、asset-library、identity、model-management、notification-center、sse、task-center、workflow-canvas 创建统一九章节 Domain Context。
-- 新增根 `README.md`，声明 AI Context 读取入口和 Context 非 SSOT 规则。
-- 更新 `AGENTS.md` 的仓库边界、按需加载顺序和 Context 维护触发条件，保留任务开始前已有的 Completion & Handoff Rules。
-- 更新 `CHANGELOG.md`，记录 2026-07-30 未发布的上下文索引改造。
-- 在 `RELEASE.md` 登记 `spec-v1.8.1`，标记为已发布但不允许作为正式实现依据。
-- 创建 release 提交 `d941878d9d32c023e4e1b6fa06693a57bf48afc3`，创建并推送轻量 tag `spec-v1.8.1`。
-- 推送 `master` 到 `origin`，远端分支已更新到 release 提交。
+- 新增 `modelgateway` S1、完整 S2、领域架构和 Domain Context。
+- 迁移 CapabilityDefinition、ProviderCapability、ApplicationEngineType、ApplicationEngineInstance、EngineCapabilityBinding、EngineAdapter、OperationExecutor、Runtime Registry、健康检测和 ComfyUI 当前 `object_info`。
+- 原样迁移指定 `BR-AIAPP`、`US-AIAPP` 与 AC；Application Platform 只保留应用、工作流、表单、运行和消费语义。
+- 将 11 个 Gateway API path、完整 DTO、三张 Engine 表、26 个错误码、5 个权限码和 2 个事件迁入新领域。
+- 原样移动 Runtime Registry、ProviderCapability Schema 和三份清单；Provider 文件逐字未变，Registry 只调整领域归属描述。
+- ApplicationExecutor、ComfyUIWorkflow、ApplicationTemplate/Version、RuntimeFormSchema、ApplicationRun 与 Artifact 交付继续归 Application Platform。
+- 删除未完成的 `domains/model-integration/context.md`，并清理其 Global Context、Context Map 与 Changelog 草稿声明。
+- 更新 glossary、全局特性矩阵、全局架构、错误码索引、相关 Domain Context 和 `CHANGELOG.md`；`RELEASE.md` 未修改。
 
 ## 当前进行中
 
@@ -22,44 +21,51 @@
 
 ## 文件变化
 
-- 新增：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`README.md`。
-- 新增：`domains/ai-chatting/context.md`、`domains/application-platform/context.md`、`domains/asset-library/context.md`、`domains/identity/context.md`、`domains/model-management/context.md`、`domains/notification-center/context.md`、`domains/sse/context.md`、`domains/task-center/context.md`、`domains/workflow-canvas/context.md`。
-- 修改：`AGENTS.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 已修改并发布：`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`；仍不修改 `00_product/`、`01_contracts/`、`02_architecture/`。
-- 保留用户已有工作区改动：`archive/`、已删除的 `skills/archive/s1-origin.md` 与 `skills/archive/s1-origin-2.md`，以及 `AGENTS.md` 的 Handoff 规则。
+- 新增：`00_product/domains/modelgateway/product-spec.md`。
+- 新增：`01_contracts/domains/modelgateway/` 下 OpenAPI、Schema、errors、permissions、events、module contract、Runtime Registry 和 ProviderCapability 清单。
+- 新增：`02_architecture/domains/modelgateway.md`、`domains/modelgateway/context.md`。
+- 修改：`application-platform` 的 S1、全部 S2 主合同、架构和 Context。
+- 修改：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、glossary、全局特性矩阵、全局架构、错误码索引、相关 Context、`CHANGELOG.md`、本 Handoff。
+- 删除/移动来源：Application Platform 的 Runtime Registry、ProviderCapability 目录及已迁移合同片段；删除 `domains/model-integration/context.md`。
+- 保留用户已有无关改动：`agent/`、`appstudio/`、`mcp/`、`archive/`、`设计图/` 与 `skills/archive/`。
 
 ## 关键设计决策
 
-- Domain Context 位于根级 `domains/<domain_id>/context.md`，不混入 S1 或 S2 目录。
-- 使用实际领域名 `ai-chatting`；`application-engine`、`capability-catalog`、`mcp-server` 因无独立正式目录只在 Context Map 标记为规划中。
-- Engine、Adapter、Executor 和 ProviderCapability 当前导航到 application-platform；Artifact 归 asset-library；AtomicTask 归 task-center。
-- TaskRun、ExecutionLease、Worker claim、DAGFlowTask 等旧术语只作为过期检索词，并明确让位于 AtomicTask 主线。
-- 产品语义以 S1 为准，实现合同以 S2 为准；Context 冲突时让位于正式 Spec，S1/S2 冲突必须修复并重新 release。
+- 领域 ID 固定为 `modelgateway`。
+- `AIAPP` BR/US/AC、`ERR_AIAPP_*` code/value、`aiapp.*` 权限、`aiapp_*` 表、API path/DTO、事件名和调度 key 均保持稳定。
+- `owning_domain` 及事件 producer/consumer 调整为 Model Gateway；通用 `ERR_AIAPP_PERMISSION_DENIED` 留在 Application Platform 作为兼容共享错误。
+- Application Platform 通过稳定 ID、权限裁剪投影和受控模块接口消费 Gateway，不读取其私有表。
+- 本次不修改 `RELEASE.md`；用户确认新的 Release 前，本次迁移不能作为正式实现依据。
 
 ## API、Schema、依赖与配置变化
 
-- 无 API、Schema、错误码、权限码、事件、模块合同、依赖、migration 或运行时配置变化。
+- 公开 Wire Contract 不变；OpenAPI 仅按领域拆分，Gateway 11 个 path 与 Application Platform 27 个 path 均和拆分前结构等价。
+- `aiapp_engine_instances`、`aiapp_comfyui_engine_object_info`、`aiapp_engine_capability_bindings` DDL、索引和约束未变化。
+- Application Platform Schema 保留现有跨文件 FK，Model Gateway Schema 是其前置设计依赖。
+- `application-platform.engine-health` 与 `application-platform.comfyui-object-info-refresh` system_key 未重命名。
 
 ## 验证结果
 
-- 9 个实际领域与 9 个 Domain Context 集合完全一致；每个文件都包含统一九章节及“不在本领域定义的内容”。
-- 汉字数：Global Context 1612、Context Map 1085；Domain Context 为 775～924，全部满足约定范围。
-- 已验证 70 个 Context 文件或目录引用真实存在；规划领域没有虚构 Context，identity 没有虚构 S2 路径。
-- 新文件尾随空格检查和代码围栏平衡检查通过；`git diff --check` 通过。
-- `git diff --check` 与发布前暂存区检查通过，发布提交只包含 `CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
-- `spec-v1.8.1` 与 release 提交均指向 `d941878d9d32c023e4e1b6fa06693a57bf48afc3`；`RELEASE.md` 记录继续指向内容提交 `183895c654529707f590c923ba1e64ec5104138d`。
-- `git push origin master` 与 `git push origin spec-v1.8.1` 均成功。
+- 41 份当前 S2 YAML 全部可解析；两份 OpenAPI 本地 `$ref` 全部可解析。
+- 拆分前后公开 path/method/参数/响应结构化等价，`info.version=1.7.0` 保持不变。
+- ProviderCapability JSON Schema 校验通过：`comfyui.yaml`、`deepseek.yaml`、`seedance.yaml`。
+- Runtime Registry 的 3 个 EngineType、CapabilityDefinition、Adapter、Executor 和清单引用均可解析。
+- 组合 Schema 共 12 张表，无重复定义，所有 FK 可解析；三张迁移表 DDL 与原文一致。
+- 全仓 218 个错误码、61 个权限、124 个事件唯一；迁移集合无遗漏或重复。
+- 420 个 S1 BR/US/AC 定义唯一，236 个 BR/US 追溯目标可解析；指定 24 个 Gateway BR/US 只在新 S1 定义。
+- Provider 文件逐字等价，Runtime Registry 除领域归属描述外等价；Context 文件路径全部存在。
+- Markdown/代码围栏平衡、`git diff --check` 通过，`RELEASE.md` 无差异。
+- 当前环境无 Mermaid CLI，未执行渲染器级解析。
 
 ## 待办、问题与风险
 
-- 发布已完成；工作区仍保留用户已有的 `archive/` 未跟踪文件与 `skills/archive/` 删除变更，未纳入本次 release。
-- identity 只有 S1，S2 仍待未来从正式产品语义推导。
-- SSE、workflow-canvas、asset-library 等正文头部状态可能滞后于后续 Release；索引已要求以 `RELEASE.md` 的具体记录和 implementation gate 为准，本次未重写原 Spec。
-- 后续修改核心对象、领域职责、边界、核心规则、状态或事实源路径时，必须同步维护对应 Context。
+- 本次迁移尚未 Release，历史 Release 仍引用原 application-platform 文件，这是保留的正式历史。
+- 新领域继续使用含 `AIAPP` 或 `application-platform` 的稳定兼容标识，不能在后续实现中自行重命名。
+- Mermaid 图未经过 CLI 渲染验证，后续 Release 前如环境提供 `mmdc` 应补跑。
 
 ## 推荐下一步
 
-在下一次实际 Spec 任务中按 `GLOBAL_CONTEXT.md` → `CONTEXT_MAP.md` → 一个 Domain Context → 1～3 个正式 Spec 的顺序验证 Token 收敛效果；若关键词无法定位，再调整 Context Map，而不是扩大默认读取范围。
+由用户评审本次事实迁移；确认后按 Spec 工作流创建新的 Release 记录，并在实施仓库按相同兼容边界迁移模块所有权。
 
 Next Prompt:
 

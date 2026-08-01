@@ -30,7 +30,7 @@
 
 ## 5. 上游与下游
 
-上游是 application-platform、workflow-canvas、asset-library 和系统维护模块提交的受控任务定义。下游是 WorkflowRuntime/Worker 执行边界，以及消费任务事件的业务投影、notification-center 和 sse。Worker 执行业务 handler，但不拥有调用方的业务定义。
+上游是 application-platform、modelgateway、workflow-canvas、asset-library 和系统维护模块提交的受控任务定义。Model Gateway 使用既有 system_key 注册 Engine 健康与 object-info ReconcileHandler；下游是 WorkflowRuntime/Worker 执行边界，以及消费任务事件的业务投影、notification-center 和 sse。Worker 执行业务 handler，但不拥有调用方的业务定义。
 
 ## 6. 正式事实源
 
@@ -50,6 +50,7 @@
 | 修改任务状态、重试或取消 | S1 product-spec | 涉及接口时读 OpenAPI，涉及事件时读 events |
 | 修改 DAG 或 Schedule | S1 product-spec | 涉及运行时边界时读 module-contract/architecture |
 | 修改 Application 执行 | 当前 Context | 再读 application-platform Context |
+| 修改 Engine 健康或 object-info Schedule | 当前 Context | 再读 modelgateway Context |
 | 修改任务输出素材 | 当前 Context | 再读 asset-library Context |
 
 ## 8. 当前状态

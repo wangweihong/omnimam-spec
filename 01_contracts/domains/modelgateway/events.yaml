@@ -1,0 +1,35 @@
+engine_instance_health_changed:
+  producer: modelgateway.engine-instance
+  consumers: [application-platform.engine-router]
+  trigger_condition: EngineInstance 健康检测结果相对已保存状态发生变化。
+  payload:
+    engine_instance_id: string
+    application_engine_type_id: string
+    health_status: string
+    checked_at: string(date-time)
+    failure_summary: string
+  idempotency_key: engine_instance_id:checked_at
+  retry_policy: 发布失败后按固定间隔重试，健康事实仍以 EngineInstance 表为准。
+  failure_policy: 不得因事件发布失败回滚已经完成的健康检测；路由读取前必须查询最新状态。
+  related_rules: [BR-AIAPP-140]
+  related_user_stories: [US-AIAPP-041]
+
+
+provider_capability_correction_required:
+  producer: modelgateway.operation-executor
+  consumers: [modelgateway.admin-diagnostics]
+  trigger_condition: 外部平台拒绝清单声明为有效的模型、Operation 或参数组合。
+  payload:
+    provider_capability_id: string
+    provider_capability_revision: string
+    model_id: string
+    operation_id: string
+    field: string
+    rejected_value: object
+    provider_error: object
+    occurred_at: string(date-time)
+  idempotency_key: provider_capability_id:provider_capability_revision:operation_id:occurred_at
+  retry_policy: 诊断事项发布失败后重试，不自动修改清单。
+  failure_policy: 运行按外部平台失败结束；维护人员核实文档并通过新 revision 与重启修正。
+  related_rules: [BR-AIAPP-130, BR-AIAPP-138]
+  related_user_stories: [US-AIAPP-039, US-AIAPP-043]

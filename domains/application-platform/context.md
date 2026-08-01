@@ -2,13 +2,12 @@
 
 ## 1. 领域职责
 
-`application-platform` 将 Provider、ComfyUI 工作流和执行环境封装为面向用户的稳定 Application。它拥有 Runtime Registry、只读能力目录、Engine 配置、模板与应用版本、运行表单和 ApplicationRun 业务投影，并负责选择真实执行实现。
+`application-platform` 将 Provider 能力与 ComfyUI 工作流封装为面向用户的稳定 Application。它拥有工作流、模板与应用版本、运行表单和 ApplicationRun 业务投影，并通过 `modelgateway` 选择真实执行实现。
 
 ## 2. 核心对象
 
-- `CapabilityDefinition`、`ProviderCapability`：统一能力分类及平台、模型、Operation、参数约束。
-- `ApplicationEngineType`、`ApplicationEngineInstance`、`EngineCapabilityBinding`：ComfyUI、SaaS Provider、Local Inference、OpenAI Compatible 等执行平台注册、真实环境及能力绑定。
-- `EngineAdapter`、`OperationExecutor`、`ApplicationExecutor`：连接平台、执行具体 Operation 和运行 Application 的职责边界。
+- `CapabilityDefinition`、`ProviderCapability`、`ApplicationEngineType`、`ApplicationEngineInstance`、`EngineCapabilityBinding`、`EngineAdapter`、`OperationExecutor`：由 `modelgateway` 拥有，本领域通过受控边界消费。
+- `ApplicationExecutor`：编排 ApplicationRun 并调用 Model Gateway OperationExecutor 的应用执行职责。
 - `ApplicationTemplate`、`Application`、`ApplicationVersion`：应用蓝图、稳定入口和不可变发布契约。
 - `RuntimeFormSchema`、`ApplicationRun`：临时运行表单和应用运行快照与状态投影。
 - `ApplicationNode` 引用关系：由画布拥有节点结构，本领域提供被固定引用的 ApplicationVersion。
@@ -27,11 +26,11 @@
 
 ## 4. 领域边界
 
-本领域拥有应用、能力目录、Engine 和 ApplicationRun。AtomicTask 状态归 task-center；Artifact 与 Asset 归 asset-library；Canvas 图结构和编译归 workflow-canvas。当前没有独立 `application-engine` 或 `capability-catalog` 事实域，相关名称应导航到本领域，不得据此拆分所有权。
+本领域拥有 ComfyUIWorkflow、应用、模板、版本、RuntimeFormSchema 和 ApplicationRun。能力目录、Engine、Binding、Adapter 与 OperationExecutor 归 `modelgateway`；AtomicTask 状态归 task-center；Artifact 与 Asset 归 asset-library；Canvas 图结构和编译归 workflow-canvas。
 
 ## 5. 上游与下游
 
-上游包括 identity 的主体与权限，以及只读 Provider 能力清单。下游包括 task-center 的异步执行、asset-library 的制品接收、workflow-canvas 的 ApplicationNode 和 sse/notification-center 的事件投影。跨域协作使用稳定 ID、不可变快照、模块接口和可靠事件。
+上游包括 identity 的主体与权限，以及 `modelgateway` 的只读 Provider 能力、Engine 和执行入口。下游包括 task-center 的异步执行、asset-library 的制品接收、workflow-canvas 的 ApplicationNode 和 sse/notification-center 的事件投影。跨域协作使用稳定 ID、不可变快照、模块接口和可靠事件。
 
 ## 6. 正式事实源
 
@@ -40,7 +39,6 @@
 | `00_product/domains/application-platform/product-spec.md` | S1 | 产品语义、业务规则和应用运行流程 |
 | `01_contracts/domains/application-platform/openapi.yaml` | S2 | HTTP API 与 DTO 合同 |
 | `01_contracts/domains/application-platform/schema.sql` | S2 | 设计态数据结构 |
-| `01_contracts/domains/application-platform/runtime-registry.yaml` | S2 | Runtime Registry 与执行职责登记 |
 | `01_contracts/domains/application-platform/module-contract.md` | S2 | 模块和跨域协作边界 |
 | `02_architecture/domains/application-platform.md` | 参考 | 运行时序、加载和失败隔离 |
 
@@ -49,7 +47,7 @@
 | 任务 | 首先读取 | 继续读取条件 |
 | --- | --- | --- |
 | 修改应用、模板或版本语义 | S1 product-spec | 涉及接口或持久化时读 OpenAPI/Schema |
-| 修改 Engine 或能力目录 | S1 product-spec | 涉及注册与执行边界时读 runtime-registry/module-contract |
+| 修改 Engine 或能力目录 | `domains/modelgateway/context.md` | 涉及应用消费行为时返回当前 Context |
 | 修改 ApplicationRun | S1 product-spec | 涉及执行状态再读 task-center Context |
 | 修改 Canvas 应用节点 | 当前 Context | 继续读取 workflow-canvas Context |
 
@@ -62,4 +60,4 @@
 - AtomicTask、重试和调度状态机不在本领域定义。
 - Artifact 处理、登记和 Asset 生命周期不在本领域定义。
 - Canvas 图、端口、编译和局部执行不在本领域定义。
-- Provider 内部实现代码、正式数据库 migration 和凭证明文不在本仓库定义。
+- Provider 内部实现代码、正式数据库 migration 和凭证明文不在本仓库定义；Gateway 核心事实见 `modelgateway`。

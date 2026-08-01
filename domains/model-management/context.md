@@ -20,11 +20,11 @@
 - 健康检测是带时间的结果，不等于模型永久可用，也不能改写历史生成记录。
 - 下游只读取可见、启用且满足用途的模型投影，不维护自己的模型清单副本。
 - 默认模型按当前用户和用途解析；不可用时按明确规则提示或选择替代项。
-- 本领域的用户模型 Provider 不等于 application-platform 的只读 ProviderCapability。
+- 本领域的用户模型 Provider 不等于 modelgateway 的只读 ProviderCapability。
 
 ## 4. 领域边界
 
-本领域拥有用户私有模型服务配置、模型清单、默认选择和健康检测。AI Topic、Assistant、Message 与生成流归 ai-chatting；平台应用能力、EngineInstance 和 ProviderCapability 归 application-platform；身份与主体归 identity。
+本领域拥有用户私有模型服务配置、模型清单、默认选择和健康检测。AI Topic、Assistant、Message 与生成流归 ai-chatting；平台 Capability、EngineInstance 和 ProviderCapability 归 modelgateway，应用语义归 application-platform；身份与主体归 identity。
 
 ## 5. 上游与下游
 
@@ -48,7 +48,7 @@
 | 修改 Provider 或模型管理 | S1 product-spec | 涉及接口或数据时读 OpenAPI/Schema |
 | 修改健康检测或默认模型 | S1 product-spec | 涉及事件时读 events/module-contract |
 | 修改聊天模型选择 | 当前 Context | 再读 ai-chatting Context |
-| 修改应用能力目录 | application-platform Context | 不读取本域用户模型合同 |
+| 修改平台能力目录 | modelgateway Context | 不读取本域用户模型合同 |
 
 ## 8. 当前状态
 

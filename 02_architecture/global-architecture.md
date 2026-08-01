@@ -14,9 +14,10 @@
 | --- | --- | --- |
 | `identity` | 统一认证、会话、Token、RBAC、权限资源、审计 | 已有 S1，S2 待补 |
 | `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
+| `modelgateway` | Runtime Registry、ProviderCapability、Engine、Binding、Adapter、OperationExecutor 与 object_info | 已有迁移 S1/S2，待 Release |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
 | `asset-library` | Artifact、用户素材、AssetVersion、Representation、存储、派生任务与周期补全 | 已有 S1/S2，部分普通素材 API 待补 |
-| `application-platform` | Runtime Registry、ProviderCapability、模板/应用版本、Engine、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
+| `application-platform` | ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
@@ -30,7 +31,8 @@ graph TD
   Model["model-management<br/>用户模型能力"]
   Chat["ai-chatting<br/>对话与生成"]
   Asset["asset-library<br/>Artifact / Asset / Representation"]
-  App["application-platform<br/>Adapter、模板、应用与 AppEngine"]
+  Gateway["modelgateway<br/>Capability、Engine、Adapter、Executor"]
+  App["application-platform<br/>工作流、模板、应用与运行"]
   Task["task-center<br/>业务任务与 Conductor 适配"]
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
   Notify["notification-center<br/>通知规则与用户收件箱"]
@@ -38,8 +40,10 @@ graph TD
 
   Chat --> Model
   Chat --> Asset
+  App --> Gateway
   App --> Task
   App --> Asset
+  Gateway --> Task
   Task --> App
   Canvas --> Task
   Canvas --> App
@@ -58,6 +62,7 @@ graph TD
   Model --> Identity
   Chat --> Identity
   Asset --> Identity
+  Gateway --> Identity
   App --> Identity
   Task --> Identity
   Notify --> Identity
@@ -68,7 +73,8 @@ graph TD
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
 - `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `application-platform` 定义只读 Runtime Registry、ProviderCapability、模板/应用版本、Engine 路由、ApplicationRun 投影和 Artifact 引用；EngineInstance 只表达运行实例配置和状态。
+- `modelgateway` 定义只读 Runtime Registry、ProviderCapability、Engine、Binding、Adapter、OperationExecutor、健康检测和 ComfyUI 当前 object_info。
+- `application-platform` 定义 ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 投影和 Artifact 引用，通过受控边界消费 Model Gateway。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `workflow-canvas` 发布不可变 CanvasVersion，并将多流、fan-out 和复合节点展平到唯一 task-center DAGTaskGroup；一个 CanvasNodeRun 可以映射零个、一个或多个 AtomicTask。
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
@@ -100,20 +106,23 @@ sequenceDiagram
 sequenceDiagram
   participant User as 用户或业务模块
   participant App as application-platform
+  participant Gateway as modelgateway
   participant Task as task-center
   participant Worker as Worker
-  participant Adapter as ProviderAdapter
-  participant Engine as AppEngine endpoint
+  participant Engine as External Provider
   participant Asset as asset-library
   participant SSE as SSE projector/gateway
 
   User->>App: 选择应用、输入和可选 AppEngine
-  App->>App: 校验指定引擎或自动路由并占用
+  App->>Gateway: 校验能力、Binding、Engine 并选择执行实现
+  Gateway-->>App: 返回权限裁剪的有效能力和 Engine
   App->>App: 保存 ApplicationRun 不可变快照
   App->>Task: application_run_id + idempotency_key 创建 AtomicTask
   Task->>Worker: Conductor 分发已注册 AtomicTask handler
-  Worker->>Adapter: 调用 ProviderAdapter
-  Adapter->>Engine: 调用平台 endpoint
+  Worker->>Gateway: 调用 OperationExecutor
+  Gateway->>Engine: 调用平台 endpoint
+  Engine-->>Gateway: 返回平台任务或结果
+  Gateway-->>Worker: 返回归一化状态和标准输出
   Worker->>Task: 上报进度和结果
   Task-->>App: 带 application_run_id + resourceVersion 的状态事件
   App->>Asset: 受控交付标准输出形成 Artifact
