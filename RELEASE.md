@@ -1,5 +1,40 @@
 # Release Records
 
+## spec-v1.10.0
+
+- commit: 28ceccbb623dea1387719958f953416585b83bd6
+- status: released
+- confirmed_by: user（2026-08-01 明确要求“提交并发布” Agent/AppStudio S1/S2）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/glossary.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/agent/events.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/events.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture: []
+- context:
+  - domains/agent/context.md
+  - domains/appstudio/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: Agent 首期只允许 platform/coding、Hermes/OpenCode 和 Rootless Docker AgentRuntimeProvider；每个 Agent 固定一个 Workspace，Session/Invocation 不得切换，Invocation 执行、重试、取消与超时必须委托 Task Center。Coding Agent 只能使用绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的短期 Tool 授权，并通过带 base_revision 的原子 ChangeSet 修改源码。AppStudio 正式 Build 只能读取不可变 Source Snapshot，Build/Deployment 执行状态归 Task Center，Bundle Artifact 内容与生命周期归 Asset Library；Release 必须固定 artifact_id/digest 和 RuntimeConfig 引用，新 RuntimeInstance 健康前不得切换当前入口，回滚必须创建新 Release。AgentRuntimeProvider 与 StudioDeploymentProvider 不得共享业务状态；StudioWorkspace 不得直接挂载到 AgentRuntime；Secret 只能保存引用并在部署边界短期解析。Kubernetes AgentRuntimeProvider、多 Workspace、热迁移、复杂自动合并、外部 Git Provider 和其他技术栈保持禁用，除非后续 S1/S2 Release 明确开放。
+
 ## spec-v1.9.2
 
 - commit: 45ea82d4fd42b1697f4cd9af24c2ccb1ac965373
