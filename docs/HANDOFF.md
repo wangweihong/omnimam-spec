@@ -4,7 +4,7 @@
 
 目标：将旧 Workflow Canvas compile-time built-ins 合同合入当前 `master`，以 `spec-v1.12.1` 发布并推送远端。
 
-状态：进行中。旧分支已执行 `--no-ff` 合并，Workflow Canvas S1/S2 已进入当前工作树；正在完成冲突收敛、release 元数据、提交和推送。
+状态：进行中。合并内容提交 `261ef2aa56d1c7d141c1ebda8b7d04b3371fb5bf` 已创建，`spec-v1.12.1` release 元数据已写入，正在完成发布提交、tag 和推送。
 
 ## 本次完成
 
@@ -14,11 +14,12 @@
 - Workflow Canvas product spec、OpenAPI、schema、module contract 和 Context 已自动合入。
 - Task Center S1 保留当前 function registry 的 `BR-TASK-147..153`，Canvas 有限静态 DAG 规则顺延为 `BR-TASK-154`。
 - `RELEASE.md` 保留 Agent/AppStudio/Infrastructure/Task Center 的 `spec-v1.12.0` 正式记录；旧 Canvas 记录不再占用该版本号。
+- 已创建合并内容提交 `261ef2aa56d1c7d141c1ebda8b7d04b3371fb5bf`（`merge: restore workflow canvas compile-time contracts`）。
+- 已新增 `spec-v1.12.1` release 记录并指向该合并内容提交。
 
 ## 当前进行中
 
-- 恢复并修正 `spec-v1.12.1` release 元数据，使 release 内容 commit 指向本次合并提交。
-- 完成必要一致性检查、提交、创建 annotated tag，并 fast-forward 推送到 `origin/master`。
+- 完成必要一致性检查，创建 release 提交与 annotated tag，并 fast-forward 推送到 `origin/master`。
 
 ## 文件变化
 
@@ -44,13 +45,13 @@
 ## 验证结果与剩余检查
 
 - 合并前确认远端不存在 `spec-v1.12.1` tag。
-- 待运行：冲突标记检查、`git diff --check`、release 内容可达性、目标路径存在性和远端 fast-forward 检查。
+- 已通过合并阶段冲突标记检查和 `git diff --check`。
+- 待运行：release 内容可达性、目标路径存在性和远端 fast-forward 检查。
 - 按用户要求直接合并并推送，不重复执行完整契约测试矩阵。
 
 ## 待办
 
-- 完成合并提交。
-- 新增指向合并内容提交的 `spec-v1.12.1` release 记录并提交。
+- 提交 `spec-v1.12.1` release 记录。
 - 创建并推送 `spec-v1.12.1` annotated tag，推送当前分支到 `origin/master`。
 - 回到 `omnimam-server` 同步 submodule gitlink 与 `SSOT_VERSION`。
 
@@ -61,7 +62,7 @@
 
 ## 推荐下一步
 
-完成冲突标记与 diff 检查，创建合并内容提交，然后用该提交 hash 更新 `RELEASE.md` 的 `spec-v1.12.1` 记录并发布。
+运行必要 release 检查，提交 release 元数据，创建 `spec-v1.12.1` annotated tag，并推送 `origin/master` 与 tag。
 
 Next Prompt:
 

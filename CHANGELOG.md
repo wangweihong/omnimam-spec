@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 将旧 Workflow Canvas compile-time built-ins release 从冲突的 `spec-v1.12.0` 修正为 `spec-v1.12.1`；合同已合入当前 Task Center function registry 基线，未新增运行时循环、任务组类型、权限、事件或错误码。
 - 补齐 Task Center 第一阶段 Infra-backed Function Registry：S1 固定 Agent/AppStudio 七个 canonical functionRef、合同版本冻结规则、`BR-TASK-153` 和 `US-TASK-026`；新增 registry meta-schema 与逐项 I/O、JOB/SERVICE、能力、幂等、重试、取消、超时、Infra 映射、Artifact 登记和结果 transform 合同。
 - Task Center AtomicTask 新增 function contract version/digest 设计态字段和 API 投影，调用方 capability 改为 registry 派生；新增输入无效、输出无效、合同不可用和 capability 不可用错误，并同步模块契约、领域架构、Context 与导航。本轮未修改 `RELEASE.md`。
 - 收敛 `agent` S1：统一 `AgentInvocation`，固定 `kind/workspace_type/workspace_id`，区分纯 CHAT 与必须关联 AtomicTask 的异步 Invocation，并补齐 Hermes/OpenCode AgentRuntimeProvider、Coding Agent 短期 Workspace Tool 授权、`base_revision` ChangeSet 和 8 条验收标准。

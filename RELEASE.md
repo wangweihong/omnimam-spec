@@ -1,5 +1,28 @@
 # Release Records
 
+## spec-v1.12.1
+
+- commit: 261ef2aa56d1c7d141c1ebda8b7d04b3371fb5bf
+- status: released
+- confirmed_by: user（2026-08-03 明确要求“将旧的workflow canvas更改为v1.12.1发布然后推送到远端”）
+- allowed_as_formal_implementation_basis: true
+- release_correction: 原 Workflow Canvas `spec-v1.12.0` release 改以 `spec-v1.12.1` 发布；合并后保留当前 Task Center function registry 合同
+- domains:
+  - workflow-canvas
+  - task-center
+- S1:
+  - 00_product/domains/workflow-canvas/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/workflow-canvas/openapi.yaml
+  - 01_contracts/domains/workflow-canvas/schema.sql
+  - 01_contracts/domains/workflow-canvas/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- context:
+  - domains/workflow-canvas/context.md
+  - domains/task-center/context.md
+- implementation_gate: Server/Web 只能使用六个已登记的 `1.0.0` SYSTEM 内置 NodeDefinition；`compile_time` 只能引用五个注册 compiler key。`image`、`prompt`、`promptGroup` 必须在任务创建前完成受控常量折叠，`group` 保持 passive，`output` 只收集有序结果。`loop` count 只允许 1..99，只展开唯一直接 Application 节点；serial、batch、cascade 均编译为现有 DAGTaskGroup 的有限无环 AtomicTask，并使用 `all_success`。禁止隐式/嵌套/条件/无界循环、运行时循环、新 Task Center group 类型、私有 API、权限、事件或错误码。
+
 ## spec-v1.12.0
 
 - commit: 2f71a836006d5f35f48144fa03d1176232ea70c6
