@@ -2,26 +2,27 @@
 
 ## 当前目标与状态
 
-基于已发布 `spec-v1.11.0` 发布 Canvas `compile_time` 与六个 SYSTEM 内置节点合同。状态：S1/S2 已移植并完成冲突合并，正在更新 Release 元数据、验证、提交和推送；目标版本为 `spec-v1.12.0`。
+基于已发布 `spec-v1.11.0` 发布 Canvas `compile_time` 与六个 SYSTEM 内置节点合同。状态：内容提交 `d3541ae` 已完成，Release 元数据正在提交、打 tag 和推送；目标版本为 `spec-v1.12.0`。
 
 ## 本次工作完成
 
 - 保留 `spec-v1.11.0` 已发布的 Identity 与 Platform Management S1/S2 及 release 事实。
 - 将本地提交 `304a271` 的 Workflow Canvas S1/S2 修改移植到 v1.11.0 基线。
+- 创建内容提交 `d3541ae`：`spec: add workflow canvas compile-time built-ins`。
 - 合并 `CHANGELOG.md` 与本 handoff 冲突，保留 v1.11.0 既有领域记录并加入 Canvas 变更记录。
 - Canvas 新增 `compile_time`、受控 compiler key、六个 SYSTEM 内置节点，以及有限 loop 的 serial/batch/cascade 语义。
 - Task Center 继续复用现有 DAGTaskGroup 和 1:N task binding；未新增权限、事件、错误码或运行时循环。
 
 ## 当前进行中
 
-- 更新 `RELEASE.md`，登记 `spec-v1.12.0` 的 S1/S2 文件、用户确认和正式实现门禁。
+- 已更新 `RELEASE.md`，登记 `spec-v1.12.0` 的 S1/S2 文件、用户确认和正式实现门禁。
 - 运行 YAML/OpenAPI/SQL/引用/diff 校验，创建 release commit 和 annotated tag，并推送提交与 tag。
 
 ## 文件变化
 
 - 修改：`00_product/domains/workflow-canvas/product-spec.md`、`01_contracts/domains/workflow-canvas/{openapi.yaml,schema.sql,module-contract.md}`。
 - 修改：`00_product/domains/task-center/product-spec.md`、`01_contracts/domains/task-center/module-contract.md`、对应 Context 文件。
-- 修改：`CHANGELOG.md`、`docs/HANDOFF.md`；待修改 `RELEASE.md`。
+- 修改：`CHANGELOG.md`、`docs/HANDOFF.md`、`RELEASE.md`。
 
 ## 关键设计决策
 
