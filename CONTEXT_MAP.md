@@ -12,7 +12,8 @@
 
 | 领域 | Context | 核心职责 | 何时读取 |
 | --- | --- | --- | --- |
-| `identity` | `domains/identity/context.md` | 认证、会话、RBAC、审计 | 登录、Token、用户、权限 |
+| `identity` | `domains/identity/context.md` | 认证流程、会话、RBAC、主体与资源授权 | 登录、Token、用户、权限、服务主体 |
+| `platform-management` | `domains/platform-management/context.md` | 平台级只读信息、SystemAuthConfig、AuditLog 与平台入口 | 平台管理、注册开关、认证策略、审计日志、系统概览 |
 | `modelgateway` | `domains/modelgateway/context.md` | 能力目录、执行引擎、绑定与 Operation 执行 | Capability、Engine、Binding、Adapter、Executor |
 | `model-management` | `domains/model-management/context.md` | 用户模型提供商和模型配置 | 模型、密钥引用、健康检测 |
 | `ai-chatting` | `domains/ai-chatting/context.md` | 会话、消息、助手和生成 | AI 对话、Assistant、翻译 |
@@ -46,7 +47,8 @@
 | Canvas、Node、Edge、ApplicationNode、CanvasRun、局部执行 | `domains/workflow-canvas/context.md` | 涉及应用节点再读 application-platform |
 | Notification、未读、偏好、聚合、需要处理 | `domains/notification-center/context.md` | 涉及源状态再读生产事件领域 |
 | SSE、UserEvent、event_id、Last-Event-ID、重放 | `domains/sse/context.md` | 再读事件所属事实领域 |
-| 用户、登录、JWT、Refresh Token、RBAC、SSO、LDAP | `domains/identity/context.md` | 涉及领域权限再读目标领域 |
+| 用户、登录、JWT、Refresh Token、RBAC、PrincipalContext、服务主体 | `domains/identity/context.md` | 涉及领域权限再读目标领域 |
+| SystemAuthConfig、allow_registration、平台认证配置、AuditLog、审计日志 | `domains/platform-management/context.md` | 认证执行再读 identity；来源事件再读对应 domain |
 | 模型提供商、ProviderModel、默认模型、用户模型健康检测 | `domains/model-management/context.md` | 平台 Engine 健康检测读 modelgateway；对话使用读 ai-chatting |
 | Topic、Message、Assistant、QuickPhrase、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 model-management |
 | MCP、server/discover、Streamable HTTP、stdio Proxy、MCP Tool、MCP Resource、MCP Task | `domains/mcp/context.md` | 调用应用再读 application-platform；任务映射再读 task-center |
@@ -72,6 +74,7 @@
 | Coding Agent 修改 StudioApplication | agent、appstudio | task-center |
 | StudioApplication 构建与发布 | appstudio、task-center | asset-library、notification-center |
 | StudioBuild 交付 Artifact | appstudio、asset-library | task-center |
+| 迁移认证配置或跨域审计 | platform-management、identity | 涉及来源事件再读对应 domain |
 
 ## 5. 全局文档入口
 

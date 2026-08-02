@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Platform Management API
+  version: 0.1.0-draft
+  description: >-
+    PlatformOverview, SystemAuthConfig and redacted AuditLog contracts. Business errors use HTTP 200 with stable code/value.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - {name: overview, description: 平台只读基础信息和最近审计摘要。}
+  - {name: auth-config, description: 平台认证策略配置。}
+  - {name: audit, description: 跨 domain 脱敏管理审计。}
+paths:
+  /api/v1/platform/overview:
+    get:
+      tags: [overview]
+      summary: 获取平台系统概览
+      operationId: get_platform_overview
+      x-permission: platform.overview.read
+      x-s1-refs: {user_stories: [US-PLATFORM-005], business_rules: [BR-PLATFORM-008, BR-PLATFORM-009]}
+      x-error-codes: [ERR_PLATFORM_OVERVIEW_ACCESS_DENIED, ERR_PLATFORM_OVERVIEW_UNAVAILABLE]
+      responses:
+        '200': {description: 只读平台基础信息和最近审计摘要或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/PlatformOverview'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/platform/auth-config:
+    get:
+      tags: [auth-config]
+      summary: 获取系统认证配置
+      operationId: get_platform_auth_config
+      x-permission: platform.auth_config.read
+      x-s1-refs: {user_stories: [US-PLATFORM-001], business_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003]}
+      x-error-codes: [ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED, ERR_PLATFORM_AUTH_CONFIG_INVALID]
+      responses:
+        '200': {description: 脱敏系统认证配置或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/SystemAuthConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [auth-config]
+      summary: 替换系统认证配置
+      operationId: replace_platform_auth_config
+      x-permission: platform.auth_config.manage
+      x-s1-refs: {user_stories: [US-PLATFORM-001], business_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003, BR-PLATFORM-005]}
+      x-error-codes: [ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED, ERR_PLATFORM_AUTH_CONFIG_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SystemAuthConfigReplaceRequest'}}}}
+      responses:
+        '200': {description: 更新后的系统认证配置或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/SystemAuthConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/platform/audit-logs:
+    get:
+      tags: [audit]
+      summary: 查询平台审计日志
+      operationId: list_platform_audit_logs
+      x-permission: platform.audit.read
+      x-s1-refs: {user_stories: [US-PLATFORM-003], business_rules: [BR-PLATFORM-004, BR-PLATFORM-006]}
+      x-error-codes: [ERR_PLATFORM_AUDIT_LOG_NOT_VISIBLE, ERR_PLATFORM_AUDIT_QUERY_INVALID]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {name: source_domain, in: query, schema: {type: string}}
+        - {name: source_module, in: query, schema: {type: string}}
+        - {name: principal_type, in: query, schema: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}}
+        - {name: principal_id, in: query, schema: {type: string}}
+        - {name: action, in: query, schema: {type: string}}
+        - {name: result, in: query, schema: {type: string, enum: [SUCCESS, FAILED, DENIED]}}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+      responses:
+        '200': {description: 脱敏平台审计列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuditLogListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/platform/audit-logs/{audit_log_id}:
+    get:
+      tags: [audit]
+      summary: 获取平台审计日志详情
+      operationId: get_platform_audit_log
+      x-permission: platform.audit.read
+      x-s1-refs: {user_stories: [US-PLATFORM-003], business_rules: [BR-PLATFORM-004, BR-PLATFORM-006]}
+      x-error-codes: [ERR_PLATFORM_AUDIT_LOG_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/audit_log_id'}]
+      responses:
+        '200': {description: 脱敏审计记录或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuditLog'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/platform/internal/system-auth-config:
+    get:
+      tags: [auth-config]
+      summary: 供 Identity 读取当前认证配置
+      operationId: read_system_auth_config_internal
+      x-authorization: service_principal
+      x-permission: platform.auth_config.read_internal
+      x-s1-refs: {user_stories: [US-PLATFORM-002], business_rules: [BR-PLATFORM-001, BR-PLATFORM-003]}
+      x-error-codes: [ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED, ERR_PLATFORM_AUTH_CONFIG_INVALID]
+      responses:
+        '200': {description: 当前生效配置或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/SystemAuthConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/platform/internal/audit-records:
+    post:
+      tags: [audit]
+      summary: 供受控 domain 追加脱敏审计记录
+      operationId: append_platform_audit_record_internal
+      x-authorization: service_principal
+      x-permission: platform.audit.record
+      x-s1-refs: {user_stories: [US-PLATFORM-004], business_rules: [BR-PLATFORM-004, BR-PLATFORM-005, BR-PLATFORM-006, BR-PLATFORM-007]}
+      x-error-codes: [ERR_PLATFORM_AUDIT_RECORD_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AuditRecordRequest'}}}}
+      responses:
+        '200': {description: 追加后的审计记录摘要或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuditLog'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
+    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
+    audit_log_id: {name: audit_log_id, in: path, required: true, schema: {type: string}}
+  responses:
+    UnexpectedError:
+      description: 未预期服务器异常。
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, value]
+      properties:
+        code: {type: string}
+        value: {type: string}
+        message: {type: string}
+        details: {type: object, additionalProperties: true}
+    PlatformOverview:
+      type: object
+      required: [platform, recent_audit_logs]
+      properties:
+        platform: {$ref: '#/components/schemas/PlatformRuntimeMetadata'}
+        recent_audit_logs:
+          type: array
+          maxItems: 10
+          items: {$ref: '#/components/schemas/PlatformAuditLogSummary'}
+    PlatformRuntimeMetadata:
+      type: object
+      required: [platform_name, version, environment, deployment_mode, timezone, started_at, uptime_seconds]
+      properties:
+        platform_name: {type: string, enum: [OmniMAM]}
+        version: {type: string}
+        environment: {type: string}
+        deployment_mode: {type: string, enum: [standalone, distributed]}
+        timezone: {type: string}
+        started_at: {type: string, format: date-time}
+        uptime_seconds: {type: integer, minimum: 0}
+    PlatformAuditLogSummary:
+      type: object
+      required: [id, source_domain, source_module, action, result, created_at]
+      properties:
+        id: {type: string}
+        source_domain: {type: string}
+        source_module: {type: string}
+        action: {type: string}
+        target_type: {type: string, nullable: true}
+        target_id: {type: string, nullable: true}
+        result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
+        created_at: {type: string, format: date-time}
+    PasswordHashPolicy:
+      type: object
+      required: [algorithm, version, memory_kib, iterations, parallelism, output_bytes, salt_bytes]
+      properties:
+        algorithm: {type: string, enum: [ARGON2ID]}
+        version: {type: integer, enum: [19]}
+        memory_kib: {type: integer, enum: [65536]}
+        iterations: {type: integer, enum: [3]}
+        parallelism: {type: integer, enum: [1]}
+        output_bytes: {type: integer, enum: [32]}
+        salt_bytes: {type: integer, minimum: 16}
+    SystemAuthConfig:
+      type: object
+      required: [id, registration_mode, allow_registration, password_policy, password_hash_policy, login_failure_policy, online_presence_window_seconds, access_token_lifetime, refresh_token_lifetime, resource_version, updated_at]
+      properties:
+        id: {type: string}
+        registration_mode: {type: string, enum: [OPEN, ADMIN_APPROVAL]}
+        allow_registration: {type: boolean, readOnly: true}
+        password_policy: {type: object, additionalProperties: true}
+        password_hash_policy: {$ref: '#/components/schemas/PasswordHashPolicy'}
+        login_failure_policy: {type: object, additionalProperties: true}
+        online_presence_window_seconds: {type: integer, minimum: 1}
+        access_token_lifetime: {type: integer, minimum: 1}
+        refresh_token_lifetime: {type: integer, minimum: 1}
+        resource_version: {type: integer, minimum: 0}
+        updated_at: {type: string, format: date-time}
+    SystemAuthConfigReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [registration_mode, password_policy, login_failure_policy, online_presence_window_seconds, access_token_lifetime, refresh_token_lifetime, resource_version]
+      properties:
+        registration_mode: {type: string, enum: [OPEN, ADMIN_APPROVAL]}
+        password_policy: {type: object, additionalProperties: true}
+        login_failure_policy: {type: object, additionalProperties: true}
+        online_presence_window_seconds: {type: integer, minimum: 1}
+        access_token_lifetime: {type: integer, minimum: 1}
+        refresh_token_lifetime: {type: integer, minimum: 1}
+        resource_version: {type: integer, minimum: 0}
+    AuditRecordRequest:
+      type: object
+      additionalProperties: false
+      required: [source_domain, source_module, principal_type, action, result, idempotency_key]
+      properties:
+        source_domain: {type: string, minLength: 1}
+        source_module: {type: string, minLength: 1}
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}
+        principal_id: {type: string, nullable: true}
+        actor_user_id: {type: string, nullable: true}
+        action: {type: string, minLength: 1}
+        target_type: {type: string, nullable: true}
+        target_id: {type: string, nullable: true}
+        owner_user_id: {type: string, nullable: true}
+        result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
+        reason_code: {type: string, nullable: true}
+        request_id: {type: string, nullable: true}
+        trace_id: {type: string, nullable: true}
+        ip_address: {type: string, nullable: true}
+        user_agent: {type: string, nullable: true}
+        detail: {type: object, additionalProperties: true, nullable: true}
+        idempotency_key: {type: string, minLength: 1}
+    AuditLog:
+      type: object
+      required: [id, source_domain, source_module, principal_type, action, result, created_at]
+      properties:
+        id: {type: string}
+        source_domain: {type: string}
+        source_module: {type: string}
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}
+        principal_id: {type: string, nullable: true}
+        actor_user_id: {type: string, nullable: true}
+        action: {type: string}
+        target_type: {type: string, nullable: true}
+        target_id: {type: string, nullable: true}
+        owner_user_id: {type: string, nullable: true}
+        result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
+        reason_code: {type: string, nullable: true}
+        request_id: {type: string, nullable: true}
+        trace_id: {type: string, nullable: true}
+        ip_address: {type: string, nullable: true}
+        user_agent: {type: string, nullable: true}
+        detail: {type: object, additionalProperties: true, nullable: true}
+        created_at: {type: string, format: date-time}
+    AuditLogListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/AuditLog'}}

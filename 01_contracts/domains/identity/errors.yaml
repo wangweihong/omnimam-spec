@@ -1,0 +1,545 @@
+- code: ERR_IDENTITY_INVALID_CREDENTIALS
+  value: 220200
+  http: 200
+  cn: 用户名或密码错误。
+  en: The username or password is invalid.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-001, BR-IAM-003]
+  related_user_stories: [US-IAM-001, US-IAM-012]
+
+- code: ERR_IDENTITY_ACCOUNT_PENDING
+  value: 220201
+  http: 200
+  cn: 账号正在等待审批。
+  en: The account is pending approval.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-002, BR-IAM-003]
+  related_user_stories: [US-IAM-001, US-IAM-002]
+
+- code: ERR_IDENTITY_ACCOUNT_DISABLED
+  value: 220202
+  http: 200
+  cn: 账号已禁用。
+  en: The account is disabled.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-003, BR-IAM-007]
+  related_user_stories: [US-IAM-001, US-IAM-002]
+
+- code: ERR_IDENTITY_ACCOUNT_LOCKED
+  value: 220203
+  http: 200
+  cn: 账号已临时锁定。
+  en: The account is temporarily locked.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-003]
+  related_user_stories: [US-IAM-001]
+
+- code: ERR_IDENTITY_FIRST_LOGIN_REQUIRED
+  value: 220204
+  http: 200
+  cn: 必须完成首次登录引导。
+  en: The first-login flow must be completed.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-004]
+  related_user_stories: [US-IAM-003]
+
+- code: ERR_IDENTITY_TOKEN_EXPIRED
+  value: 220205
+  http: 200
+  cn: Access Token 已过期。
+  en: The access token has expired.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-005, BR-IAM-007]
+  related_user_stories: [US-IAM-001, US-IAM-004]
+
+- code: ERR_IDENTITY_TOKEN_REVOKED
+  value: 220206
+  http: 200
+  cn: Token 或会话已撤销。
+  en: The token or session has been revoked.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-005, BR-IAM-007]
+  related_user_stories: [US-IAM-004, US-IAM-011]
+
+- code: ERR_IDENTITY_REFRESH_TOKEN_INVALID
+  value: 220207
+  http: 200
+  cn: Refresh Token 无效。
+  en: The refresh token is invalid.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-005, BR-IAM-006]
+  related_user_stories: [US-IAM-004]
+
+- code: ERR_IDENTITY_REFRESH_TOKEN_REUSED
+  value: 220208
+  http: 200
+  cn: 检测到 Refresh Token 重用，会话已撤销。
+  en: Refresh token reuse was detected and the session was revoked.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-006, BR-IAM-015]
+  related_user_stories: [US-IAM-004, US-IAM-009]
+
+- code: ERR_IDENTITY_PASSWORD_POLICY_FAILED
+  value: 220209
+  http: 200
+  cn: 密码不符合当前安全策略。
+  en: The password does not satisfy the active security policy.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-004, BR-IAM-016]
+  related_user_stories: [US-IAM-003, US-IAM-010]
+
+- code: ERR_IDENTITY_OLD_PASSWORD_INVALID
+  value: 220210
+  http: 200
+  cn: 原密码错误。
+  en: The current password is invalid.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-004, BR-IAM-007]
+  related_user_stories: [US-IAM-003]
+
+- code: ERR_IDENTITY_SESSION_NOT_VISIBLE
+  value: 220211
+  http: 200
+  cn: 会话不存在或当前主体不可见。
+  en: The session does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: session
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-005, BR-IAM-012]
+  related_user_stories: [US-IAM-004, US-IAM-012]
+
+- code: ERR_IDENTITY_SESSION_STATE_INVALID
+  value: 220212
+  http: 200
+  cn: 会话当前状态不允许该操作。
+  en: The session state does not allow this operation.
+  owning_domain: identity
+  owning_module: session
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-006, BR-IAM-007]
+  related_user_stories: [US-IAM-004]
+
+- code: ERR_IDENTITY_USER_NOT_VISIBLE
+  value: 220400
+  http: 200
+  cn: 用户不存在或当前主体不可见。
+  en: The user does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-001, BR-IAM-012]
+  related_user_stories: [US-IAM-002, US-IAM-012]
+
+- code: ERR_IDENTITY_USERNAME_ALREADY_EXISTS
+  value: 220401
+  http: 200
+  cn: 用户名已存在。
+  en: The username already exists.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-001, BR-IAM-002]
+  related_user_stories: [US-IAM-001, US-IAM-002]
+
+- code: ERR_IDENTITY_EMAIL_ALREADY_EXISTS
+  value: 220402
+  http: 200
+  cn: 邮箱已存在。
+  en: The email already exists.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-001, BR-IAM-002]
+  related_user_stories: [US-IAM-001, US-IAM-002]
+
+- code: ERR_IDENTITY_USER_STATE_INVALID
+  value: 220403
+  http: 200
+  cn: 用户当前状态不允许该操作。
+  en: The user state does not allow this operation.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-003, BR-IAM-007, BR-IAM-017]
+  related_user_stories: [US-IAM-002]
+
+- code: ERR_IDENTITY_USER_DELETE_BLOCKED
+  value: 220404
+  http: 200
+  cn: 用户仍拥有未处理的业务资源、任务、服务账号或共享关系。
+  en: The user still owns business resources, tasks, service accounts, or grants.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-017, BR-IAM-019]
+  related_user_stories: [US-IAM-002]
+
+- code: ERR_IDENTITY_SELF_DELETE_FORBIDDEN
+  value: 220405
+  http: 200
+  cn: 用户不能删除自己。
+  en: A user cannot delete itself.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-017]
+  related_user_stories: [US-IAM-002]
+
+- code: ERR_IDENTITY_LAST_SUPER_ADMIN_PROTECTED
+  value: 220406
+  http: 200
+  cn: 不能删除或禁用最后一个有效 SUPER_ADMIN。
+  en: The last effective SUPER_ADMIN cannot be deleted or disabled.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-009, BR-IAM-017]
+  related_user_stories: [US-IAM-002, US-IAM-005]
+
+- code: ERR_IDENTITY_USER_CREATE_INVALID
+  value: 220407
+  http: 200
+  cn: 用户创建参数或默认授权无效。
+  en: The user creation input or default grant is invalid.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-001, BR-IAM-002, BR-IAM-016]
+  related_user_stories: [US-IAM-001, US-IAM-002]
+
+- code: ERR_IDENTITY_ROLE_NOT_VISIBLE
+  value: 220600
+  http: 200
+  cn: 角色不存在或当前主体不可见。
+  en: The role does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-008, BR-IAM-009]
+  related_user_stories: [US-IAM-005, US-IAM-012]
+
+- code: ERR_IDENTITY_ROLE_BUILTIN_PROTECTED
+  value: 220601
+  http: 200
+  cn: 内置角色不允许执行该修改。
+  en: The built-in role cannot be modified in this way.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-009, BR-IAM-017]
+  related_user_stories: [US-IAM-005]
+
+- code: ERR_IDENTITY_ROLE_GRANT_INVALID
+  value: 220602
+  http: 200
+  cn: 角色授权不存在、已过期或不允许。
+  en: The role grant does not exist, is expired, or is not allowed.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-008, BR-IAM-009]
+  related_user_stories: [US-IAM-005]
+
+- code: ERR_IDENTITY_GROUP_NOT_VISIBLE
+  value: 220603
+  http: 200
+  cn: 用户组不存在或当前主体不可见。
+  en: The group does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-008, BR-IAM-012]
+  related_user_stories: [US-IAM-005, US-IAM-012]
+
+- code: ERR_IDENTITY_GROUP_MEMBER_INVALID
+  value: 220604
+  http: 200
+  cn: 用户组成员关系无效。
+  en: The group membership is invalid.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-008]
+  related_user_stories: [US-IAM-005]
+
+- code: ERR_IDENTITY_PERMISSION_NOT_FOUND
+  value: 220605
+  http: 200
+  cn: 权限码未登记或已废弃。
+  en: The permission code is not registered or is deprecated.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-009]
+  related_user_stories: [US-IAM-005, US-IAM-006]
+
+- code: ERR_IDENTITY_AUTHZ_DENIED
+  value: 220606
+  http: 200
+  cn: 当前主体缺少所需权限。
+  en: The current principal lacks the required permission.
+  owning_domain: identity
+  owning_module: rbac
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-009, BR-IAM-013]
+  related_user_stories: [US-IAM-006, US-IAM-012]
+
+- code: ERR_IDENTITY_AUTHZ_CONTEXT_INVALID
+  value: 220607
+  http: 200
+  cn: PrincipalContext 无效或委托关系不匹配。
+  en: The PrincipalContext is invalid or the delegation does not match.
+  owning_domain: identity
+  owning_module: principal
+  range: 220600-220799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-010, BR-IAM-019]
+  related_user_stories: [US-IAM-006, US-IAM-011]
+
+- code: ERR_IDENTITY_RESOURCE_GRANT_NOT_SUPPORTED
+  value: 220800
+  http: 200
+  cn: 目标资源 domain 未声明支持共享授权。
+  en: The target resource domain has not declared support for shared grants.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-011, BR-IAM-012]
+  related_user_stories: [US-IAM-007, US-IAM-012]
+
+- code: ERR_IDENTITY_RESOURCE_GRANT_NOT_VISIBLE
+  value: 220801
+  http: 200
+  cn: 资源授权不存在或当前主体不可见。
+  en: The resource grant does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-012, BR-IAM-019]
+  related_user_stories: [US-IAM-007, US-IAM-012]
+
+- code: ERR_IDENTITY_RESOURCE_GRANT_INVALID
+  value: 220802
+  http: 200
+  cn: 资源授权参数、主体或目标不合法。
+  en: The resource grant input, subject, or target is invalid.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-011, BR-IAM-012]
+  related_user_stories: [US-IAM-007]
+
+- code: ERR_IDENTITY_RESOURCE_GRANT_ACCESS_LEVEL_INVALID
+  value: 220803
+  http: 200
+  cn: 资源域不支持该访问等级。
+  en: The resource domain does not support this access level.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-012]
+  related_user_stories: [US-IAM-007]
+
+- code: ERR_IDENTITY_RESOURCE_TARGET_NOT_VISIBLE
+  value: 220804
+  http: 200
+  cn: 目标资源不存在或当前主体不可见。
+  en: The target resource does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-011, BR-IAM-012, BR-IAM-019]
+  related_user_stories: [US-IAM-006, US-IAM-007, US-IAM-012]
+
+- code: ERR_IDENTITY_RESOURCE_PERMISSION_MISSING
+  value: 220805
+  http: 200
+  cn: 资源授权接口未登记目标 domain 权限。
+  en: The resource grant endpoint has no registered target-domain permission.
+  owning_domain: identity
+  owning_module: resource-access
+  range: 220800-220999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-009, BR-IAM-012]
+  related_user_stories: [US-IAM-006, US-IAM-007]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE
+  value: 221000
+  http: 200
+  cn: 服务账号不存在或当前主体不可见。
+  en: The service account does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-010, BR-IAM-014]
+  related_user_stories: [US-IAM-008, US-IAM-012]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_ALREADY_EXISTS
+  value: 221001
+  http: 200
+  cn: 服务账号编码已存在。
+  en: The service account code already exists.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-014]
+  related_user_stories: [US-IAM-008]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_DISABLED
+  value: 221002
+  http: 200
+  cn: 服务账号已禁用。
+  en: The service account is disabled.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-007, BR-IAM-014]
+  related_user_stories: [US-IAM-008]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_CREDENTIAL_INVALID
+  value: 221003
+  http: 200
+  cn: 服务账号凭据无效。
+  en: The service account credential is invalid.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-010, BR-IAM-014]
+  related_user_stories: [US-IAM-008]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_CREDENTIAL_ROTATION_FAILED
+  value: 221004
+  http: 200
+  cn: 服务账号凭据轮换失败。
+  en: Service account credential rotation failed.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: true
+  deprecated: false
+  related_rules: [BR-IAM-014, BR-IAM-015]
+  related_user_stories: [US-IAM-008, US-IAM-009]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_STATE_INVALID
+  value: 221005
+  http: 200
+  cn: 服务账号当前状态不允许该操作。
+  en: The service account state does not allow this operation.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-014]
+  related_user_stories: [US-IAM-008]
+
+- code: ERR_IDENTITY_PRINCIPAL_CONTEXT_INVALID
+  value: 221205
+  http: 200
+  cn: PrincipalContext 无效。
+  en: The PrincipalContext is invalid.
+  owning_domain: identity
+  owning_module: principal
+  range: 221200-221299
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-010, BR-IAM-019]
+  related_user_stories: [US-IAM-006, US-IAM-011]

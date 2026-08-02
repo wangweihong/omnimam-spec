@@ -1,1142 +1,1652 @@
-# 统一身份认证与访问控制产品规格
-> 本文档是 S1 产品事实源，用于定义统一身份认证与访问控制的产品语义、领域模型、业务规则、用户故事和端呈现策略。
->
-> 本文档中的 Mermaid 图用于辅助理解复杂流程、状态变化、角色可见性和交互时序。图与文字描述应被视为同一事实集合；若存在不一致，应修正文档后再进入实现。
+# OmniMAM 身份认证与访问控制功能设计
 
-## 文档信息
+> 文档状态：v2.0-draft
+> 适用阶段：非企业版
+> 用户模型：平台统一用户
+> 资源模型：资源域定义所有权、可见性与可选共享
+> 当前不包含：企业、租户、LDAP、SSO、OIDC、MFA、PAT
 
-- 版本：v1.x
-- 最后更新：2026-07-08
-- 作者：OmniMAM Spec Team
-- domain_id：identity
-- domain_code：IAM
+---
 
-## 0. 原型来源
+## 1. 文档目的
 
-当前文档不依赖独立 S0 原型，直接沉淀统一身份认证与访问控制的 S1 产品语义。
+本文档定义 OmniMAM 非企业版本的身份认证与访问控制能力，包括：
 
-## 1. 功能说明
+* 用户注册与登录；
+* 用户账号管理；
+* Access Token 与 Refresh Token；
+* 登录会话管理；
+* 平台角色与权限码；
+* 用户组；
+* 跨领域主体与资源授权基础；
+* Service Account；
+* 前后端统一鉴权；
+* 向平台管理提交认证与授权审计上下文；
+* 系统初始化。
 
-统一身份认证与访问控制用于为 OmniMAM 及其后续生态系统提供统一的用户身份管理、登录认证、Token 会话、动态 RBAC 权限控制、前后端权限解耦、SSO 单点登录、用户注册、LDAP 外部身份接入、系统级认证配置读取和安全审计能力。
+本版本不引入企业、租户或组织隔离。
 
-本功能的核心事实是：身份认证与访问控制是全系统的基础能力。所有业务系统不应自行实现独立登录、角色判断、权限硬编码或跨系统会话逻辑，而应统一依赖 IAM 提供的身份、Token、权限码、菜单资源和授权判定能力。
+所有用户直接属于 OmniMAM 平台。
 
-当前阶段不支持邮箱验证、MFA、可信设备、OAuth2 / OIDC 登录或 OAuth Provider 管理；这些能力仅作为后续预留方向，不进入当前阶段实现依据。
+---
 
-IAM 的主要使用对象包括：
+## 2. 核心设计结论
+
+## 2.1 单一用户体系
+
+系统只有一个用户主体：
 
 ```text
-普通用户
-系统管理员
-业务系统前端
-业务系统后端 API
-认证中心
-外部身份源
+User
 ```
 
-IAM 需要支持：
+不存在：
 
 ```text
-用户名 / 邮箱 / 手机号登录
-用户自助注册
-密码认证
-LDAP 登录
-JWT Access Token
+企业用户
+普通用户
+租户用户
+TenantMember
+TenantRole
+TenantInvitation
+```
+
+所有注册用户均可登录 OmniMAM。
+
+用户之间的区别由角色、权限和资源授权决定，不通过用户类型区分。
+
+---
+
+## 2.2 资源授权由资源域与 Identity 协作
+
+多数用户创建的业务资源以用户作为 owner，例如：
+
+```text
+Asset
+Canvas
+Application
+Agent
+Workspace
+Task
+```
+
+但资源是否具有 owner、`createdBy`、`visibility`、项目/命名空间或协作成员，以及这些字段如何影响生命周期，必须由资源所属 domain 的 S1 定义。Identity 不要求所有资源使用同一套字段，也不拥有 Asset、Application、Task、Canvas、Agent 或 Workspace 的状态。
+
+跨域协作统一遵循以下原则：
+
+```text
+资源域从已验证的 PrincipalContext 注入 owner_user_id / created_by，而不是信任请求体；
+owner_user_id 表示业务资源所有权，created_by 表示本次创建主体，二者可以不同；
+资源域拥有 visibility、project、namespace 和协作规则；
+只有资源域声明支持共享时，才使用 Identity 的 ResourceAccessGrant；
+资源域不得读取 Identity 私有表来推导资源状态。
+```
+
+例如，asset-library 首期按当前用户 owner 范围隔离；application-platform、workflow-canvas、agent 和 appstudio 由各自 S1 定义 owner、visibility 或 collaborator 规则。Identity 提供授权结果和审计上下文，但不把这些 domain 统一改写成共享资源模型。
+
+---
+
+## 2.3 权限采用两层判断
+
+一次业务访问必须同时满足：
+
+```text
+操作权限
++
+资源访问权限
+```
+
+例如用户执行某个资源域的编辑动作：
+
+```text
+拥有目标 domain 登记的编辑权限码
+并且
+满足该 domain 定义的 owner、visibility 或协作授权规则
+```
+
+RBAC 只判断“能否执行这一类操作”。
+
+资源授权判断“能否访问这一个具体对象”，但具体对象是否存在、是否可见、是否已发布或已删除，仍由资源域确认。
+
+---
+
+## 2.4 权限定义由系统注册
+
+权限码属于产品和后端接口契约。
+
+权限定义由 OmniMAM 各模块注册，管理员只能将已有权限分配给角色，不能随意创建权限码。
+
+示例：
+
+```text
+user.read
+user.manage
+
+asset.create
+asset.read
+asset.update
+asset.delete
+asset.share
+asset.manage_all
+
+canvas.create
+canvas.read
+canvas.edit
+canvas.execute
+canvas.delete
+canvas.share
+canvas.manage_all
+
+application.read
+application.run
+application.manage
+
+agent.read
+agent.use
+agent.manage
+
+task.read
+task.cancel
+task.manage_all
+```
+
+---
+
+各 domain 的 `ordinary_user`、`business_developer`、`system_admin` 等 subject 只是权限合同中的策略分类，不是业务代码可以直接判断的 Identity 角色名。业务 API 必须请求具体权限码，并由 Identity 根据主体的有效角色/用户组授权返回结果。
+
+## 2.5 Token 不保存完整权限
+
+Access Token 只表达身份和凭据状态。
+
+不在 Token 中保存：
+
+```text
+完整角色列表
+完整权限列表
+菜单树
+资源共享关系
+```
+
+角色或权限变更后，不需要等待旧 Token 过期。
+
+---
+
+## 3. 当前功能范围
+
+## 3.1 当前阶段支持
+
+```text
+普通用户自主注册
+管理员创建用户
+用户名或邮箱登录
+本地密码认证
+登录失败锁定
+首次登录引导
+修改密码
+个人资料维护
+Access Token
 Refresh Token
-SSO 全局会话
-动态 RBAC 权限
-菜单 / 按钮 / API 资源控制
-用户组
+Refresh Token 轮换
+登录会话管理
+角色
+权限码
+静态用户组
+用户直接角色
+用户组角色
+资源授权基础（由资源域选择接入）
+权限缓存
+服务账号
+统一 API 鉴权
+安全审计
+系统初始化
+```
+
+## 3.2 当前阶段不支持
+
+```text
+企业
+租户
+TenantMember
+LDAP
+OAuth2 / OIDC 登录
+MFA
+可信设备
+邮箱验证
+忘记密码邮件
+动态用户组
 角色继承
 互斥角色
-权限缓存刷新
-审计日志
-系统初始化内置管理员和默认角色
-系统级认证配置读取
+复杂 ABAC
+跨实例身份同步
+Personal Access Token（PAT）
 ```
 
 ---
 
+## 4. 系统组成
 
-## 2. 核心数据模型
+```mermaid
+flowchart TB
+    U["用户"] --> FE["OmniMAM Web"]
 
-本文档中的数据模型是 S1 领域模型，仅表达产品语义和逻辑字段，不等同于 OpenAPI DTO、SQL schema 或后端 ORM。
+    FE --> IAM["IAM Service"]
+    FE --> API["OmniMAM API"]
 
-### User（用户）
+    IAM --> USER["用户管理"]
+    IAM --> AUTH["认证与会话"]
+    IAM --> ROLE["角色与权限"]
+    IAM --> GROUP["用户组"]
+    IAM --> GRANT["资源授权"]
+    IAM --> AUDIT["安全审计"]
 
-| 字段             | 类型                | 必填 | 说明                                     |
-| -------------- | ----------------- | -- | -------------------------------------- |
-| id             | string            | 是  | 用户全局唯一标识                               |
-| username       | string            | 是  | 登录用户名；LOCAL 用户范围内唯一且不可修改                 |
-| displayName    | string            | 是  | 显示名称                                   |
-| alias          | string            | 否  | 用户别名或个性化昵称，不作为登录凭证                     |
-| email          | string            | 否  | 邮箱；需要全局唯一，可作为登录凭证                      |
-| phone          | string            | 否  | 手机号；需要全局唯一，可作为登录凭证                     |
-| passwordHash   | string            | 否  | 本地用户密码哈希；LDAP / OAuth 用户可以为空           |
-| status         | enum              | 是  | 用户状态：ACTIVE、DISABLED、LOCKED、UNVERIFIED；UNVERIFIED 为后续邮箱验证或审批扩展预留 |
-| lockoutEnd     | string(date-time) | 否  | 锁定截止时间                                 |
-| failedCount    | integer           | 是  | 连续登录失败次数                               |
-| passwordChangedAt | string(date-time) | 否  | 最后一次密码修改时间                             |
-| lastLoginAt    | string(date-time) | 否  | 最后一次登录成功时间                              |
-| isFirstLogin   | boolean           | 是  | 是否首次登录；为 true 时必须先完成密码和邮箱修改             |
-| mfaEnabled     | boolean           | 是  | 是否启用多因子认证；当前阶段不支持，仅作为后续预留              |
-| mfaMethods     | array of string   | 否  | 允许的 MFA 方式；当前阶段不支持，仅作为后续预留              |
-| oauthProviders | array of object   | 否  | 绑定的第三方账号；当前阶段不支持 OAuth2 / OIDC，仅作为后续预留 |
-| ldapDn         | string            | 否  | LDAP 用户 DN                             |
-| ldapServerId   | string            | 否  | 关联 LDAP 服务器配置                          |
-| source         | enum              | 是  | 用户来源：LOCAL、LDAP、OAUTH                  |
-| extAttrs       | object            | 否  | 扩展属性，例如部门、职级、岗位                        |
-| createdAt      | string(date-time) | 是  | 创建时间                                   |
-| updatedAt      | string(date-time) | 是  | 更新时间                                   |
+    API --> AUTHZ["统一鉴权中间件"]
+    AUTHZ --> IAM
 
-### Group（用户组）
+    WORKER["Worker / Agent / App"] --> IAM
+    WORKER --> API
+```
 
-| 字段          | 类型                | 必填 | 说明                 |
-| ----------- | ----------------- | -- | ------------------ |
-| id          | string            | 是  | 用户组唯一标识            |
-| name        | string            | 是  | 组名，支持层级路径          |
-| description | string            | 否  | 描述                 |
-| parentId    | string            | 否  | 父组 ID              |
-| type        | enum              | 是  | 组类型：STATIC、DYNAMIC |
-| rule        | string            | 否  | 动态组规则表达式           |
-| status      | enum              | 是  | 状态：ACTIVE、DISABLED |
-| createdAt   | string(date-time) | 是  | 创建时间               |
-| updatedAt   | string(date-time) | 是  | 更新时间               |
+IAM Service 是以下数据的事实源：
 
-### GroupMember（用户组成员）
+```text
+用户
+密码凭据
+会话
+Token
+角色
+权限
+用户组
+资源授权
+服务账号
+安全审计
+```
 
-| 字段        | 类型                | 必填 | 说明                            |
-| --------- | ----------------- | -- | ----------------------------- |
-| groupId   | string            | 是  | 用户组 ID                        |
-| userId    | string            | 是  | 用户 ID                         |
-| source    | enum              | 是  | 成员来源：MANUAL、DYNAMIC、LDAP_SYNC |
-| createdAt | string(date-time) | 是  | 创建时间                          |
-
-### Role（角色）
-
-| 字段          | 类型                | 必填 | 说明                 |
-| ----------- | ----------------- | -- | ------------------ |
-| id          | string            | 是  | 角色唯一标识             |
-| code        | string            | 是  | 角色标识               |
-| name        | string            | 是  | 角色显示名称             |
-| description | string            | 否  | 角色描述               |
-| isBuiltin   | boolean           | 是  | 是否内置角色             |
-| status      | enum              | 是  | 状态：ACTIVE、DISABLED |
-| createdAt   | string(date-time) | 是  | 创建时间               |
-| updatedAt   | string(date-time) | 是  | 更新时间               |
-
-### UserRoleGrant（用户角色授权）
-
-| 字段            | 类型                | 必填 | 说明                         |
-| ------------- | ----------------- | -- | -------------------------- |
-| userId        | string            | 是  | 用户 ID                      |
-| roleId        | string            | 是  | 角色 ID                      |
-| grantType     | enum              | 是  | 授权来源：DIRECT、GROUP、LDAP_MAP |
-| effectiveFrom | string(date-time) | 否  | 生效开始时间                     |
-| effectiveTo   | string(date-time) | 否  | 生效结束时间                     |
-| createdAt     | string(date-time) | 是  | 创建时间                       |
-
-### GroupRoleGrant（用户组角色授权）
-
-| 字段        | 类型                | 必填 | 说明     |
-| --------- | ----------------- | -- | ------ |
-| groupId   | string            | 是  | 用户组 ID |
-| roleId    | string            | 是  | 角色 ID  |
-| createdAt | string(date-time) | 是  | 创建时间   |
-
-### RoleInheritance（角色继承）
-
-| 字段           | 类型                | 必填 | 说明     |
-| ------------ | ----------------- | -- | ------ |
-| roleId       | string            | 是  | 子角色 ID |
-| parentRoleId | string            | 是  | 父角色 ID |
-| createdAt    | string(date-time) | 是  | 创建时间   |
-
-### RoleMutex（互斥角色）
-
-| 字段          | 类型                | 必填 | 说明         |
-| ----------- | ----------------- | -- | ---------- |
-| roleId      | string            | 是  | 角色 ID      |
-| mutexRoleId | string            | 是  | 与其互斥的角色 ID |
-| createdAt   | string(date-time) | 是  | 创建时间       |
-
-### PermissionResource（权限资源）
-
-| 字段        | 类型                | 必填 | 说明                                |
-| --------- | ----------------- | -- | --------------------------------- |
-| id        | string            | 是  | 资源唯一标识                            |
-| code      | string            | 是  | 权限标识码，例如 user:create、order:export |
-| name      | string            | 是  | 资源名称                              |
-| type      | enum              | 是  | 资源类型：MENU、BUTTON、API              |
-| parentId  | string            | 否  | 父资源 ID                            |
-| path      | string            | 否  | 菜单路径或 API 路径模式                    |
-| method    | string            | 否  | API 方法                            |
-| icon      | string            | 否  | 菜单图标                              |
-| sortOrder | integer           | 否  | 排序                                |
-| status    | enum              | 是  | 状态：ACTIVE、DISABLED                |
-| createdAt | string(date-time) | 是  | 创建时间                              |
-| updatedAt | string(date-time) | 是  | 更新时间                              |
-
-### RolePermissionGrant（角色权限授权）
-
-| 字段             | 类型                | 必填 | 说明    |
-| -------------- | ----------------- | -- | ----- |
-| roleId         | string            | 是  | 角色 ID |
-| permissionCode | string            | 是  | 权限标识码 |
-| createdAt      | string(date-time) | 是  | 创建时间  |
-
-### AuthSession（认证中心会话）
-
-| 字段         | 类型                | 必填 | 说明                          |
-| ---------- | ----------------- | -- | --------------------------- |
-| id         | string            | 是  | 会话唯一标识                      |
-| userId     | string            | 是  | 用户 ID                       |
-| clientId   | string            | 否  | 来源客户端                       |
-| deviceInfo | string            | 否  | 设备信息                        |
-| ipAddress  | string            | 否  | 登录 IP                       |
-| userAgent  | string            | 否  | 浏览器或客户端信息                   |
-| status     | enum              | 是  | 会话状态：ACTIVE、REVOKED、EXPIRED |
-| createdAt  | string(date-time) | 是  | 创建时间                        |
-| expiresAt  | string(date-time) | 是  | 过期时间                        |
-
-### TokenCredential（Token 凭据）
-
-| 字段             | 类型                | 必填 | 说明                        |
-| -------------- | ----------------- | -- | ------------------------- |
-| accessTokenJti | string            | 是  | Access Token 唯一标识         |
-| refreshTokenId | string            | 是  | Refresh Token 标识          |
-| userId         | string            | 是  | 用户 ID                     |
-| clientId       | string            | 否  | 客户端 ID                    |
-| deviceInfo     | string            | 否  | 绑定设备信息                    |
-| status         | enum              | 是  | 状态：ACTIVE、REVOKED、EXPIRED |
-| issuedAt       | string(date-time) | 是  | 签发时间                      |
-| expiresAt      | string(date-time) | 是  | 过期时间                      |
-
-### OAuthProviderBinding（OAuth 账号绑定，当前阶段预留）
-
-| 字段        | 类型                | 必填 | 说明               |
-| --------- | ----------------- | -- | ---------------- |
-| userId    | string            | 是  | 本地用户 ID          |
-| provider  | string            | 是  | OAuth / OIDC 提供方 |
-| subjectId | string            | 是  | 第三方用户唯一标识        |
-| email     | string            | 否  | 第三方返回邮箱          |
-| createdAt | string(date-time) | 是  | 绑定时间             |
-
-### SystemAuthConfig（系统级认证配置）
-
-| 字段                  | 类型      | 必填 | 说明                         |
-| ------------------- | ------- | -- | -------------------------- |
-| passwordPolicy      | object  | 是  | 密码复杂度策略，用于后端校验和前端展示       |
-| accessTokenTimeout  | integer | 是  | Access Token 超时时间，单位由实现契约定义 |
-| refreshTokenTimeout | integer | 是  | Refresh Token 超时时间，单位由实现契约定义 |
-| lockoutPolicy       | object  | 是  | 登录失败锁定策略                   |
-| updatedAt           | string(date-time) | 是  | 配置更新时间                     |
-
-### LdapServerConfig（LDAP 服务器配置）
-
-| 字段               | 类型                | 必填 | 说明                 |
-| ---------------- | ----------------- | -- | ------------------ |
-| id               | string            | 是  | LDAP 配置唯一标识        |
-| name             | string            | 是  | LDAP 源名称           |
-| url              | string            | 是  | LDAP 服务地址          |
-| baseDn           | string            | 是  | Base DN            |
-| bindUser         | string            | 否  | 绑定用户               |
-| searchFilter     | string            | 是  | 用户搜索过滤条件           |
-| attributeMapping | object            | 是  | LDAP 属性到用户字段的映射    |
-| status           | enum              | 是  | 状态：ACTIVE、DISABLED |
-| createdAt        | string(date-time) | 是  | 创建时间               |
-| updatedAt        | string(date-time) | 是  | 更新时间               |
-
-### AuditLog（审计日志）
-
-| 字段          | 类型                | 必填 | 说明                  |
-| ----------- | ----------------- | -- | ------------------- |
-| id          | string            | 是  | 审计日志唯一标识            |
-| actorUserId | string            | 否  | 操作人用户 ID            |
-| action      | string            | 是  | 操作类型                |
-| targetType  | string            | 否  | 操作对象类型              |
-| targetId    | string            | 否  | 操作对象 ID             |
-| result      | enum              | 是  | 操作结果：SUCCESS、FAILED |
-| ipAddress   | string            | 否  | 操作来源 IP             |
-| userAgent   | string            | 否  | 操作来源客户端             |
-| detail      | object            | 否  | 详情                  |
-| createdAt   | string(date-time) | 是  | 记录时间                |
+业务资源本身仍由各业务模块管理。
 
 ---
 
-## 3. 业务规则
+## 5. 核心数据模型
 
-### 3.1 用户与身份来源
+## 5.1 User
 
-* **BR-IAM-USER-01** 用户是 IAM 的身份主体，所有登录、授权、审计和资源访问都必须关联到用户。
-* **BR-IAM-USER-02** 用户来源包括 LOCAL、LDAP、OAUTH；OAUTH 当前阶段仅作为后续预留来源。
-* **BR-IAM-USER-03** LOCAL 用户必须拥有 LOCAL 用户范围内唯一的 username。
-* **BR-IAM-USER-04** LOCAL 用户 username 创建后不可修改。
-* **BR-IAM-USER-05** email 需要全局唯一。
-* **BR-IAM-USER-06** phone 需要全局唯一。
-* **BR-IAM-USER-07** LOCAL 用户必须具备密码哈希。
-* **BR-IAM-USER-08** LDAP / OAUTH 用户可以没有本地密码。
-* **BR-IAM-USER-09** 用户状态为 ACTIVE 时才允许正常登录。
-* **BR-IAM-USER-10** UNVERIFIED 为后续邮箱验证或审批扩展预留状态；当前阶段注册主流程不进入邮箱未验证状态。
-* **BR-IAM-USER-11** 用户状态为 DISABLED 或 LOCKED 时禁止登录。
-* **BR-IAM-USER-12** alias 是用户个性化别名，不作为登录凭证。
-* **BR-IAM-USER-13** 系统需要记录用户最后一次密码修改时间和最后一次登录成功时间。
-* **BR-IAM-USER-14** 用户存在 isFirstLogin 标志；当 isFirstLogin 为 true 时，系统应视为首次登录并要求用户先修改密码和邮箱。
-* **BR-IAM-USER-15** 首次登录引导完成后，isFirstLogin 应变为 false。
-* **BR-IAM-USER-16** lastLoginAt 只在正式登录态签发成功后更新；密码校验通过但未签发正式登录态时不得更新。
-* **BR-IAM-USER-17** 已登录用户可以修改自己的 displayName、alias、email、phone 等个人信息；username 不可修改。
-* **BR-IAM-USER-18** 修改 email 或 phone 时必须校验唯一性；当前阶段不触发邮箱验证流程。
+| 字段                   | 类型       | 说明                                     |
+| -------------------- | -------- | -------------------------------------- |
+| id                   | string   | 用户全局唯一标识                               |
+| username             | string   | 用户名，全局唯一                               |
+| normalizedUsername   | string   | 标准化用户名                                 |
+| displayName          | string   | 显示名称                                   |
+| alias                | string   | 用户别名                                   |
+| email                | string   | 邮箱，全局唯一                                |
+| normalizedEmail      | string   | 标准化邮箱                                  |
+| phone                | string   | 手机号，可选                                 |
+| passwordHash         | string   | Argon2id PHC 格式的不可逆密码哈希，不是明文或可逆密文       |
+| status               | enum     | ACTIVE、PENDING、DISABLED、LOCKED、DELETED |
+| firstLoginRequired   | boolean  | 是否需要首次登录引导                             |
+| failedLoginCount     | integer  | 连续登录失败次数                               |
+| lockedUntil          | datetime | 临时锁定截止时间                               |
+| securityVersion      | integer  | 凭据安全版本                                 |
+| authorizationVersion | integer  | 权限缓存版本                                 |
+| passwordChangedAt    | datetime | 密码修改时间                                 |
+| lastLoginAt          | datetime | 最后登录成功时间                               |
+| online               | boolean  | 根据有效会话和最近活动时间派生的在线状态；仅当前用户和受权管理员可见       |
+| createdBy            | string   | 创建人                                    |
+| createdAt            | datetime | 创建时间                                   |
+| updatedAt            | datetime | 更新时间                                   |
 
-### 3.2 用户注册
+状态说明：
 
-* **BR-IAM-REGISTER-01** 系统支持用户使用唯一邮箱自助注册。
-* **BR-IAM-REGISTER-02** 注册时需要校验用户名格式、密码强度和 email 唯一性。
-* **BR-IAM-REGISTER-03** 注册成功后创建 LOCAL 用户。
-* **BR-IAM-REGISTER-04** 当前阶段不支持邮箱验证；注册成功后不发送邮箱验证链接。
-* **BR-IAM-REGISTER-05** 不启用管理员审批时，新注册 LOCAL 用户初始状态为 ACTIVE。
-* **BR-IAM-REGISTER-06** 启用管理员审批时，系统可以使用后续扩展状态承载审批流程，但不得复用邮箱验证语义。
-* **BR-IAM-REGISTER-07** 当前阶段没有邮箱验证链接、验证有效期或邮箱验证通过状态流转。
-* **BR-IAM-REGISTER-08** 新注册用户自动获得 REGULAR_USER 角色。
-* **BR-IAM-REGISTER-09** 系统可以配置是否需要管理员审批后才能激活用户。
+```text
+ACTIVE
+允许正常登录和使用系统
 
-### 3.3 登录认证
+PENDING
+等待管理员审批
 
-* **BR-IAM-AUTH-01** 用户可以使用用户名、邮箱或手机号作为登录标识。
-* **BR-IAM-AUTH-02** 登录时优先匹配 LOCAL 用户。
-* **BR-IAM-AUTH-03** LOCAL 用户未匹配且启用 LDAP 时，可以进入 LDAP 认证流程。
-* **BR-IAM-AUTH-04** LOCAL 用户使用 bcrypt 或等价安全哈希方式校验密码。
-* **BR-IAM-AUTH-05** 连续登录失败达到限制后，用户进入临时锁定状态。
-* **BR-IAM-AUTH-06** 锁定期内禁止登录。
-* **BR-IAM-AUTH-07** 当前阶段不支持 MFA；凭证验证通过且用户状态允许登录时，可以签发正式登录态。
-* **BR-IAM-AUTH-08** 正式登录态签发成功后，系统更新 lastLoginAt。
-* **BR-IAM-AUTH-09** 登录、登录失败、Token 刷新、登出都需要记录审计日志。
-* **BR-IAM-AUTH-10** 已登录 LOCAL 用户可以修改自己的密码，必须同时输入原密码和新密码。
-* **BR-IAM-AUTH-11** 修改密码时必须先校验原密码；原密码错误时不得修改密码。
-* **BR-IAM-AUTH-12** 新密码必须满足系统级配置中的密码复杂度策略，并应遵守历史密码策略；修改密码页面必须读取后端系统级配置并展示具体、可执行的复杂度策略提示。
-* **BR-IAM-AUTH-13** LDAP / OAUTH 用户没有本地密码时，不适用本地修改密码流程。
-* **BR-IAM-AUTH-14** 用户修改密码成功后，系统必须撤销该用户有效 Refresh Token，并使该用户当前及全部 Access Token 在剩余有效期内不可用。
-* **BR-IAM-AUTH-15** isFirstLogin 为 true 的用户通过认证后不得进入系统正常功能，必须先完成密码和邮箱修改。
-* **BR-IAM-AUTH-16** 修改密码成功后，系统必须退出当前会话，并强制跳回登录页要求重新登录。
+DISABLED
+管理员禁用
 
-### 3.4 MFA 多因子认证
+LOCKED
+登录失败触发临时锁定
 
-* **BR-IAM-MFA-01** 当前阶段不支持 MFA。
-* **BR-IAM-MFA-02** 当前阶段不支持 TOTP、SMS、EMAIL 二次验证。
-* **BR-IAM-MFA-03** 当前阶段不支持可信设备，仅保留后续预留接口和能力说明。
-* **BR-IAM-MFA-04** 当前阶段登录流程不得要求用户完成二次验证后再签发正式登录态。
+DELETED
+逻辑删除
+```
 
-### 3.5 OAuth2 / OIDC 登录
+当前阶段所有用户均使用本地密码，不单独拆分外部登录身份模型。
 
-* **BR-IAM-OAUTH-01** 当前阶段不支持 OAuth2 / OIDC 登录。
-* **BR-IAM-OAUTH-02** 当前阶段不支持 OAuth Provider 管理。
-* **BR-IAM-OAUTH-03** 当前阶段不创建 OAUTH 来源用户，仅保留后续预留接口和能力说明。
-* **BR-IAM-OAUTH-04** 后续启用 OAuth2 / OIDC 时，必须通过 provider + subjectId 匹配已绑定用户，并校验 state 与 redirect URI。
+### 5.1.1 密码凭据安全
 
-### 3.6 LDAP 认证
+用户密码采用 Argon2id 进行不可逆哈希，当前基线参数为：
 
-* **BR-IAM-LDAP-01** 系统可以配置多个 LDAP 源。
-* **BR-IAM-LDAP-02** LDAP 配置包含服务地址、Base DN、绑定用户、搜索过滤条件和属性映射。
-* **BR-IAM-LDAP-03** LOCAL 用户未匹配时，可以按配置进入 LDAP 用户搜索和绑定认证。
-* **BR-IAM-LDAP-04** LDAP 认证成功后，系统需要在本地查找或创建 LDAP 来源用户。
-* **BR-IAM-LDAP-05** LDAP 新用户默认获得 REGULAR_USER 角色。
-* **BR-IAM-LDAP-06** LDAP 组可以映射到 IAM 用户组。
-* **BR-IAM-LDAP-07** LDAP 组映射后的用户可以通过用户组继承角色。
+```text
+algorithm: Argon2id
+version: 19
+memory: 65536 KiB
+iterations: 3
+parallelism: 1
+output: 32 bytes
+salt: 每个密码凭据独立生成的密码学安全随机值，至少 16 bytes
+```
 
-### 3.7 Token 与会话
+`passwordHash` 保存完整 PHC 字符串，其中包含算法、参数、salt 和哈希结果。系统不得保存用户密码明文，也不得使用可逆加密代替密码哈希。密码哈希、明文密码和密码确认值不得出现在 API 响应、事件、审计日志或跨 domain 摘要中。
 
-* **BR-IAM-TOKEN-01** 业务系统 API 使用 JWT Bearer Token 访问。
-* **BR-IAM-TOKEN-02** Access Token 采用短有效期。
-* **BR-IAM-TOKEN-03** Access Token 不应暴露权限码集合。
-* **BR-IAM-TOKEN-04** Access Token 载荷只表达身份、签发方、过期时间、Token ID、客户端等必要认证信息。
-* **BR-IAM-TOKEN-05** Refresh Token 是可撤销的长期凭据。
-* **BR-IAM-TOKEN-06** Refresh Token 需要绑定设备信息。
-* **BR-IAM-TOKEN-07** Access Token 过期后，前端可以使用 Refresh Token 换取新的 Access Token。
-* **BR-IAM-TOKEN-08** 用户登出时，需要撤销 Refresh Token。
-* **BR-IAM-TOKEN-09** 用户登出时，需要使当前 Access Token 的 jti 在剩余有效期内不可再使用。
-* **BR-IAM-TOKEN-10** 全局单点注销需要撤销该用户所有有效 Refresh Token。
-* **BR-IAM-TOKEN-11** 认证中心可以通过自身域下的 HttpOnly、Secure、SameSite=Lax Cookie 维持全局会话。
-* **BR-IAM-TOKEN-12** 业务系统不应依赖认证中心 Cookie 访问业务 API。
+用户注册、管理员设置初始密码、首次登录修改密码和普通密码修改均必须按当前密码策略生成新的 Argon2id 哈希。用户成功登录时，如果已存哈希参数低于当前策略，系统应在密码校验成功后按当前策略重新哈希并替换旧值；重新哈希失败时不得降低为明文或可逆密文存储。
 
-### 3.8 RBAC 权限
+当前 `ARGON2ID_V1` 算法和参数由产品版本固定，管理员只能调整密码复杂度、登录失败保护和在线窗口等策略，不能通过认证配置切换算法或降低哈希参数。
 
-* **BR-IAM-RBAC-01** 权限控制以角色为核心。
-* **BR-IAM-RBAC-02** 权限粒度覆盖菜单、按钮和 API。
-* **BR-IAM-RBAC-03** 所有受控资源都必须使用唯一权限码标识。
-* **BR-IAM-RBAC-04** 前端只通过权限码和菜单树控制界面展示。
-* **BR-IAM-RBAC-05** 后端通过权限码保护 API。
-* **BR-IAM-RBAC-06** 前端不得写死角色判断；通用授权仍基于权限码。
-* **BR-IAM-RBAC-07** 后端业务代码不得写死用户角色判断；内置角色层级删除是 IAM 领域内置策略，由统一授权或用户删除策略层判断，不允许业务系统散落硬编码。
-* **BR-IAM-RBAC-08** 角色可以继承其他角色权限。
-* **BR-IAM-RBAC-09** 角色可以设置互斥关系。
-* **BR-IAM-RBAC-10** 互斥角色不得同时分配给同一用户。
-* **BR-IAM-RBAC-11** 用户可以直接获得角色。
-* **BR-IAM-RBAC-12** 用户可以通过用户组获得角色。
-* **BR-IAM-RBAC-13** 用户可以通过 LDAP 组映射获得角色。
-* **BR-IAM-RBAC-14** 角色授权可以有生效时间和失效时间。
-* **BR-IAM-RBAC-15** 用户组支持静态成员和动态规则成员。
-* **BR-IAM-RBAC-16** 用户组层级禁止循环引用。
-* **BR-IAM-RBAC-17** 动态组成员由系统根据规则自动计算。
-* **BR-IAM-RBAC-18** 权限变更、用户角色变化、用户组关系变化后，需要刷新受影响用户的权限缓存。
-* **BR-IAM-RBAC-19** SUPER_ADMIN 是内置超级管理员角色。
-* **BR-IAM-RBAC-20** REGULAR_USER 是内置普通用户角色。
-* **BR-IAM-RBAC-21** SUPER_ADMIN 用户拥有全量权限。
-* **BR-IAM-RBAC-22** SUPER_ADMIN 不依赖普通角色权限绑定表判断权限。
-* **BR-IAM-RBAC-23** 内置角色不可删除。
-* **BR-IAM-RBAC-24** 内置角色 code 不可修改。
-* **BR-IAM-RBAC-25** ADMIN 是内置管理员角色，权限低于 SUPER_ADMIN，高于 REGULAR_USER。
-* **BR-IAM-RBAC-26** 内置角色删除权限优先级为 `SUPER_ADMIN > ADMIN > REGULAR_USER`；用户拥有多个内置角色时，按最高内置角色判断删除权限。
-* **BR-IAM-RBAC-27** 初始用户名为 `admin` 的内置账号可以删除任何其他用户，包括其他 SUPER_ADMIN。
-* **BR-IAM-RBAC-28** 非初始 `admin` 的 SUPER_ADMIN 可以删除 ADMIN 和 REGULAR_USER，但不能删除其他 SUPER_ADMIN。
-* **BR-IAM-RBAC-29** ADMIN 必须拥有 `user:delete` 等用户删除权限码，且只能删除 REGULAR_USER。
-* **BR-IAM-RBAC-30** 同一最高内置角色的用户不能互相删除。
-* **BR-IAM-RBAC-31** 任意用户不得删除自己。
-* **BR-IAM-RBAC-32** REGULAR_USER 不具备删除用户能力。
-* **BR-IAM-RBAC-33** 删除用户前必须检查目标用户是否存在关联资源；存在关联资源时禁止删除，并提示先清理或转移资源。
-* **BR-IAM-RBAC-34** 删除用户时不执行跨资源级联删除。
+修改密码会递增 `securityVersion`，并使原有会话和 Token 失效。管理员不能读取原密码或现有密码哈希。
 
-### 3.9 前后端权限解耦
+## 5.1.2 SystemAuthConfig（事实源迁移至 platform-management）
 
-* **BR-IAM-FE-01** 前端初始化后需要获取当前用户权限码集合。
-* **BR-IAM-FE-02** 前端初始化后需要获取经过过滤的菜单和按钮树。
-* **BR-IAM-FE-03** 前端根据菜单资源动态注册路由。
-* **BR-IAM-FE-04** 用户无权限的页面不应出现在前端路由表中。
-* **BR-IAM-FE-05** 按钮、表格列和操作入口需要通过权限码控制展示。
-* **BR-IAM-FE-06** 前端隐藏无权限功能只负责体验，不代表安全边界。
-* **BR-IAM-FE-07** 所有 API 仍必须由后端统一鉴权层判断权限。
+系统认证配置由 `platform-management` 管理，Identity 只读取其当前生效版本，用于约束本地注册、密码和登录保护。当前产品语义至少包括：
 
-### 3.10 SSO 单点登录
+```text
+registrationMode: OPEN | ADMIN_APPROVAL
+passwordPolicy
+passwordHashPolicy: ARGON2ID_V1
+loginFailurePolicy
+onlinePresenceWindowSeconds: 300
+accessTokenLifetime
+refreshTokenLifetime
+updatedAt
+```
 
-* **BR-IAM-SSO-01** 认证中心负责维护全局登录态。
-* **BR-IAM-SSO-02** 业务系统检测到无有效 Token 时，可以跳转认证中心发起授权登录。
-* **BR-IAM-SSO-03** 用户已在认证中心登录时，访问其他业务系统应可无缝完成登录跳转。
-* **BR-IAM-SSO-04** 业务系统通过授权码换取本系统可使用的 Token。
-* **BR-IAM-SSO-05** 局部登出只撤销当前业务系统或当前设备相关凭据。
-* **BR-IAM-SSO-06** 全局登出需要清除认证中心会话，并撤销用户所有有效 Refresh Token。
-* **BR-IAM-SSO-07** 全局登出可以通知业务系统清除本地前端 Token 状态。
-
-### 3.11 安全与审计
-
-* **BR-IAM-SEC-01** 密码必须使用安全哈希算法存储。
-* **BR-IAM-SEC-02** 密码需要进行复杂度校验。
-* **BR-IAM-SEC-03** 系统可以维护历史密码策略。
-* **BR-IAM-SEC-04** 连续失败登录需要触发锁定。
-* **BR-IAM-SEC-05** 可集成图形验证码或其他登录保护能力。
-* **BR-IAM-SEC-06** OAuth2 客户端密钥需要加密存储。
-* **BR-IAM-SEC-07** 所有需要保护的业务 API 必须经过统一鉴权层。
-* **BR-IAM-SEC-08** 登录、登出、Token 刷新、权限变更、管理员操作需要记录审计日志。
-* **BR-IAM-SEC-09** 权限授予应遵循最小权限原则。
-* **BR-IAM-SEC-10** 系统应支持定期权限审查。
-* **BR-IAM-SEC-11** 修改密码成功、原密码校验失败和密码策略校验失败都需要记录审计日志。
-* **BR-IAM-SEC-12** 后端必须提供系统级认证配置读取能力，至少包含密码复杂度策略、Access Token 超时时间、Refresh Token 超时时间和登录失败锁定策略。
-* **BR-IAM-SEC-13** 认证中心和业务系统前端必须读取后端系统级认证配置用于展示和处理，不得写死密码复杂度、令牌超时时间或锁定策略。
-
-### 3.12 系统初始化
-
-* **BR-IAM-INIT-01** 系统首次启动时自动创建 SUPER_ADMIN 角色。
-* **BR-IAM-INIT-02** 系统首次启动时自动创建 ADMIN 和 REGULAR_USER 角色。
-* **BR-IAM-INIT-03** 内置角色不可删除。
-* **BR-IAM-INIT-04** 系统首次启动时自动创建初始管理员账户，用户名固定为 `admin`。
-* **BR-IAM-INIT-05** 初始管理员账户直接绑定 SUPER_ADMIN 角色。
-* **BR-IAM-INIT-06** 初始管理员首次登录后需要强制修改密码和邮箱。
-* **BR-IAM-INIT-07** 初始管理员初始密码固定为 `admin`，仅作为首次启动引导凭据，是启动引导例外，不代表正常密码策略通过，不允许作为长期安全配置。
-* **BR-IAM-INIT-08** 初始管理员创建时 isFirstLogin 为 true，首次登录必须完成密码和邮箱修改后才能进入系统。
+配置只能通过 `platform-management` 的受保护管理能力修改；认证流程和后端授权使用同一份生效配置。Identity 不创建或修改 `SystemAuthConfig` 私有表，不提供认证配置管理 API。
 
 ---
 
-## 4. 用户故事
-
-### US-IAM-01 用户注册
-
-用户可以使用用户名、密码、邮箱和可选别名注册账号。
-
-当前阶段不支持邮箱验证。注册成功后，如未启用管理员审批，账号直接进入 ACTIVE 状态；如启用管理员审批，按审批扩展流程处理。新注册用户自动获得普通用户角色。
-
-### US-IAM-02 邮箱验证（当前阶段不支持）
-
-当前阶段不支持邮箱验证，不发送邮箱验证链接，不提供邮箱验证结果页，也不将注册主流程置为 UNVERIFIED。
-
-该能力作为后续预留方向。
-
-### US-IAM-03 用户密码登录
-
-用户可以使用用户名、邮箱或手机号登录。
-
-系统优先匹配本地用户。本地用户存在时，系统校验本地密码。用户状态异常或锁定时，不允许登录。
-
-正式登录态签发成功后，系统更新 lastLoginAt；仅密码校验通过但未签发正式登录态时不得更新。
-
-### US-IAM-04 登录失败保护
-
-用户连续登录失败达到限制时，账号进入临时锁定状态。
-
-锁定期间用户不能继续登录。系统需要记录失败原因和审计日志。
-
-### US-IAM-05 MFA 登录验证（当前阶段不支持）
-
-当前阶段不支持 MFA 登录验证。
-
-TOTP、短信验证码、邮件验证码和按角色强制 MFA 均作为后续预留能力。
-
-### US-IAM-06 可信设备（当前阶段不支持）
-
-当前阶段不支持可信设备。
-
-可信设备作为后续预留能力，当前阶段不提供信任当前设备、查看可信设备或撤销可信设备的可用流程。
-
-### US-IAM-07 OAuth2 / OIDC 登录（当前阶段不支持）
-
-当前阶段不支持 OAuth2 / OIDC 登录。
-
-OAuth2 / OIDC 登录和账号绑定作为后续预留能力。
-
-### US-IAM-08 LDAP 登录
-
-用户可以使用 LDAP 账号登录。
-
-当本地用户未匹配且 LDAP 启用时，系统通过 LDAP 搜索用户并尝试绑定认证。认证成功后，系统在本地查找或创建 LDAP 来源用户。
-
-### US-IAM-09 Token 刷新
-
-用户 Access Token 过期后，可以通过 Refresh Token 获取新的 Access Token。
-
-Refresh Token 需要可撤销，并与设备信息绑定。
-
-### US-IAM-10 局部登出
-
-用户可以从当前设备或当前业务系统登出。
-
-登出后，当前 Refresh Token 失效，当前 Access Token 在剩余有效期内不可继续使用。
-
-### US-IAM-11 全局单点登录
-
-用户在认证中心登录后，访问其他业务系统时，可以通过 SSO 授权跳转无缝登录。
-
-业务系统不直接读取认证中心 Cookie，而是通过标准授权流程换取 Token。
-
-### US-IAM-12 全局单点注销
-
-用户可以触发全局注销。
-
-全局注销清除认证中心会话，并撤销该用户所有有效 Refresh Token。业务系统前端需要清除本地 Token 状态。
-
-### US-IAM-13 查看当前用户信息
-
-登录用户可以查看自己的基础信息，包括用户名、显示名称、别名、邮箱、手机号、用户来源和账号状态。
-
-### US-IAM-14 获取当前用户权限码
-
-登录用户可以获取自己的权限码集合。
-
-前端使用权限码控制按钮、操作入口和局部 UI 展示。
-
-### US-IAM-15 获取当前用户菜单树
-
-登录用户可以获取经过权限过滤的菜单和按钮树。
-
-前端根据菜单树动态注册路由，并隐藏无权限页面。
-
-### US-IAM-16 用户管理
-
-系统管理员可以创建、查看、编辑、禁用、锁定或删除用户。
-
-删除用户时必须遵守权限码和内置角色层级规则。初始 `admin` 账号可以删除任何其他无关联资源的用户；非初始 `admin` 的 SUPER_ADMIN 不能删除其他 SUPER_ADMIN；ADMIN 必须拥有 `user:delete` 等用户删除权限码且只能删除 REGULAR_USER；REGULAR_USER 不具备删除用户能力；任意用户不得删除自己。目标用户存在关联资源时，系统禁止删除，并提示先清理或转移资源。
-
-用户管理操作需要记录审计日志。
-
-### US-IAM-17 分配用户角色
-
-系统管理员可以为用户分配角色，并可以设置角色授权的生效时间和失效时间。
-
-管理员不能给同一用户分配互斥角色。
-
-### US-IAM-18 用户组管理
-
-系统管理员可以创建和维护用户组。
-
-用户组支持层级结构、静态成员和动态规则成员。系统需要防止用户组层级循环引用。
-
-### US-IAM-19 用户组角色授权
-
-系统管理员可以为用户组分配角色。
-
-用户属于该组后，可以继承组角色。动态组成员由系统根据规则自动计算。
-
-### US-IAM-20 角色管理
-
-系统管理员可以创建、编辑、禁用和删除非内置角色。
-
-内置角色不可删除，内置角色 code 不可修改。
-
-### US-IAM-21 角色继承
-
-系统管理员可以配置角色继承关系。
-
-子角色自动继承父角色拥有的权限码。
-
-### US-IAM-22 互斥角色
-
-系统管理员可以配置互斥角色。
-
-互斥角色不能同时分配给同一用户。
-
-### US-IAM-23 权限资源管理
-
-系统管理员可以管理菜单、按钮和 API 类型的权限资源。
-
-每个受控资源使用唯一权限码标识。
-
-### US-IAM-24 角色权限分配
-
-系统管理员可以为普通角色分配权限码。
-
-超级管理员角色 SUPER_ADMIN 拥有全量权限，不依赖普通角色权限绑定。
-
-### US-IAM-25 LDAP 配置管理
-
-系统管理员可以配置 LDAP 服务器、搜索规则、属性映射和组映射规则。
-
-系统管理员可以测试 LDAP 连接，并可以触发 LDAP 用户或组同步。
-
-### US-IAM-26 OAuth Provider 管理（当前阶段不支持）
-
-当前阶段不支持 OAuth Provider 管理。
-
-OAuth Provider 配置作为后续预留能力。
-
-### US-IAM-27 动态权限控制
-
-前端使用当前用户权限码和菜单树动态控制路由、菜单、按钮、表格列和操作入口。
-
-后端统一鉴权层根据请求资源匹配权限码，并判断当前用户是否拥有该权限。
-
-### US-IAM-28 权限缓存刷新
-
-当角色权限、用户角色、用户组成员、用户组角色或角色继承关系变化时，系统需要刷新受影响用户的权限缓存。
-
-### US-IAM-29 审计日志
-
-系统记录登录、登出、Token 刷新、权限变更、用户管理、角色管理、资源管理和管理员操作。
-
-管理员可以查询审计日志用于安全追踪。
-
-### US-IAM-30 系统初始化
-
-系统首次启动时自动创建 SUPER_ADMIN、ADMIN、REGULAR_USER 三个内置角色和初始管理员账户。
-
-初始管理员账户用户名为 `admin`，初始密码为 `admin`。初始密码 `admin` 仅作为启动引导例外，不代表正常密码策略通过。初始管理员直接绑定 SUPER_ADMIN 角色，并拥有删除任何其他用户的最高删除豁免。初始管理员 isFirstLogin 初始为 true，首次登录后必须修改密码和邮箱，完成后才能进入系统。
-
-### US-IAM-31 修改当前用户密码
-
-已登录 LOCAL 用户可以在个人设置或认证中心入口修改自己的密码。
-
-用户必须输入原密码和新密码。系统需要读取后端系统级配置，向用户展示具体密码复杂度策略提示，并在原密码正确且新密码符合密码策略后才允许修改密码。
-
-修改密码成功后，系统必须撤销 Refresh Token，使当前及该用户全部 Access Token 在剩余有效期内不可用，退出当前会话，并强制跳回登录页要求用户重新登录。LDAP / OAUTH 用户没有本地密码时，不进入本地修改密码流程。
-
-### US-IAM-32 修改当前用户个人信息和邮箱
-
-已登录用户可以在个人设置中修改 displayName、alias、email、phone 等个人信息。
-
-username 不可修改。修改 email 或 phone 时，系统必须校验唯一性。当前阶段不支持邮箱验证，email 修改后不发送验证邮件，唯一性校验通过后生效。首次登录引导中的邮箱修改复用该能力。
-
-### US-IAM-33 获取系统级认证配置
-
-认证中心和业务系统前端可以读取后端提供的系统级认证配置。
-
-配置至少包括密码复杂度策略、Access Token 超时时间、Refresh Token 超时时间和登录失败锁定策略。前端必须读取该配置用于展示和处理，不得写死密码复杂度、令牌超时时间或锁定策略。
+## 5.2 Role
+
+| 字段          | 类型       | 说明              |
+| ----------- | -------- | --------------- |
+| id          | string   | 角色 ID           |
+| code        | string   | 稳定角色编码          |
+| name        | string   | 显示名称            |
+| description | string   | 描述              |
+| builtin     | boolean  | 是否为内置角色         |
+| status      | enum     | ACTIVE、DISABLED |
+| createdAt   | datetime | 创建时间            |
+| updatedAt   | datetime | 更新时间            |
+
+当前内置角色：
+
+```text
+SUPER_ADMIN
+ADMIN
+USER
+```
+
+角色只是权限集合，不表达组织等级。
+
+业务代码不得通过角色名称直接判断权限。
 
 ---
 
-## 5. 关键流程图
+## 5.3 PermissionDefinition
 
-### 5.1 本地登录流程
+| 字段          | 类型     | 说明                         |
+| ----------- | ------ | -------------------------- |
+| code        | string | 全局唯一权限码                    |
+| domain      | string | 所属业务领域                     |
+| resource    | string | 资源类型                       |
+| action      | string | 操作类型                       |
+| name        | string | 显示名称                       |
+| description | string | 描述                         |
+| riskLevel   | enum   | NORMAL、SENSITIVE、DANGEROUS |
+| status      | enum   | ACTIVE、DEPRECATED          |
+
+权限码推荐格式：
+
+```text
+<domain>.<resource>.<action>
+```
+
+例如：
+
+```text
+iam.user.read
+iam.user.manage
+iam.role.manage
+
+asset.asset.create
+asset.asset.read
+asset.asset.update
+asset.asset.delete
+asset.asset.share
+asset.asset.manage_all
+```
+
+权限定义只读，不允许管理员新增任意权限码。
+
+---
+
+## 5.4 RolePermissionGrant
+
+```text
+roleId
+permissionCode
+createdBy
+createdAt
+```
+
+表示某个角色拥有某个权限。
+
+---
+
+## 5.5 UserRoleGrant
+
+| 字段            | 说明    |
+| ------------- | ----- |
+| userId        | 用户 ID |
+| roleId        | 角色 ID |
+| effectiveFrom | 生效时间  |
+| effectiveTo   | 失效时间  |
+| createdBy     | 授权人   |
+| createdAt     | 创建时间  |
+
+---
+
+## 5.6 Group
+
+用户组用于批量分配角色和资源访问权限。
+
+| 字段          | 说明              |
+| ----------- | --------------- |
+| id          | 用户组 ID          |
+| code        | 稳定编码            |
+| name        | 名称              |
+| description | 描述              |
+| status      | ACTIVE、DISABLED |
+| createdBy   | 创建人             |
+| createdAt   | 创建时间            |
+| updatedAt   | 更新时间            |
+
+当前只支持静态用户组。
+
+---
+
+## 5.7 GroupMember
+
+```text
+groupId
+userId
+createdBy
+createdAt
+```
+
+唯一约束：
+
+```sql
+UNIQUE (group_id, user_id)
+```
+
+---
+
+## 5.8 GroupRoleGrant
+
+```text
+groupId
+roleId
+createdBy
+createdAt
+```
+
+用户有效角色来源包括：
+
+```text
+用户直接角色
++
+用户所在组的角色
+```
+
+---
+
+## 5.9 ResourceAccessGrant
+
+表示资源域选择接入共享能力后，由 Identity 保存的用户或用户组授权关系。它不是跨领域资源目录，也不能单独证明 `resourceType/resourceId` 存在或可见。
+
+| 字段           | 说明                   |
+| ------------ | -------------------- |
+| resourceType | 资源类型                 |
+| resourceId   | 资源 ID                |
+| subjectType  | USER、GROUP           |
+| subjectId    | 用户或用户组 ID            |
+| accessLevel  | VIEW、USE、EDIT、MANAGE |
+| grantedBy    | 授权人                  |
+| expiresAt    | 可选失效时间               |
+| createdAt    | 创建时间                 |
+
+访问等级：
+
+```text
+VIEW
+查看资源
+
+USE
+运行或使用资源
+
+EDIT
+修改资源
+
+MANAGE
+修改资源、共享和删除资源
+```
+
+等级关系：
+
+```text
+MANAGE > EDIT > USE > VIEW
+```
+
+不同资源可以只支持其中部分等级。
+
+资源域必须声明可用等级、默认可见性、owner 转移规则和删除/归档后的授权行为。未声明接入 ResourceAccessGrant 的资源域不得依赖本对象获得访问权。
+
+---
+
+## 5.10 AuthSession
+
+| 字段           | 说明                     |
+| ------------ | ---------------------- |
+| id           | 会话 ID                  |
+| userId       | 用户 ID                  |
+| clientId     | 客户端 ID                 |
+| deviceInfo   | 设备信息                   |
+| ipAddress    | 来源 IP                  |
+| userAgent    | User-Agent             |
+| status       | ACTIVE、REVOKED、EXPIRED |
+| createdAt    | 创建时间                   |
+| lastActiveAt | 最后活动时间                 |
+| expiresAt    | 到期时间                   |
+
+---
+
+## 5.11 RefreshToken
+
+| 字段        | 说明                          |
+| --------- | --------------------------- |
+| id        | Refresh Token ID            |
+| sessionId | 所属会话                        |
+| tokenHash | Token 哈希                    |
+| parentId  | 上一个 Refresh Token           |
+| status    | ACTIVE、USED、REVOKED、EXPIRED |
+| issuedAt  | 签发时间                        |
+| expiresAt | 到期时间                        |
+
+Refresh Token 明文不保存到数据库。
+
+---
+
+## 5.12 PersonalAccessToken（延期）
+
+PAT 不是当前版本可用的认证方式。本节只保留未来设计边界，不能作为 CLI、本地 Agent、MCP Client 或自动化脚本的当前接入依据。MCP v1 必须使用当前用户的 Identity JWT，并在每次请求重新执行授权。
+
+| 字段                 | 说明                     |
+| ------------------ | ---------------------- |
+| id                 | PAT ID                 |
+| userId             | 所属用户                   |
+| name               | 用户定义名称                 |
+| tokenHash          | Token 哈希               |
+| prefix             | 展示前缀                   |
+| allowedPermissions | 允许的权限上限                |
+| status             | ACTIVE、REVOKED、EXPIRED |
+| expiresAt          | 到期时间                   |
+| lastUsedAt         | 最后使用时间                 |
+| createdAt          | 创建时间                   |
+
+PAT 的最终权限：
+
+```text
+用户当前有效权限
+∩
+PAT 允许权限
+```
+
+用户失去权限后，PAT 不能继续保留该权限。
+
+PAT 的创建、交换、轮换和撤销 API 不属于当前版本，也不得在其他 domain 的 S1/S2 中声明为已支持能力。
+
+---
+
+## 5.13 ServiceAccount
+
+供受控 Worker、Agent Runtime、AppStudio 构建/部署组件或其他内部自动化组件访问平台。ServiceAccount 是服务主体，不是普通用户，也不自动继承某个用户的资源所有权。
+
+| 字段                   | 说明                                       |
+| -------------------- | ---------------------------------------- |
+| id                   | 服务账号 ID                                  |
+| code                 | 稳定编码                                     |
+| name                 | 名称                                       |
+| ownerType            | SYSTEM、WORKER、AGENT、APPLICATION、EXTERNAL |
+| ownerId              | 关联对象 ID                                  |
+| status               | ACTIVE、DISABLED                          |
+| securityVersion      | 凭据版本                                     |
+| authorizationVersion | 权限版本                                     |
+| createdBy            | 创建人                                      |
+| createdAt            | 创建时间                                     |
+
+服务账号通过独立凭据换取短期 Access Token。
+
+服务账号不能使用普通用户登录接口。
+
+服务账号的权限由 Identity 计算；当服务主体代表用户执行用户发起的操作时，调用链必须同时传递不可伪造的委托用户上下文，由目标 domain 记录 `principal_id` 与 `actor_user_id`。没有委托用户时，服务账号只能执行其被授予的系统或服务权限。
+
+---
+
+## 6. 用户注册
+
+## 6.1 自主注册流程
 
 ```mermaid
 sequenceDiagram
-  actor U as 用户
-  participant FE as 前端
-  participant IAM as IAM 服务
-  participant Token as Token 服务
+    actor U as 用户
+    participant FE as OmniMAM Web
+    participant IAM as IAM Service
 
-  U->>FE: 输入用户名/邮箱/手机号和密码
-  FE->>IAM: 提交登录凭证
-  IAM->>IAM: 匹配 LOCAL 用户
-  IAM->>IAM: 校验状态、锁定和密码
-  alt isFirstLogin 为 true
-    IAM-->>FE: 返回首次登录引导状态
-  else 允许登录
-    IAM->>Token: 签发正式登录态
-    Token-->>FE: 返回 Access Token 和 Refresh Token
-    IAM->>IAM: 更新 lastLoginAt
-  end
+    U->>FE: 输入用户名、邮箱和密码
+    FE->>IAM: 提交注册请求
+
+    IAM->>IAM: 校验用户名唯一性
+    IAM->>IAM: 校验邮箱唯一性
+    IAM->>IAM: 校验密码策略
+
+    alt 校验失败
+        IAM-->>FE: 返回注册错误
+    else 校验成功
+        IAM->>IAM: 创建 User
+        IAM->>IAM: 分配 USER 角色
+        IAM->>IAM: 创建登录会话
+        IAM-->>FE: 返回 Access Token 和 Refresh Token
+    end
 ```
 
-### 5.2 LDAP 登录流程
+注册成功后：
 
-```mermaid
-sequenceDiagram
-  actor U as 用户
-  participant FE as 前端
-  participant IAM as IAM 服务
-  participant LDAP as LDAP 服务
-  participant Token as Token 服务
-
-  U->>FE: 输入登录标识和密码
-  FE->>IAM: 提交登录凭证
-  IAM->>IAM: 尝试匹配 LOCAL 用户
-  alt LOCAL 未命中且 LDAP 启用
-    IAM->>LDAP: 按配置搜索用户 DN
-    LDAP-->>IAM: 返回用户 DN 与属性
-    IAM->>LDAP: 使用用户密码尝试绑定
-    LDAP-->>IAM: 绑定成功
-    IAM->>IAM: 查找或创建 LDAP 来源用户
-    IAM->>IAM: 应用默认角色和组映射
-    IAM->>Token: 签发 Token
-    Token-->>FE: 返回登录态
-  else LOCAL 命中
-    IAM->>IAM: 走本地认证流程
-  end
+```text
+User.status = ACTIVE
+firstLoginRequired = false
 ```
 
-### 5.3 OAuth2 / OIDC 登录流程（当前阶段不支持）
+如果系统启用注册审批：
 
-```mermaid
-sequenceDiagram
-  actor U as 用户
-  participant FE as 前端
-  participant IAM as IAM 服务
-
-  U->>FE: 点击第三方登录
-  FE->>IAM: 请求 OAuth2 / OIDC 登录
-  IAM-->>FE: 返回当前阶段不支持，提示后续预留
+```text
+User.status = PENDING
 ```
 
-### 5.4 SSO 自动登录流程
+审批通过后才能登录。
 
-```mermaid
-sequenceDiagram
-  actor U as 用户
-  participant SYSB as 业务系统 B
-  participant AUTH as 认证中心
-  participant Token as Token 服务
+---
 
-  U->>SYSB: 访问业务系统 B
-  SYSB->>SYSB: 检测无本地 Token
-  SYSB-->>AUTH: 跳转认证中心授权
-  AUTH->>AUTH: 检查认证中心全局会话 Cookie
-  alt 会话有效
-    AUTH-->>SYSB: 返回授权码
-    SYSB->>Token: 使用授权码换取 Token
-    Token-->>SYSB: 返回 Access Token 和 Refresh Token
-    SYSB-->>U: 用户无缝登录
-  else 会话无效
-    AUTH-->>U: 展示登录页
-  end
-```
+## 6.2 管理员创建用户
 
-### 5.5 权限计算流程
+管理员创建用户时：
+
+1. 输入用户名、邮箱、显示名称；
+2. 系统生成一次性初始密码；
+3. 创建用户；
+4. 设置 `firstLoginRequired=true`；
+5. 分配默认 `USER` 角色；
+6. 用户首次登录后必须修改密码。
+
+管理员不能查看用户后续密码。
+
+---
+
+## 7. 用户登录
 
 ```mermaid
 flowchart TD
-  A["请求进入统一鉴权层"] --> B["校验 Access Token"]
-  B --> C{"Token 是否有效"}
-  C -->|否| D["拒绝访问"]
-  C -->|是| E["提取 userId"]
-  E --> F["查询权限缓存"]
-  F --> G{"缓存命中"}
-  G -->|是| H["获取用户权限码集合"]
-  G -->|否| I["计算用户角色"]
-  I --> J["合并直接角色、组角色、LDAP 映射角色"]
-  J --> K["展开角色继承"]
-  K --> L["过滤禁用和过期授权"]
-  L --> M{"是否拥有 SUPER_ADMIN"}
-  M -->|是| N["返回全量权限"]
-  M -->|否| O["合并角色权限码"]
-  O --> P["写入权限缓存"]
-  H --> Q["匹配请求所需权限码"]
-  N --> Q
-  P --> Q
-  Q --> R{"是否拥有所需权限"}
-  R -->|是| S["允许访问"]
-  R -->|否| T["返回无权限"]
+    A["提交用户名或邮箱和密码"] --> B["查找 User"]
+    B --> C{"用户是否存在"}
+
+    C -->|否| D["返回 invalid_credentials"]
+    C -->|是| E["检查用户状态"]
+
+    E --> F{"是否允许登录"}
+    F -->|否| G["返回账号状态错误"]
+    F -->|是| H["校验密码"]
+
+    H --> I{"密码是否正确"}
+    I -->|否| J["增加失败次数"]
+    J --> K{"达到锁定阈值"}
+    K -->|是| L["临时锁定用户"]
+    K -->|否| D
+
+    I -->|是| M["清零失败次数"]
+
+    M --> N{"firstLoginRequired"}
+    N -->|是| O["创建首次登录受限会话"]
+    N -->|否| P["创建正常会话"]
+
+    P --> Q["签发 Access Token 和 Refresh Token"]
+    O --> Q
+    Q --> R["更新 lastLoginAt 和当前会话 lastActiveAt"]
 ```
 
-### 5.6 前端动态权限流程
+登录失败统一返回：
+
+```text
+用户名或密码错误
+```
+
+不得向未认证用户暴露用户名是否存在。
+
+---
+
+## 8. 首次登录
+
+首次登录受限会话只允许：
+
+```text
+读取密码策略
+修改密码
+修改邮箱和个人信息
+退出登录
+```
+
+完成流程：
 
 ```mermaid
 flowchart TD
-  A["用户登录成功"] --> B["获取当前用户信息"]
-  B --> C["获取权限码集合"]
-  B --> D["获取菜单和按钮树"]
-  D --> E["根据 MENU 节点动态注册路由"]
-  C --> F["根据权限码控制按钮和元素"]
-  E --> G["展示有权限页面"]
-  F --> G
+    A["首次登录认证成功"] --> B["创建受限会话"]
+    B --> C["用户修改初始密码"]
+    C --> D["校验密码策略"]
+    D --> E["保存新密码"]
+    E --> F["firstLoginRequired = false"]
+    F --> G["增加 securityVersion"]
+    G --> H["撤销受限会话"]
+    H --> I["要求重新登录"]
 ```
 
-### 5.7 角色关系
+---
+
+## 9. Token 与会话
+
+## 9.1 Access Token
+
+Access Token 使用 JWT。
+
+推荐载荷：
+
+```json
+{
+  "iss": "omnimam-iam",
+  "sub": "principal-id",
+  "subject_type": "USER",
+  "aud": "omnimam-api",
+  "sid": "session-id",
+  "client_id": "omnimam-web",
+  "jti": "token-id",
+  "security_version": 3,
+  "iat": 0,
+  "exp": 0
+}
+```
+
+用户 Access Token 的 `subject_type` 为 `USER`；服务主体换取的 Access Token 使用 `SERVICE_ACCOUNT`，不创建用户 AuthSession。Access Token 不包含权限码。
+
+---
+
+## 9.2 Token 保存
+
+浏览器端建议：
+
+```text
+Access Token
+保存在前端内存
+
+Refresh Token
+保存在 HttpOnly、Secure Cookie
+```
+
+Refresh Token 不允许被 JavaScript 直接读取。
+
+---
+
+## 9.3 Refresh Token 轮换
 
 ```mermaid
-classDiagram
-  class User {
-    id
-    username
-    source
-    status
-  }
+sequenceDiagram
+    participant FE as Web
+    participant IAM as IAM Service
 
-  class Group {
-    id
-    name
-    type
-    parentId
-  }
+    FE->>IAM: 使用 Refresh Token 刷新
+    IAM->>IAM: 校验 Token 和 Session
+    IAM->>IAM: 将旧 Refresh Token 标记 USED
+    IAM->>IAM: 签发新 Access Token
+    IAM->>IAM: 签发新 Refresh Token
+    IAM-->>FE: 返回新登录凭据
+```
 
-  class Role {
-    id
-    code
-    isBuiltin
-    status
-  }
+旧 Refresh Token 被再次使用时：
 
-  class PermissionResource {
-    id
-    code
-    type
-    path
-    method
-  }
-
-  class AuthSession {
-    id
-    userId
-    status
-  }
-
-  class AuditLog {
-    id
-    action
-    result
-  }
-
-  User "1" --> "*" Group : member
-  User "1" --> "*" Role : direct roles
-  Group "1" --> "*" Role : group roles
-  Role --> Role : inheritance
-  Role --> Role : mutex
-  Role "1" --> "*" PermissionResource : permissions
-  User "1" --> "*" AuthSession : sessions
-  User "1" --> "*" AuditLog : actions
+```text
+撤销整个 AuthSession
+撤销该会话所有 Refresh Token
+记录 refresh_token_reused 审计
+要求用户重新登录
 ```
 
 ---
 
-## 6. 功能适配矩阵
+## 9.4 登出
 
-| 功能               | 认证中心 | IAM 管理后台 | 业务系统前端   | 业务系统后端   |
-| ---------------- | ---- | -------- | -------- | -------- |
-| 用户注册             | ✅    | ❌        | 可跳转      | ❌        |
-| 邮箱验证             | 🚧 后续 | ❌        | 🚧 后续    | ❌        |
-| 用户登录             | ✅    | ❌        | 可跳转      | ❌        |
-| MFA 验证           | 🚧 后续 | 🚧 后续    | 🚧 后续    | ❌        |
-| 可信设备             | 🚧 后续 | 🚧 后续    | 🚧 后续    | ❌        |
-| OAuth2 / OIDC 登录 | 🚧 后续 | 🚧 后续    | 🚧 后续    | ❌        |
-| LDAP 登录          | ✅    | 可配置      | ❌        | ❌        |
-| Token 签发         | ✅    | ❌        | 消费 Token | 校验 Token |
-| Token 刷新         | ✅    | ❌        | 调用刷新     | 校验结果     |
-| 局部登出             | ✅    | ❌        | 触发登出     | 可吊销      |
-| 全局单点注销           | ✅    | 可查看      | 清除本地状态   | 可接收吊销结果  |
-| 当前用户信息           | ✅    | ✅        | ✅        | ✅        |
-| 修改当前用户个人信息和邮箱    | ✅    | ✅        | 可跳转      | 执行唯一性校验  |
-| 修改当前用户密码         | ✅    | ✅        | 可跳转      | 执行安全校验   |
-| 系统级认证配置           | ✅    | 可查看      | 读取配置     | 提供配置     |
-| 当前用户权限码          | ✅    | ✅        | ✅        | ✅        |
-| 当前用户菜单树          | ✅    | ✅        | ✅        | ❌        |
-| 用户管理             | ❌    | ✅        | ❌        | 执行权限校验   |
-| 用户组管理            | ❌    | ✅        | ❌        | 执行权限校验   |
-| 角色管理             | ❌    | ✅        | ❌        | 执行权限校验   |
-| 权限资源管理           | ❌    | ✅        | ❌        | 执行权限校验   |
-| 动态路由             | ❌    | ✅        | ✅        | ❌        |
-| 按钮级控制            | ❌    | ✅        | ✅        | ❌        |
-| API 动态鉴权         | ❌    | ❌        | ❌        | ✅        |
-| 审计日志             | ✅    | ✅        | ❌        | ✅        |
+当前设备登出：
+
+```text
+撤销当前 AuthSession
+撤销当前会话 Refresh Token
+使当前 Access Token jti 在剩余有效期内失效
+```
+
+全部设备登出：
+
+```text
+撤销用户全部 AuthSession
+撤销全部 Refresh Token
+增加 User.securityVersion
+```
 
 ---
 
-## 7. 系统呈现策略
+## 9.5 修改密码
 
-### 7.1 认证中心
-
-认证中心负责登录、注册、SSO 会话、系统级认证配置读取和登出。
-
-邮箱验证、MFA 验证、可信设备和 OAuth 登录当前阶段不支持，仅作为后续预留能力。
-
-认证中心页面需要提供：
-
-```text
-登录表单
-注册表单
-登出结果页
-SSO 自动授权过渡页
-修改密码页
-个人信息和邮箱修改页
-首次登录引导页
-```
-
-登录表单支持：
-
-```text
-用户名
-邮箱
-手机号
-密码
-```
-
-用户状态异常时需要展示明确提示，例如：
-
-```text
-账号未验证
-账号已禁用
-账号已锁定
-密码错误
-需要完成首次登录引导
-```
-
-修改密码页需要支持：
+用户修改密码必须输入：
 
 ```text
 原密码
 新密码
 确认新密码
-密码策略提示
-原密码错误提示
-修改成功后跳回登录页提示
 ```
 
-密码策略提示必须展示具体、可执行的复杂度要求，不能只展示“密码不符合要求”之类的泛化提示。
+修改成功后：
 
-首次登录引导页需要要求用户修改初始密码和邮箱。用户完成首次登录引导前，不应进入系统正常功能。
+```text
+增加 User.securityVersion
+撤销全部 Session
+撤销全部 Refresh Token
+强制重新登录
+```
 
-个人信息和邮箱修改页需要支持 displayName、alias、email、phone 修改。username 不可修改；email 和 phone 修改时需要展示唯一性校验错误。当前阶段不发送邮箱验证邮件。
+---
 
-### 7.2 IAM 管理后台
+## 9.6 用户在线状态
 
-IAM 管理后台用于管理员维护用户、用户组、角色、权限资源、LDAP 配置、系统级认证配置查看和审计日志。
+用户在线状态不是 `User.status` 的新状态，而是基于认证会话实时派生的布尔值。默认在线窗口为 `300` 秒，由 `SystemAuthConfig.onlinePresenceWindowSeconds` 配置。
 
-OAuth Provider 配置当前阶段不支持，仅作为后续预留能力。
+在判断时，用户满足以下条件才算在线：
 
-管理后台主要区域包括：
+```text
+User.status = ACTIVE
+且存在 AuthSession：
+  AuthSession.status = ACTIVE
+  AuthSession.expiresAt > 当前时间
+  AuthSession.lastActiveAt >= 当前时间 - onlinePresenceWindowSeconds
+```
+
+被撤销、过期或所属用户已禁用的会话不参与判断。一个用户拥有多个设备时，只要任一有效会话满足条件即为在线；所有有效会话都超出在线窗口后即为离线。在线状态不改变 `User.status`，也不代表用户正在执行具体业务操作。
+
+登录成功创建会话、Refresh Token 成功轮换以及当前会话的 presence heartbeat 都会更新该会话的 `lastActiveAt`。客户端应在会话有效期间调用 `POST /api/v1/iam/auth/presence/heartbeat` 维持在线状态；心跳只更新当前会话，不会延长 Token 或会话的 `expiresAt`。
+
+当前用户可以查看自己的在线状态；具有用户管理权限的管理员可以查看其管理范围内用户的在线状态。资源共享用户目录和普通用户搜索结果不得返回其他用户的在线状态。在线状态是短暂派生信息，不写入跨 domain 事件，也不作为资源授权、任务执行或用户状态变更的依据。
+
+---
+
+## 10. 角色与权限计算
+
+## 10.1 有效角色
+
+```text
+用户直接角色
++
+用户组角色
+```
+
+计算时过滤：
+
+```text
+禁用角色
+未生效授权
+已过期授权
+禁用用户组
+```
+
+## 10.2 有效权限
+
+```mermaid
+flowchart TD
+    A["计算用户权限"] --> B["获取用户直接角色"]
+    A --> C["获取用户组角色"]
+
+    B --> D["合并角色"]
+    C --> D
+
+    D --> E["过滤无效角色"]
+    D --> E["合并 RolePermissionGrant"]
+    E --> F["写入权限缓存"]
+```
+
+`SUPER_ADMIN` 的全量管理能力必须通过已登记的权限定义表达，不能成为绕过授权的隐式分支。任何主体仍然不能绕过：
+
+```text
+用户状态检查
+Token 和 Session 检查
+安全审计
+最后一个超级管理员保护
+```
+
+---
+
+## 11. 权限缓存
+
+权限缓存键：
+
+```text
+authz:user:{userId}:{authorizationVersion}
+```
+
+以下变化增加 `User.authorizationVersion`：
+
+```text
+用户角色变化
+用户组成员变化
+用户组角色变化
+角色权限变化
+角色被禁用
+```
+
+旧缓存自然失效。
+
+不要求扫描删除全部旧缓存键。
+
+---
+
+## 12. 资源所有权与共享
+
+## 12.1 资源所有权
+
+资源域向 Identity 授权检查提供其自己的 owner、visibility 和资源状态摘要。平台通用约定是：
+
+```text
+owner_user_id（资源域支持用户所有权时）
+created_by（资源域需要记录创建主体时）
+```
+
+Identity 不替资源域决定 owner 是否天然拥有 `MANAGE`；资源域必须在自身 S1 中定义默认 owner 能力。资源域也必须拒绝客户端直接指定其他用户为 owner。
+
+---
+
+## 12.2 资源访问判断
+
+```mermaid
+flowchart TD
+    A["访问具体资源"] --> B["校验身份和 Token"]
+    B --> C["检查操作权限码"]
+
+    C --> D{"是否拥有操作权限"}
+    D -->|否| E["permission_denied"]
+
+    D -->|是| F["由资源域确认对象存在、状态、owner 与 visibility"]
+    F --> G{"资源域是否允许当前主体"}
+    G -->|是| H["允许访问"]
+    G -->|否| I{"资源域是否接入 ResourceAccessGrant"}
+    I -->|是| J["检查用户/用户组授权等级"]
+    J -->|满足| H
+    J -->|不满足| K["resource_access_denied"]
+    I -->|否| K
+    F --> L{"是否拥有该资源域登记的 manage_all"}
+    L -->|是| H
+    L -->|否| K
+```
+
+---
+
+## 12.3 资源共享
+
+对于已声明接入共享的资源域，资源所有者或具有资源域 `MANAGE` 能力的用户可以：
+
+```text
+共享给指定用户
+共享给用户组
+修改共享等级
+设置共享过期时间
+撤销共享
+```
+
+共享时只能选择平台内已经存在的用户或用户组。
+
+普通用户搜索能力只用于明确的资源共享场景，并应限制返回字段：
+
+```text
+userId
+displayName
+username
+avatar
+```
+
+不得返回：
+
+```text
+邮箱
+手机号
+角色
+登录状态
+安全信息
+私有资源
+```
+
+平台也可以通过精确用户名输入代替全量用户目录。
+
+共享授权只解决主体到资源的授权关系；资源域仍负责检查资源状态、visibility、版本和业务动作是否允许。管理员代管或跨 owner 操作必须同时记录操作主体与资源 owner。
+
+---
+
+## 12.4 全量管理权限
+
+管理员跨 owner 访问全部同类资源时，必须拥有资源域登记的显式权限：
+
+```text
+asset.asset.manage_all
+canvas.canvas.manage_all
+application.application.manage_all
+agent.agent.manage_all
+```
+
+不能仅因为角色名是 `ADMIN` 就自动访问全部用户资源。
+
+---
+
+## 13. API 鉴权
+
+受保护 API 必须显式声明权限码。
+
+例如：
+
+```text
+POST /api/assets
+permission: asset.asset.create
+
+GET /api/assets/{id}
+permission: asset.asset.read
+resource-check: VIEW
+
+PUT /api/assets/{id}
+permission: asset.asset.update
+resource-check: EDIT
+
+DELETE /api/assets/{id}
+permission: asset.asset.delete
+resource-check: MANAGE
+```
+
+完整流程：
+
+```mermaid
+flowchart TD
+    A["请求进入 API"] --> B["验证 Access Token"]
+    B --> C{"Token 是否有效"}
+
+    C -->|否| D["401 unauthenticated"]
+    C -->|是| E["构建 PrincipalContext"]
+
+    E --> F["读取接口权限码"]
+    F --> G["检查用户操作权限"]
+
+    G --> H{"是否允许"}
+    H -->|否| I["403 permission_denied"]
+
+    H -->|是| J{"是否涉及具体资源"}
+    J -->|否| K["进入业务处理"]
+
+    J -->|是| L["检查资源所有权或共享关系"]
+    L --> M{"是否允许访问"}
+    M -->|否| N["403 resource_access_denied"]
+    M -->|是| K
+```
+
+后端禁止：
+
+```text
+if role == "ADMIN"
+if username == "admin"
+信任前端 ownerUserId
+只验证 JWT 签名
+使用前端隐藏作为安全边界
+```
+
+### 13.1 跨 domain PrincipalContext
+
+所有业务 domain 只消费受 Identity 验证后的主体与授权结果，不直接查询 IAM 私有表。逻辑上的 `PrincipalContext` 至少表达：
+
+```text
+principal_type: USER | SERVICE_ACCOUNT
+principal_id: 当前认证主体 ID
+actor_user_id: 可选；服务主体代表用户执行操作时的委托用户 ID
+auth_session_id: 用户会话 ID；服务主体可为空
+credential_version: 用于撤销和安全版本校验
+permission_snapshot: 当前请求的权限判定结果，不是 Token 内的完整权限列表
+```
+
+跨域规则：
+
+1. 业务资源的 `owner_user_id`、`created_by`、`visibility`、`project` 和 `namespace` 由资源 domain 维护；调用者不能通过请求体覆盖。
+2. `principal_id` 用于识别实际认证主体；`actor_user_id` 只在存在受控委托时出现，不能由客户端任意提交。
+3. 业务 domain 可以把 `principal_id` 解析为一跳 owner/collaborator 摘要，但不能递归展开用户、角色或完整权限。
+4. service-to-service 调用使用 ServiceAccount；用户发起的异步任务、Agent、AppStudio 或 MCP 操作必须保留原始用户授权语义，不得用一个全局服务账号替代用户授权。
+5. sse、notification-center 等投影只接收已裁剪的主体/资源事件，不从 Identity 或业务私表拼装新的业务事实。
+
+---
+
+## 14. 用户管理
+
+管理员可以：
+
+```text
+查看用户列表
+创建用户
+修改用户基础资料
+禁用用户
+恢复用户
+解除临时锁定
+分配角色
+加入或移出用户组
+逻辑删除用户
+```
+
+管理员不能：
+
+```text
+查看用户密码
+获取用户完整 Token
+直接修改用户密码为已知值
+删除审计记录
+```
+
+---
+
+## 14.1 禁用用户
+
+禁用用户后：
+
+```text
+User.status = DISABLED
+增加 securityVersion
+撤销全部 Session
+撤销全部 Refresh Token
+禁用相关服务账号由业务策略决定
+```
+
+用户拥有的资源继续保留。
+
+---
+
+## 14.2 删除用户
+
+默认优先禁用用户，不直接删除。
+
+逻辑删除前必须检查：
+
+```text
+用户拥有的资产
+用户拥有的画布
+用户拥有的应用
+用户拥有的 Agent
+未完成任务
+服务账号
+有效共享关系
+```
+
+存在资源时应先完成：
+
+```text
+资源转移
+或
+资源清理
+```
+
+删除规则：
+
+```text
+用户不能删除自己
+不能删除最后一个有效 SUPER_ADMIN
+不能级联删除业务资源
+不能删除审计记录
+```
+
+---
+
+## 15. Service Account
+
+## 15.1 使用场景
+
+```text
+Task Worker
+Notification Worker
+Agent Runtime
+AppStudio Build / Deployment
+外部自动化程序
+```
+
+## 15.2 服务账号认证
+
+```mermaid
+sequenceDiagram
+    participant C as Worker / Agent / App
+    participant IAM as IAM Service
+    participant API as OmniMAM API
+
+    C->>IAM: client_id + client_secret
+    IAM->>IAM: 校验 ServiceAccount
+    IAM-->>C: 短期 Access Token
+
+    C->>API: Bearer Access Token
+    API->>IAM: 检查身份与权限
+    IAM-->>API: 授权结果
+```
+
+服务账号不使用 Refresh Token。
+
+Access Token 过期后重新交换。
+
+## 15.3 安全要求
+
+```text
+不同运行实体使用不同服务账号
+密钥只显示一次
+数据库只保存密钥哈希
+支持凭据轮换
+支持立即撤销
+服务账号默认最小权限
+```
+
+不得让所有 Worker 或 Agent 共用一个全权限账号。
+
+---
+
+## 16. PAT
+
+当前版本不提供 PAT。未来如需支持，用户才可以创建 PAT 用于：
+
+```text
+CLI
+本地 Agent
+自动化脚本
+```
+
+创建时必须设置：
+
+```text
+名称
+权限上限
+到期时间
+```
+
+PAT 明文只显示一次。
+
+用户可以查看：
+
+```text
+名称
+前缀
+创建时间
+到期时间
+最后使用时间
+状态
+```
+
+用户不能再次查看完整 PAT。
+
+当前版本不得提供 PAT 管理页面或 `/api/pats` 接口；MCP Client 使用当前用户的 Identity JWT。
+
+---
+
+## 17. 系统初始化
+
+系统首次启动时创建：
+
+```text
+SUPER_ADMIN
+ADMIN
+USER
+```
+
+以及一个初始化管理员。
+
+初始化管理员规则：
+
+1. 用户名可以默认为 `admin`；
+2. 用户名本身不产生特殊权限；
+3. 初始密码不得固定写死为 `admin`；
+4. 通过部署环境变量、安装向导或随机值提供一次性密码；
+5. 初始密码只展示一次；
+6. `firstLoginRequired=true`；
+7. 首次登录必须修改密码；
+8. 系统始终至少保留一个有效 SUPER_ADMIN；
+9. 所有操作必须记录审计。
+
+---
+
+## 18. 前端页面
+
+## 18.1 认证页面
+
+```text
+登录
+注册
+首次登录引导
+修改密码
+个人资料
+登录会话
+登出结果
+```
+
+## 18.2 管理页面
 
 ```text
 用户管理
 用户组管理
 角色管理
-权限资源管理
-LDAP 配置
-系统级认证配置
-审计日志
+角色权限分配
+权限目录
+服务账号管理
+认证策略
+安全审计
 ```
 
-管理员操作必须受权限码控制。
+## 18.3 资源共享页面
 
-内置角色需要在界面中明确标识，并禁用删除和 code 修改。
-
-用户管理中的删除入口必须根据当前操作者和目标用户的最高内置角色动态控制展示；后端仍必须由统一授权或用户删除策略层执行相同角色层级校验。初始 `admin` 账号可删除任何其他用户，普通 SUPER_ADMIN 不能删除其他 SUPER_ADMIN，ADMIN 只能删除 REGULAR_USER，REGULAR_USER 不具备删除用户能力，同角色用户不能互相删除。
-
-### 7.3 业务系统前端
-
-业务系统前端只消费 IAM 提供的身份和权限结果。
-
-业务系统前端需要：
+资源详情中提供：
 
 ```text
-保存和携带 Access Token
-在 Token 过期时触发刷新
-登录态失效时跳转认证中心
-获取当前用户信息
-跳转或打开个人信息和邮箱修改入口
-跳转或打开修改密码入口
-获取系统级认证配置
-获取当前用户权限码集合
-获取当前用户菜单和按钮树
-根据菜单树动态注册路由
-根据权限码控制按钮和操作入口
-```
-
-业务系统前端不得：
-
-```text
-硬编码角色判断
-把隐藏按钮当作安全边界
-直接读取认证中心 Cookie
-自行维护独立登录态
-```
-
-### 7.4 业务系统后端
-
-业务系统后端 API 只接受 Bearer Token。
-
-业务系统后端需要：
-
-```text
-校验 Access Token
-检查 Token 是否撤销
-从 Token 提取用户身份
-匹配请求所需权限码
-计算或读取当前用户权限码集合
-判断权限
-提供系统级认证配置
-记录安全审计
-```
-
-业务系统后端不得：
-
-```text
-信任前端隐藏逻辑
-绕过统一鉴权层
-在业务代码中硬编码角色判断
-在 Token 中读取权限码作为最终授权依据
+当前所有者
+共享用户
+共享用户组
+访问等级
+过期时间
+撤销共享
 ```
 
 ---
 
-## 8. 状态与异常
+## 19. 主要接口
 
-| 状态/异常                       | 说明                         |
-| --------------------------- | -------------------------- |
-| unauthenticated             | 用户未登录或登录态无效                |
-| invalid_credentials         | 登录凭证错误                     |
-| account_unverified          | 后续邮箱验证或审批扩展状态，非当前注册主流程     |
-| account_disabled            | 用户已禁用                      |
-| account_locked              | 用户因失败次数过多被锁定               |
-| mfa_required                | 后续 MFA 扩展预留，当前阶段不返回        |
-| mfa_invalid                 | 后续 MFA 扩展预留，当前阶段不返回        |
-| mfa_expired                 | 后续 MFA 扩展预留，当前阶段不返回        |
-| token_expired               | Access Token 已过期           |
-| token_revoked               | Token 已被撤销                 |
-| refresh_token_invalid       | Refresh Token 无效、过期或与设备不匹配 |
-| first_login_required        | 用户首次登录，需要先修改密码和邮箱         |
-| password_changed_relogin_required | 密码修改成功后必须重新登录       |
-| permission_denied           | 当前用户缺少所需权限                 |
-| resource_permission_missing | 请求资源未配置权限码或权限资源不可用         |
-| role_builtin_protected      | 内置角色禁止删除或修改 code           |
-| user_delete_forbidden_by_role | 当前操作者角色层级不允许删除目标用户       |
-| user_delete_missing_permission | 当前操作者缺少用户删除权限码           |
-| user_delete_blocked_by_resources | 目标用户存在关联资源，禁止删除        |
-| self_delete_forbidden       | 用户不能删除自己                   |
-| role_mutex_conflict         | 用户被分配了互斥角色                 |
-| role_inheritance_cycle      | 角色继承关系存在循环                 |
-| group_cycle_detected        | 用户组层级存在循环                  |
-| dynamic_group_rule_invalid  | 动态组规则无效                    |
-| oauth_state_invalid         | 后续 OAuth2 / OIDC 扩展预留，当前阶段不返回 |
-| oauth_provider_failed       | 后续 OAuth2 / OIDC 扩展预留，当前阶段不返回 |
-| ldap_connection_failed      | LDAP 连接失败                  |
-| ldap_auth_failed            | LDAP 认证失败                  |
-| email_already_exists        | 邮箱已被使用                     |
-| username_already_exists     | 用户名已被使用                    |
-| phone_already_exists        | 手机号已被使用                    |
-| old_password_invalid        | 修改密码时原密码错误                 |
-| password_policy_failed      | 密码不符合安全策略                  |
-| auth_config_unavailable     | 系统级认证配置不可用                 |
-| audit_write_failed          | 审计日志写入失败                   |
-
----
-
-## 9. 验收标准
-
-### US-IAM-01 用户注册
-
-* **AC-IAM-001-01** 用户提交符合规则的用户名、密码、邮箱和可选别名后，系统创建 LOCAL 用户。
-* **AC-IAM-001-02** 当前阶段注册成功后不发送邮箱验证邮件；未启用管理员审批时，新用户状态为 ACTIVE。
-* **AC-IAM-001-03** 注册成功后，新用户自动获得 REGULAR_USER 角色。
-
-### US-IAM-02 邮箱验证（当前阶段不支持）
-
-* **AC-IAM-002-01** 当前阶段注册、登录和邮箱修改流程不得要求用户完成邮箱验证。
-* **AC-IAM-002-02** 当前阶段不发送邮箱验证链接，不展示邮箱验证结果页。
-
-### US-IAM-03 用户密码登录
-
-* **AC-IAM-003-01** 用户凭证正确、状态允许登录且不处于首次登录引导阻断时，系统签发正式登录态。
-* **AC-IAM-003-02** 只有正式登录态签发成功后，系统才更新 lastLoginAt。
-* **AC-IAM-003-03** 当前阶段登录流程不要求 MFA 验证。
-
-### US-IAM-05 MFA 登录验证（当前阶段不支持）
-
-* **AC-IAM-005-01** 当前阶段登录流程不得返回 MFA 待验证状态。
-* **AC-IAM-005-02** 当前阶段不提供 TOTP、短信验证码、邮件验证码或按角色强制 MFA 配置作为可用能力。
-
-### US-IAM-06 可信设备（当前阶段不支持）
-
-* **AC-IAM-006-01** 当前阶段不提供信任当前设备、查看可信设备或撤销可信设备流程。
-
-### US-IAM-07 OAuth2 / OIDC 登录（当前阶段不支持）
-
-* **AC-IAM-007-01** 当前阶段不提供 OAuth2 / OIDC 登录入口作为可用能力。
-* **AC-IAM-007-02** 当前阶段不创建 OAUTH 来源用户。
-
-### US-IAM-16 用户管理
-
-* **AC-IAM-016-01** 给定操作者为初始 `admin` 账号，当删除无关联资源的任意其他用户时，系统允许删除并记录审计日志。
-* **AC-IAM-016-02** 给定操作者为非初始 `admin` 的 SUPER_ADMIN，当目标用户最高内置角色为 SUPER_ADMIN 时，系统拒绝删除并返回角色层级禁止原因。
-* **AC-IAM-016-03** 给定操作者为 ADMIN，当其拥有 `user:delete` 等用户删除权限码且目标用户最高内置角色为 REGULAR_USER、无关联资源时，系统允许删除。
-* **AC-IAM-016-04** 给定操作者为 REGULAR_USER 或操作者尝试删除自己时，系统拒绝删除。
-* **AC-IAM-016-05** 用户删除能力必须由 IAM 统一授权或用户删除策略层判断，普通业务系统不得自行维护角色层级删除逻辑。
-* **AC-IAM-016-06** 给定目标用户存在关联资源时，系统拒绝删除，并提示先清理或转移资源。
-* **AC-IAM-016-07** 给定操作者缺少用户删除权限码时，即使角色层级满足，系统也拒绝删除。
-
-### US-IAM-26 OAuth Provider 管理（当前阶段不支持）
-
-* **AC-IAM-026-01** 当前阶段不提供 OAuth Provider 创建、编辑、启用或删除能力。
-
-### US-IAM-30 系统初始化
-
-* **AC-IAM-030-01** 系统首次启动后，存在 SUPER_ADMIN、ADMIN、REGULAR_USER 三个内置角色，且内置角色不可删除、code 不可修改。
-* **AC-IAM-030-02** 系统首次启动后，存在用户名为 `admin`、初始密码为 `admin` 的初始管理员账号，并直接绑定 SUPER_ADMIN 角色。
-* **AC-IAM-030-03** 初始管理员首次登录时，isFirstLogin 为 true，系统要求其先修改密码和邮箱；完成前不得进入系统正常功能。
-* **AC-IAM-030-04** 初始密码 `admin` 仅作为启动引导例外，不应被视为通过正常密码复杂度策略的长期密码。
-* **AC-IAM-030-05** 初始管理员首次登录修改邮箱后，当前阶段不发送邮箱验证邮件，邮箱唯一性校验通过后生效。
-
-### US-IAM-31 修改当前用户密码
-
-* **AC-IAM-031-01** 已登录 LOCAL 用户输入正确原密码和符合策略的新密码后，系统允许修改密码并记录最后一次密码修改时间。
-* **AC-IAM-031-02** 修改密码页面从后端系统级认证配置读取并展示具体、可执行的密码复杂度策略提示。
-* **AC-IAM-031-03** 原密码错误或新密码不符合策略时，系统不得修改密码，并记录审计日志。
-* **AC-IAM-031-04** 密码修改成功后，系统撤销 Refresh Token，使当前及全部 Access Token 在剩余有效期内不可用，退出当前会话，并强制跳回登录页要求重新登录。
-* **AC-IAM-031-05** LDAP / OAUTH 用户没有本地密码时，不进入本地修改密码流程。
-
-### US-IAM-32 修改当前用户个人信息和邮箱
-
-* **AC-IAM-032-01** 已登录用户可以修改 displayName、alias、email、phone 等允许自助维护的信息。
-* **AC-IAM-032-02** username 不可修改。
-* **AC-IAM-032-03** 修改 email 或 phone 时，系统必须校验唯一性；冲突时不得保存。
-* **AC-IAM-032-04** 当前阶段 email 修改成功后不发送邮箱验证邮件，唯一性校验通过后生效。
-* **AC-IAM-032-05** 首次登录引导中的邮箱修改复用当前用户个人信息修改能力。
-
-### US-IAM-33 获取系统级认证配置
-
-* **AC-IAM-033-01** 认证中心和业务系统前端可以读取系统级认证配置。
-* **AC-IAM-033-02** 系统级认证配置至少包含密码复杂度策略、Access Token 超时时间、Refresh Token 超时时间和登录失败锁定策略。
-* **AC-IAM-033-03** 前端必须使用后端返回的系统级认证配置展示密码策略和处理令牌超时，不得写死。
-
----
-
-## 10. 非目标范围
-
-本阶段不包含：
+## 19.1 认证
 
 ```text
-邮箱验证或邮箱认证流程
-MFA 登录验证、MFA 绑定或按角色强制 MFA
-可信设备管理
-OAuth2 / OIDC 登录
-OAuth Provider 管理
-忘记密码或邮箱找回流程
-管理员重置他人密码
-普通业务系统自行维护角色层级删除逻辑
-删除用户时跨资源级联删除
+POST /api/v1/iam/auth/register
+POST /api/v1/iam/auth/login
+POST /api/v1/iam/auth/refresh
+POST /api/v1/iam/auth/logout
+POST /api/v1/iam/auth/logout-all
+POST /api/v1/iam/auth/change-password
+POST /api/v1/iam/auth/presence/heartbeat
+GET  /api/v1/iam/auth/me
+PUT  /api/v1/iam/auth/me
+GET  /api/v1/iam/auth/sessions
+DELETE /api/v1/iam/auth/sessions/{id}
 ```
 
-## 11. 待确认问题
+## 19.2 用户管理
 
-当前无待确认问题。
+```text
+GET    /api/v1/iam/admin/users
+POST   /api/v1/iam/admin/users
+GET    /api/v1/iam/admin/users/{id}
+PUT    /api/v1/iam/admin/users/{id}
+POST   /api/v1/iam/admin/users/{id}/disable
+POST   /api/v1/iam/admin/users/{id}/enable
+POST   /api/v1/iam/admin/users/{id}/unlock
+DELETE /api/v1/iam/admin/users/{id}
+```
+
+## 19.3 角色和用户组
+
+```text
+GET  /api/v1/iam/admin/roles
+POST /api/v1/iam/admin/roles
+PUT  /api/v1/iam/admin/roles/{id}
+PUT  /api/v1/iam/admin/roles/{id}/permissions
+
+GET  /api/v1/iam/admin/groups
+POST /api/v1/iam/admin/groups
+PUT  /api/v1/iam/admin/groups/{id}
+PUT  /api/v1/iam/admin/groups/{id}/members
+PUT  /api/v1/iam/admin/groups/{id}/roles
+```
+
+## 19.4 资源授权（仅供接入的资源域使用）
+
+```text
+GET    /api/v1/iam/resources/{type}/{id}/grants
+POST   /api/v1/iam/resources/{type}/{id}/grants
+PUT    /api/v1/iam/resources/{type}/{id}/grants/{grant_id}
+DELETE /api/v1/iam/resources/{type}/{id}/grants/{grant_id}
+```
+
+---
+
+## 20. 错误码
+
+| 错误码                              | 说明                   |
+| -------------------------------- | -------------------- |
+| unauthenticated                  | 未登录或登录态无效            |
+| invalid_credentials              | 用户名或密码错误             |
+| account_pending                  | 账号等待审批               |
+| account_disabled                 | 账号已禁用                |
+| account_locked                   | 账号已锁定                |
+| first_login_required             | 必须完成首次登录             |
+| token_expired                    | Access Token 已过期     |
+| token_revoked                    | Token 或会话已撤销         |
+| refresh_token_invalid            | Refresh Token 无效     |
+| refresh_token_reused             | 检测到 Refresh Token 重用 |
+| password_policy_failed           | 密码不符合安全策略            |
+| old_password_invalid             | 原密码错误                |
+| username_already_exists          | 用户名已存在               |
+| email_already_exists             | 邮箱已存在                |
+| permission_denied                | 缺少操作权限               |
+| resource_access_denied           | 无权访问资源               |
+| resource_permission_missing      | API 未配置权限            |
+| role_builtin_protected           | 内置角色禁止修改             |
+| last_super_admin_protected       | 禁止删除最后一个超级管理员        |
+| self_delete_forbidden            | 用户不能删除自己             |
+| user_delete_blocked_by_resources | 用户仍拥有业务资源            |
+| service_account_disabled         | 服务账号已禁用              |
+| credential_expired               | 凭据已过期                |
+| credential_revoked               | 凭据已撤销                |
+
+---
+
+## 21. 平台审计协作
+
+以下 Identity 行为必须向 `platform-management` 提交脱敏审计记录：
+
+```text
+用户注册
+登录成功
+登录失败
+账号锁定
+Token 刷新
+Refresh Token 重用
+登出
+全部设备登出
+修改密码
+用户创建
+用户禁用和恢复
+用户删除
+角色分配
+角色权限修改
+用户组成员变化
+资源共享
+资源共享撤销
+资源所有权转移
+ 服务账号创建和禁用
+服务账号凭据轮换
+权限拒绝
+```
+
+Identity 提交的审计上下文至少包含：
+
+```text
+principalType
+principalId
+actorUserId
+action
+targetType
+targetId
+ownerUserId
+result
+reason
+requestId
+traceId
+ipAddress
+userAgent
+detail
+createdAt
+```
+
+平台管理负责 AuditLog 的持久化、查询、脱敏和可靠事件。Identity 不拥有审计表或审计查询 API；平台审计写入失败时，登录、密码、Token、授权、服务账号和跨 owner 等敏感操作必须 fail closed。
+
+审计上下文不得包含：
+
+```text
+密码
+完整 Access Token
+完整 Refresh Token
+完整 client_secret
+```
+
+---
+
+## 22. 验收标准
+
+## 22.1 注册与登录
+
+* 用户可使用用户名、邮箱和密码注册；
+* 用户名和邮箱全局唯一；
+* 注册用户自动获得 USER 角色；
+* 登录失败达到阈值后触发临时锁定；
+* 只有正式会话创建成功后才更新最后登录时间；登录成功同时更新当前会话最后活动时间。
+* 用户密码只以当前 Argon2id 策略生成的 PHC 哈希保存，密码明文和可逆密文不得持久化。
+
+## 22.2 Token
+
+* Access Token 不包含完整权限；
+* Refresh Token 每次使用后轮换；
+* 旧 Refresh Token 重复使用时撤销整个会话；
+* 用户被禁用后旧 Token 不可继续访问；
+* 修改密码后所有旧会话失效；当前版本不存在可继续使用的 PAT。
+* 用户在线状态由有效会话和最近活动时间派生，不把 `online` 写入 `User.status`；默认在线窗口为 300 秒。
+* presence heartbeat 只更新当前会话的 `lastActiveAt`，不延长 Token 或会话过期时间。
+
+## 22.3 权限
+
+* 后端 API 使用权限码鉴权；
+* 业务代码不通过角色名称判断权限；
+* 权限变更后无需等待 Token 过期即可生效；
+* 内置角色不可删除；
+* 系统始终保留至少一个有效 SUPER_ADMIN。
+
+## 22.4 资源隔离
+
+* 资源域明确支持用户所有权时，资源 owner 只能来自认证上下文；
+* 具有资源操作权限但不满足资源域可见性或授权关系时，请求被拒绝；
+* 只有资源域声明接入共享时，资源所有者才可以创建共享授权；
+* 撤销共享后，用户立即失去新的访问能力；
+* 管理员访问全部资源必须具备显式 `manage_all` 权限。
+
+## 22.5 服务账号
+
+* Worker、Agent 和应用运行环境不使用用户密码；
+* 不同运行主体使用独立服务账号；
+* 服务凭据只显示一次；
+* 服务账号禁用后已有 Token 失效；
+* 服务账号权限遵守最小权限原则。
+
+---
+
+## 23. 当前版本最终模型
+
+```mermaid
+flowchart TB
+    USER["User"]
+
+    USER --> ROLE["直接角色"]
+    USER --> GROUP["用户组"]
+    GROUP --> GROUP_ROLE["用户组角色"]
+
+    ROLE --> PERMISSION["权限码"]
+    GROUP_ROLE --> PERMISSION
+
+    USER --> OWNED["用户拥有的资源"]
+    USER --> SHARED["被共享的资源"]
+
+    USER --> SESSION["登录会话"]
+    SERVICE["ServiceAccount"] --> SERVICE_ROLE["服务主体授权"]
+    SERVICE_ROLE --> PERMISSION
+```
+
+核心规则：
+
+```text
+所有用户属于同一个 OmniMAM 平台。
+
+用户通过角色获得操作权限。
+
+资源域定义 owner、created_by、visibility 和资源状态；需要共享时通过 ResourceAccessGrant 接入 Identity。
+
+平台管理员访问全部资源也必须拥有显式 manage_all 权限。
+
+业务 domain 通过 PrincipalContext 消费用户或服务主体；系统当前不包含企业、租户、LDAP、OIDC、MFA 和 PAT。
+```
+
+---
+
+## 24. S2 追溯锚点
+
+以下编号是本 S1 对 Identity S2 的稳定追溯入口。编号只表达当前产品语义，不代表 API、Schema 或实现细节已经发布。
+
+### 24.1 业务规则
+
+| 编号 | 业务规则 | 相关章节 |
+| --- | --- | --- |
+| `BR-IAM-001` | 平台使用统一 User 主体；用户名全局唯一且不可修改，邮箱可作为登录标识且必须唯一。 | 2.1、5.1、6、22.1 |
+| `BR-IAM-002` | 用户可自主注册或由管理员创建；注册用户获得 USER 角色，管理员创建用户必须触发首次登录引导。 | 3.1、6、17、22.1 |
+| `BR-IAM-003` | 登录必须检查账号状态和密码；失败达到策略阈值后临时锁定，未认证请求不得暴露用户是否存在。 | 5.1、7、20、22.1 |
+| `BR-IAM-004` | 首次登录受限会话只能完成密码/个人信息引导和退出，完成密码修改后必须重新登录。 | 8、22.1 |
+| `BR-IAM-005` | Access Token 表达主体和凭据状态，不携带完整权限、角色、菜单或资源共享关系；权限变更不得依赖 Token 自然过期。 | 2.5、9、10、22.2 |
+| `BR-IAM-006` | Refresh Token 必须轮换；重用旧 Refresh Token 时撤销整个 AuthSession 和该会话凭据并记录审计。 | 5.11、9.3、21、22.2 |
+| `BR-IAM-007` | 当前登出、全局登出、密码修改、用户禁用必须撤销相应会话和凭据；旧凭据不得继续访问。 | 9.4、9.5、14.1、22.2 |
+| `BR-IAM-008` | 有效角色只来自用户直接角色和静态用户组角色，并过滤禁用、未生效或过期授权；当前不支持角色继承和互斥。 | 3.2、5.2、5.6-5.8、10 |
+| `BR-IAM-009` | 权限定义由各模块登记，Identity 只允许管理员分配已登记权限；后端必须按权限码判定，不得硬编码角色名称。 | 2.4、10、13、22.3 |
+| `BR-IAM-010` | PrincipalContext 区分 USER 与 SERVICE_ACCOUNT，并可携带受控 `actor_user_id`；客户端不得伪造委托用户。 | 5.13、13.1、15、23 |
+| `BR-IAM-011` | 资源 domain 拥有 owner、created_by、visibility、project、namespace 和资源状态；owner 不得由客户端直接指定。 | 2.2、12.1、13.1、22.4 |
+| `BR-IAM-012` | ResourceAccessGrant 只对声明接入共享的资源 domain 生效；Identity 不凭该记录证明资源存在、可见或状态有效。 | 5.9、12.2-12.3、19.4、22.4 |
+| `BR-IAM-013` | 跨 owner 管理必须拥有目标 domain 登记的显式 manage_all 权限，并记录 principal、actor、owner、目标和结果。 | 12.3-12.4、13.1、21、22.4 |
+| `BR-IAM-014` | ServiceAccount 只能通过独立短期凭据访问受控服务边界，不使用普通用户登录或 Refresh Token，并遵守最小权限、轮换和撤销。 | 5.13、15、22.5 |
+| `BR-IAM-015` | 登录、凭据、授权变化、权限拒绝、服务主体和跨 owner 操作必须向 platform-management 写入脱敏 AuditLog；审计不得包含密码、完整 Token 或 Secret。 | 13.1、15、21、22.5 |
+| `BR-IAM-016` | SystemAuthConfig 由 platform-management 持有，统一约束注册模式、密码、登录失败保护、在线窗口和 Token 生命周期；Identity 只能消费当前生效配置。 | 5.1.2、9.6、17、18.2 |
+| `BR-IAM-017` | 删除用户前必须处理其资源、未完成任务、服务账号和共享关系；不得级联删除业务事实或最后一个有效 SUPER_ADMIN。 | 14.2、17、21、22.3 |
+| `BR-IAM-018` | 当前版本不提供企业/租户、LDAP/SSO、OAuth2/OIDC、MFA、可信设备、动态组、复杂 ABAC 和 PAT。 | 文档头部、3.2、5.12、16、23 |
+| `BR-IAM-019` | 其他 domain 只通过 PrincipalContext、受控授权结果、稳定 ID、一跳摘要、不可变快照或可靠事件协作，不读取 Identity 私有表。 | 2.2、12、13.1、23 |
+| `BR-IAM-020` | Identity API 使用 `/api/v1/iam` 和 HTTP 200 业务结果；业务错误通过稳定 code/value 表达，业务资源不可见不得用 404 泄露存在性。 | 19、20、24.2 |
+| `BR-IAM-021` | 用户密码使用 Argon2id 不可逆哈希并以包含参数、salt 和结果的 PHC 字符串保存；登录或改密时按当前策略升级哈希，绝不保存明文或可逆密文。 | 5.1、7、9.5、17、22.1、22.2 |
+| `BR-IAM-022` | 用户在线状态由 ACTIVE 用户的有效 AuthSession 和最近 `lastActiveAt` 派生；默认窗口为 300 秒，多设备任一会话在线即在线，撤销或过期会话不参与判断。 | 5.1、5.10、9.6、22.2、22.4 |
+
+### 24.2 用户故事
+
+| 编号 | 用户故事 | 相关章节 |
+| --- | --- | --- |
+| `US-IAM-001` | 作为用户，我可以使用用户名或邮箱注册、登录并获得可撤销的会话凭据。 | 6、7、9、22.1 |
+| `US-IAM-002` | 作为管理员，我可以创建、查询、更新、禁用、恢复、解锁和删除用户，但不能读取用户密码或完整 Token。 | 6.2、14、17、22.1 |
+| `US-IAM-003` | 作为首次登录用户，我可以完成密码和个人信息引导，完成后重新登录进入正常系统。 | 8、22.1 |
+| `US-IAM-004` | 作为用户，我可以查看和撤销当前登录会话，并使用 Refresh Token 安全刷新登录凭据。 | 9.3-9.4、18.1、19.1、22.2 |
+| `US-IAM-005` | 作为管理员，我可以管理角色、权限分配、静态用户组及用户组成员关系。 | 5.2-5.8、10、18.2、19.3 |
+| `US-IAM-006` | 作为业务 domain，我可以请求当前主体的权限判定，并获得经过资源 domain 规则裁剪的访问结果。 | 2.3、10、12、13.1 |
+| `US-IAM-007` | 作为接入共享的资源 owner，我可以向用户或用户组授予、修改、过期和撤销资源访问等级。 | 5.9、12.3、19.4、22.4 |
+| `US-IAM-008` | 作为受控 Worker、Agent Runtime 或 AppStudio 组件，我可以使用独立 ServiceAccount 获取短期凭据访问被授权的服务边界。 | 5.13、15、22.5 |
+| `US-IAM-009` | 作为安全管理员，我可以通过 platform-management 查询登录、凭据、授权变化、权限拒绝和服务主体行为的脱敏审计记录。 | 13、18.2、21 |
+| `US-IAM-010` | 作为系统管理员，我可以通过 platform-management 维护注册、密码、登录保护、在线窗口和 Token 生命周期配置。 | 5.1.2、9.6、17、18.2 |
+| `US-IAM-011` | 作为用户发起的 Agent、AppStudio、Task 或 MCP 操作，我希望保留原始用户授权语义，并能在服务主体审计中识别委托用户。 | 13.1、15、23 |
+| `US-IAM-012` | 作为调用方，我希望不可见资源、无权资源和无效主体返回不泄露存在性的稳定业务错误。 | 7、12.2、13、20、22.4 |
+| `US-IAM-013` | 作为用户或受权管理员，我可以查看当前用户管理范围内的在线状态，而普通资源共享目录不会泄露在线信息。 | 9.6、18.1、19.1、22.2 |
+| `US-IAM-014` | 作为已认证客户端，我可以通过当前会话的 presence heartbeat 更新最近活动时间，维持准确的在线状态。 | 9.6、19.1、22.2 |

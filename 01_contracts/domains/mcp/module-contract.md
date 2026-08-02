@@ -18,7 +18,7 @@ OpenAPI 可以为 MCP 规范强制的传输校验声明 HTTP 400，以及为非�
 | resource-resolver | 6 类 `omnimam://` URI、解析、权限、短期 Resource Link | 素材搜索、媒体正文、永久 URL、递归摘要 | BR-MCP-014、BR-MCP-016；US-MCP-003、US-MCP-005 |
 | task-adapter | McpTaskBinding、Tasks 协商、状态映射、查询、协作取消、TTL 清理 | ApplicationRun/AtomicTask 状态、重试、任务队列、`tasks/update` | BR-MCP-009、BR-MCP-010、BR-MCP-011、BR-MCP-012、BR-MCP-013、BR-MCP-019；US-MCP-003、US-MCP-004 |
 | access | Identity Principal、MCP 权限与目标领域权限组合、存在性保护 | 用户、角色、JWT、OAuth/PAT 或目标资源事实 | BR-MCP-003、BR-MCP-016；US-MCP-007 |
-| audit | 请求审计上下文、脱敏和 Identity audit 写入 | Identity AuditLog 存储、Token、完整 payload 或二进制 | BR-MCP-018；US-MCP-007 |
+| audit | 请求审计上下文、脱敏和 platform-management audit 写入 | Platform AuditLog 存储、Token、完整 payload 或二进制 | BR-MCP-018；US-MCP-007 |
 | quota | MCP 速率、ApplicationRun 并发、上传大小和费用前置检查 | 源领域配额事实、已创建资源回滚 | BR-MCP-006、BR-MCP-017、BR-MCP-018；US-MCP-002、US-MCP-006、US-MCP-007 |
 | stdio-proxy | stdio/HTTP 转发、凭证读取和协议版本处理 | Tool 业务、权限决策、状态存储、素材读取 | BR-MCP-002、BR-MCP-003；US-MCP-004、US-MCP-007 |
 
@@ -110,7 +110,7 @@ MCP 不比较 ApplicationRun、AtomicTask 和 Artifact 的不同 `resource_versi
 - 所有请求在执行受控业务动作前建立审计上下文；Identity audit 写入不可用时，创建/取消/上传等受控写操作 fail closed，纯只读操作记录指标并按部署安全策略处理。
 - 审计字段包括 Principal、clientInfo、protocol version、transport、method、name/URI、request/trace ID、ApplicationRun/MCP Task ID、结果、错误和耗时。
 - 禁止记录 Token、Provider Credential、完整输入大对象、二进制、签名 URL Query、私网地址和内部栈。
-- MCP v1 不发布领域事件；ApplicationRun、AtomicTask、Artifact/Asset 和 Identity AuditLog 的可靠性由源领域负责。
+- MCP v1 不发布领域事件；ApplicationRun、AtomicTask、Artifact/Asset 和 platform-management AuditLog 的可靠性由源领域负责。
 
 ## 12. 关联摘要与查询预算
 
@@ -125,7 +125,8 @@ MCP 不比较 ApplicationRun、AtomicTask 和 Artifact 的不同 `resource_versi
 | 数据 | 所有者 |
 | --- | --- |
 | McpTaskBinding | mcp |
-| JWT、Principal、RBAC、AuditLog | identity |
+| JWT、Principal、RBAC | identity |
+| AuditLog | platform-management |
 | CapabilityDefinition、ProviderCapability、Engine、OperationExecutor | modelgateway |
 | Application、ApplicationVersion、ApplicationRun | application-platform |
 | AtomicTask、TaskAttempt、取消状态 | task-center |

@@ -2,6 +2,14 @@
 
 本文档是跨领域术语的 S1 事实源。领域文档可以补充本领域约束，但不得改变下列基本含义。
 
+## 平台与身份
+
+| 术语 | 定义 | 主要事实源 |
+| --- | --- | --- |
+| SystemAuthConfig | 平台统一维护的注册模式、密码策略、登录失败保护、在线窗口和 Token 生命周期配置；Identity 只消费当前生效版本。 | platform-management |
+| allow_registration | `SystemAuthConfig.registration_mode` 的只读兼容派生值；`OPEN` 为 true，`ADMIN_APPROVAL` 为 false。 | platform-management |
+| AuditLog | 跨 domain 的脱敏管理审计记录；平台管理负责追加、查询、Outbox 和可靠事件，来源 domain 只提交审计上下文。 | platform-management |
+
 ## 应用与能力
 
 | 术语 | 定义 | 主要事实源 |

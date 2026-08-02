@@ -1,0 +1,49 @@
+platform.system_auth_config.changed:
+  producer: platform-management.auth-config
+  consumers: [identity.config-consumer, notification-service]
+  trigger_condition: SystemAuthConfig 通过校验并成功提交后。
+  payload:
+    event_id: string
+    event_name: string
+    occurred_at: string(date-time)
+    aggregate_id: string
+    aggregate_version: integer
+    registration_mode: string(OPEN|ADMIN_APPROVAL)
+    online_presence_window_seconds: integer
+    access_token_lifetime: integer
+    refresh_token_lifetime: integer
+    actor_principal_type: string(USER|SERVICE_ACCOUNT)
+    actor_principal_id: string
+    actor_user_id: string|null
+  idempotency_key: platform.system_auth_config.changed:{aggregate_version}
+  retry_policy: 持久化 Outbox 重试；消费者按 aggregate_version 单调处理。
+  failure_policy: 配置事实以平台管理当前状态为准；Identity 在事件延迟期间可通过内部读取接口重新获取当前版本。
+  related_rules: [BR-PLATFORM-001, BR-PLATFORM-003]
+  related_user_stories: [US-PLATFORM-001, US-PLATFORM-002]
+
+platform.audit.recorded:
+  producer: platform-management.audit
+  consumers: [security-monitor, audit-exporter, notification-service]
+  trigger_condition: 脱敏 AuditLog 持久化成功后。
+  payload:
+    event_id: string
+    event_name: string
+    occurred_at: string(date-time)
+    aggregate_id: string
+    aggregate_version: integer
+    audit_log_id: string
+    source_domain: string
+    source_module: string
+    principal_type: string(USER|SERVICE_ACCOUNT|ANONYMOUS)
+    principal_id: string|null
+    actor_user_id: string|null
+    action: string
+    target_type: string|null
+    target_id: string|null
+    result: string(SUCCESS|FAILED|DENIED)
+    reason_code: string|null
+  idempotency_key: platform.audit.recorded:{audit_log_id}
+  retry_policy: 持久化 Outbox 重试；消费者按 audit_log_id 去重。
+  failure_policy: AuditLog 持久化成功后事件可重试；事件 payload 不包含 detail、凭据或原始请求。
+  related_rules: [BR-PLATFORM-004, BR-PLATFORM-006]
+  related_user_stories: [US-PLATFORM-003, US-PLATFORM-004]

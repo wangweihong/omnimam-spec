@@ -2,75 +2,61 @@
 
 ## 当前目标与状态
 
-提交并发布 `agent` 与 `appstudio` S1/S2 为 `spec-v1.10.0`。状态：已完成；Spec 内容提交、Release 记录、发布提交、annotated tag、`origin/master` 与远端 tag 均已发布。
+提交已收敛的 `identity` 与 `platform-management` Spec 变更。状态：已提交；两领域 S1/S2 仍为未 Release 草稿，不能作为正式实现、合并或验收依据。
 
-## 本次已完成
+## 本次工作完成
 
-- 为 Agent S1 新增 `BR-AGENT-001..014` 与 `US-AGENT-001..008`，为 AppStudio S1 新增 `BR-APPSTUDIO-001..014` 与 `US-APPSTUDIO-001..009`；只增加追溯锚点，不改变既有产品语义。
-- 新增 Agent 完整 S2：31 个 REST/SSE operation、10 张设计表、21 个错误码、8 个权限码、7 个可靠事件与模块合同。
-- 新增 AppStudio 完整 S2：31 个 REST operation、15 张设计表、27 个错误码、9 个权限码、7 个可靠事件与模块合同。
-- 固定 Coding Agent 的有界 Workspace Tool 授权、ChangeSet `base_revision` 原子写入、Session/Invocation/AtomicTask、Runtime 幂等与一跳摘要规则。
-- 固定 Workspace/Revision、Snapshot/Version、Build/Task/Artifact、Preview、RuntimeConfig/Secret 引用、Release/健康切换/回滚端到端合同。
-- 登记 Agent `200200-201199` 与 AppStudio `210200-211399` 错误区间，所有新增 API 使用 `/api/v1` 和 HTTP 200 业务错误模型。
-- 同步 Agent/AppStudio Domain Context、Global Context、Context Map 与 Changelog。
-- 创建 Spec 内容提交 `28ceccbb623dea1387719958f953416585b83bd6`，并将其登记为 `spec-v1.10.0` 的正式实现依据。
-- 创建发布提交 `7a070b2296a1aae6e320055c49bc40042ebf576a`，annotated tag `spec-v1.10.0` 指向该提交。
-- 使用 atomic push 发布 `master` 与 `spec-v1.10.0`，远端两项均成功更新。
+- Identity S1/S2 已完成认证、会话、用户、RBAC、PrincipalContext、资源授权和 ServiceAccount 契约；密码使用 Argon2id PHC 哈希，在线状态由有效会话活动时间派生，保留 presence heartbeat。
+- Platform Management S1/S2 已完成只读平台概览、SystemAuthConfig、脱敏 AuditLog 和平台入口；素材、应用、模型、任务和通知统计延期，Platform 不复制其他 domain 事实。
+- SystemAuthConfig、`allow_registration` 和 AuditLog 的事实归属迁移到 `platform-management`；Identity 只消费认证配置并提交脱敏审计上下文。
+- 同步 Identity/Platform Context、全局上下文、Context Map、词汇、错误码索引、MCP 审计边界、架构参考、CHANGELOG 和 RELEASE 门禁说明。
 
 ## 当前进行中
 
-- 无。
+- 无实现工作进行中；本次 Identity/Platform 目标文件已提交。
+- 归档目录与设计图属于工作区已有无关改动，仍保留未提交：`archive/`、`设计图/`、`skills/archive/`。
 
 ## 文件变化
 
-- 修改：`00_product/domains/agent/product-spec.md`、`00_product/domains/appstudio/product-spec.md`。
-- 新增：`01_contracts/domains/agent/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
-- 新增：`01_contracts/domains/appstudio/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
-- 修改：`01_contracts/error-code-index.md`、`domains/agent/context.md`、`domains/appstudio/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 修改：`RELEASE.md`，新增 `spec-v1.10.0` 正式发布记录；领域架构、正式 migration、实现代码和运行配置未修改。
-- 保留用户已有无关改动：`archive/`、`设计图/`、`skills/archive/`。
+- Identity S1：`00_product/domains/identity/product-spec.md`。
+- Identity S2：`01_contracts/domains/identity/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
+- Platform S1：`00_product/domains/platform-management/product-spec.md`。
+- Platform Context/S2：`domains/platform-management/context.md` 与 `01_contracts/domains/platform-management/{openapi.yaml,schema.sql,errors.yaml,permissions.yaml,events.yaml,module-contract.md}`。
+- 联动文件：`00_product/glossary.md`、`01_contracts/domains/mcp/module-contract.md`、`01_contracts/error-code-index.md`、`02_architecture/domains/identity.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
+- 不纳入本次提交：`archive/`、`设计图/`、`skills/archive/`。
 
 ## 关键设计决策
 
-- `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 AppStudio 的生成式 Web/BFF 应用。
-- Platform Agent 使用 AgentWorkspace；Coding Agent 固定引用一个 StudioWorkspace，Session/Invocation 不得切换。
-- Coding Agent 不直接挂载 AppStudio 存储，只使用绑定当前用户、Agent、Session、Invocation、Workspace、动作和有效期的 Tool 授权。
-- Agent 只拥有交互、Memory、AgentWorkspace 和 AgentRuntime；AppStudio 拥有源码、Build、Release 和生成应用 Runtime。
-- AgentRuntimeProvider 与 StudioDeploymentProvider 是不同产品组件，不形成共享业务状态。
-- Task Center 拥有 AtomicTask、TaskAttempt、TaskGroup、调度、重试、取消和执行状态；Agent/AppStudio 只保存稳定引用与业务投影。
-- asset-library 拥有 Artifact 身份、内容、处理、存储、保留和登记；AppStudio 不保存 Artifact `storage_uri`。
-- Build 只能读取不可变 Snapshot；正式 Runtime 只能读取固定 digest 的 Build Artifact；健康检查通过前不得切换当前入口。
-- Notification Center 只消费可靠源事件并维护收件箱事实；Agent/AppStudio 不定义通知已读或聚合状态。
+- 所有 Identity/Platform 后端 API 使用 `/api/v1`；认证配置和审计管理路径归 Platform，Identity 不再拥有对应表、API、权限或事件。
+- Identity 保留 44 个 OpenAPI operation、15 张设计态表、42 个错误码、12 个权限和 7 个可靠事件。
+- Platform Management 定义 7 个 OpenAPI operation、3 张设计态表、9 个错误码、6 个权限和 2 个可靠事件；Platform Overview 不新增表或领域事件。
+- 跨 domain 只通过稳定 ID、受控内部接口、权限裁剪摘要或可靠事件协作；`schema.sql` 仅为设计态 Schema，不是 migration。
+- 两领域新增/迁移内容尚未登记新的正式 Release；必须由用户确认后才能作为正式实现依据。
 
 ## API、Schema、依赖与配置变化
 
-- Agent OpenAPI 3.0.3 定义 23 个 path/31 个 operation；AppStudio 定义 23 个 path/31 个 operation。
-- Agent Schema 定义 10 张表；AppStudio Schema 定义 15 张表。跨域 ID 均不建外键，目标事实通过受控模块接口解析。
-- Agent 新增 21 个 `ERR_AGENT_*`、8 个 `agent.*` 权限和 7 个可靠事件；AppStudio 新增 27 个 `ERR_APPSTUDIO_*`、9 个 `appstudio.*` 权限和 7 个可靠事件。
-- `X-Workspace-Tool-Authorization`、`Last-Event-ID` 和 BCP 47 语言标签均声明命名例外；其他请求/响应字段使用 `lower_snake_case`。
-- 没有新增运行时依赖、正式 migration、运行配置或实现代码。
+- Identity API 前缀统一为 `/api/v1/iam`，增加 `/api/v1/iam/auth/presence/heartbeat`；移除 Identity 自有认证配置和审计接口/表。
+- Platform API 定义 `/api/v1/platform/overview`、`/api/v1/platform/auth-config`、`/api/v1/platform/audit-logs` 及两个内部协作端点。
+- Identity 错误码登记 `220200-221399`；Platform 错误码登记 `230200-230699`；跨 domain 引用不建外键。
+- 未新增正式实现代码、实际 migration、运行时配置或依赖。
 
 ## 验证结果
 
-- 49 份当前 S2 YAML 全部可解析。
-- 两域各 31 个 operation 均有权限、S1 引用、HTTP 200 响应和真实错误码；Agent 217 个、AppStudio 261 个本地 `$ref` 全部可解析。
-- Redocly CLI `2.43.2` 对两份 OpenAPI 校验为零 error；保留 76 条推荐性 warning，其中 62 条是与仓库 HTTP 200 业务错误规则冲突的 4XX 建议，其余为 license/tag 描述元数据。
-- 全仓 293 个错误码 code/value 唯一，均落入已登记领域区间；83 个权限码唯一，新增委托权限真实存在。
-- 全仓 92 张设计表无重名；新增 25 张表包含通用资源字段、字段名为 `lower_snake_case`，且不存在跨域外键。
-- 新增 S2 的 BR/US 引用均真实存在且无缩写编号；事件必填合同完整，Markdown 围栏和 Context 路径有效。
-- 未发现 TaskRun、ExecutionLease、ApplicationBuild、ApplicationRuntime、DeployService 或 Worker claim 残留；`git diff --check` 通过。
-- Spec 内容提交为 `28ceccbb623dea1387719958f953416585b83bd6`；工作区原有 `archive/`、`设计图/` 和 `skills/archive/` 调整未回退。
-- 发布提交为 `7a070b2296a1aae6e320055c49bc40042ebf576a`；annotated tag `spec-v1.10.0` 指向该提交并已推送。
+- `python3` 成功解析 Identity/Platform 全部 YAML 文件。
+- Identity/Platform S1 追溯引用、OpenAPI operation 引用的错误码和权限码检查通过。
+- OpenAPI 实际计数已核对：Identity 44 个，Platform 7 个；Schema 表数量和可靠事件数量与文档一致。
+- `git diff --check` 通过。
+- Redocly CLI 未运行：当前环境没有本地 Redocly 包；未运行实现测试或构建，本任务只涉及 Spec 合同。
 
 ## 待办、问题与风险
 
-- `spec-v1.10.0` 已在 `RELEASE.md` 中标记 `allowed_as_formal_implementation_basis: true`，可以按实施门禁作为正式实现、合并与验收依据。
-- 两域仍没有 `02_architecture/domains/agent.md` 与 `02_architecture/domains/appstudio.md`；本任务只要求 S2，未扩展到领域架构。
-- Redocly 的 4XX warning 是仓库 HTTP 状态码规范与通用推荐规则的预期差异，不是 OpenAPI 结构错误。
+- 用户需要评审 Identity JWT 验签/密钥轮换、服务凭据交换、撤销查询、审计写入边界及 ResourceAccessGrant 接入方式。
+- 用户需要评审 Platform Overview 元数据来源、SystemAuthConfig 和 AuditLog 写入边界，再决定是否登记 Release。
+- 当前工作区仍有未纳入本次提交的归档删除/新增内容与设计图，提交后应继续单独处理或明确丢弃。
 
 ## 推荐下一步
 
-下游实现开始前读取 `RELEASE.md` 的 `spec-v1.10.0` 实施门禁、两个 Domain Context 及目标 S1/S2；不得自行开放已明确延期的 Provider、Workspace 或源码能力。
+读取本 handoff，等待用户评审两领域 S1/S2，并在确认后决定是否登记 Release。
 
 Next Prompt:
 

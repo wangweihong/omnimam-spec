@@ -16,7 +16,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 | 领域 | 一行职责 |
 | --- | --- |
-| `identity` | 统一认证、会话、Token、RBAC、权限资源与安全审计。 |
+| `identity` | 统一认证流程、会话、JWT/RBAC、服务主体与授权基础。 |
+| `platform-management` | 管理平台级只读信息、SystemAuthConfig、跨 domain 脱敏 AuditLog 与平台入口。 |
 | `modelgateway` | 管理能力目录、执行引擎、能力绑定、平台适配与 Operation 执行。 |
 | `model-management` | 管理当前用户私有的模型提供商、模型清单、健康状态与默认模型。 |
 | `ai-chatting` | 管理话题、消息、助手、生成运行、快捷短语与翻译。 |
@@ -63,10 +64,12 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `StudioRelease` | 固定 Artifact digest 和环境的发布事实；归 appstudio。 |
 | `StudioRuntimeInstance` | StudioRelease 当前部署实例和访问入口事实；归 appstudio。 |
 | `McpTaskBinding` | MCP Task 到已持久化 ApplicationRun 的协议映射；归 mcp，不拥有执行状态。 |
+| `SystemAuthConfig` | 平台注册模式、密码/登录保护、在线窗口和 Token 生命周期配置；归 platform-management，Identity 负责消费。 |
+| `AuditLog` | 跨 domain 的脱敏管理审计记录、查询和可靠事件；归 platform-management，来源 domain 提交上下文。 |
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioWorkspace、Snapshot、Build、Release 和 StudioRuntimeInstance 归 `appstudio`；身份、会话和授权归 `identity`。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行及重试状态归 `task-center`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioWorkspace、Snapshot、Build、Release 和 StudioRuntimeInstance 归 `appstudio`；用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -90,7 +93,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - 已发布版本和历史快照不得被后续可变资源改写；跨域摘要最多展开一跳并执行同等权限过滤。
 - S2 `schema.sql` 是设计态 Schema，不是 migration；本仓库不保存正式实现代码、运行时配置或 CI/CD 实现。
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
-- MCP v1 复用 Identity JWT/RBAC，不提供直接 Capability 执行、OAuth/PAT、交互式 Task 或直接 StorageBackend 上传。
+- MCP v1 复用 Identity JWT/RBAC 和 PrincipalContext，不提供直接 Capability 执行、OAuth/PAT、交互式 Task 或直接 StorageBackend 上传；资源 owner/visibility 仍由目标 domain 定义。
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
 - `agent` 与 `appstudio` 已形成未 Release S1 和完整 S2；两域合同仍须经用户 Release 确认后才能作为正式实现、合并或验收依据。
 

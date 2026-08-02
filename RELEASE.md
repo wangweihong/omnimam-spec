@@ -61,7 +61,7 @@
   - domains/mcp/context.md
   - GLOBAL_CONTEXT.md
   - CONTEXT_MAP.md
-- implementation_gate: Server 只能实现 MCP `2026-07-28` 的 `POST /mcp`、已登记 8 个 method、11 个固定 Tool、6 类 Resource 和 `tasks/get|cancel`；Capability 仅只读发现，所有异步执行必须通过已发布且 `run_enabled=true` 的 Application。每请求必须重新校验 Identity JWT、MCP 权限、目标领域权限和对象可见性；ApplicationRun、AtomicTask 与 McpTaskBinding 全部持久化后才能返回 MCP Task，TTL 只清理 Binding。素材二进制必须使用 Asset Library 受控内容端点，不得经过 JSON-RPC 或直传 StorageBackend。Identity JWT 验签、撤销和 AuditLog 的精确实现仍需补齐 Identity S2，实施不得自行发明该合同；OAuth/PAT、直接 Capability 执行、泛化 Invocation、`input_required`、`tasks/update`、动态 Tool、Prompts、Apps 和 Sampling 均保持禁用。
+- implementation_gate: Server 只能实现 MCP `2026-07-28` 的 `POST /mcp`、已登记 8 个 method、11 个固定 Tool、6 类 Resource 和 `tasks/get|cancel`；Capability 仅只读发现，所有异步执行必须通过已发布且 `run_enabled=true` 的 Application。每请求必须重新校验 Identity JWT、MCP 权限、目标领域权限和对象可见性；ApplicationRun、AtomicTask 与 McpTaskBinding 全部持久化后才能返回 MCP Task，TTL 只清理 Binding。素材二进制必须使用 Asset Library 受控内容端点，不得经过 JSON-RPC 或直传 StorageBackend。Identity JWT 验签、撤销和 platform-management AuditLog 的精确实现仍需补齐对应 S2，实施不得自行发明该合同；OAuth/PAT、直接 Capability 执行、泛化 Invocation、`input_required`、`tasks/update`、动态 Tool、Prompts、Apps 和 Sampling 均保持禁用。
 
 ## spec-v1.8.1
 

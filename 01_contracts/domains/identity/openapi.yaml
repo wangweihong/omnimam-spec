@@ -1,0 +1,993 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Identity API
+  version: 0.1.0-draft
+  license:
+    name: Internal Spec Draft
+    url: https://omnimam.invalid/spec
+  description: >-
+    Identity 认证、用户、RBAC、PrincipalContext、资源授权和 ServiceAccount
+    合同；系统认证配置与 AuditLog 由 platform-management 提供。业务错误统一使用 HTTP 200 与稳定 code/value。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - {name: auth, description: 注册、登录、Token 和会话操作。}
+  - {name: users, description: 用户注册后的管理操作。}
+  - {name: rbac, description: 角色、权限和静态用户组。}
+  - {name: resource-access, description: 已接入资源 domain 的共享授权。}
+  - {name: service-accounts, description: 受控服务主体和凭据。}
+  - {name: principal, description: 受控服务间 PrincipalContext 授权检查。}
+
+paths:
+  /api/v1/iam/auth/register:
+    post:
+      tags: [auth]
+      summary: 用户自主注册
+      operationId: register_user
+      security: []
+      x-authorization: anonymous
+      x-s1-refs: {user_stories: [US-IAM-001], business_rules: [BR-IAM-001, BR-IAM-002, BR-IAM-003, BR-IAM-016, BR-IAM-021]}
+      x-error-codes: [ERR_IDENTITY_USERNAME_ALREADY_EXISTS, ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_PASSWORD_POLICY_FAILED, ERR_IDENTITY_USER_CREATE_INVALID]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterRequest'}}}}
+      responses:
+        '200': {description: 注册后的认证结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuthResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/login:
+    post:
+      tags: [auth]
+      summary: 用户登录
+      operationId: login_user
+      security: []
+      x-authorization: anonymous
+      x-s1-refs: {user_stories: [US-IAM-001, US-IAM-003], business_rules: [BR-IAM-003, BR-IAM-004, BR-IAM-005, BR-IAM-015, BR-IAM-021]}
+      x-error-codes: [ERR_IDENTITY_INVALID_CREDENTIALS, ERR_IDENTITY_ACCOUNT_PENDING, ERR_IDENTITY_ACCOUNT_DISABLED, ERR_IDENTITY_ACCOUNT_LOCKED, ERR_IDENTITY_FIRST_LOGIN_REQUIRED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      responses:
+        '200': {description: 登录结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuthResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/refresh:
+    post:
+      tags: [auth]
+      summary: 刷新登录凭据
+      operationId: refresh_token
+      security: []
+      x-authorization: anonymous
+      x-s1-refs: {user_stories: [US-IAM-004], business_rules: [BR-IAM-005, BR-IAM-006, BR-IAM-015, BR-IAM-022]}
+      x-error-codes: [ERR_IDENTITY_REFRESH_TOKEN_INVALID, ERR_IDENTITY_REFRESH_TOKEN_REUSED, ERR_IDENTITY_TOKEN_REVOKED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RefreshRequest'}}}}
+      responses:
+        '200': {description: 新凭据或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuthResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/presence/heartbeat:
+    post:
+      tags: [auth]
+      summary: 更新当前会话在线心跳
+      operationId: heartbeat_presence
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-014], business_rules: [BR-IAM-007, BR-IAM-022]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_IDENTITY_SESSION_STATE_INVALID]
+      responses:
+        '200': {description: 在线心跳结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/PresenceHeartbeatResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/logout:
+    post:
+      tags: [auth]
+      summary: 当前设备登出
+      operationId: logout_current_session
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-004], business_rules: [BR-IAM-007, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_IDENTITY_SESSION_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      responses:
+        '200': {description: 登出结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/logout-all:
+    post:
+      tags: [auth]
+      summary: 全部设备登出
+      operationId: logout_all_sessions
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-004], business_rules: [BR-IAM-007, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      responses:
+        '200': {description: 全部登出结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/change-password:
+    post:
+      tags: [auth]
+      summary: 修改当前密码
+      operationId: change_password
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-003, US-IAM-004], business_rules: [BR-IAM-004, BR-IAM-007, BR-IAM-015, BR-IAM-016, BR-IAM-021]}
+      x-error-codes: [ERR_IDENTITY_OLD_PASSWORD_INVALID, ERR_IDENTITY_PASSWORD_POLICY_FAILED, ERR_IDENTITY_FIRST_LOGIN_REQUIRED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordRequest'}}}}
+      responses:
+        '200': {description: 密码修改结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/me:
+    get:
+      tags: [auth]
+      summary: 获取当前用户
+      operationId: get_current_user
+      x-permission: identity.user.read
+      x-s1-refs: {user_stories: [US-IAM-001, US-IAM-013], business_rules: [BR-IAM-001, BR-IAM-005, BR-IAM-022]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_IDENTITY_USER_NOT_VISIBLE]
+      responses:
+        '200': {description: 当前用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [auth]
+      summary: 更新当前用户资料
+      operationId: update_current_user
+      x-permission: identity.user.read
+      x-s1-refs: {user_stories: [US-IAM-001, US-IAM-003], business_rules: [BR-IAM-001, BR-IAM-004, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_USER_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserSelfUpdateRequest'}}}}
+      responses:
+        '200': {description: 更新后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/sessions:
+    get:
+      tags: [auth]
+      summary: 查询当前用户会话
+      operationId: list_current_sessions
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-004], business_rules: [BR-IAM-005, BR-IAM-007, BR-IAM-019]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_IDENTITY_SESSION_NOT_VISIBLE]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+      responses:
+        '200': {description: 会话列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/SessionListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/sessions/{session_id}:
+    delete:
+      tags: [auth]
+      summary: 撤销指定会话
+      operationId: revoke_session
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-004], business_rules: [BR-IAM-007, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SESSION_NOT_VISIBLE, ERR_IDENTITY_SESSION_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/session_id'}]
+      responses:
+        '200': {description: 撤销结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/users:
+    get:
+      tags: [users]
+      summary: 查询用户列表
+      operationId: list_users
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002, US-IAM-013], business_rules: [BR-IAM-001, BR-IAM-012, BR-IAM-019, BR-IAM-022]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE]
+      parameters:
+        - {$ref: '#/components/parameters/page_num'}
+        - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/sort_order'}
+        - {$ref: '#/components/parameters/created_after'}
+        - {$ref: '#/components/parameters/created_before'}
+        - {name: statuses, in: query, description: 用户状态逗号分隔。, schema: {type: string}}
+      responses:
+        '200': {description: 用户列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/UserListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [users]
+      summary: 管理员创建用户
+      operationId: admin_create_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-002, BR-IAM-003, BR-IAM-004, BR-IAM-016, BR-IAM-021]}
+      x-error-codes: [ERR_IDENTITY_USERNAME_ALREADY_EXISTS, ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_USER_CREATE_INVALID, ERR_IDENTITY_PASSWORD_POLICY_FAILED]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserCreateRequest'}}}}
+      responses:
+        '200': {description: 新用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/users/{user_id}:
+    get:
+      tags: [users]
+      summary: 获取用户详情
+      operationId: get_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002, US-IAM-013], business_rules: [BR-IAM-001, BR-IAM-012, BR-IAM-019, BR-IAM-022]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      responses:
+        '200': {description: 用户详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [users]
+      summary: 更新用户资料和状态相关非敏感字段
+      operationId: update_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-001, BR-IAM-007, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE, ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_USER_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserAdminUpdateRequest'}}}}
+      responses:
+        '200': {description: 更新后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    delete:
+      tags: [users]
+      summary: 逻辑删除用户
+      operationId: delete_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-007, BR-IAM-017, BR-IAM-019]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE, ERR_IDENTITY_SELF_DELETE_FORBIDDEN, ERR_IDENTITY_LAST_SUPER_ADMIN_PROTECTED, ERR_IDENTITY_USER_DELETE_BLOCKED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      responses:
+        '200': {description: 删除后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/users/{user_id}/disable:
+    post:
+      tags: [users]
+      summary: 禁用用户
+      operationId: disable_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-007, BR-IAM-017]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE, ERR_IDENTITY_LAST_SUPER_ADMIN_PROTECTED, ERR_IDENTITY_USER_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      responses:
+        '200': {description: 禁用后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/users/{user_id}/enable:
+    post:
+      tags: [users]
+      summary: 恢复用户
+      operationId: enable_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-007]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE, ERR_IDENTITY_USER_STATE_INVALID]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      responses:
+        '200': {description: 恢复后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/users/{user_id}/unlock:
+    post:
+      tags: [users]
+      summary: 解除登录锁定
+      operationId: unlock_user
+      x-permission: identity.user.manage
+      x-s1-refs: {user_stories: [US-IAM-002], business_rules: [BR-IAM-003, BR-IAM-007]}
+      x-error-codes: [ERR_IDENTITY_USER_NOT_VISIBLE, ERR_IDENTITY_USER_STATE_INVALID]
+      parameters: [{$ref: '#/components/parameters/user_id'}]
+      responses:
+        '200': {description: 解锁后的用户或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/User'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/permissions:
+    get:
+      tags: [rbac]
+      summary: 查询当前主体权限投影
+      operationId: get_current_permissions
+      x-permission: identity.permission.read
+      x-s1-refs: {user_stories: [US-IAM-006], business_rules: [BR-IAM-005, BR-IAM-009, BR-IAM-010]}
+      x-error-codes: [ERR_IDENTITY_TOKEN_REVOKED, ERR_IDENTITY_AUTHZ_CONTEXT_INVALID]
+      responses:
+        '200': {description: 当前主体权限投影或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/PermissionProjection'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/permissions:
+    get:
+      tags: [rbac]
+      summary: 查询已登记权限目录
+      operationId: list_permission_definitions
+      x-permission: identity.permission.read
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-009, BR-IAM-019]}
+      x-error-codes: [ERR_IDENTITY_AUTHZ_DENIED]
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}]
+      responses:
+        '200': {description: 权限目录或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/PermissionListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/roles:
+    get:
+      tags: [rbac]
+      summary: 查询角色
+      operationId: list_roles
+      x-permission: identity.role.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-009]}
+      x-error-codes: [ERR_IDENTITY_ROLE_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses:
+        '200': {description: 角色列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/RoleListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [rbac]
+      summary: 创建角色
+      operationId: create_role
+      x-permission: identity.role.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-009]}
+      x-error-codes: [ERR_IDENTITY_ROLE_GRANT_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleWriteRequest'}}}}
+      responses:
+        '200': {description: 创建的角色或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Role'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/roles/{role_id}:
+    get:
+      tags: [rbac]
+      summary: 获取角色详情
+      operationId: get_role
+      x-permission: identity.role.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-009]}
+      x-error-codes: [ERR_IDENTITY_ROLE_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/role_id'}]
+      responses:
+        '200': {description: 角色详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Role'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [rbac]
+      summary: 更新角色
+      operationId: update_role
+      x-permission: identity.role.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-009, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_ROLE_NOT_VISIBLE, ERR_IDENTITY_ROLE_BUILTIN_PROTECTED, ERR_IDENTITY_ROLE_GRANT_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/role_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleWriteRequest'}}}}
+      responses:
+        '200': {description: 更新后的角色或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Role'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/roles/{role_id}/permissions:
+    put:
+      tags: [rbac]
+      summary: 整体替换角色权限
+      operationId: replace_role_permissions
+      x-permission: identity.role.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-009, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_ROLE_NOT_VISIBLE, ERR_IDENTITY_ROLE_BUILTIN_PROTECTED, ERR_IDENTITY_PERMISSION_NOT_FOUND, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/role_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PermissionReplaceRequest'}}}}
+      responses:
+        '200': {description: 角色权限替换结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Role'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/groups:
+    get:
+      tags: [rbac]
+      summary: 查询用户组
+      operationId: list_groups
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008]}
+      x-error-codes: [ERR_IDENTITY_GROUP_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses:
+        '200': {description: 用户组列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/GroupListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [rbac]
+      summary: 创建用户组
+      operationId: create_group
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_GROUP_MEMBER_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GroupWriteRequest'}}}}
+      responses:
+        '200': {description: 创建的用户组或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Group'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/groups/{group_id}:
+    get:
+      tags: [rbac]
+      summary: 获取用户组
+      operationId: get_group
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008]}
+      x-error-codes: [ERR_IDENTITY_GROUP_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/group_id'}]
+      responses:
+        '200': {description: 用户组详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Group'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [rbac]
+      summary: 更新用户组
+      operationId: update_group
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_GROUP_NOT_VISIBLE, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/group_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GroupWriteRequest'}}}}
+      responses:
+        '200': {description: 更新后的用户组或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Group'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/groups/{group_id}/members:
+    put:
+      tags: [rbac]
+      summary: 整体替换用户组成员
+      operationId: replace_group_members
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_GROUP_NOT_VISIBLE, ERR_IDENTITY_GROUP_MEMBER_INVALID, ERR_IDENTITY_USER_NOT_VISIBLE, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/group_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GroupMembersReplaceRequest'}}}}
+      responses:
+        '200': {description: 更新后的用户组或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Group'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/groups/{group_id}/roles:
+    put:
+      tags: [rbac]
+      summary: 整体替换用户组角色
+      operationId: replace_group_roles
+      x-permission: identity.group.manage
+      x-s1-refs: {user_stories: [US-IAM-005], business_rules: [BR-IAM-008, BR-IAM-009, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_GROUP_NOT_VISIBLE, ERR_IDENTITY_ROLE_NOT_VISIBLE, ERR_IDENTITY_ROLE_GRANT_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/group_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RoleIdsReplaceRequest'}}}}
+      responses:
+        '200': {description: 更新后的用户组或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Group'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/resources/{resource_type}/{resource_id}/grants:
+    get:
+      tags: [resource-access]
+      summary: 查询资源共享授权
+      operationId: list_resource_grants
+      x-permission: identity.resource_grant.read
+      x-s1-refs: {user_stories: [US-IAM-007], business_rules: [BR-IAM-011, BR-IAM-012, BR-IAM-019]}
+      x-error-codes: [ERR_IDENTITY_RESOURCE_GRANT_NOT_SUPPORTED, ERR_IDENTITY_RESOURCE_TARGET_NOT_VISIBLE, ERR_IDENTITY_RESOURCE_GRANT_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/resource_type'}, {$ref: '#/components/parameters/resource_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses:
+        '200': {description: 授权列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ResourceGrantListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [resource-access]
+      summary: 创建资源共享授权
+      operationId: create_resource_grant
+      x-permission: identity.resource_grant.manage
+      x-s1-refs: {user_stories: [US-IAM-007], business_rules: [BR-IAM-011, BR-IAM-012, BR-IAM-013, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_RESOURCE_GRANT_NOT_SUPPORTED, ERR_IDENTITY_RESOURCE_TARGET_NOT_VISIBLE, ERR_IDENTITY_RESOURCE_GRANT_INVALID, ERR_IDENTITY_RESOURCE_GRANT_ACCESS_LEVEL_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/resource_type'}, {$ref: '#/components/parameters/resource_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResourceGrantCreateRequest'}}}}
+      responses:
+        '200': {description: 新授权或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ResourceAccessGrant'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/resources/{resource_type}/{resource_id}/grants/{grant_id}:
+    patch:
+      tags: [resource-access]
+      summary: 修改资源共享授权
+      operationId: update_resource_grant
+      x-permission: identity.resource_grant.manage
+      x-s1-refs: {user_stories: [US-IAM-007], business_rules: [BR-IAM-012, BR-IAM-013, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_RESOURCE_GRANT_NOT_VISIBLE, ERR_IDENTITY_RESOURCE_GRANT_ACCESS_LEVEL_INVALID, ERR_IDENTITY_RESOURCE_GRANT_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/resource_type'}, {$ref: '#/components/parameters/resource_id'}, {$ref: '#/components/parameters/grant_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResourceGrantUpdateRequest'}}}}
+      responses:
+        '200': {description: 更新后的授权或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ResourceAccessGrant'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    delete:
+      tags: [resource-access]
+      summary: 撤销资源共享授权
+      operationId: revoke_resource_grant
+      x-permission: identity.resource_grant.manage
+      x-s1-refs: {user_stories: [US-IAM-007], business_rules: [BR-IAM-012, BR-IAM-013, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_RESOURCE_GRANT_NOT_VISIBLE, ERR_IDENTITY_RESOURCE_GRANT_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/resource_type'}, {$ref: '#/components/parameters/resource_id'}, {$ref: '#/components/parameters/grant_id'}]
+      responses:
+        '200': {description: 撤销结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/service-accounts:
+    get:
+      tags: [service-accounts]
+      summary: 查询服务账号
+      operationId: list_service_accounts
+      x-permission: identity.service_account.read
+      x-s1-refs: {user_stories: [US-IAM-008], business_rules: [BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}]
+      responses:
+        '200': {description: 服务账号列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccountListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [service-accounts]
+      summary: 创建服务账号
+      operationId: create_service_account
+      x-permission: identity.service_account.manage
+      x-s1-refs: {user_stories: [US-IAM-008], business_rules: [BR-IAM-010, BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_ALREADY_EXISTS, ERR_IDENTITY_SERVICE_ACCOUNT_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceAccountCreateRequest'}}}}
+      responses:
+        '200': {description: 服务账号和一次性凭据或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccountCredentialResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/service-accounts/{service_account_id}:
+    get:
+      tags: [service-accounts]
+      summary: 获取服务账号
+      operationId: get_service_account
+      x-permission: identity.service_account.read
+      x-s1-refs: {user_stories: [US-IAM-008], business_rules: [BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/service_account_id'}]
+      responses:
+        '200': {description: 服务账号或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccount'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    put:
+      tags: [service-accounts]
+      summary: 更新服务账号非敏感配置
+      operationId: update_service_account
+      x-permission: identity.service_account.manage
+      x-s1-refs: {user_stories: [US-IAM-008], business_rules: [BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE, ERR_IDENTITY_SERVICE_ACCOUNT_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/service_account_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ServiceAccountUpdateRequest'}}}}
+      responses:
+        '200': {description: 更新后的服务账号或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccount'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/service-accounts/{service_account_id}/disable:
+    post:
+      tags: [service-accounts]
+      summary: 禁用服务账号
+      operationId: disable_service_account
+      x-permission: identity.service_account.manage
+      x-s1-refs: {user_stories: [US-IAM-008, US-IAM-009], business_rules: [BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE, ERR_IDENTITY_SERVICE_ACCOUNT_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/service_account_id'}]
+      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      responses:
+        '200': {description: 禁用后的服务账号或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccount'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/service-accounts/{service_account_id}/enable:
+    post:
+      tags: [service-accounts]
+      summary: 启用服务账号
+      operationId: enable_service_account
+      x-permission: identity.service_account.manage
+      x-s1-refs: {user_stories: [US-IAM-008], business_rules: [BR-IAM-014]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE, ERR_IDENTITY_SERVICE_ACCOUNT_STATE_INVALID]
+      parameters: [{$ref: '#/components/parameters/service_account_id'}]
+      responses:
+        '200': {description: 启用后的服务账号或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccount'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/admin/service-accounts/{service_account_id}/rotate-credential:
+    post:
+      tags: [service-accounts]
+      summary: 轮换服务账号凭据
+      operationId: rotate_service_account_credential
+      x-permission: identity.service_account.manage
+      x-s1-refs: {user_stories: [US-IAM-008, US-IAM-009], business_rules: [BR-IAM-014, BR-IAM-015]}
+      x-error-codes: [ERR_IDENTITY_SERVICE_ACCOUNT_NOT_VISIBLE, ERR_IDENTITY_SERVICE_ACCOUNT_CREDENTIAL_ROTATION_FAILED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      parameters: [{$ref: '#/components/parameters/service_account_id'}]
+      responses:
+        '200': {description: 新凭据一次性返回或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ServiceAccountCredentialResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/internal/principal/check:
+    post:
+      tags: [principal]
+      summary: 受控服务主体权限检查
+      operationId: check_principal
+      x-permission: identity.authz.check
+      x-s1-refs: {user_stories: [US-IAM-006, US-IAM-011], business_rules: [BR-IAM-009, BR-IAM-010, BR-IAM-019]}
+      x-error-codes: [ERR_IDENTITY_AUTHZ_CONTEXT_INVALID, ERR_IDENTITY_AUTHZ_DENIED, ERR_IDENTITY_PRINCIPAL_CONTEXT_INVALID]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PrincipalCheckRequest'}}}}
+      responses:
+        '200': {description: PrincipalContext 授权结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/PrincipalCheckResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, default: ''}}
+    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
+    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
+    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
+    user_id: {name: user_id, in: path, required: true, schema: {type: string}}
+    session_id: {name: session_id, in: path, required: true, schema: {type: string}}
+    role_id: {name: role_id, in: path, required: true, schema: {type: string}}
+    group_id: {name: group_id, in: path, required: true, schema: {type: string}}
+    resource_type: {name: resource_type, in: path, required: true, schema: {type: string}}
+    resource_id: {name: resource_id, in: path, required: true, schema: {type: string}}
+    grant_id: {name: grant_id, in: path, required: true, schema: {type: string}}
+    service_account_id: {name: service_account_id, in: path, required: true, schema: {type: string}}
+  requestBodies:
+    ActionReason:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActionReasonRequest'
+  responses:
+    UnexpectedError:
+      description: 未预期服务器异常。
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/UnexpectedErrorResponse'}
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, value, message, messages]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        messages: {type: object, additionalProperties: {type: string}}
+        detail: {type: string, nullable: true}
+        causes: {type: array, items: {type: object, additionalProperties: true}}
+        data: {type: object, additionalProperties: true}
+    UnexpectedErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
+    ActionResult:
+      type: object
+      required: [success]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      additionalProperties: false
+      properties:
+        username: {type: string, minLength: 1}
+        email: {type: string, format: email}
+        password: {type: string, minLength: 1}
+        display_name: {type: string}
+    LoginRequest:
+      type: object
+      required: [login, password]
+      additionalProperties: false
+      properties:
+        login: {type: string}
+        password: {type: string}
+        client_id: {type: string, default: omnimam-web}
+        device_info: {type: string}
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      additionalProperties: false
+      properties:
+        refresh_token: {type: string}
+    ChangePasswordRequest:
+      type: object
+      required: [old_password, new_password, confirm_password]
+      additionalProperties: false
+      properties:
+        old_password: {type: string}
+        new_password: {type: string}
+        confirm_password: {type: string}
+    UserSelfUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name: {type: string}
+        alias: {type: string}
+        email: {type: string, format: email}
+        phone: {type: string}
+    AdminUserCreateRequest:
+      type: object
+      required: [username, email, display_name]
+      additionalProperties: false
+      properties:
+        username: {type: string}
+        email: {type: string, format: email}
+        display_name: {type: string}
+        initial_password: {type: string, nullable: true}
+        status: {type: string, enum: [ACTIVE, PENDING], default: ACTIVE}
+        role_ids: {type: array, items: {type: string}}
+    UserAdminUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name: {type: string}
+        alias: {type: string}
+        email: {type: string, format: email}
+        phone: {type: string}
+        status: {type: string, enum: [ACTIVE, PENDING, DISABLED, LOCKED]}
+        role_ids: {type: array, items: {type: string}}
+    User:
+      type: object
+      required: [id, username, display_name, status, first_login_required, security_version, authorization_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        username: {type: string}
+        display_name: {type: string}
+        alias: {type: string}
+        email: {type: string, nullable: true}
+        phone: {type: string, nullable: true}
+        status: {type: string, enum: [ACTIVE, PENDING, DISABLED, LOCKED, DELETED]}
+        first_login_required: {type: boolean}
+        security_version: {type: integer}
+        authorization_version: {type: integer}
+        last_login_at: {type: string, format: date-time, nullable: true}
+        online: {type: boolean, nullable: true, description: 当前用户或受权管理员可见的派生在线状态；普通资源共享目录返回 null。}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    UserListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/User'}}
+    AuthResponse:
+      type: object
+      required: [user, access_token, refresh_token, token_type, expires_in, first_login_required]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+        access_token: {type: string}
+        refresh_token: {type: string}
+        token_type: {type: string, enum: [Bearer]}
+        expires_in: {type: integer}
+        first_login_required: {type: boolean}
+    Session:
+      type: object
+      required: [id, client_id, status, created_at, expires_at]
+      properties:
+        id: {type: string}
+        client_id: {type: string}
+        device_info: {type: string}
+        ip_address: {type: string, nullable: true}
+        user_agent: {type: string, nullable: true}
+        status: {type: string, enum: [ACTIVE, REVOKED, EXPIRED]}
+        last_active_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+    SessionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/Session'}}
+    PresenceHeartbeatResponse:
+      type: object
+      required: [online, last_active_at]
+      properties:
+        online: {type: boolean, description: 当前会话更新后的派生在线状态。}
+        last_active_at: {type: string, format: date-time}
+    Role:
+      type: object
+      required: [id, code, name, builtin, status, permission_codes, created_at, updated_at]
+      properties:
+        id: {type: string}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        builtin: {type: boolean}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+        permission_codes: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    RoleWriteRequest:
+      type: object
+      required: [code, name]
+      additionalProperties: false
+      properties:
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+    RoleListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/Role'}}
+    PermissionDefinition:
+      type: object
+      required: [id, code, domain, resource, action, risk_level, status]
+      properties:
+        id: {type: string}
+        code: {type: string}
+        domain: {type: string}
+        resource: {type: string}
+        action: {type: string}
+        name: {type: string}
+        description: {type: string}
+        risk_level: {type: string, enum: [NORMAL, SENSITIVE, DANGEROUS]}
+        status: {type: string, enum: [ACTIVE, DEPRECATED]}
+    PermissionListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/PermissionDefinition'}}
+    PermissionReplaceRequest:
+      type: object
+      required: [permission_codes]
+      additionalProperties: false
+      properties:
+        permission_codes: {type: array, items: {type: string}}
+    PermissionProjection:
+      type: object
+      required: [principal_type, principal_id, authorization_version, permission_codes]
+      properties:
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT]}
+        principal_id: {type: string}
+        actor_user_id: {type: string, nullable: true}
+        authorization_version: {type: integer}
+        permission_codes: {type: array, items: {type: string}}
+    Group:
+      type: object
+      required: [id, code, name, status, member_user_ids, role_ids, created_at, updated_at]
+      properties:
+        id: {type: string}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+        member_user_ids: {type: array, items: {type: string}}
+        role_ids: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    GroupWriteRequest:
+      type: object
+      required: [code, name]
+      additionalProperties: false
+      properties:
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+    GroupListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/Group'}}
+    GroupMembersReplaceRequest:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items: {type: array, items: {type: object, required: [user_id], properties: {user_id: {type: string}}}}
+    RoleIdsReplaceRequest:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items: {type: array, items: {type: object, required: [role_id], properties: {role_id: {type: string}}}}
+    ResourceGrantCreateRequest:
+      type: object
+      required: [subject_type, subject_id, access_level]
+      additionalProperties: false
+      properties:
+        subject_type: {type: string, enum: [USER, GROUP]}
+        subject_id: {type: string}
+        access_level: {type: string, enum: [VIEW, USE, EDIT, MANAGE]}
+        expires_at: {type: string, format: date-time, nullable: true}
+    ResourceGrantUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        access_level: {type: string, enum: [VIEW, USE, EDIT, MANAGE]}
+        expires_at: {type: string, format: date-time, nullable: true}
+    ResourceAccessGrant:
+      type: object
+      required: [id, resource_type, resource_id, subject_type, subject_id, access_level, granted_by_principal_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        resource_type: {type: string}
+        resource_id: {type: string}
+        subject_type: {type: string, enum: [USER, GROUP]}
+        subject_id: {type: string}
+        access_level: {type: string, enum: [VIEW, USE, EDIT, MANAGE]}
+        granted_by_principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT]}
+        granted_by_principal_id: {type: string}
+        expires_at: {type: string, format: date-time, nullable: true}
+        revoked_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ResourceGrantListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ResourceAccessGrant'}}
+    ServiceAccount:
+      type: object
+      required: [id, code, name, owner_type, status, security_version, authorization_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        owner_type: {type: string, enum: [SYSTEM, WORKER, AGENT, APPLICATION, EXTERNAL]}
+        owner_id: {type: string, nullable: true}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+        security_version: {type: integer}
+        authorization_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ServiceAccountCreateRequest:
+      type: object
+      required: [code, name, owner_type]
+      additionalProperties: false
+      properties:
+        code: {type: string}
+        name: {type: string}
+        description: {type: string}
+        owner_type: {type: string, enum: [SYSTEM, WORKER, AGENT, APPLICATION, EXTERNAL]}
+        owner_id: {type: string, nullable: true}
+        permission_codes: {type: array, items: {type: string}}
+    ServiceAccountUpdateRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: {type: string}
+        description: {type: string}
+        permission_codes: {type: array, items: {type: string}}
+    ServiceAccountListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer}
+        items: {type: array, items: {$ref: '#/components/schemas/ServiceAccount'}}
+    ServiceAccountCredentialResponse:
+      type: object
+      required: [service_account, credential, expires_at]
+      properties:
+        service_account: {$ref: '#/components/schemas/ServiceAccount'}
+        credential: {type: string, description: 仅在创建或轮换成功时返回一次。}
+        expires_at: {type: string, format: date-time, nullable: true}
+    PasswordHashPolicy:
+      type: object
+      required: [algorithm, version, memory_kib, iterations, parallelism, output_bytes, salt_bytes]
+      properties:
+        algorithm: {type: string, enum: [ARGON2ID]}
+        version: {type: integer, enum: [19]}
+        memory_kib: {type: integer, enum: [65536]}
+        iterations: {type: integer, enum: [3]}
+        parallelism: {type: integer, enum: [1]}
+        output_bytes: {type: integer, enum: [32]}
+        salt_bytes: {type: integer, minimum: 16}
+    ActionReasonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason: {type: string}
+    PrincipalCheckRequest:
+      type: object
+      required: [permission_codes]
+      additionalProperties: false
+      properties:
+        permission_codes: {type: array, minItems: 1, items: {type: string}}
+        actor_user_id: {type: string, nullable: true, description: 只允许由受控委托上下文填充。}
+        resource_type: {type: string, nullable: true}
+        resource_id: {type: string, nullable: true}
+    PrincipalCheckResponse:
+      type: object
+      required: [principal_type, principal_id, authorization_version, results]
+      properties:
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT]}
+        principal_id: {type: string}
+        actor_user_id: {type: string, nullable: true}
+        authorization_version: {type: integer}
+        results:
+          type: array
+          items:
+            type: object
+            required: [permission_code, allowed]
+            properties:
+              permission_code: {type: string}
+              allowed: {type: boolean}

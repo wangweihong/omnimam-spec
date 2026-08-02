@@ -1,0 +1,75 @@
+platform.overview.read:
+  domain: platform-management
+  module: overview
+  resource: platform_overview
+  action: read
+  subject: system_admin
+  description: 查询只读平台基础信息和最近脱敏审计摘要。
+  frontend_usage: 平台系统概览页面。
+  backend_enforcement: 只返回固定运行/部署元数据和最多 10 条脱敏审计摘要；不返回其他 domain 业务统计。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-PLATFORM-008, BR-PLATFORM-009]
+  related_user_stories: [US-PLATFORM-005]
+
+platform.auth_config.read:
+  domain: platform-management
+  module: auth-config
+  resource: system_auth_config
+  action: read
+  subject: system_admin
+  description: 查询脱敏系统认证配置。
+  frontend_usage: 平台认证策略管理页面。
+  backend_enforcement: 不返回密码、凭据、内部签名材料或 Secret；allow_registration 只作为 registration_mode 的派生展示值。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003]
+  related_user_stories: [US-PLATFORM-001]
+
+platform.auth_config.manage:
+  domain: platform-management
+  module: auth-config
+  resource: system_auth_config
+  action: replace
+  subject: system_admin
+  description: 整体替换平台系统认证配置。
+  frontend_usage: 平台认证策略保存。
+  backend_enforcement: 校验 registration_mode、密码策略、登录失败策略、在线窗口和 Token 生命周期；变更必须追加 AuditLog。
+  default_roles: [SUPER_ADMIN]
+  related_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003, BR-PLATFORM-005]
+  related_user_stories: [US-PLATFORM-001]
+
+platform.auth_config.read_internal:
+  domain: platform-management
+  module: auth-config
+  resource: system_auth_config
+  action: read_internal
+  subject: service_principal
+  description: 供 Identity 读取当前生效的系统认证配置。
+  frontend_usage: 不向前端暴露。
+  backend_enforcement: 仅允许登记的 Identity 服务主体；返回当前版本和策略，不返回 Secret。
+  related_rules: [BR-PLATFORM-001, BR-PLATFORM-003]
+  related_user_stories: [US-PLATFORM-002]
+
+platform.audit.read:
+  domain: platform-management
+  module: audit
+  resource: audit_log
+  action: read, list
+  subject: system_admin
+  description: 分页查询跨 domain 脱敏平台审计记录。
+  frontend_usage: 平台审计日志页面。
+  backend_enforcement: 按管理员审计范围过滤；不得返回密码、完整 Token、Secret、未脱敏 payload 或大型业务正文。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-PLATFORM-004, BR-PLATFORM-006]
+  related_user_stories: [US-PLATFORM-003]
+
+platform.audit.record:
+  domain: platform-management
+  module: audit
+  resource: audit_log
+  action: append
+  subject: service_principal
+  description: 供受控 domain 追加脱敏审计上下文。
+  frontend_usage: 不向前端暴露。
+  backend_enforcement: 只允许登记的服务主体；服务端校验 source_domain、主体委托链、敏感字段脱敏和幂等键；写入失败返回稳定边界错误。
+  related_rules: [BR-PLATFORM-004, BR-PLATFORM-005, BR-PLATFORM-006, BR-PLATFORM-007]
+  related_user_stories: [US-PLATFORM-004]

@@ -18,6 +18,8 @@
 | mcp | `01_contracts/domains/mcp/errors.yaml` | MCP 协议、Tool/Resource 分发、Task 映射和访问控制错误码 |
 | agent | `01_contracts/domains/agent/errors.yaml` | Agent、Session/Invocation、Workspace、Runtime 与访问控制错误码 |
 | appstudio | `01_contracts/domains/appstudio/errors.yaml` | StudioApplication、Workspace、源码版本、Build、Release/Runtime 与访问控制错误码 |
+| platform-management | `01_contracts/domains/platform-management/errors.yaml` | SystemAuthConfig、平台审计和跨 domain 管理边界错误码 |
+| identity | `01_contracts/domains/identity/errors.yaml` | 认证流程、用户、RBAC、资源授权、服务主体和 PrincipalContext 错误码 |
 
 ## 2. 错误码区间分配
 
@@ -82,6 +84,15 @@
 | 210800-210999 | appstudio | build | StudioBuild、Task 和 Build Artifact 错误 |
 | 211000-211199 | appstudio | release-runtime | RuntimeConfig、Preview、Release、部署、健康与回滚错误 |
 | 211200-211399 | appstudio | access | AppStudio 领域访问控制错误 |
+| 220200-220399 | identity | authn / session | 登录、Token、Refresh Token 和会话错误 |
+| 220400-220599 | identity | user | 用户注册、状态、删除和可见性错误 |
+| 220600-220799 | identity | rbac / principal | 角色、用户组、权限和 PrincipalContext 错误 |
+| 220800-220999 | identity | resource-access | ResourceAccessGrant 和资源域协作错误 |
+| 221000-221199 | identity | service-account | 服务主体、凭据和轮换错误 |
+| 221200-221299 | identity | principal | PrincipalContext 和跨域主体错误 |
+| 230200-230399 | platform-management | auth-config | SystemAuthConfig、注册策略和配置版本错误 |
+| 230400-230599 | platform-management | audit | AuditLog 查询、追加、脱敏和可用性错误 |
+| 230600-230699 | platform-management | overview | 平台系统概览访问和可用性错误 |
 
 ## 3. 分配规则
 

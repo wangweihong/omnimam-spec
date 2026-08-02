@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-02
+
+- 收敛 platform-management 当前范围：移除 Platform 自有在线配置、`platform_settings`、维护模式和系统配置页面/流程；系统概览中的素材、应用、模型、任务和通知统计延期到下一阶段，当前仅保留平台基础信息与最近审计摘要。
+- 补全收敛后 Platform S2：新增只读系统概览 OpenAPI、`PlatformOverview` 与 `PlatformAuditLogSummary` schema、overview 权限、230600-230699 错误码和模块查询合同；概览不新增数据库表或领域事件。
+- 从 platform-management S1 移除安全与凭据模块：删除 Credential CRUD、凭据存储/加密/验证模型、`/platform/credentials` 路由、相关前端页面、错误码和后端目录候选；外部凭据继续归对应事实 domain。
+- 从 platform-management S1 删除归 `asset-library` 的素材配置、归 `task-center` 的任务配置和归 `notification-center` 的通知配置，并清理对应分组与示例。
+- 将 `SystemAuthConfig`、`allow_registration` 和跨 domain `AuditLog` 的事实源从 Identity 迁移到 `platform-management`；Identity 保留认证执行、配置消费和脱敏审计提交。
+- 新增 platform-management 的 S1 追溯锚点、Domain Context、SystemAuthConfig/AuditLog OpenAPI、设计态 Schema、错误码、权限、事件和模块合同；Identity 删除对应 API、表、权限和审计事件事实。
+- 更新全局事实归属、术语、Context Map 和错误码索引；本次迁移仍未登记 `RELEASE.md`，不得作为正式实现依据。
+- 补齐 Identity S1/S2 的密码与在线状态语义：用户密码固定使用 Argon2id PHC 不可逆哈希，新增 300 秒在线窗口、有效会话派生规则和 `/api/v1/iam/auth/presence/heartbeat`；同步 Schema、OpenAPI、权限、模块合同、Context 与架构参考。
+- 统一 Identity 全部 API 前缀为 `/api/v1/iam`，同步最终保留的 44 个 OpenAPI operation、S1 主要接口示例和路径参数命名；未改变 operation 语义、权限码或错误码。
+- 从 Identity S1 推导完整未 Release S2：新增认证/用户/RBAC/PrincipalContext/资源授权/ServiceAccount/配置/审计 OpenAPI、设计态 Schema、错误码、权限码、可靠事件和模块合同；登记 `220200-221399` Identity 错误码区间。
+- 为 Identity S1 增加 `BR-IAM-001..020` 和 `US-IAM-001..012` 追溯锚点，使每个 S2 operation、错误码、权限、事件和模块合同可回溯到产品语义。
+- 结合 application-platform、asset-library、workflow-canvas、task-center、agent、appstudio、mcp、sse 和 notification-center 的下游依赖，收敛 identity S1 的跨域边界：资源 owner、created_by、visibility、project、namespace 和资源状态归资源 domain，Identity 只提供 PrincipalContext、操作权限、可选 ResourceAccessGrant 和安全审计上下文。
+- 补充 USER/SERVICE_ACCOUNT 主体、受控委托 `actor_user_id`、服务主体最小权限和跨域审计语义；明确业务 domain 不得读取 IAM 私有表或信任客户端提交的 owner。
+- 将 PAT、LDAP/SSO、角色继承/互斥等与当前下游合同不一致的能力收敛为延期或不支持；MCP v1 继续使用当前用户 Identity JWT，每次请求重新校验授权。
+- 同步 `domains/identity/context.md`、`02_architecture/domains/identity.md`、`01_contracts/error-code-index.md`、`GLOBAL_CONTEXT.md` 和 `CONTEXT_MAP.md`；Identity S2 已建立为草稿但尚未 Release。
+
 ## 2026-08-01
 
 - 原地对齐未发布的 `agent` 与 `appstudio` S1：Agent 只拥有交互、Memory、AgentWorkspace 与 AgentRuntime；AppStudio 独占 StudioApplication 的源码、Revision、Snapshot、Build、Release 与 StudioRuntimeInstance。

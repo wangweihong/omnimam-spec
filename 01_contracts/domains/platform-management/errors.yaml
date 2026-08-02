@@ -1,0 +1,116 @@
+- code: ERR_PLATFORM_OVERVIEW_ACCESS_DENIED
+  value: 230600
+  http: 200
+  cn: 无权读取平台系统概览。
+  en: The current principal cannot read the platform overview.
+  owning_domain: platform-management
+  owning_module: overview
+  range: 230600-230699
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-008]
+  related_user_stories: [US-PLATFORM-005]
+
+- code: ERR_PLATFORM_OVERVIEW_UNAVAILABLE
+  value: 230601
+  http: 200
+  cn: 平台系统概览暂不可用。
+  en: The platform overview is temporarily unavailable.
+  owning_domain: platform-management
+  owning_module: overview
+  range: 230600-230699
+  retryable: true
+  deprecated: false
+  related_rules: [BR-PLATFORM-009]
+  related_user_stories: [US-PLATFORM-005]
+
+- code: ERR_PLATFORM_AUTH_CONFIG_INVALID
+  value: 230200
+  http: 200
+  cn: 系统认证配置无效。
+  en: The system authentication configuration is invalid.
+  owning_domain: platform-management
+  owning_module: auth-config
+  range: 230200-230399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003]
+  related_user_stories: [US-PLATFORM-001, US-PLATFORM-002]
+
+- code: ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED
+  value: 230201
+  http: 200
+  cn: 无权读取或修改系统认证配置。
+  en: The current principal cannot read or update the system authentication configuration.
+  owning_domain: platform-management
+  owning_module: auth-config
+  range: 230200-230399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-001]
+  related_user_stories: [US-PLATFORM-001, US-PLATFORM-002]
+
+- code: ERR_PLATFORM_AUTH_CONFIG_VERSION_CONFLICT
+  value: 230202
+  http: 200
+  cn: 系统认证配置版本冲突。
+  en: The system authentication configuration version conflicts with the current version.
+  owning_domain: platform-management
+  owning_module: auth-config
+  range: 230200-230399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-PLATFORM-001]
+  related_user_stories: [US-PLATFORM-001]
+
+- code: ERR_PLATFORM_AUDIT_LOG_NOT_VISIBLE
+  value: 230400
+  http: 200
+  cn: 审计记录不存在或当前主体不可见。
+  en: The audit record does not exist or is not visible to the current principal.
+  owning_domain: platform-management
+  owning_module: audit
+  range: 230400-230599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-004, BR-PLATFORM-006]
+  related_user_stories: [US-PLATFORM-003]
+
+- code: ERR_PLATFORM_AUDIT_QUERY_INVALID
+  value: 230401
+  http: 200
+  cn: 审计查询条件无效。
+  en: The audit query is invalid.
+  owning_domain: platform-management
+  owning_module: audit
+  range: 230400-230599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-004]
+  related_user_stories: [US-PLATFORM-003]
+
+- code: ERR_PLATFORM_AUDIT_RECORD_INVALID
+  value: 230402
+  http: 200
+  cn: 审计记录无效或包含禁止字段。
+  en: The audit record is invalid or contains prohibited fields.
+  owning_domain: platform-management
+  owning_module: audit
+  range: 230400-230599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-006, BR-PLATFORM-007]
+  related_user_stories: [US-PLATFORM-004]
+
+- code: ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE
+  value: 230403
+  http: 200
+  cn: 平台审计边界不可用，受控操作未执行。
+  en: The platform audit boundary is unavailable and the controlled operation was not executed.
+  owning_domain: platform-management
+  owning_module: audit
+  range: 230400-230599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-PLATFORM-005, BR-PLATFORM-007]
+  related_user_stories: [US-PLATFORM-002, US-PLATFORM-004]
