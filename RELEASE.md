@@ -1,5 +1,61 @@
 # Release Records
 
+## spec-v1.12.0
+
+- commit: 2f71a836006d5f35f48144fa03d1176232ea70c6
+- status: released
+- confirmed_by: user（2026-08-03 明确要求“直接发布，不要检验”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+  - infrastructure
+  - task-center
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/glossary.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/agent/events.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/events.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/errors.yaml
+  - 01_contracts/domains/infrastructure/permissions.yaml
+  - 01_contracts/domains/infrastructure/events.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/errors.yaml
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/task-center/events.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/task-center/function-registry.schema.yaml
+  - 01_contracts/domains/task-center/function-registry.yaml
+- architecture:
+  - 02_architecture/domains/infrastructure.md
+  - 02_architecture/domains/task-center.md
+- context:
+  - domains/agent/context.md
+  - domains/appstudio/context.md
+  - domains/infrastructure/context.md
+  - domains/task-center/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: Agent 第一阶段只允许 platform/coding、Hermes/OpenCode 和 Rootless Docker AgentRuntimeProvider；Agent 创建时固定一个类型匹配的 Workspace，Session、Invocation 和 Runtime 不得切换。纯 CHAT 且不启动 Runtime、工具或后台工作的 Invocation 可以不创建 AtomicTask，其余 Invocation 与 Runtime 生命周期必须委托 Task Center；Coding Agent 只能使用绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的短期 Tool 授权，并通过带 base_revision 的原子 ChangeSet 修改源码。AppStudio 正式 Build 只能读取不可变 Source Snapshot，只有 AtomicTask 成功、Artifact READY 且 digest 一致后才能成功；Release 必须固定 Version、RuntimeConfig、Artifact ID/digest 和环境，新 RuntimeInstance 健康前不得切换 current，回滚必须创建新 Release，Preview 停止必须使用已登记异步合同。Task Center 第一阶段只允许 `agent.runtime.ensure`、`agent.runtime.stop`、`appstudio.preview.ensure`、`appstudio.preview.stop`、`appstudio.build.execute`、`appstudio.production.reconcile` 和 `appstudio.production.stop` 七个 canonical Infra-backed functionRef；新任务只能选择唯一 ACTIVE 合同并固定 version/digest，RETAINED 仅恢复历史，DISABLED 不得执行，同版本摘要不得漂移。Task Worker 必须按 registry 校验 I/O、能力、幂等、重试、取消、超时和 Infra 映射；Infra request ID 使用 `atomic_task_id:attempt_no`，同 Attempt 恢复重放，新 Attempt 使用新 ID。Infrastructure 第一阶段只允许 Docker Job/Service、受控挂载、Endpoint 授权、Provider 超时恢复和安全孤儿清理；所有 Agent/AppStudio Infra 操作必须经过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`，来源领域不得直接调用 Infra。只有 `appstudio.build.execute` 可由 Task Worker 使用 producer context 登记 Artifact；Production 只能读取固定 Artifact ID/digest，Secret 只能保存引用并在部署边界短期解析。Kubernetes Provider、多 Workspace、Workspace 热迁移、复杂自动合并、外部 Git Provider、PUBLIC Endpoint 和其他 S1/S2 未发布能力保持禁用。
+
 ## spec-v1.11.0
 
 - commit: 1939166284c94e68bab731aeaddd8bba01ed9384
