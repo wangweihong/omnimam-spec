@@ -1,8 +1,8 @@
 # 工作流画布 S1 产品规格
 
-> 文档版本：`v1.1-draft`
-> 更新日期：`2026-07-21`
-> 状态：S1 草案，尚未 release
+> 文档版本：`v1.2`
+> 更新日期：`2026-08-01`
+> 状态：S1 已确认，随 `spec-v1.10.0` release
 
 ---
 
@@ -238,11 +238,14 @@ Canvas 服务、Task Center、Asset Library 与 SSE 只能通过受控 API 和�
 
 节点定义只能由系统或受权管理员注册。普通用户在画布中选择已注册定义并填写配置，不能上传前端代码、脚本、Worker 名、HTTP 地址、凭证或任意运行时任务。已被 CanvasVersion 固定引用的定义版本不得原地改写；下线只阻止新引用，不破坏历史查看和已创建运行。
 
-执行绑定分为三类：
+执行绑定分为四类：
 
 ```text
 passive
 DataNode 和 ViewerNode，不创建 AtomicTask
+
+compile_time
+由系统注册的编译器能力在发布或运行编译时折叠、传播或展开，不创建自身 AtomicTask
 
 atomic
 固定一个已注册 functionRef，或固定一个已发布 ApplicationVersion 并解析为受控 application-platform.run
@@ -250,6 +253,8 @@ atomic
 expanded
 由编译器展开为多个已注册 functionRef 的 AtomicTask 节点，编排节点本身不由 Worker 执行
 ```
+
+`compile_time` 必须携带系统注册的 `compilerKey`，不能携带 functionRef、ApplicationVersion、脚本、Worker 或运行时 task type。未知 compilerKey 必须阻止发布和运行，不能降级为 passive 后静默丢失输入或依赖。
 
 示例：
 
@@ -296,6 +301,25 @@ expanded
 ```
 
 NodeDefinition 中的 renderer 只能是前端已注册的受控渲染能力标识；无法识别或无权使用时，前端降级为通用配置视图，不执行定义携带的任意代码。
+
+### 4.1.1 系统内置节点目录
+
+系统必须幂等注册以下 SYSTEM NodeDefinition，定义版本统一为 `1.0.0`：
+
+| type | nodeKind | execution | renderer | 产品语义 |
+| --- | --- | --- | --- | --- |
+| `image` | data | `compile_time / builtin.media_input` | `builtin.media_input` | 通用媒体输入；选择或上传一个可见 Asset，并按实际媒体类型提供 image、video 或 audio 输出。名称为兼容标识，不限制为图片。 |
+| `prompt` | data | `compile_time / builtin.prompt` | `builtin.prompt` | 保存不超过 20,000 字符的文本提示词并提供 string 输出。 |
+| `loop` | orchestrator | `compile_time / builtin.loop` | `builtin.loop` | 将唯一直接下游 Application 节点按有限 count 展开为无环 AtomicTask DAG。 |
+| `group` | orchestrator | `passive` | `builtin.group` | 只组织画布节点；不创建任务、数据依赖或运行状态。 |
+| `promptGroup` | data | `compile_time / builtin.prompt_group` | `builtin.prompt_group` | 隐藏内部容器；按稳定 edge order 把多个 Prompt 用换行合并为一个 string。 |
+| `output` | viewer | `compile_time / builtin.output` | `builtin.output` | 收集 multiple image、video、audio 输出绑定并按端口和分片顺序展示 Artifact 结果。 |
+
+`promptGroup` 不出现在普通节点目录中，也不允许用户直接创建。同一目标 prompt 输入接入第二个 Prompt 时，编辑器自动插入并持久化该节点；来源减少为一个时自动移除并恢复直连，来源为零时清理容器。服务端仍必须校验其来源、目标、端口和 edge order，不能信任客户端生成结果。
+
+`image` 的配置保存 Asset 引用和媒体类型，不保存原始二进制、对象存储 key、本地路径或任意 URL。输出只激活与 Asset 实际媒体类型匹配的一个端口，引用可见性和内容可读权限在发布及运行时重新校验。
+
+`loop` 配置包含 `count`、`mode`、`batch_inputs`，cascade 模式额外包含 `feedback_output_port` 与 `feedback_input_port`。`count` 默认为 1 且只能为 1..99；`mode` 只能为 `serial`、`batch` 或 `cascade`。batch input 的每个字段只能提供一个值或恰好 count 个值，单值按全部迭代广播。
 
 ---
 
@@ -665,17 +689,9 @@ image C ─┘
 
 ### 7.5 环路
 
-首期所有数据边和控制边共同组成的执行图都必须无环。下列显式循环节点属于第二阶段产品能力：
+除系统 `loop` 节点外，所有数据边和控制边共同组成的画布图必须无环。`loop` 也不允许用户绘制回边；它只表达对唯一直接下游 Application 节点的有限重复，并在提交 Task Center 前展开为无环 DAG。
 
-```text
-LoopStart
-Iterator
-Condition
-Accumulator
-LoopEnd
-```
-
-即使使用显式循环节点，发布到 Task Center 的图也不能形成实际环边；未来实现必须把有界迭代编译为受控 Dynamic Fork/Join 或已注册复合执行能力，并明确最大迭代次数、累计输出和退出条件。首期遇到任何环都拒绝发布。
+隐式环、嵌套 loop、条件退出、无限循环、累计器和任意子图循环仍不支持。任何实际回边、多个直接可执行目标或无法证明上限的展开都必须在创建任务前拒绝。
 
 ---
 
@@ -1230,6 +1246,25 @@ DAGTaskGroup dynamic/static fork
 单次调用成本更低
 不需要分片级控制
 ```
+
+### 18.3 有限循环展开
+
+`loop` 只重复唯一直接连接的 Application 节点，不递归包裹任意子图。编译器按 iteration index `0..count-1` 生成稳定 child key，并把这些 AtomicTask 作为该 Application CanvasNodeRun 的 `worker` binding；loop 自身没有 AtomicTask。
+
+```text
+serial
+iteration i 依赖 iteration i-1，批量输入按 index 解析。
+
+batch
+所有 iteration 位于同一可并行层，不相互依赖。
+
+cascade
+iteration i 依赖 iteration i-1，并把显式选择的上一迭代输出端口映射到下一迭代输入端口。
+```
+
+cascade 的反馈端口必须方向正确、类型兼容且属于目标 ApplicationVersion。静态字面量、Prompt 和媒体输入先完成编译期折叠，再与 batch/cascade 输入形成每次迭代的不可变参数快照。展开后的节点和边必须计入 Canvas 与 Task Center 规模限制，超限时整体拒绝且不得创建部分 DAG。
+
+三种模式均使用 `all_success`。任一 iteration 失败时该 CanvasNodeRun 失败，依赖完整集合的下游为 `SKIPPED`；输出按 iteration index、端口和端口内顺序稳定聚合，multiple 输入可以消费完整有序集合。
 
 ---
 
@@ -2467,11 +2502,12 @@ Artifact 事件
 13. 基础姿态控制节点、结构化 ControllerState 和 schema version。
 14. 前端预览与后端正式渲染分离。
 15. project、namespace、createdBy、可见性、配额和受控执行安全校验。
+16. 六个 SYSTEM 内置节点，以及 `serial`、`batch`、`cascade` 三种有限 loop 编译期展开。
 
 暂不实现：
 
 ```text
-任意隐式循环
+任意隐式、嵌套、条件或无界循环
 selected_subgraph 任意局部子图
 复杂条件表达式
 best_effort 和 min_success 容错 Join
@@ -2488,7 +2524,7 @@ best_effort 和 min_success 容错 Join
 ## 45. 第二阶段扩展
 
 1. 条件节点和分支合并节点。
-2. 循环和集合映射。
+2. 条件、无界循环、集合驱动动态映射和累计器。
 3. 摄像机轨迹控制。
 4. Gaussian 场景会话缓存。
 5. 光照控制节点。
@@ -2671,6 +2707,12 @@ A、B 并行且 C 等待汇合
 35. `BR-WORKFLOW-035`：APPLICATION 节点只编译一个 DAG 内 `application-platform.run` AtomicTask；Conductor 解析完上游输入后，Application Platform 以 `canvas_run_id + execution_key` 幂等创建并绑定 ApplicationRun，禁止创建第二个 AtomicTask。
 36. `BR-WORKFLOW-036`：ApplicationVersion 发布事件只负责幂等登记应用节点定义；目录读取、Canvas 发布和每次运行必须通过 Application Platform 消费方接口重新校验可见性、`canvas_enabled`、`run_enabled`、schema/端口和当前 Engine/runtime 可执行性。
 37. `BR-WORKFLOW-037`：ApplicationRun Artifact 引用必须按 `atomic_task_id + output_key + sequence` 匹配 Canvas 输出槽位，并只接受更高 Artifact resource version；READY 输出与 `canvas_node_output_available` 必须同事务形成。
+38. `BR-WORKFLOW-038`：系统必须幂等提供 `image`、`prompt`、`loop`、`group`、`promptGroup`、`output` 六个 `1.0.0` SYSTEM NodeDefinition；内置 compile-time 节点只允许已注册 compilerKey，不能生成自身 AtomicTask。
+39. `BR-WORKFLOW-039`：多个 Prompt 连接同一 prompt 输入时必须通过隐藏 `promptGroup` 按 edge order 以换行合并；直接创建、非法来源或顺序不确定的 promptGroup 必须拒绝。
+40. `BR-WORKFLOW-040`：loop count 只能为 1..99，批量字段长度只能为 1 或 count，单值广播；嵌套、条件、无界循环和多个直接可执行目标不得创建任务。
+41. `BR-WORKFLOW-041`：loop 只展开唯一直接下游 Application 节点；serial 顺序依赖、batch 同层并行、cascade 顺序依赖并显式映射类型兼容的反馈端口，三者均使用 all_success。
+42. `BR-WORKFLOW-042`：loop iteration 使用稳定 child key、worker role 和 shard index 映射到目标 CanvasNodeRun；状态按全部 iteration 聚合，输出按 iteration 与端口稳定排序。
+43. `BR-WORKFLOW-043`：媒体输入只保存受权 Asset 引用并按实际媒体类型激活一个输出；output 节点只展示有序 Artifact/结构化输出绑定，不复制媒体正文或创建任务。
 
 ### 49.2 用户故事与验收
 
@@ -2698,6 +2740,14 @@ A、B 并行且 C 等待汇合
 - `AC-WORKFLOW-003-01`：动态节点按运行输入展开，稳定标识每个 shard，且不超过声明和系统上限。
 - `AC-WORKFLOW-003-02`：首期 all_success 下游等待全部必需分片成功；任一失败时下游为 SKIPPED。
 - `AC-WORKFLOW-003-03`：每个分片拥有独立 AtomicTask、进度、错误和 ArtifactReference，自动重试不制造重复逻辑制品。
+
+#### US-WORKFLOW-010 使用内置输入、循环和输出节点
+
+作为画布创作者，我希望直接组合媒体、提示词、有限循环、分组和输出节点，而不需要管理员先登记这些基础能力。
+
+- `AC-WORKFLOW-010-01`：六个内置定义在节点目录初始化后可用，promptGroup 仅由多 Prompt 连线自动维护且合并顺序稳定。
+- `AC-WORKFLOW-010-02`：count 1..99 的 serial、batch、cascade 均展开为现有 DAGTaskGroup 中的有限无环 AtomicTask，非法批量长度、反馈端口、目标或展开规模在创建任务前失败。
+- `AC-WORKFLOW-010-03`：媒体输入不复制二进制，分组不影响执行，output 按媒体类型与 iteration 顺序展示可见结果。
 
 #### US-WORKFLOW-004 故障恢复和历史一致性
 

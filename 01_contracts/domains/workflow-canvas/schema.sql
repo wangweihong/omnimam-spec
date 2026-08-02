@@ -1,6 +1,6 @@
--- workflow-canvas design schema for the S1 v1.1 draft (PostgreSQL).
+-- workflow-canvas design schema for S1 v1.2 (PostgreSQL).
 -- This file is a design contract, not an executable migration.
--- s1_refs: US-WORKFLOW-001..009; BR-WORKFLOW-001..034.
+-- s1_refs: US-WORKFLOW-001..010; BR-WORKFLOW-001..043.
 
 -- s1_refs: US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009;
 -- BR-WORKFLOW-003..005, BR-WORKFLOW-017, BR-WORKFLOW-028..031.
@@ -12,7 +12,7 @@ CREATE TABLE workflow_node_definitions (
   description TEXT NOT NULL DEFAULT '',
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0 CHECK (resource_version >= 0),
-  node_type TEXT NOT NULL,
+  node_type TEXT NOT NULL CHECK (node_type ~ '^[a-z][A-Za-z0-9._-]{0,99}$'),
   definition_version TEXT NOT NULL,
   title TEXT NOT NULL,
   category TEXT NOT NULL,
@@ -21,7 +21,8 @@ CREATE TABLE workflow_node_definitions (
   config_schema_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(config_schema_json) = 'object'),
   controller_state_schema_json JSONB CHECK (controller_state_schema_json IS NULL OR jsonb_typeof(controller_state_schema_json) = 'object'),
   controller_schema_version TEXT,
-  execution_mode TEXT NOT NULL CHECK (execution_mode IN ('passive', 'atomic', 'expanded')),
+  execution_mode TEXT NOT NULL CHECK (execution_mode IN ('passive', 'compile_time', 'atomic', 'expanded')),
+  compiler_key TEXT CHECK (compiler_key IS NULL OR compiler_key IN ('builtin.media_input', 'builtin.prompt', 'builtin.loop', 'builtin.prompt_group', 'builtin.output')),
   function_ref TEXT,
   application_version_id TEXT,
   binding_version TEXT NOT NULL,
@@ -40,8 +41,9 @@ CREATE TABLE workflow_node_definitions (
   UNIQUE (node_type, definition_version),
   CHECK ((availability_scope = 'SYSTEM' AND project_id IS NULL AND namespace IS NULL) OR availability_scope = 'PROJECT'),
   CHECK (
-    (execution_mode = 'passive' AND function_ref IS NULL AND application_version_id IS NULL) OR
-    (execution_mode IN ('atomic', 'expanded') AND (function_ref IS NOT NULL) <> (application_version_id IS NOT NULL))
+    (execution_mode = 'passive' AND compiler_key IS NULL AND function_ref IS NULL AND application_version_id IS NULL) OR
+    (execution_mode = 'compile_time' AND compiler_key IS NOT NULL AND function_ref IS NULL AND application_version_id IS NULL) OR
+    (execution_mode IN ('atomic', 'expanded') AND compiler_key IS NULL AND (function_ref IS NOT NULL) <> (application_version_id IS NOT NULL))
   ),
   CHECK (controller_state_schema_json IS NULL OR controller_schema_version IS NOT NULL)
 );

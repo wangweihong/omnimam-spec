@@ -21,6 +21,7 @@
 - ApplicationNode 固定到明确的已发布 ApplicationVersion，并在发布与运行时复核可用性。
 - 编译必须验证端口类型、必填输入、无环性、引用权限和安全边界。
 - 多流、fan-out 和复合节点展平到唯一 DAGTaskGroup，不改变原始依赖语义。
+- SYSTEM 内置输入、组织、有限 loop 和输出节点由注册 compiler key 确定性折叠或展开；Task Center 始终接收无环 DAG。
 - CanvasNodeRun 可映射零个、一个或多个 AtomicTask，只投影任务与 Artifact 引用。
 - 局部执行不得绕过依赖闭包、版本固定、权限或 SSRF/RCE 防护。
 
@@ -54,7 +55,7 @@
 
 ## 8. 当前状态
 
-核心画布、发布、编译和 Application 节点执行已有发布记录并正在实施。S1 头部仍可能显示 draft，具体正式范围与 implementation gate 必须按 `RELEASE.md` 的领域记录判断。
+核心画布、发布、编译和 Application 节点执行已有发布记录；六个内置节点与有限 loop 随 `spec-v1.10.0` 发布。具体正式范围与 implementation gate 必须按 `RELEASE.md` 的领域记录判断。
 
 ## 9. 不在本领域定义的内容
 

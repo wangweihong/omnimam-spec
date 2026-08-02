@@ -18,6 +18,7 @@
 
 - AtomicTask 是唯一执行单元，不再区分任务定义与 TaskRun。
 - TaskGroup、DAGTaskGroup 和 TaskSchedule 只组合或触发 AtomicTask，不能作为 Worker 任务。
+- 上游可以把固定 count 的有限重复预先展开为静态无环 DAG；Task Center 不拥有运行时循环或 iteration 状态机。
 - TaskAttempt 记录一次自动尝试；手动重试创建新的 AtomicTask，并保留来源关系。
 - 幂等、权限、租户、业务摘要和状态投影由 Task Center 保证，Conductor 不是产品 API。
 - `TaskRun`、`ExecutionLease`、Worker claim、自研 Dispatcher 和旧 DAG 状态机已废弃；Task Worker 不等于旧 Worker claim/lease 模型。

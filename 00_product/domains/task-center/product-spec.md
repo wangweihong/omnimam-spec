@@ -22,6 +22,7 @@
 4. 支持文本、图片、视频等多节点依赖和动态批量 fan-out/fan-in。
 5. 支持无限画布用户发布任意合法无环工作流，并固定版本执行。
 6. 查询 Schedule 的全部调度历史、Group/DAG 的全部子任务和 AtomicTask 的全部重试尝试。
+7. 接收 Workflow Canvas 将有界循环确定性展开后的静态无环 DAG，不在 Task Center 内引入运行时循环状态机。
 
 任务中心不得重新实现队列、Worker lease、DAG 状态机、cron 触发器或运行历史存储。这些运行职责由已注册 WorkflowRuntime 承担。
 
@@ -451,6 +452,7 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 79. `BR-TASK-151`：AgentRuntime、Preview、Build 和 Production 的 Infra 操作必须使用业务域授权生成的 Workspace、Revision、Snapshot 或 Artifact `source_ref`；Task Worker 不得把用户输入解释为任意挂载路径。
 80. `BR-TASK-152`：Infra-backed Task Worker 在取消、超时、重试和重启后必须依据稳定幂等键及已有运行引用恢复或清理，不得重复创建 Docker Job/Service。
 81. `BR-TASK-153`：第一阶段 Infra-backed functionRef 必须来自第 5.8 节 canonical registry；Task Center 在创建任务前按精确输入 schema 校验，并固定合同版本与摘要。执行模式、能力、幂等、重试、取消、超时、Infra 映射和结果 schema 只能来自该版本合同，registry 升级不得改写历史任务。
+82. `BR-TASK-154`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
 
 ---
 
@@ -618,4 +620,4 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 
 ## 10. 非目标
 
-V1 不支持循环图、用户脚本、任意 HTTP 节点、Group 嵌套、错过周期补发、Schedule 允许重叠、跨项目 Worker 共享、自动拉起 GPU Worker，也不把 Conductor UI 作为产品前端。
+V1 不支持实际循环图、运行时条件或无限循环、用户脚本、任意 HTTP 节点、Group 嵌套、错过周期补发、Schedule 允许重叠、跨项目 Worker 共享、自动拉起 GPU Worker，也不把 Conductor UI 作为产品前端。上游将固定 count 确定性展开为静态无环 DAG 不属于 Task Center 循环能力。

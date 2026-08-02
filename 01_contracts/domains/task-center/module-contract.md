@@ -36,6 +36,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - AtomicTask 是唯一 Worker handler 执行的业务资源；handler 按受控 `function_ref` 路由。
 - SERIAL Group 编译为顺序 SIMPLE task；PARALLEL 编译为 Fork/Join，并应用 `max_parallelism` 门禁。
 - DAGTaskGroup 发布前校验无环、key 唯一、引用完整和规模限制；普通节点编译为 SIMPLE，动态批量节点编译为 Dynamic Fork/Join。
+- Workflow Canvas 可以提交按固定 count 预先展开的 serial、batch 或 cascade 静态节点；Task Center 只校验并执行展开后的无环依赖，不解析 Canvas loop 配置，也不维护 iteration 状态机。
 - DAG 详情查询以声明节点为主键聚合实际 AtomicTask。`dag_node_key` 保存声明节点 key，静态节点使用唯一主任务，动态 fan-out 的全部实际任务共享该值；动态节点按活动优先和确定性终态优先级计算状态，并在摘要外保留按 node_key 分页读取实际任务的能力。
 - DAG 触发来源在创建时保存 API/SCHEDULE/CANVAS/DOMAIN_EVENT/RETRY 类型、触发时间及可选来源 ID/名称快照；来源删除或不可见不回查改写历史。
 - Group/DAG 创建时在一个业务事务中写根资源和全部静态 AtomicTask；运行时启动失败保留可恢复投影，不切换到本地 Dispatcher。
@@ -128,6 +129,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - asset-library 注册 `asset-library.representation-backfill` ReconcileHandler。Task Center 以同名 system_key 原子确保唯一 SYSTEM RECONCILE 计划，默认 `03:30 UTC`，只为缺失、可重试或可重建项创建 `asset-library.representation.generate` AtomicTask。
 - application-platform 注册 `application-platform.engine-health` ReconcileHandler。其 SYSTEM TaskSchedule 直接分批探测 EngineInstance，不创建 Planner DAGTaskGroup 或健康 AtomicTask；状态变化由 application-platform 在同一事务中更新投影并写 outbox。
 - workflow-canvas 发布 CanvasVersion 后注册不可变 DAG 定义；CanvasRun 绑定 `dag_task_group_id`，CanvasNodeRun 绑定 `atomic_task_id`。
+- workflow-canvas 的有限 loop 使用多个稳定 childKey AtomicTask 绑定同一 CanvasNodeRun；Task Center 保留每个任务的独立状态和输出，不生成额外 Group 或 aggregate task。
 - 大型输出由受信 Worker/ApplicationExecutor 交付 asset-library 形成 Artifact；Task Center 只保存引用。自动 Attempt 重试复用同一 producer key，手动重试创建新 AtomicTask 并可形成新 Artifact。
 - ComfyUIWorkflowTestRun 创建 `comfyui.submit -> comfyui.poll -> comfyui.collect_preview` DAG；poll handler 可返回 IN_PROGRESS 和 callbackAfterSeconds，延迟回调属于同一 Attempt。
 

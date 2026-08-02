@@ -35,6 +35,11 @@
 - 补充 USER/SERVICE_ACCOUNT 主体、受控委托 `actor_user_id`、服务主体最小权限和跨域审计语义；明确业务 domain 不得读取 IAM 私有表或信任客户端提交的 owner。
 - 将 PAT、LDAP/SSO、角色继承/互斥等与当前下游合同不一致的能力收敛为延期或不支持；MCP v1 继续使用当前用户 Identity JWT，每次请求重新校验授权。
 - 同步 `domains/identity/context.md`、`02_architecture/domains/identity.md`、`01_contracts/error-code-index.md`、`GLOBAL_CONTEXT.md` 和 `CONTEXT_MAP.md`；Identity S2 已建立为草稿但尚未 Release。
+- Workflow Canvas 新增 `image`、`prompt`、`loop`、`group`、`promptGroup`、`output` 六个 `1.0.0` SYSTEM 内置节点，固定媒体输入、Prompt 合并、画布分组、有限循环和有序结果展示语义。
+- NodeDefinition execution binding 新增 `compile_time` 与五个受控 `compiler_key`；未知编译能力不得注册或降级执行，`group` 继续使用 passive。
+- `loop` 固定 count 1..99，支持 serial、batch、cascade；只展开唯一直接 Application 节点，批量单值广播，cascade 反馈端口显式且类型兼容，三种模式均使用 all_success。
+- 明确有限 loop 在 Canvas 编译期展开为现有 DAGTaskGroup 的静态无环 AtomicTask，复用 1:N task binding 与 shard 顺序；Task Center 不新增任务组、运行时循环或 iteration 状态机。
+- 同步 workflow-canvas OpenAPI 1.3.0、设计态 schema、模块契约、workflow-canvas/task-center Context 与 Task Center S1/S2；不新增权限、事件或错误码。
 
 ## 2026-08-01
 
