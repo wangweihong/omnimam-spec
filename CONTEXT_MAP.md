@@ -18,7 +18,7 @@
 | `model-management` | `domains/model-management/context.md` | 用户模型提供商和模型配置 | 模型、密钥引用、健康检测 |
 | `ai-chatting` | `domains/ai-chatting/context.md` | 会话、消息、助手和生成 | AI 对话、Assistant、翻译 |
 | `application-platform` | `domains/application-platform/context.md` | ComfyUIWorkflow、应用、表单和运行 | Application、模板、ApplicationRun |
-| `task-center` | `domains/task-center/context.md` | 异步执行、重试、编排和调度 | AtomicTask、DAG、Schedule |
+| `task-center` | `domains/task-center/context.md` | 异步执行、重试、编排、调度和版本化 Function Registry | AtomicTask、DAG、Schedule、functionRef、Task Worker、Infra Adapter |
 | `asset-library` | `domains/asset-library/context.md` | Artifact、Asset 和派生表现 | 素材、入库、预览、存储 |
 | `workflow-canvas` | `domains/workflow-canvas/context.md` | 画布结构、版本、编译和运行 | Canvas、节点、边、部分执行 |
 | `notification-center` | `domains/notification-center/context.md` | 通知收件箱、偏好、聚合 | 完成、失败、待处理通知 |
@@ -43,6 +43,7 @@
 | EngineInstance、ProviderCapability、健康检测、object_info | `domains/modelgateway/context.md` | 涉及 ComfyUIWorkflow 再读 application-platform |
 | ComfyUI Workflow、模板转换、试运行 | `domains/application-platform/context.md` | 涉及 Engine 当前事实再读 modelgateway |
 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、TaskSchedule、重试、取消 | `domains/task-center/context.md` | 涉及业务结果再读源领域 |
+| Function Registry、functionRef、contract version、Task Worker、Infra Adapter | `domains/task-center/context.md` | Infra-backed 合同继续读 infrastructure；Agent/AppStudio 投影再读来源领域 |
 | TaskRun、ExecutionLease、Worker claim、DAGFlowTask | `domains/task-center/context.md` | 这些是过期检索词，先核对废弃说明 |
 | Artifact、Asset、AssetVersion、Representation、Blob、扫描、缩略图 | `domains/asset-library/context.md` | 涉及生成任务再读 task-center |
 | Canvas、Node、Edge、ApplicationNode、CanvasRun、局部执行 | `domains/workflow-canvas/context.md` | 涉及应用节点再读 application-platform |
@@ -55,8 +56,8 @@
 | MCP、server/discover、Streamable HTTP、stdio Proxy、MCP Tool、MCP Resource、MCP Task | `domains/mcp/context.md` | 调用应用再读 application-platform；任务映射再读 task-center |
 | AgentSession、AgentInvocation、AgentMemory、Hermes、OpenCode、AgentRuntime | `domains/agent/context.md` | Coding Agent 修改源码再读 appstudio |
 | AgentWorkspace、workspace_type、AgentRuntimeProvider | `domains/agent/context.md` | 周期执行再读 task-center |
-| StudioApplication、StudioWorkspace、StudioChangeSet、Source Snapshot | `domains/appstudio/context.md` | Agent 修改再读 agent |
-| StudioBuild、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行再读 task-center；Artifact 再读 asset-library |
+| StudioApplication、StudioApplicationVersion、StudioWorkspace、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改再读 agent |
+| StudioBuild、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行再读 task-center；Artifact 再读 asset-library |
 | InfraRuntime、Docker Job、Docker Service、RuntimeMount、DockerRuntimeProvider、Task Worker 调用 Infra | `domains/infrastructure/context.md` | 必须继续读 task-center；涉及 AgentWorkspace 读 agent，涉及 StudioWorkspace/Revision/Snapshot/Artifact 读 appstudio |
 
 ## 4. 跨域任务映射

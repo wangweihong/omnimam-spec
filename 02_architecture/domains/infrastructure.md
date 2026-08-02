@@ -15,7 +15,7 @@ flowchart LR
   Docker --> Runtime["Docker Job / Service"]
 ```
 
-Agent、AppStudio 和 Deploy Service 只能创建或更新 Task Center 任务。Task Worker 使用 Task Center 服务身份调用 Infra Adapter；Infra Service 内部才拥有 Docker Provider 和 Docker Engine 访问权限。
+Agent、AppStudio 及其内部 StudioDeploymentProvider 只能创建或更新 Task Center 任务。Task Worker 使用 Task Center 服务身份调用 Infra Adapter；Infra Service 内部才拥有 Docker Provider 和 Docker Engine 访问权限。
 
 ## 2. 组件职责
 
@@ -30,20 +30,24 @@ Agent、AppStudio 和 Deploy Service 只能创建或更新 Task Center 任务。
 ## 3. 挂载策略
 
 ```text
-AgentRuntime   -> AgentWorkspace（按 Agent 授权）
-Coding Agent   -> StudioWorkspace（仅 AppStudio 受控授权）
+Platform Agent -> AgentWorkspace（按 Agent 授权挂载）
+Coding Agent   -> AppStudio Workspace Tool（不挂载 StudioWorkspace）
 Preview        -> 当前 Workspace Revision
-Build          -> 固定 Workspace Snapshot（只读）
+Build          -> 固定 StudioSourceSnapshot（只读）
 Production     -> 固定 Artifact digest（只读）
 ```
 
 Task Worker 只能使用来源领域生成的 `source_ref`，Infra 不解析业务私有表和宿主机路径。Production 请求即使携带 Workspace、Revision 或 Snapshot，也必须拒绝；它只能使用固定 Artifact。
+
+Infra Job 只返回受控 output descriptor；Task Worker 使用来源任务 producer context 调用 Asset Library 登记 Artifact。Infra 不创建 Artifact ready 事实，也不把 Job 成功提升为 Build 成功。
 
 ## 4. 状态与恢复
 
 `InfraRuntime` 记录 `requestingService=task-center`、`ownerDomain`、`ownerReference` 和 `requestUserId`。`ownerDomain` 只用于稳定关联，不授权 Infra 修改来源领域业务状态。
 
 Task Worker/Infra Adapter 必须使用 AtomicTask 幂等键和已有 `infra_runtime_id` 恢复取消、超时、重试及进程重启，避免重复创建 Docker Job/Service。Infra 原始日志、凭证、容器 ID、Host Port、宿主机路径和 Provider 响应不得进入普通任务结果。
+
+相同 `requestingService + requestId` 只有请求摘要一致时才能重放原结果；摘要不同返回冲突，原失败重试使用新的 requestId。USER_PROXY Endpoint 必须校验 owner 和当前授权，不能因 Host Port 已分配而成为公开入口。
 
 ## 5. 第一阶段范围
 

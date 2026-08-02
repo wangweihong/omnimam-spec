@@ -75,8 +75,72 @@ function_ref_not_registered:
   http_status: 200
   retryable: false
   deprecated: false
-  related_user_stories: [US-TASK-008, US-TASK-010]
-  related_rules: [BR-TASK-096]
+  related_user_stories: [US-TASK-008, US-TASK-010, US-TASK-026]
+  related_rules: [BR-TASK-096, BR-TASK-153]
+
+function_input_invalid:
+  code: ERR_TASK_FUNCTION_INPUT_INVALID
+  value: 140205
+  cn: AtomicTask arguments 不符合已注册 functionRef 的精确输入合同。
+  en: AtomicTask arguments do not satisfy the registered functionRef input contract.
+  owning_domain: task-center
+  owning_module: orchestration
+  range: 140200-140399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-026]
+  related_rules: [BR-TASK-148, BR-TASK-153]
+
+function_output_invalid:
+  code: ERR_TASK_FUNCTION_OUTPUT_INVALID
+  value: 140206
+  cn: Task Worker 结果不符合固定 functionRef 输出合同。
+  en: The Task Worker result does not satisfy the pinned functionRef output contract.
+  owning_domain: task-center
+  owning_module: orchestration
+  range: 140200-140399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-TASK-026]
+  related_rules: [BR-TASK-149, BR-TASK-153]
+
+function_contract_unavailable:
+  code: ERR_TASK_FUNCTION_CONTRACT_UNAVAILABLE
+  value: 140207
+  cn: AtomicTask 固定的 function contract 版本或摘要当前不可加载。
+  en: The function contract version or digest pinned by the AtomicTask cannot currently be loaded.
+  owning_domain: task-center
+  owning_module: orchestration
+  range: 140200-140399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-TASK-026]
+  related_rules: [BR-TASK-153]
+
+function_capability_unavailable:
+  code: ERR_TASK_FUNCTION_CAPABILITY_UNAVAILABLE
+  value: 140208
+  cn: 当前没有满足固定函数合同所需能力的 Task Worker。
+  en: No Task Worker currently satisfies the capabilities required by the pinned function contract.
+  owning_domain: task-center
+  owning_module: orchestration
+  range: 140200-140399
+  severity: error
+  http: 200
+  http_status: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-TASK-026]
+  related_rules: [BR-TASK-148, BR-TASK-153]
 
 task_run_not_found:
   code: ERR_TASK_RUN_NOT_FOUND

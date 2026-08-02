@@ -1,4 +1,4 @@
-# 当前 S1 没有 US/BR 编号；事件追溯使用 R-STUDIO-*，不虚构用户故事编号。
+# 事件追溯使用 US-APPSTUDIO-001/BR-APPSTUDIO-001 及具体 R-STUDIO-* 规则。
 studio_application_lifecycle_changed:
   producer: appstudio-application-service
   consumers: [notification-center, sse, audit-service]
@@ -14,8 +14,8 @@ studio_application_lifecycle_changed:
   idempotency_key: studio_application_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按版本幂等。
   failure_policy: 事件失败不回滚应用、Workspace 或历史事实。
-  related_rules: [R-STUDIO-001, R-STUDIO-010, R-STUDIO-014]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 studio_workspace_revision_changed:
   producer: appstudio-source-service
   consumers: [agent, sse, audit-service]
@@ -33,8 +33,8 @@ studio_workspace_revision_changed:
   idempotency_key: workspace_id:current_revision
   retry_policy: appstudio outbox 重试，消费者按 Workspace/Revision 幂等。
   failure_policy: 不重复应用 ChangeSet；事件可从 Revision 事实重放。
-  related_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-004]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 studio_source_snapshot_created:
   producer: appstudio-source-service
   consumers: [appstudio-build-service, audit-service]
@@ -52,8 +52,8 @@ studio_source_snapshot_created:
   idempotency_key: source_snapshot_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按 Snapshot ID/digest 幂等。
   failure_policy: 失败或不完整 Snapshot 不发布该事件。
-  related_rules: [R-STUDIO-011, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-011]
+  related_user_stories: [US-APPSTUDIO-001]
 studio_build_projection_changed:
   producer: appstudio-build-service
   consumers: [notification-center, sse, audit-service]
@@ -73,8 +73,8 @@ studio_build_projection_changed:
   idempotency_key: studio_build_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按 Build 版本幂等。
   failure_policy: 不反向修改 Task Center 或 Artifact；可对账重放。
-  related_rules: [R-STUDIO-004, R-STUDIO-011, R-STUDIO-013, R-STUDIO-018]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
 studio_preview_runtime_status_changed:
   producer: appstudio-preview-service
   consumers: [agent, notification-center, sse, audit-service]
@@ -93,8 +93,8 @@ studio_preview_runtime_status_changed:
   idempotency_key: preview_runtime_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 Preview 版本幂等。
   failure_policy: Preview 事件失败不得创建正式 Snapshot、Artifact 或 Release。
-  related_rules: [R-STUDIO-003, R-STUDIO-004, R-STUDIO-009]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]
 studio_release_status_changed:
   producer: appstudio-release-service
   consumers: [notification-center, sse, audit-service]
@@ -102,11 +102,14 @@ studio_release_status_changed:
   payload:
     studio_release_id: string
     studio_application_id: string
+    studio_application_version_id: string
     studio_build_id: string
+    runtime_config_id: string
     artifact_id: string
     artifact_digest: string
     environment: string
     runtime_instance_id: string|null
+    rollback_of_release_id: string|null
     from_status: string|null
     to_status: string
     error_code: string|null
@@ -115,5 +118,28 @@ studio_release_status_changed:
   idempotency_key: studio_release_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 Release 版本幂等。
   failure_policy: 事件失败不重新部署或切换入口；Release 事实可重放。
-  related_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012, R-STUDIO-013]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]
+studio_runtime_instance_status_changed:
+  producer: appstudio-release-service
+  consumers: [notification-center, sse, audit-service]
+  trigger_condition: StudioRuntimeInstance 创建、健康、入口切换、停止或失败状态已持久化。
+  payload:
+    runtime_instance_id: string
+    studio_application_id: string
+    studio_release_id: string
+    environment: string
+    atomic_task_id: string|null
+    infra_runtime_id: string|null
+    from_status: string|null
+    to_status: string
+    health_status: string
+    is_current: boolean
+    error_code: string|null
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: runtime_instance_id:resource_version
+  retry_policy: appstudio outbox 重试；消费者按 RuntimeInstance 版本幂等。
+  failure_policy: 事件失败不执行第二次入口切换；RuntimeInstance 事实可重放，旧健康实例不得受影响。
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]

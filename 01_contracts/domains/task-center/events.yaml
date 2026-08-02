@@ -5,6 +5,8 @@ atomic_task_created:
   payload:
     atomic_task_id: string
     function_ref: string
+    function_contract_version: string|null
+    function_contract_digest: string|null
     owner_type: string|null
     owner_id: string|null
     root_task_id: string
@@ -20,8 +22,8 @@ atomic_task_created:
   idempotency_key: atomic_task_id:atomic_task_created
   retry_policy: 由 PostgreSQL outbox 持续重试并支持人工重放。
   failure_policy: 发布失败不得回滚 AtomicTask；消费者按事件幂等键去重。
-  related_user_stories: [US-TASK-008, US-TASK-018]
-  related_rules: [BR-TASK-073, BR-TASK-088, BR-TASK-090, BR-TASK-120]
+  related_user_stories: [US-TASK-008, US-TASK-018, US-TASK-026]
+  related_rules: [BR-TASK-073, BR-TASK-088, BR-TASK-090, BR-TASK-120, BR-TASK-153]
 
 atomic_task_status_changed:
   producer: runtime-projection-service

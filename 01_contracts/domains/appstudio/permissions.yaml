@@ -1,4 +1,4 @@
-# 当前 S1 没有 US/BR 编号；权限追溯使用 R-STUDIO-*。
+# 权限追溯使用 US-APPSTUDIO-001/BR-APPSTUDIO-001 及具体 R-STUDIO-* 规则。
 appstudio.application.read:
   domain: appstudio
   module: application
@@ -9,8 +9,8 @@ appstudio.application.read:
   frontend_usage: AppStudio 应用列表和详情。
   backend_enforcement: 按 owner 和授权范围过滤；不得与 application-platform.Application 混用。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-001, R-STUDIO-010]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.application.manage:
   domain: appstudio
   module: application
@@ -21,8 +21,8 @@ appstudio.application.manage:
   frontend_usage: 创建、编辑和归档应用。
   backend_enforcement: 归档不得删除历史源码、Snapshot、Build、Release 或 Runtime 历史。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-001, R-STUDIO-010, R-STUDIO-014]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.workspace.read:
   domain: appstudio
   module: workspace
@@ -33,8 +33,8 @@ appstudio.workspace.read:
   frontend_usage: 源码浏览、搜索和 Revision 展示。
   backend_enforcement: Coding Agent 还必须通过固定绑定和短期 Workspace Tool 授权；禁止返回 storage_ref。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-005]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.workspace.write:
   domain: appstudio
   module: workspace
@@ -45,8 +45,8 @@ appstudio.workspace.write:
   frontend_usage: 受控源码修改和恢复。
   backend_enforcement: 必须校验 base_revision、路径、依赖、危险代码、大小和幂等键；冲突不得自动合并。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-003, R-STUDIO-004, R-STUDIO-005]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.snapshot.manage:
   domain: appstudio
   module: source-version
@@ -57,8 +57,8 @@ appstudio.snapshot.manage:
   frontend_usage: 版本和 Snapshot 入口。
   backend_enforcement: Build 只能使用 READY Snapshot，Snapshot/Version 创建后不可换绑。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-011, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-011]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.build.manage:
   domain: appstudio
   module: build
@@ -69,8 +69,8 @@ appstudio.build.manage:
   frontend_usage: 构建、诊断和取消。
   backend_enforcement: Task 状态由 task-center 拥有；Artifact 由 asset-library 拥有；AppStudio 只保存引用。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-004, R-STUDIO-011, R-STUDIO-013, R-STUDIO-018]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.preview.operate:
   domain: appstudio
   module: preview
@@ -81,8 +81,8 @@ appstudio.preview.operate:
   frontend_usage: 预览、刷新和诊断。
   backend_enforcement: Preview 不创建正式 Snapshot、Artifact、Release，Coding Agent 需额外 Tool 授权。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-003, R-STUDIO-004, R-STUDIO-009]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.runtime_config.manage:
   domain: appstudio
   module: release-runtime
@@ -93,8 +93,8 @@ appstudio.runtime_config.manage:
   frontend_usage: 环境配置入口。
   backend_enforcement: 只保存引用和校验状态；禁止读取、返回或记录 Secret 值。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-008, R-STUDIO-015]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-008, R-STUDIO-013, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.release.manage:
   domain: appstudio
   module: release-runtime
@@ -105,5 +105,5 @@ appstudio.release.manage:
   frontend_usage: 发布、运行状态、访问入口和回滚。
   backend_enforcement: 只接受成功 Build 和 digest 校验通过的 Artifact；健康切换失败不得影响旧健康实例。
   default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
-  related_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012, R-STUDIO-013]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]

@@ -2,7 +2,7 @@
 
 > 文档状态：S1 Draft
 > 文档版本：v1.0
-> 修订日期：2026-08-02
+> 修订日期：2026-08-03
 > 适用范围：Agent 定义、会话、记忆、Skills、工具权限、Workspace 绑定、模型绑定及 Runtime 生命周期编排
 
 ---
@@ -25,9 +25,9 @@
 * Agent 使用的模型配置。
 * Agent 与 Infra Runtime 的绑定。
 * Agent 启动、挂起、恢复、停止和异常恢复。
-* Agent 交互操作、消息流和运行事件。
+* Agent Invocation、消息流和运行事件。
 
-Agent Service 不直接管理 Docker、Kubernetes、GPU、容器、Pod、端口或运行节点。所有实际 Runtime 都由 Agent 创建 Task Center 任务，再由 `Task Worker -> Infra Service` 创建和管理。
+Agent Service 不直接管理 Docker、Kubernetes、GPU、容器、Pod、端口或运行节点。所有实际 Runtime 都由 Agent 创建 Task Center 任务，再由 `Task Worker -> Infra Adapter -> Infra Service` 创建和管理。
 
 ---
 
@@ -72,7 +72,7 @@ Agent 不是一次性任务，也不等于某个 Runtime。
 Agent
 ├── AgentProfile
 ├── ModelBinding
-├── WorkspaceBinding
+├── 固定 WorkspaceBinding
 ├── SkillBindings
 ├── MCPBindings
 ├── Sessions
@@ -101,7 +101,7 @@ Runtime 被删除后，以下对象仍然保留：
 
 ---
 
-## 3.2 Agent Service 不包含 Runtime Provider
+## 3.2 Agent Service 不包含 Infrastructure Runtime Provider
 
 以下组件属于 `Infra Service`：
 
@@ -116,7 +116,8 @@ Agent Service 只向 Task Center 提交已注册的 Runtime 任务；Task Worker
 
 ```text
 启动 `agent.coding`
-挂载经授权的 AgentWorkspace 或 StudioWorkspace 引用
+Platform Agent 挂载经授权的 AgentWorkspace
+Coding Agent 配置 AppStudio Workspace Tool Endpoint，禁止挂载 StudioWorkspace
 注入模型配置
 注入 Skill 与 MCP 配置
 分配指定资源
@@ -146,9 +147,9 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 启动流程为：
 
 1. Agent Service 根据 Agent 的 ModelBinding 确定模型引用。
-2. `model-manager` 解析用户私有模型选择。
+2. `model-management` 解析用户私有模型选择。
 3. `modelgateway` 将模型引用解析为 `ModelAccessSpec`。
-4. Agent Service 将 `ModelAccessSpec` 和授权挂载要求写入 Agent Runtime Task。
+4. Agent Service 将 `ModelAccessSpec`、Platform Agent 的授权挂载要求或 Coding Agent 的 Workspace Tool 配置写入 Agent Runtime Task。
 5. Task Worker 的 Infra Adapter 调用 Infra Service；Infra Service 解析 CredentialRef 并注入 Runtime。
 6. Agent Runtime 自行调用 LLM Provider。
 
@@ -156,7 +157,7 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as model-manager
+    participant MM as model-management
     participant MG as modelgateway
     participant TC as Task Center
     participant TW as Task Worker
@@ -203,30 +204,26 @@ Agent Service 负责在 Runtime 恢复后，将必要的 Session 上下文同步
 
 ---
 
-## 3.5 Workspace 生命周期独立
+## 3.5 Workspace 类型、固定绑定与独立生命周期
 
-Workspace 可以：
-
-* 在创建 Agent 前已经存在。
-* 由 AppStudio 创建。
-* 由用户独立创建。
-* 在创建 Agent 时请求创建。
-
-Agent 删除或 Runtime 删除时，不自动删除 Workspace。
-
-Agent Service 只拥有：
+每个 Agent 创建时必须固定一个 Workspace，后续 Session、Invocation、Runtime 重建和恢复均不得切换：
 
 ```text
-AgentWorkspaceBinding
+kind=platform -> workspaceType=agent -> AgentWorkspace
+kind=coding   -> workspaceType=studio -> StudioWorkspace
 ```
 
-而不应将 Workspace 内容绑定到 Agent Runtime 生命周期。
+`AgentWorkspace` 是 Platform Agent 的持久化工作区，由 Agent Service 拥有。`StudioWorkspace` 是 AppStudio 的源码事实，必须在创建 Coding Agent 前存在，并由 AppStudio 校验当前主体是否有权绑定。
+
+多个 Coding Agent 可以引用同一个 StudioWorkspace，但这不授予 Runtime 直接挂载或修改 AppStudio 私有存储的权限。Coding Agent 只能使用与 Principal、Agent、Session、Invocation、StudioWorkspace、允许动作和过期时间绑定的短期 Workspace Tool 授权；所有写入必须由 AppStudio 形成带 `base_revision` 的原子 `StudioChangeSet`。
+
+Agent 删除或 Runtime 删除时，不自动删除 AgentWorkspace 或 StudioWorkspace。需要更换 Workspace 时必须创建新的 Agent，不能修改既有 Agent 的固定绑定。
 
 ---
 
 ## 3.6 Task Center 不替代 Agent Session
 
-普通交互式消息由 Agent Service 管理，不要求每条消息都创建 Task Center Task。
+Agent Service 为每轮交互创建持久化 `AgentInvocation`。纯对话 `CHAT` Invocation 可以由 Agent Service 直接管理；凡是会创建或恢复 Runtime、修改源码、执行工具、进入后台、需要取消/超时/重试或调用其他异步能力的 Invocation，都必须关联一个 AtomicTask。
 
 以下场景应使用 Task Center：
 
@@ -242,9 +239,12 @@ AgentWorkspaceBinding
 关系：
 
 ```text
-AgentOperation
-    └── 0..1 Task Center Task
+AgentInvocation
+    ├── CHAT 且无异步执行：无 AtomicTask
+    └── CODING / TOOL_OPERATION / BACKGROUND_OPERATION / Runtime 操作：1 个 AtomicTask
 ```
+
+Invocation 只保存 `atomicTaskId` 和业务投影；TaskAttempt、重试次数、超时、取消终态和调度并发仍以 Task Center 为准。
 
 ---
 
@@ -256,7 +256,7 @@ flowchart TB
     API[omni-apiserver]
 
     AS[Agent Service]
-    MM[model-manager]
+    MM[model-management]
     MG[modelgateway]
     TC[Task Center]
     WORKER[Task Worker]
@@ -339,9 +339,9 @@ volumeName
 
 ---
 
-## 5.2 model-manager
+## 5.2 model-management
 
-`model-manager` 管理当前用户的：
+`model-management` 管理当前用户的：
 
 ```text
 UserModelProvider
@@ -401,7 +401,7 @@ Task Center 负责：
 
 Agent Service 负责：
 
-* AgentOperation。
+* AgentInvocation。
 * Session。
 * Runtime 业务状态。
 * 对话过程。
@@ -427,6 +427,10 @@ AppStudio
     ↓
 Agent Service
     ↓
+Task Center
+    ↓
+Task Worker / Infra Adapter
+    ↓
 Infra Service
     ↓
 Coding Agent Runtime
@@ -434,12 +438,12 @@ Coding Agent Runtime
 
 AppStudio 负责：
 
-* StudioProject。
-* Workspace。
-* Preview。
-* Build。
-* Release。
-* StudioApp。
+* StudioApplication。
+* StudioWorkspace、Revision 和 ChangeSet。
+* StudioPreviewRuntime。
+* StudioBuild。
+* StudioRelease。
+* StudioRuntimeInstance。
 
 Agent Service 负责：
 
@@ -494,8 +498,8 @@ Agent Service 不管理 Blob、Representation 或物理文件路径。
 以下事件应产生通知：
 
 * Agent Runtime 启动失败。
-* 长时间 AgentOperation 完成。
-* 长时间 AgentOperation 失败。
+* 长时间 AgentInvocation 完成。
+* 长时间 AgentInvocation 失败。
 * Agent Runtime 异常退出。
 * Coding Agent 后台任务完成。
 * Agent 需要用户处理或授权。
@@ -605,9 +609,24 @@ supportedBindings:
 
 ---
 
-# 7. AgentRuntimeAdapter
+# 7. AgentRuntimeProvider 与 AgentRuntimeAdapter
 
 ## 7.1 定位
+
+`AgentRuntimeProvider` 是 Agent 领域注册的业务运行提供者，S1 只允许 Hermes 和 OpenCode。它负责选择 AgentProfile、注册 Runtime 生命周期 functionRef、解释 Task 结果并维护 AgentRuntimeBinding，但不得直接创建容器或调用 Infra Service。
+
+`AgentRuntimeAdapter` 是 Provider 内部的交互协议适配器，用于连接已经启动的 Runtime Endpoint。两者都不同于 Infrastructure 的 `RuntimeProvider`：
+
+```text
+AgentRuntimeProvider
+    负责 Hermes/OpenCode 的业务生命周期和 Task 编排
+
+AgentRuntimeAdapter
+    负责与已启动的 Hermes/OpenCode Endpoint 交互
+
+Infrastructure RuntimeProvider
+    第一阶段只负责 Docker Job/Service
+```
 
 不同 Agent Runtime 可能提供不同的控制协议。
 
@@ -618,7 +637,7 @@ supportedBindings:
 * 自定义 Coding Agent API。
 * 标准输入输出协议。
 
-`AgentRuntimeAdapter` 位于 Agent Service 内部，用于屏蔽不同 Agent Runtime 的交互协议。
+`AgentRuntimeAdapter` 位于 AgentRuntimeProvider 内部，用于屏蔽不同 Agent Runtime 的交互协议。
 
 它与 Infra Service 的 RuntimeProvider 不同。
 
@@ -632,41 +651,19 @@ AgentRuntimeAdapter
 
 ---
 
-## 7.2 核心接口
+## 7.2 核心能力
 
-```go
-type AgentRuntimeAdapter interface {
-	Initialize(
-		ctx context.Context,
-		endpoint RuntimeEndpoint,
-		config AgentRuntimeConfig,
-	) error
+AgentRuntimeAdapter 必须提供以下逻辑能力：
 
-	CreateRuntimeSession(
-		ctx context.Context,
-		endpoint RuntimeEndpoint,
-		session AgentSessionContext,
-	) (*RuntimeSessionRef, error)
-
-	SendMessage(
-		ctx context.Context,
-		endpoint RuntimeEndpoint,
-		runtimeSessionRef string,
-		request AgentMessageRequest,
-	) (AgentEventStream, error)
-
-	CancelOperation(
-		ctx context.Context,
-		endpoint RuntimeEndpoint,
-		operationRef string,
-	) error
-
-	GetRuntimeStatus(
-		ctx context.Context,
-		endpoint RuntimeEndpoint,
-	) (*AgentRuntimeStatus, error)
-}
+```text
+使用受控 Endpoint 与配置初始化 Runtime
+创建或恢复 Runtime Session
+发送 Agent Message 并返回标准 Agent Invocation Event Stream
+取消 Runtime 中的 Invocation
+读取 Runtime 健康与活动状态摘要
 ```
+
+具体编程语言接口和 DTO 由 S2 或实现定义。Adapter 返回的原始 Runtime 状态不能直接覆盖 AgentInvocation 或 AtomicTask 终态，必须由 Agent Service 按稳定引用和资源版本投影。
 
 ---
 
@@ -684,6 +681,21 @@ AgentRuntimeAdapter 不负责：
 
 ---
 
+## 7.4 AgentRuntimeProvider 注册与状态
+
+S1 只注册：
+
+```text
+agent.hermes
+agent.opencode
+```
+
+Provider 至少公开 `ENABLED`、`DEGRADED`、`DISABLED` 可用性。创建 Agent 或启动 Runtime 时必须固定 Provider 与修订；Provider 后续升级不得改写历史 AgentRuntime。Provider 不可用时，新 Invocation 必须以稳定失败分类结束，已有 Session、Message、Memory 和 Workspace 不受影响。
+
+Provider 的创建、恢复、停止和检查动作都必须映射为已注册的 Task Center `functionRef`，不能把任意镜像、命令或 Infra Provider 参数作为用户输入。
+
+---
+
 # 8. 核心领域对象
 
 ```mermaid
@@ -693,13 +705,13 @@ erDiagram
     AGENT ||--o{ AGENT_MEMORY : owns
     AGENT ||--o{ AGENT_SKILL_BINDING : enables
     AGENT ||--o{ AGENT_MCP_BINDING : configures
-    AGENT ||--o{ AGENT_WORKSPACE_BINDING : uses
+    AGENT ||--|| AGENT_WORKSPACE_BINDING : fixes
     AGENT ||--o{ AGENT_MODEL_BINDING : uses
     AGENT ||--o{ AGENT_RUNTIME_BINDING : runs_as
 
     AGENT_SESSION ||--o{ AGENT_MESSAGE : contains
-    AGENT_SESSION ||--o{ AGENT_OPERATION : executes
-    AGENT_OPERATION ||--o{ AGENT_EVENT : emits
+    AGENT_SESSION ||--o{ AGENT_INVOCATION : contains
+    AGENT_INVOCATION ||--o{ AGENT_EVENT : emits
 ```
 
 ---
@@ -713,8 +725,11 @@ id
 ownerUserId
 name
 description
+kind
 agentProfileId
 agentProfileRevision
+workspaceType
+workspaceId
 status
 defaultSessionId
 runtimePolicy
@@ -722,6 +737,8 @@ createdAt
 updatedAt
 lastActiveAt
 ```
+
+`kind` 只允许 `platform` 或 `coding`。`workspaceType` 必须分别为 `agent` 或 `studio`，`workspaceId` 创建后不可变。AgentProfile 可以决定 Runtime 和工具能力，但不得改变 Agent 的业务类型或 Workspace 归属。
 
 ---
 
@@ -768,7 +785,7 @@ sessionId
 role
 content
 attachments
-operationId
+invocationId
 createdAt
 ```
 
@@ -793,7 +810,7 @@ WorkspaceFileReference
 
 ---
 
-## 8.4 AgentOperation
+## 8.4 AgentInvocation
 
 表示一次 Agent 交互或操作。
 
@@ -807,8 +824,8 @@ type
 status
 userMessageId
 assistantMessageId
-runtimeOperationRef
-taskId
+runtimeInvocationRef
+atomicTaskId
 startedAt
 completedAt
 failureCode
@@ -927,12 +944,11 @@ primary-model
 ```text
 id
 agentId
-workspaceRef
+workspaceType
+workspaceId
 accessMode
-mountPath
-isPrimary
+authorizationSummary
 createdAt
-updatedAt
 ```
 
 `accessMode`：
@@ -942,15 +958,17 @@ READ_ONLY
 READ_WRITE
 ```
 
-Coding Agent 的主 Workspace 通常为：
+Coding Agent 的固定 Workspace Binding 可以声明：
 
 ```text
 READ_WRITE
 ```
 
+每个 Agent 恰好一个 Binding。`accessMode` 表达业务授权上限，不等于 Infra 挂载权限；Coding Agent 即使为 `READ_WRITE`，也只能通过 AppStudio Workspace Tool 提交 ChangeSet，不能获得 StudioWorkspace 的可写文件系统挂载。
+
 ---
 
-## 8.8 AgentRuntimeBinding
+## 8.8 AgentRuntime（AgentRuntimeBinding）
 
 字段：
 
@@ -1033,11 +1051,11 @@ Agent Service 已向 Task Center 提交 Runtime Task，Task Worker 正在请求 
 
 ### RUNNING
 
-Runtime 正常，并且存在活动中的 AgentOperation。
+Runtime 正常，并且存在活动中的 AgentInvocation。
 
 ### IDLE
 
-Runtime 正常，但当前没有活动中的 AgentOperation。
+Runtime 正常，但当前没有活动中的 AgentInvocation。
 
 ### SUSPENDED
 
@@ -1120,8 +1138,10 @@ stateDiagram-v2
 name
 description
 agentProfileId
+kind
 modelBinding
-workspaceBinding
+workspaceType
+workspaceId
 skillBindings
 mcpBindings
 runtimePolicy
@@ -1135,9 +1155,9 @@ runtimePolicy
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as model-manager
+    participant MM as model-management
     participant MG as modelgateway
-    participant WS as Workspace
+    participant ST as AppStudio
     participant TC as Task Center
 
     U->>AS: CreateAgent
@@ -1149,10 +1169,14 @@ sequenceDiagram
     AS->>MG: 校验模型访问能力
     MG-->>AS: ModelAccessSpec 摘要
 
-    AS->>WS: 校验或创建 Workspace
-    WS-->>AS: WorkspaceRef
+    alt kind=platform
+        AS->>AS: 创建并绑定 AgentWorkspace
+    else kind=coding
+        AS->>ST: 校验 StudioWorkspace 与当前主体授权
+        ST-->>AS: 返回稳定 Workspace 引用与授权摘要
+    end
 
-    AS->>AS: 创建 Agent、Session 与 Binding
+    AS->>AS: 原子创建 Agent、默认 Session 与固定 Binding
     AS-->>U: Agent READY
 ```
 
@@ -1176,7 +1200,7 @@ Agent Service 在启动前解析：
 * AgentProfile。
 * RuntimeProfile。
 * ModelBinding。
-* WorkspaceBinding。
+* 固定 WorkspaceBinding 与当前授权。
 * SkillBindings。
 * MCPBindings。
 * Tool Permissions。
@@ -1195,13 +1219,7 @@ Agent Service 在启动前解析：
     "id": "agent.coding",
     "revision": 1
   },
-  "workspaceBindings": [
-    {
-      "workspaceRef": "workspace://workspace-001",
-      "targetPath": "/workspace",
-      "readOnly": false
-    }
-  ],
+  "sourceBindings": [],
   "configurationBindings": [
     {
       "name": "primary-model",
@@ -1219,7 +1237,10 @@ Agent Service 在启动前解析：
       "type": "PLAIN_CONFIG",
       "value": {
         "agentId": "agent-001",
-        "profile": "agent.coding"
+        "profile": "agent.coding",
+        "workspaceType": "studio",
+        "workspaceId": "studio-workspace-001",
+        "workspaceAccessMode": "appstudio-tool-only"
       }
     }
   ],
@@ -1229,12 +1250,16 @@ Agent Service 在启动前解析：
     "diskMb": 20480,
     "gpuCount": 0
   },
+  "requestingService": "task-center",
   "owner": {
-    "service": "agent-service",
+    "domain": "agent",
     "reference": "agent-runtime-binding-001"
-  }
+  },
+  "authorizationRef": "agent-runtime-grant://grant-001"
 }
 ```
+
+该示例为 Coding Agent，因此不得携带 StudioWorkspace 文件系统挂载。Workspace Tool 的短期授权在每个 Invocation 开始时单独签发；Platform Agent 才可以按固定 AgentWorkspace Binding 生成受控 `agent-workspace://...` 挂载引用。
 
 Agent Service 不接收明文模型密钥。
 
@@ -1247,7 +1272,7 @@ sequenceDiagram
     participant AS as Agent Service
     participant TC as Task Center
     participant TW as Task Worker
-    participant MM as model-manager
+    participant MM as model-management
     participant MG as modelgateway
     participant IS as Infra Service
     participant AR as Agent Runtime
@@ -1285,13 +1310,15 @@ sequenceDiagram
 1. 校验 Agent 和 Session 所有权。
 2. 校验 Agent 是否禁用。
 3. 创建 User Message。
-4. 创建 AgentOperation。
-5. 如 Agent 为 READY 或 SUSPENDED，则启动或恢复 Runtime。
-6. 确保 Runtime Session 已建立。
-7. 通过 AgentRuntimeAdapter 发送消息。
-8. 接收 Agent Event Stream。
-9. 将输出写入 Assistant Message。
-10. 更新 AgentOperation 状态。
+4. 创建 AgentInvocation。
+5. 判断该 Invocation 是否需要 AtomicTask；CODING、工具、后台和 Runtime 操作必须创建并绑定 AtomicTask。
+6. 如 Agent 为 READY 或 SUSPENDED，则通过关联 Task 启动或恢复 Runtime。
+7. 确保 Runtime Session 已建立。
+8. 为 Coding Agent 签发当前 Invocation 专用的短期 Workspace Tool 授权。
+9. 通过 AgentRuntimeAdapter 发送消息。
+10. 接收 Agent Invocation Event Stream。
+11. 将输出写入 Assistant Message。
+12. 按 Task 结果和 Runtime 最终结果单调更新 AgentInvocation 状态。
 
 ---
 
@@ -1309,9 +1336,10 @@ sequenceDiagram
     participant LLM as LLM Provider
 
     U->>AS: SendMessage
+    AS->>AS: 持久化 Message + Invocation
 
-    alt Agent 未运行
-        AS->>TC: 创建 agent.runtime.ensure Task
+    alt 需要 Runtime 或异步执行
+        AS->>TC: 创建并绑定 Invocation AtomicTask
         TC->>TW: 分发 functionRef
         TW->>IS: Start / Create Runtime
         IS-->>TW: endpointRef
@@ -1325,24 +1353,24 @@ sequenceDiagram
 
     loop Streaming
         LLM-->>AR: Token / Tool Call
-        AR-->>AD: Agent Event
-        AD-->>AS: Standard Agent Event
+        AR-->>AD: Agent Invocation Event
+        AD-->>AS: Standard Agent Invocation Event
         AS-->>U: SSE Event
     end
 
-    AR-->>AD: Operation Completed
+    AR-->>AD: Invocation Completed
     AD-->>AS: Final Result
     AS-->>U: Completed
 ```
 
 ---
 
-## 12.3 Agent Event
+## 12.3 Agent Invocation Event
 
 统一事件类型：
 
 ```text
-operation.started
+invocation.started
 message.delta
 message.completed
 tool.requested
@@ -1351,9 +1379,9 @@ tool.progress
 tool.completed
 tool.failed
 user.input_required
-operation.completed
-operation.failed
-operation.canceled
+invocation.completed
+invocation.failed
+invocation.canceled
 ```
 
 不同 Agent Runtime 的原始事件由 `AgentRuntimeAdapter` 转换为统一事件。
@@ -1367,10 +1395,10 @@ S1 使用 SSE 返回 Agent 输出。
 建议接口：
 
 ```text
-GET /agents/{agentId}/operations/{operationId}/events
+GET /agents/{agentId}/operations/{invocationId}/events
 ```
 
-SSE 只负责当前 AgentOperation 的实时事件。
+SSE 只负责当前 AgentInvocation 的实时事件。
 
 需要跨页面提示的完成和失败事件，交给 Notification Center 或用户级事件通道。
 
@@ -1629,40 +1657,41 @@ network.outbound
 
 ## 18.1 Workspace Binding
 
-Agent Service 只管理绑定关系：
+每个 Agent 只管理一个固定绑定：
 
 ```text
-Agent
-    ↓
-AgentWorkspaceBinding
-    ↓
-WorkspaceRef
+Platform Agent -> AgentWorkspaceBinding -> AgentWorkspace
+Coding Agent   -> AgentWorkspaceBinding -> StudioWorkspace stable ID
 ```
 
-Workspace 实际存储和生命周期不与 Agent Runtime 绑定。
+AgentWorkspace 的业务生命周期归 Agent；StudioWorkspace 的源码、Revision、ChangeSet 和 Snapshot 全部归 AppStudio。两类 Workspace 的生命周期都不与 Agent Runtime 绑定。
 
 ---
 
 ## 18.2 Coding Agent
 
-Coding Agent 通常需要：
+Coding Agent 的 Binding 可以授予源码写入能力上限：
 
 ```text
 READ_WRITE
 ```
 
-允许：
+实际执行时只允许通过 AppStudio Workspace Tool：
 
-* 创建文件。
-* 修改代码。
-* 删除文件。
+* 按当前 Revision 读取文件。
+* 提交带 `base_revision` 和幂等键的原子 ChangeSet。
+* 创建、修改、移动或删除 ChangeSet 中明确列出的文件。
 * 运行受控测试。
 * 读取 Build 日志。
 * 读取 Preview 日志。
 
+每份 Tool 授权必须绑定 Principal、Agent、Session、Invocation、StudioWorkspace、允许动作和有效期；过期、越权、Workspace 不匹配或 Revision 冲突时必须拒绝，且不得部分应用 ChangeSet。
+
 禁止：
 
 * 访问其他 Workspace。
+* 直接挂载 StudioWorkspace 或读取 AppStudio 私有存储。
+* 绕过 ChangeSet 直接写文件。
 * 直接修改生产 Runtime。
 * 直接修改不可变 Release。
 * 将 Secret 写入 Workspace。
@@ -1678,8 +1707,8 @@ READ_WRITE
 * 删除 AgentRuntimeBinding。
 * 删除 Agent 业务对象或进行软删除。
 * 不自动删除外部 Workspace。
-* 不自动删除 Workspace Snapshot。
-* 不自动删除已发布 StudioApp。
+* 不自动删除 StudioSourceSnapshot。
+* 不自动删除已发布 StudioApplication。
 
 ---
 
@@ -1738,8 +1767,8 @@ sequenceDiagram
 
 1. 重新解析 ModelBinding。
 2. 重新解析 CredentialRef。
-3. 请求 Infra Service 创建或启动 Runtime。
-4. 重新加载 Workspace 和 Skills。
+3. 创建恢复 AtomicTask，由 Task Worker 通过 Infra Adapter 创建或启动 Runtime。
+4. 重新加载 AgentWorkspace 挂载，或为 StudioWorkspace 配置 AppStudio Workspace Tool，并加载 Skills。
 5. 创建 Runtime Session。
 6. 恢复 Session 摘要和 Memory。
 7. Agent 状态变为 IDLE。
@@ -1831,7 +1860,7 @@ Agent Service 负责将 Task 结果投影到：
 
 * Agent 状态。
 * RuntimeBinding 状态。
-* AgentOperation 状态。
+* AgentInvocation 状态。
 
 ---
 
@@ -1843,8 +1872,8 @@ Agent Service 负责将 Task 结果投影到：
 agent.runtime.start_failed
 agent.runtime.recovered
 agent.runtime.recovery_failed
-agent.operation.completed
-agent.operation.failed
+agent.invocation.completed
+agent.invocation.failed
 agent.input_required
 agent.disabled
 ```
@@ -1868,7 +1897,7 @@ agent.disabled
 Agent
 AgentSession
 AgentMessage
-AgentOperation
+AgentInvocation
 AgentMemory
 AgentModelBinding
 AgentWorkspaceBinding
@@ -1887,16 +1916,15 @@ AgentMCPBinding
 Agent Service 调用以下内部服务时使用服务身份：
 
 ```text
-Infra Service
 Task Center
-model-manager
+model-management
 modelgateway
 Asset Library
 Application Platform
 Notification Center
 ```
 
-Infra Service 的 Runtime 创建接口不能直接暴露给前端。
+Agent Service 不直接调用 Infra Service；Infra Runtime 写接口只接受 Task Worker 的受信身份，也不能直接暴露给前端。
 
 ---
 
@@ -1938,7 +1966,7 @@ Agent Service：
 ```text
 AgentModelBinding
     ↓
-model-manager 校验模型所有权
+model-management 校验模型所有权
     ↓
 modelgateway 生成 ModelAccessSpec
     ↓
@@ -2001,9 +2029,9 @@ agent_suspended_total
 agent_error_total
 
 agent_session_total
-agent_operation_running
-agent_operation_failed_total
-agent_operation_duration
+agent_invocation_running
+agent_invocation_failed_total
+agent_invocation_duration
 
 agent_runtime_start_duration
 agent_runtime_recovery_total
@@ -2024,7 +2052,7 @@ traceId
 userId
 agentId
 sessionId
-operationId
+invocationId
 taskId
 infraRuntimeId
 ```
@@ -2095,10 +2123,10 @@ SendAgentMessage
 GetAgentMessage
 ListAgentMessages
 
-GetAgentOperation
-ListAgentOperations
-CancelAgentOperation
-StreamAgentOperationEvents
+GetAgentInvocation
+ListAgentInvocations
+CancelAgentInvocation
+StreamAgentInvocationEvents
 ```
 
 ---
@@ -2129,11 +2157,10 @@ ValidateAgentModelBinding
 ## 26.8 WorkspaceBinding
 
 ```text
-BindAgentWorkspace
-UnbindAgentWorkspace
-ListAgentWorkspaceBindings
-SetPrimaryAgentWorkspace
+GetAgentWorkspaceBinding
 ```
+
+固定 Workspace 只能在创建 Agent 时建立并完成校验；不提供对既有 Agent 的绑定、解绑、重新校验或切换接口。
 
 ---
 
@@ -2225,11 +2252,11 @@ agent.session.created
 agent.session.closed
 agent.session.archived
 
-agent.operation.started
-agent.operation.waiting_for_user
-agent.operation.completed
-agent.operation.failed
-agent.operation.canceled
+agent.invocation.started
+agent.invocation.waiting_for_user
+agent.invocation.completed
+agent.invocation.failed
+agent.invocation.canceled
 
 agent.memory.created
 agent.memory.updated
@@ -2293,9 +2320,9 @@ AGENT_PROFILE_REVISION_NOT_FOUND
 ```text
 AGENT_SESSION_NOT_FOUND
 AGENT_SESSION_CLOSED
-AGENT_OPERATION_NOT_FOUND
-AGENT_OPERATION_ALREADY_COMPLETED
-AGENT_OPERATION_CANCEL_FAILED
+AGENT_INVOCATION_NOT_FOUND
+AGENT_INVOCATION_ALREADY_COMPLETED
+AGENT_INVOCATION_CANCEL_FAILED
 AGENT_RUNTIME_SESSION_CREATE_FAILED
 ```
 
@@ -2352,25 +2379,19 @@ AGENT_MCP_CREDENTIAL_UNAVAILABLE
 
 ---
 
-# 30. 数据表建议
+# 30. 事实持久化边界
 
 ```text
-agent_profiles
-agents
-agent_sessions
-agent_messages
-agent_operations
-agent_operation_events
-
-agent_memories
-agent_model_bindings
-agent_workspace_bindings
-agent_skill_bindings
-agent_mcp_bindings
-agent_runtime_bindings
+AgentProfile 目录与可用性投影
+Agent 与固定 Workspace 引用
+AgentSession / AgentMessage / AgentInvocation
+AgentMemory
+Model / Skill / MCP Binding
+AgentRuntimeBinding
+可靠 Agent 事件
 ```
 
-AgentProfile 可以由内置和目录加载，不一定需要数据库作为唯一事实源。
+具体表、列、索引和外键由 S2 定义。AgentProfile 可以由内置目录加载，不要求数据库成为唯一事实源。
 
 ---
 
@@ -2385,17 +2406,18 @@ AgentProfile 可以由内置和目录加载，不一定需要数据库作为唯�
 * Agent 状态机。
 * Agent Session。
 * Agent Message。
-* AgentOperation。
+* AgentInvocation。
 * SSE 流式输出。
 * Agent Memory 基础能力。
 * AgentModelBinding。
-* `model-manager` 集成。
+* `model-management` 集成。
 * `modelgateway` ModelAccessSpec 解析。
 * Infra Service Runtime 创建和停止。
 * Secret 安全注入。
-* AgentRuntimeAdapter。
-* Workspace Binding。
-* Coding Agent 读写 Workspace。
+* AgentRuntimeProvider 与 AgentRuntimeAdapter。
+* 固定 Workspace Binding。
+* Platform AgentWorkspace。
+* Coding Agent 通过短期 AppStudio Workspace Tool 授权提交 ChangeSet。
 * Agent Skills。
 * MCP Server Binding。
 * 工具权限。
@@ -2447,7 +2469,7 @@ Agent Service 不得直接操作 Docker、Kubernetes、宿主机、GPU 或 Edge 
 
 ## R-AGENT-004
 
-所有 Agent Runtime 必须通过 Infra Service 创建和管理。
+所有 Agent Runtime 必须由 Agent 创建 AtomicTask，并经 Task Worker、Infra Adapter 和 Infra Service 创建和管理。
 
 ## R-AGENT-005
 
@@ -2471,11 +2493,13 @@ AgentRuntimeAdapter 只负责 Agent Runtime 交互协议，不负责基础设施
 
 ## R-AGENT-010
 
-Workspace 生命周期独立于 Agent 和 Runtime 生命周期。
+每个 Agent 必须固定一个与类型匹配的 Workspace；Session、Invocation 和 Runtime 不得切换。Workspace 生命周期独立于 Runtime 生命周期。
+
+Coding Agent 不得直接挂载 StudioWorkspace；源码读写必须使用当前 Invocation 的短期 AppStudio Workspace Tool 授权，并通过带 `base_revision` 的原子 ChangeSet 完成。
 
 ## R-AGENT-011
 
-删除 Agent 不得自动删除外部 Workspace 或已发布 StudioApp。
+删除 Agent 不得自动删除 AgentWorkspace、StudioWorkspace 或已发布 StudioApplication。
 
 ## R-AGENT-012
 
@@ -2487,7 +2511,7 @@ Agent Runtime 不得直接修改生产 Runtime 或不可变 Release。
 
 ## R-AGENT-014
 
-复杂异步操作必须复用 Task Center。
+CODING、TOOL_OPERATION、BACKGROUND_OPERATION 及任何 Runtime 生命周期操作必须关联 AtomicTask，并由 Task Center 管理尝试、重试、取消和超时。
 
 ## R-AGENT-015
 
@@ -2511,7 +2535,7 @@ Agent Service 必须支持 Runtime 异常后的状态对账和恢复。
 
 ## R-AGENT-020
 
-普通交互消息可以直接由 Agent Service 管理，不要求每条消息都创建 Task Center Task。
+纯 `CHAT` 且不启动 Runtime、不执行工具或后台工作的 Invocation 可以由 Agent Service 直接管理；一旦进入异步执行，必须创建并绑定 AtomicTask。
 
 ---
 
@@ -2519,16 +2543,16 @@ Agent Service 必须支持 Runtime 异常后的状态对账和恢复。
 
 ```text
 Agent Service
-    管理 Agent、Session、Memory、Skills、MCP、权限和业务生命周期
+    管理 Agent、Session、Invocation、Memory、AgentWorkspace、Skills、MCP、权限和业务生命周期
 
-model-manager
+model-management
     决定当前用户可以使用哪个模型
 
 modelgateway
     将模型引用解析为 ModelAccessSpec
 
 Infra Service
-    创建 Agent Runtime，并注入 Workspace、配置和 Secret
+    接收 Task Worker 的受控请求，创建 Agent Runtime，并注入允许的配置和 Secret
 
 Agent Runtime
     执行 Agent Loop，并自行调用 LLM 和工具
@@ -2537,7 +2561,7 @@ Task Center
     管理复杂异步操作、重试、取消和依赖
 
 AppStudio
-    使用 Coding Agent 开发和修改 StudioApp
+    拥有 StudioWorkspace，并通过 Workspace Tool 接收 Coding Agent ChangeSet
 
 Application Platform
     提供 Agent 可调用的 ApplicationVersion
@@ -2555,12 +2579,13 @@ Notification Center
 flowchart LR
     USER[User / AppStudio]
     AS[Agent Service]
-    MM[model-manager]
+    MM[model-management]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Agent Runtime]
     LLM[LLM Provider]
-    WS[Workspace]
+    AWS[AgentWorkspace]
+    ST[AppStudio Workspace Tool]
     TC[Task Center]
 
     USER --> AS
@@ -2572,13 +2597,31 @@ flowchart LR
     TC --> WORKER[Task Worker]
     WORKER --> INFRA
     INFRA --> AGENT
-    INFRA -->|挂载| WS
+    INFRA -->|仅 Platform Agent 授权挂载| AWS
     INFRA -->|注入 ModelAccessSpec 与 Secret| AGENT
 
     AGENT -->|直接调用| LLM
-    AGENT -->|读写| WS
+    AGENT -->|Coding Agent 受控读写| ST
 ```
 
 最终边界为：
 
 > Agent Service 决定运行哪个 Agent、使用哪个模型、Workspace 和工具；Task Center 统一承接运行任务；Task Worker 通过 Infra Adapter 调用 Infra Service；Infra Service 决定该 Agent Runtime 如何运行；Agent Runtime 自行完成模型调用和 Agent Loop。
+
+## 34. S2 追溯锚点
+
+以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
+
+- `US-AGENT-001`：用户可以管理持久化 Agent、固定 Workspace、会话交互、记忆和受控 Runtime 生命周期。
+- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding 和 Runtime Binding 的事实归属与生命周期必须遵守本 S1 第 3、8、9、18、19、20、21、23、24、28 节及 `R-AGENT-001..020`。
+
+验收标准：
+
+- `AC-AGENT-001-01`：创建 Platform Agent 时系统创建或绑定一个 AgentWorkspace；创建 Coding Agent 时必须校验一个已存在的 StudioWorkspace，类型与 Workspace 不匹配则整体拒绝。
+- `AC-AGENT-001-02`：Agent 创建后，任何 Session、Invocation、恢复或 Runtime 重建都不能修改其 `workspaceType/workspaceId`；更换 Workspace 必须新建 Agent。
+- `AC-AGENT-001-03`：Coding Agent 源码读写必须携带绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的 Tool 授权；授权不匹配或过期时不得执行。
+- `AC-AGENT-001-04`：Coding Agent 写入必须由 AppStudio 原子应用带 `base_revision` 的 ChangeSet；Revision 冲突时不自动覆盖、不隐式合并、不部分应用。
+- `AC-AGENT-001-05`：CODING、TOOL_OPERATION、BACKGROUND_OPERATION 以及 Runtime 启停恢复 Invocation 必须关联 AtomicTask；Agent 不复制 TaskAttempt、重试、超时或取消状态机。
+- `AC-AGENT-001-06`：纯 CHAT Invocation 可以不创建 AtomicTask；一旦需要启动 Runtime、执行工具或进入后台，必须先持久化并绑定 AtomicTask。
+- `AC-AGENT-001-07`：Runtime 删除、挂起或异常重建后，Agent、Session、Message、Memory 和固定 Workspace 引用保持不变。
+- `AC-AGENT-001-08`：所有 Infra-backed 操作只能走 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`，Agent API、事件和日志不得暴露 Provider 私有信息、宿主路径或明文 Secret。

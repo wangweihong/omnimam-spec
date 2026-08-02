@@ -2,9 +2,16 @@
 
 ## Unreleased
 
+- 补齐 Task Center 第一阶段 Infra-backed Function Registry：S1 固定 Agent/AppStudio 七个 canonical functionRef、合同版本冻结规则、`BR-TASK-153` 和 `US-TASK-026`；新增 registry meta-schema 与逐项 I/O、JOB/SERVICE、能力、幂等、重试、取消、超时、Infra 映射、Artifact 登记和结果 transform 合同。
+- Task Center AtomicTask 新增 function contract version/digest 设计态字段和 API 投影，调用方 capability 改为 registry 派生；新增输入无效、输出无效、合同不可用和 capability 不可用错误，并同步模块契约、领域架构、Context 与导航。本轮未修改 `RELEASE.md`。
+- 收敛 `agent` S1：统一 `AgentInvocation`，固定 `kind/workspace_type/workspace_id`，区分纯 CHAT 与必须关联 AtomicTask 的异步 Invocation，并补齐 Hermes/OpenCode AgentRuntimeProvider、Coding Agent 短期 Workspace Tool 授权、`base_revision` ChangeSet 和 8 条验收标准。
+- 收敛 `appstudio` S1：移除旧 `StudioProject/StudioConversation/StudioApp/StudioDeployment` 事实模型，统一为 StudioApplication、Repository、Workspace/Revision/ChangeSet、Snapshot、Version、Build、RuntimeConfig、Release、RuntimeInstance；补齐 Artifact READY/digest 门禁、健康切换、回滚新建 Release 和 12 条验收标准。
+- 收敛 `infrastructure` S1：修复 Coding Agent 可写 Workspace 示例，明确 output descriptor 到 Task Worker/Asset Library 的 Artifact 登记边界，固化失败幂等、Endpoint 授权、Provider 超时恢复、孤儿清理和 10 条验收标准。
+- 将 Agent/Infrastructure S1 中的 Go interface 改写为产品逻辑能力；同步三个 Domain Context、`GLOBAL_CONTEXT.md` 和 `CONTEXT_MAP.md`。本轮未创建 Release，当前三域 S1/S2 仍不得作为正式实施依据。
 - 按当前 S1 草稿全新生成 `agent`、`appstudio`、`infrastructure` 的 S2：OpenAPI、设计态 Schema、错误码、权限码、事件和模块契约。
+- 最终一致性复核补齐 Build 成功与 current RuntimeInstance 健康门禁、回滚 Release 自引用、Agent Workspace 双层引用一致性和 Infra 内部请求摘要规则；Endpoint 契约统一为 `visibility=INTERNAL/USER_ACCESSIBLE/PUBLIC`，并记录 SSE `Last-Event-ID` 标准头命名例外。
 - 新增 Infrastructure 错误码索引区间 `240200-240999`。
-- 本轮不读取、不恢复旧版 Agent/AppStudio S2；当前三个 S1 尚无标准 `US-*`/`BR-*` 编号，S2 使用现有 `R-*` 规则和源章节追溯，并将编号补齐列为 Release 前置任务。
+- 本轮不读取、不恢复旧版 Agent/AppStudio S2；三个当前 S1 保留 `US-*-001`/`BR-*-001` 机器锚点，并新增可验收的 `AC-*`，后续 S2 必须按修订后的 S1 重新校验后才能 Release。
 
 ## 2026-08-02
 

@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 Infrastructure S1 只有 `R-INFRA-*` 强制规则和章节语义，没有标准 `US-*`/`BR-*` 编号。契约中的 `user_stories` 保持为空，规则引用使用真实 `R-INFRA-*` 和 `source_sections`。补齐标准编号是 Release 前置任务。
+当前 Infrastructure S1 使用 `US-INFRA-001`、`BR-INFRA-001`、`AC-INFRA-001-01..10` 及 `R-INFRA-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Docker-only、请求指纹幂等、受控挂载、output descriptor 和 Endpoint 授权语义。
 
 ## 2. 模块边界
 
@@ -23,7 +23,7 @@
 - 唯一受信调用链为 `Agent/AppStudio -> Task Center -> Task Worker -> Infra Adapter -> Infra Service -> DockerRuntimeProvider`。
 - Infra 写 API 必须验证 `requesting_service=task-center`、`owner_domain`、`owner_reference`、`request_id` 和有效 RuntimeProfile。
 - 业务域只提交已注册 functionRef 的业务参数和授权引用；Task Worker/Infra Adapter 负责生成受控 Infra 请求。Infra 不解析 Agent、StudioWorkspace、Snapshot 或 Artifact 私表。
-- `source_ref` 只能是来源领域签发的受控引用；不得把它解释为宿主机路径。Production 只允许固定 Artifact digest，携带 Workspace/Revision/Snapshot 的请求必须拒绝。
+- `source_ref` 只能是来源领域签发的受控引用；不得把它解释为宿主机路径。Coding Agent 不允许 StudioWorkspace 文件系统挂载；Production 只允许固定 Artifact digest，携带 Workspace/Revision/Snapshot 的请求必须拒绝。
 
 ## 4. 挂载矩阵
 
@@ -38,9 +38,12 @@
 
 - Job/Service 使用 `ACCEPTED -> VALIDATING -> SCHEDULING -> PREPARING -> RUNNING -> terminal` 状态；Infra 不生成 Agent、Build、Task 或模型业务状态。
 - 取消、停止、超时、重试和进程重启必须依据 requestId、已有 `infra_runtime_id` 和 Provider 引用恢复，不得重复创建运行单元。
+- `request_fingerprint` 是 Infra 根据规范化创建请求计算并持久化的内部摘要，不由调用方提交；同一 `requesting_service + request_id` 只有摘要一致时才能重放原结果。
 - Secret 只接受 SecretRef，由 Infra 在运行阶段解析并注入；普通 API、事件、日志和输出不得包含凭证、Provider 原始响应、容器 ID、Host Port、宿主路径或私网地址。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
-- RuntimeOutput 只保存受控 Artifact 引用或小型状态，不保存媒体正文；Artifact 内容、处理和生命周期归 asset-library。
+- RuntimeOutput 只保存 output descriptor、小型状态及 Task Worker 登记后回写的可选 Artifact 引用，不保存媒体正文；Infra 不调用 Artifact 登记接口，Artifact 内容、处理和生命周期归 asset-library。
+- `requesting_service + request_id` 是创建幂等作用域；请求摘要不同必须冲突，原失败重试必须使用新的 request_id。
+- `USER_ACCESSIBLE` Endpoint 必须校验 owner 与当前授权；`PUBLIC` 第一阶段默认禁用，只有 RuntimeProfile 明确允许、来源领域显式请求并通过审计后才能创建。普通响应不返回 Host Port、私网地址或 Provider Endpoint 原文。
 
 ## 6. S1 追溯
 

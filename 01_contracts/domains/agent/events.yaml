@@ -1,4 +1,4 @@
-# 当前 S1 没有 US/BR 编号；事件追溯使用 R-AGENT-*，不虚构用户故事编号。
+# 事件追溯使用 US-AGENT-001/BR-AGENT-001 及具体 R-AGENT-* 规则。
 agent_lifecycle_changed:
   producer: agent-service
   consumers: [notification-center, sse, audit-service]
@@ -16,8 +16,8 @@ agent_lifecycle_changed:
   idempotency_key: agent_id:resource_version
   retry_policy: agent outbox 持续重试，消费者按 agent_id/resource_version 幂等。
   failure_policy: 事件失败不回滚 Agent；可从 Agent 事实重放。
-  related_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-010, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 agent_session_status_changed:
   producer: agent-session-service
   consumers: [notification-center, sse, audit-service]
@@ -33,8 +33,8 @@ agent_session_status_changed:
   idempotency_key: session_id:resource_version
   retry_policy: agent outbox 重试，消费者按 Session 版本幂等。
   failure_policy: 不删除 Session、Message 或 Memory；可从事实重放。
-  related_rules: [R-AGENT-002, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 agent_invocation_status_changed:
   producer: agent-interaction-service
   consumers: [notification-center, sse, audit-service]
@@ -53,8 +53,8 @@ agent_invocation_status_changed:
   idempotency_key: invocation_id:resource_version
   retry_policy: agent outbox 重试，消费者按 Invocation 版本幂等。
   failure_policy: Invocation 是 Agent 业务投影；事件不得反向覆盖 AtomicTask 终态。
-  related_rules: [R-AGENT-002, R-AGENT-014, R-AGENT-020]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-014, R-AGENT-020]
+  related_user_stories: [US-AGENT-001]
 agent_runtime_status_changed:
   producer: agent-runtime-service
   consumers: [notification-center, sse, audit-service, operations-monitor]
@@ -73,8 +73,8 @@ agent_runtime_status_changed:
   idempotency_key: runtime_binding_id:resource_version
   retry_policy: agent outbox 重试；消费者按 Runtime Binding 版本幂等。
   failure_policy: 发布失败不回滚 Runtime 操作；对账后可重放。
-  related_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-018, R-AGENT-019]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-018, R-AGENT-019]
+  related_user_stories: [US-AGENT-001]
 agent_memory_changed:
   producer: agent-memory-service
   consumers: [audit-service]
@@ -90,5 +90,5 @@ agent_memory_changed:
   idempotency_key: memory_id:resource_version
   retry_policy: outbox 重试。
   failure_policy: 事件失败不影响 Memory 事实；不在事件中携带记忆正文。
-  related_rules: [R-AGENT-002, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]

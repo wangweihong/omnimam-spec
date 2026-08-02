@@ -15,11 +15,12 @@
 ## 3. 核心规则
 
 - `workspace_type=agent` 只用于 Platform Agent；`workspace_type=studio` 只用于 Coding Agent。
-- Coding Agent 创建时必须固定绑定一个已存在且受权的 StudioWorkspace，Session 和 Invocation 不得切换。
+- Agent 创建时固定 `kind/workspace_type/workspace_id`：Platform Agent 使用 AgentWorkspace，Coding Agent 使用已存在且受权的 StudioWorkspace；Session 和 Invocation 不得切换。
 - 多个 Coding Agent 可以引用同一 StudioWorkspace，但写入必须经过 AppStudio ChangeSet 和 `base_revision` 校验。
 - Coding Agent 不直接挂载 AppStudio 存储，只使用当前 AgentInvocation 的受控 Workspace Tool 授权；Runtime 挂载请求必须经 Task Center、Task Worker 和 Infra Adapter。
 - Agent 删除、挂起或 Runtime 重建不得改写 StudioWorkspace、StudioBuild、StudioRelease 或 StudioRuntimeInstance。
-- AgentInvocation 关联 AtomicTask；任务尝试、重试、取消和调度并发均以 task-center 当前事实源为准。
+- 纯 `CHAT` 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必须关联 AtomicTask，任务尝试、重试、取消和调度并发均以 task-center 当前事实源为准。
+- AgentRuntimeProvider 当前只承载 Hermes/OpenCode 的业务生命周期和 Task 编排；Infrastructure RuntimeProvider 第一阶段只承载 Docker，两者不得混用。
 
 ## 4. 领域边界
 
@@ -50,7 +51,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-Agent S1/S2 均为未 Release 草稿，不能作为正式实现、合并或验收依据。当前 S2 使用 `R-AGENT-*` 和源章节追溯；标准 `US/BR` 编号仍是 Release 前置任务。
+Agent S1/S2 均为未 Release 草稿，不能作为正式实现、合并或验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

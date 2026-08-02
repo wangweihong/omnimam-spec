@@ -10,6 +10,7 @@ flowchart LR
   Producers --> Outbox["PostgreSQL Outbox"]
   Outbox --> API
   API --> DB["Task Center Projection DB"]
+  API --> Functions["Versioned Function Registry"]
   API --> Runtime["WorkflowRuntime"]
   API --> Manual["Fixed Manual Controller"]
   Manual --> Runtime
@@ -17,6 +18,7 @@ flowchart LR
   Reconcile --> Registry["ReconcileRegistry"]
   Runtime --> Conductor["Conductor OSS"]
   Conductor --> Workers["Go Task Workers"]
+  Functions --> Workers
   Workers --> Adapter["Infra Adapter"]
   Adapter --> Infra["Infra Service"]
   Infra --> Docker["DockerRuntimeProvider"]
@@ -33,7 +35,7 @@ flowchart LR
 | Orchestration service | 展开 Group/DAG、编译定义和聚合状态结果 |
 | Schedule service | 双模式计划管理、ScheduleExecution、ScheduleReconcileState、活动锁与 retention |
 | ReconcileRegistry | 注册受控巡检器、校验配置、路由轻量巡检与幂等修复动作 |
-| Function registry | 将受控 functionRef 映射到 Worker handler 和 schema |
+| Function registry | 从只读 S2 registry 加载 ACTIVE/RETAINED 合同、I/O schema、能力、策略、Infra 映射和结果 transform；创建任务时固定 version 与 RFC 8785 + SHA-256 digest |
 | Task Worker | 消费 AtomicTask，执行注册 handler，并维护 Attempt 级恢复和结果映射 |
 | Infra Adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求；统一处理幂等、取消、超时和运行引用 |
 | Name catalog | 将稳定系统名称 key 和参数投影为 zh-CN、en-US 及后续 BCP 47 语言映射 |
@@ -54,6 +56,7 @@ flowchart LR
 - AssetVersion 首次派生使用 `asset-library.representation.build` DAG，周期缺口由 `asset-library.representation-backfill` RECONCILE 发现并创建单项 generate AtomicTask；Task Center 不决定媒体策略。
 - ComfyUI WorkflowTestRun 使用 `submit -> poll -> collect_preview`；Worker 返回 `IN_PROGRESS + callbackAfterSeconds` 后由 Conductor 延迟重投同一 task，期间释放 Worker。
 - AgentRuntime、AppStudio Preview、Build 和 Production 的 Infra 操作均通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；来源领域不得直接调用 Infra Service。
+- 第一阶段七个 canonical Infra-backed functionRef 由 `function-registry.yaml` 定义；调用方 arguments 在创建任务前校验，Worker 结果在成功投影前校验。Registry 升级不改写 AtomicTask 固定的合同版本与摘要。
 - Task Worker 的 Infra Adapter 只接受 Task Center 已校验的业务授权引用，并生成 Infra `source_ref`。首阶段只调用 Docker Job/Service；不透传镜像、任意命令、宿主机路径、凭证或 Provider 私有字段。
 
 ## 4. 调度模型
@@ -87,6 +90,7 @@ RECONCILE 历史由 retention worker 按状态、数量与时长幂等清理；�
 - reconciler 对账非终态 execution，因此 Worker、Conductor、API 或消息消费者重启不依赖内存状态恢复。
 - 运行时不可用时保留可恢复业务状态，不启用旧 Dispatcher 或双写旧 TaskRun。
 - Task Worker 或 Infra Adapter 重启后，使用 AtomicTask 的幂等键、Attempt 和已保存运行引用恢复或清理 Infra Job/Service；不得因重试重复创建同一运行单元。
+- Registry 加载器按 `function_ref + contract_version + digest` 恢复历史任务；旧合同缺失或摘要漂移时停止分发并返回稳定合同不可用错误，不得静默改用最新版本。
 - Worker 通过运行时绑定的 TaskLogger 向 Conductor runtime task 追加版本化日志；Task Center 以 Attempt ID 授权后代理读取。日志写入和读取失败不参与业务状态事务，运行时历史被清理后稳定返回日志不可用。
 
 ## 6. 数据所有权

@@ -15,7 +15,7 @@ paths:
       operationId: list_studio_applications
       summary: 查询 StudioApplication
       x-permission: appstudio.application.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['2.1 StudioApp 与 Application Platform 分离', '17 权限模型']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['2.1 StudioApplication 与 Application Platform 分离', '17 权限模型']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}]
       responses: {'200': {description: 应用列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
@@ -23,7 +23,7 @@ paths:
       operationId: create_studio_application
       summary: 创建 StudioApplication
       x-permission: appstudio.application.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-001, R-STUDIO-010, R-STUDIO-013], source_sections: ['6 项目创建']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['6 StudioApplication 创建']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateRequest'}}}}
       responses: {'200': {description: 创建后的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}:
@@ -33,14 +33,14 @@ paths:
       operationId: get_studio_application
       summary: 获取 StudioApplication
       x-permission: appstudio.application.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['5 核心领域对象', '17 权限模型']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['5 核心领域对象', '17 权限模型']}
       responses: {'200': {description: StudioApplication。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     patch:
       tags: [applications]
       operationId: update_studio_application
       summary: 更新应用元数据
       x-permission: appstudio.application.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['5.1 StudioProject', '16 Agent 与项目生命周期']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['5.1 StudioApplication', '16 Agent 与 StudioApplication 生命周期']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationUpdateRequest'}}}}
       responses: {'200': {description: 更新后的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/archive:
@@ -49,7 +49,7 @@ paths:
       operationId: archive_studio_application
       summary: 归档 StudioApplication
       x-permission: appstudio.application.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-010, R-STUDIO-014], source_sections: ['16.1 项目归档']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-010, R-STUDIO-022], source_sections: ['16.1 StudioApplication 归档']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 归档后的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -59,7 +59,7 @@ paths:
       operationId: get_studio_application_workspace
       summary: 获取应用 Workspace
       x-permission: appstudio.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-010], source_sections: ['5.3 WorkspaceBinding', '7 Coding Agent 开发']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['5.3 StudioWorkspace', '7 Coding Agent 开发']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       responses: {'200': {description: Workspace 摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioWorkspace'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}:
@@ -68,7 +68,7 @@ paths:
       operationId: get_studio_workspace
       summary: 获取 Workspace
       x-permission: appstudio.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-010], source_sections: ['5.3 WorkspaceBinding', '17 权限模型']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['5.3 StudioWorkspace', '17 权限模型']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       responses: {'200': {description: Workspace。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioWorkspace'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}/files:
@@ -77,7 +77,7 @@ paths:
       operationId: list_studio_source_files
       summary: 查询 Workspace 文件索引
       x-permission: appstudio.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003], source_sections: ['3.2 源码不保存到数据库字段']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['4.3 Source Repository 与 StudioWorkspace']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: revision, in: query, schema: {type: integer}}, {name: prefix, in: query, schema: {type: string}}]
       responses: {'200': {description: 文件索引列表，不返回存储定位。, content: {application/json: {schema: {$ref: '#/components/schemas/SourceFileListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}/file-content:
@@ -86,7 +86,7 @@ paths:
       operationId: get_studio_file_content
       summary: 读取受控源码文件
       x-permission: appstudio.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-005], source_sections: ['7.4 Coding Agent 权限']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['7.4 Coding Agent 权限']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}, {name: path, in: query, required: true, schema: {type: string}}, {name: revision, in: query, schema: {type: integer}}]
       responses: {'200': {description: 文件内容及截断标记。, content: {application/json: {schema: {$ref: '#/components/schemas/FileContent'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}/change-sets:
@@ -95,7 +95,7 @@ paths:
       operationId: apply_studio_change_set
       summary: 原子应用 ChangeSet
       x-permission: appstudio.workspace.write
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-004, R-STUDIO-005], source_sections: ['7.1 发送开发指令', '7.4 Coding Agent 权限']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['7.1 发送开发指令', '7.4 Coding Agent 权限']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangeSetRequest'}}}}
       responses: {'200': {description: ChangeSet 和目标 Revision 摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/ChangeSet'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -105,7 +105,7 @@ paths:
       operationId: create_studio_source_snapshot
       summary: 从 Workspace 创建不可变 Snapshot
       x-permission: appstudio.snapshot.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-012], source_sections: ['10 Build']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-010, R-STUDIO-011], source_sections: ['10 Build']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SnapshotRequest'}}}}
       responses: {'200': {description: Snapshot。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioSourceSnapshot'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -115,7 +115,7 @@ paths:
       operationId: get_studio_source_snapshot
       summary: 获取不可变 Snapshot
       x-permission: appstudio.snapshot.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-012], source_sections: ['5.4 WorkspaceSnapshot', '10 Build']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-010, R-STUDIO-011], source_sections: ['5.5 StudioSourceSnapshot', '10 Build']}
       parameters: [{$ref: '#/components/parameters/source_snapshot_id'}]
       responses: {'200': {description: Snapshot。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioSourceSnapshot'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/builds:
@@ -124,7 +124,7 @@ paths:
       operationId: list_studio_builds
       summary: 查询 Build
       x-permission: appstudio.build.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-013], source_sections: ['10 Build']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-011, R-STUDIO-017, R-STUDIO-018], source_sections: ['10 Build']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Build 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioBuildListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
@@ -132,7 +132,7 @@ paths:
       operationId: create_studio_build
       summary: 创建 Build
       x-permission: appstudio.build.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-012, R-STUDIO-013], source_sections: ['10.1 Build 输入', '10.2 Build 输出']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-011, R-STUDIO-017, R-STUDIO-018], source_sections: ['10.1 Build 输入', '10.2 Build 输出']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/BuildRequest'}}}}
       responses: {'200': {description: Build。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioBuild'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-builds/{studio_build_id}:
@@ -141,7 +141,7 @@ paths:
       operationId: get_studio_build
       summary: 获取 Build
       x-permission: appstudio.build.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-013], source_sections: ['10 Build']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-011, R-STUDIO-017, R-STUDIO-018], source_sections: ['10 Build']}
       parameters: [{$ref: '#/components/parameters/studio_build_id'}]
       responses: {'200': {description: Build。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioBuild'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-builds/{studio_build_id}/cancel:
@@ -150,7 +150,7 @@ paths:
       operationId: cancel_studio_build
       summary: 请求取消 Build
       x-permission: appstudio.build.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-013, R-STUDIO-018], source_sections: ['10.3 Build 流程']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-017, R-STUDIO-018], source_sections: ['10.3 Build 流程']}
       parameters: [{$ref: '#/components/parameters/studio_build_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: Build。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioBuild'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -160,7 +160,7 @@ paths:
       operationId: get_studio_preview_runtime
       summary: 获取 PreviewRuntime
       x-permission: appstudio.preview.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-010], source_sections: ['9 Preview']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024], source_sections: ['9 Preview']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       responses: {'200': {description: PreviewRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioPreviewRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}/preview-checks:
@@ -169,10 +169,20 @@ paths:
       operationId: refresh_studio_preview
       summary: 创建或刷新 Preview
       x-permission: appstudio.preview.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-003, R-STUDIO-004, R-STUDIO-009], source_sections: ['9.2 Preview 流程']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024], source_sections: ['9.2 Preview 流程']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/PreviewRequest'}}}}
       responses: {'200': {description: PreviewRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioPreviewRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-workspaces/{workspace_id}/preview-runtime/stop:
+    post:
+      tags: [preview]
+      operationId: stop_studio_preview_runtime
+      summary: 通过 Task Center 停止 PreviewRuntime
+      x-permission: appstudio.preview.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-023, R-STUDIO-024], source_sections: ['9 Preview', '16 Agent 与 StudioApplication 生命周期']}
+      parameters: [{$ref: '#/components/parameters/workspace_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 停止请求后的 PreviewRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioPreviewRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-application-versions/{studio_application_version_id}/runtime-configs/{environment}:
     parameters: [{$ref: '#/components/parameters/studio_application_version_id'}, {$ref: '#/components/parameters/environment'}]
     get:
@@ -180,14 +190,14 @@ paths:
       operationId: get_runtime_config
       summary: 获取运行配置引用
       x-permission: appstudio.runtime_config.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-008, R-STUDIO-015], source_sections: ['18 Secret 与配置']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-008, R-STUDIO-013, R-STUDIO-022], source_sections: ['18 Secret 与配置']}
       responses: {'200': {description: 运行配置。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeConfig'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     put:
       tags: [releases]
       operationId: replace_runtime_config
       summary: 整体替换运行配置
       x-permission: appstudio.runtime_config.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-008, R-STUDIO-015], source_sections: ['18.1 Environment Schema', '18.2 Secret 规则']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-008, R-STUDIO-013, R-STUDIO-022], source_sections: ['18.1 Environment Schema', '18.2 Secret 规则']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeConfigRequest'}}}}
       responses: {'200': {description: 运行配置。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeConfig'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/releases:
@@ -196,7 +206,7 @@ paths:
       operationId: list_studio_releases
       summary: 查询 Release
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012], source_sections: ['11 Release', '12 发布与 Deployment']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024], source_sections: ['11 Release', '12 发布与 StudioRuntimeInstance']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Release 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioReleaseListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
@@ -204,7 +214,7 @@ paths:
       operationId: create_studio_release
       summary: 创建并发布 Release
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012, R-STUDIO-013], source_sections: ['11 Release', '15 Hotfix 与回滚']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024], source_sections: ['11 Release', '15 Hotfix 与回滚']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ReleaseRequest'}}}}
       responses: {'200': {description: Release。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRelease'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-releases/{studio_release_id}:
@@ -213,7 +223,7 @@ paths:
       operationId: get_studio_release
       summary: 获取 Release
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-009, R-STUDIO-012], source_sections: ['11 Release']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-013], source_sections: ['11 Release']}
       parameters: [{$ref: '#/components/parameters/studio_release_id'}]
       responses: {'200': {description: Release。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRelease'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-releases/{studio_release_id}/rollback:
@@ -222,7 +232,7 @@ paths:
       operationId: rollback_studio_release
       summary: 从历史 Release 创建回滚 Release
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-012, R-STUDIO-013], source_sections: ['15.2 回滚']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-013, R-STUDIO-015], source_sections: ['15.2 回滚']}
       parameters: [{$ref: '#/components/parameters/studio_release_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 新 Release。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRelease'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -232,7 +242,7 @@ paths:
       operationId: search_studio_workspace
       summary: 搜索受控源码文件
       x-permission: appstudio.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-002, R-STUDIO-003, R-STUDIO-005], source_sections: ['7 Coding Agent 开发']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['7 Coding Agent 开发']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}, {name: query, in: query, required: true, schema: {type: string, maxLength: 256}}, {name: revision, in: query, schema: {type: integer}}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: 搜索结果。, content: {application/json: {schema: {$ref: '#/components/schemas/SourceSearchResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-workspaces/{workspace_id}/restore:
@@ -241,26 +251,44 @@ paths:
       operationId: restore_studio_workspace_revision
       summary: 从历史 Revision 创建当前新 Revision
       x-permission: appstudio.workspace.write
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-003, R-STUDIO-004], source_sections: ['7.3 AppStudio 保存的信息']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-010, R-STUDIO-022], source_sections: ['7.3 AppStudio 保存的信息']}
       parameters: [{$ref: '#/components/parameters/workspace_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RestoreRevisionRequest'}}}}
       responses: {'200': {description: 新 Revision 摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/ChangeSet'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/versions:
+    post:
+      tags: [applications]
+      operationId: create_studio_application_version
+      summary: 从固定 StudioSourceSnapshot 创建 StudioApplicationVersion
+      x-permission: appstudio.snapshot.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-010, R-STUDIO-011, R-STUDIO-013], source_sections: ['5.8 StudioApplicationVersion', '11 Release']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationVersionCreateRequest'}}}}
+      responses: {'200': {description: 不可变 Version。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationVersion'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     get:
       tags: [applications]
       operationId: list_studio_application_versions
       summary: 查询 StudioApplicationVersion
       x-permission: appstudio.snapshot.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-011, R-STUDIO-012], source_sections: ['5.4 WorkspaceSnapshot', '10 Build']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-010, R-STUDIO-011], source_sections: ['5.5 StudioSourceSnapshot', '10 Build']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Version 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationVersionListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/runtime-instances:
+    get:
+      tags: [runtime]
+      operationId: list_studio_runtime_instances
+      summary: 查询 StudioRuntimeInstance
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024], source_sections: ['5.11 StudioRuntimeInstance', '12 发布与 StudioRuntimeInstance']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {name: environment, in: query, schema: {type: string, enum: [preview, production]}}, {name: status, in: query, schema: {type: string}}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: RuntimeInstance 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRuntimeInstanceListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-builds/{studio_build_id}/logs:
     get:
       tags: [builds]
       operationId: get_studio_build_logs
       summary: 查询 Build 脱敏日志
       x-permission: appstudio.build.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-013], source_sections: ['10.3 Build 流程']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-017], source_sections: ['10.3 Build 流程']}
       parameters: [{$ref: '#/components/parameters/studio_build_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Build 日志页。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-runtime-instances/{studio_runtime_instance_id}:
@@ -269,16 +297,26 @@ paths:
       operationId: get_studio_runtime_instance
       summary: 获取 StudioRuntimeInstance
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012], source_sections: ['12 发布与 Deployment']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024], source_sections: ['12 发布与 StudioRuntimeInstance']}
       parameters: [{$ref: '#/components/parameters/studio_runtime_instance_id'}]
       responses: {'200': {description: RuntimeInstance；入口字段为受控摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRuntimeInstance'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-runtime-instances/{studio_runtime_instance_id}/stop:
+    post:
+      tags: [runtime]
+      operationId: stop_studio_runtime_instance
+      summary: 通过 Task Center 停止 StudioRuntimeInstance
+      x-permission: appstudio.release.manage
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-016, R-STUDIO-023, R-STUDIO-024], source_sections: ['12 发布与 StudioRuntimeInstance']}
+      parameters: [{$ref: '#/components/parameters/studio_runtime_instance_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 停止请求后的 RuntimeInstance。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioRuntimeInstance'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-runtime-instances/{studio_runtime_instance_id}/logs:
     get:
       tags: [runtime]
       operationId: get_studio_runtime_logs
       summary: 查询 RuntimeInstance 脱敏日志
       x-permission: appstudio.release.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012], source_sections: ['12 发布与 Deployment']}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024], source_sections: ['12 发布与 StudioRuntimeInstance']}
       parameters: [{$ref: '#/components/parameters/studio_runtime_instance_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Runtime 日志页。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
 components:
@@ -348,6 +386,10 @@ components:
       type: object
       required: [id, studio_application_id, source_snapshot_id, version, status]
       properties: {id: {type: string}, studio_application_id: {type: string}, source_snapshot_id: {type: string}, version: {type: string}, status: {type: string, enum: [DRAFT, PUBLISHED, RETIRED]}, published_at: {type: string, format: date-time, nullable: true}}
+    StudioApplicationVersionCreateRequest:
+      type: object
+      required: [source_snapshot_id, version, idempotency_key]
+      properties: {source_snapshot_id: {type: string}, version: {type: string, minLength: 1, maxLength: 100}, idempotency_key: {type: string}}
     StudioBuild:
       type: object
       required: [id, studio_application_id, source_snapshot_id, status, created_at, updated_at]
@@ -359,7 +401,7 @@ components:
     StudioPreviewRuntime:
       type: object
       required: [id, workspace_id, workspace_revision, status, created_at, updated_at]
-      properties: {id: {type: string}, workspace_id: {type: string}, workspace_revision: {type: integer}, status: {type: string, enum: [PENDING, RUNNING, STOPPED, FAILED, EXPIRED]}, diagnostics_summary: {type: object, additionalProperties: true}, endpoint_summary: {type: object, nullable: true, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+      properties: {id: {type: string}, workspace_id: {type: string}, workspace_revision: {type: integer}, status: {type: string, enum: [PENDING, RUNNING, STOPPED, FAILED, EXPIRED]}, diagnostics_summary: {type: object, additionalProperties: true}, endpoint_summary: {$ref: '#/components/schemas/EndpointSummary'}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
     PreviewRequest:
       type: object
       properties: {revision: {type: integer}, idempotency_key: {type: string}}
@@ -392,16 +434,24 @@ components:
       properties: {public_config: {type: object, additionalProperties: true}, secret_references: {type: array, items: {type: string}}, integration_references: {type: array, items: {type: string}}, resource_version: {type: integer}}
     ReleaseRequest:
       type: object
-      required: [studio_build_id, environment, runtime_config_id, idempotency_key]
-      properties: {studio_build_id: {type: string}, environment: {type: string, enum: [preview, production]}, runtime_config_id: {type: string}, idempotency_key: {type: string}}
+      required: [studio_build_id, studio_application_version_id, environment, runtime_config_id, idempotency_key]
+      properties: {studio_build_id: {type: string}, studio_application_version_id: {type: string}, environment: {type: string, enum: [preview, production]}, runtime_config_id: {type: string}, idempotency_key: {type: string}}
     StudioRelease:
       type: object
-      required: [id, studio_application_id, studio_build_id, environment, status, artifact_id, artifact_digest, created_at]
-      properties: {id: {type: string}, studio_application_id: {type: string}, studio_build_id: {type: string}, runtime_config_id: {type: string}, environment: {type: string, enum: [preview, production]}, artifact_id: {type: string}, artifact_digest: {type: string}, status: {type: string, enum: [PENDING, DEPLOYING, READY, FAILED, SUPERSEDED]}, runtime_instance_id: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
+      required: [id, studio_application_id, studio_application_version_id, studio_build_id, runtime_config_id, environment, status, artifact_id, artifact_digest, created_at]
+      properties: {id: {type: string}, studio_application_id: {type: string}, studio_application_version_id: {type: string}, studio_build_id: {type: string}, runtime_config_id: {type: string}, environment: {type: string, enum: [preview, production]}, artifact_id: {type: string}, artifact_digest: {type: string}, status: {type: string, enum: [PENDING, DEPLOYING, READY, FAILED, SUPERSEDED]}, runtime_instance_id: {type: string, nullable: true}, rollback_of_release_id: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
     StudioRuntimeInstance:
       type: object
-      required: [id, studio_release_id, status, health_status, created_at, updated_at]
-      properties: {id: {type: string}, studio_release_id: {type: string}, status: {type: string, enum: [CREATING, READY, DEGRADED, STOPPED, FAILED]}, health_status: {type: string, enum: [UNKNOWN, HEALTHY, UNHEALTHY]}, endpoint_summary: {type: object, nullable: true, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+      required: [id, studio_release_id, environment, status, health_status, is_current, created_at, updated_at]
+      properties: {id: {type: string}, studio_release_id: {type: string}, environment: {type: string, enum: [preview, production]}, atomic_task_id: {type: string, nullable: true}, infra_runtime_id: {type: string, nullable: true}, status: {type: string, enum: [CREATING, READY, DEGRADED, STOPPED, FAILED]}, health_status: {type: string, enum: [UNKNOWN, HEALTHY, UNHEALTHY]}, is_current: {type: boolean}, endpoint_summary: {$ref: '#/components/schemas/EndpointSummary'}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+    EndpointSummary:
+      type: object
+      required: [visibility, status]
+      properties:
+        display_ref: {type: string, nullable: true, description: 权限裁剪后的受控入口引用，不包含 Host Port 或私网地址。}
+        visibility: {type: string, enum: [INTERNAL, USER_ACCESSIBLE, PUBLIC]}
+        status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}
+        expires_at: {type: string, format: date-time, nullable: true}
     ActionRequest:
       type: object
       properties: {reason: {type: string, maxLength: 1000}, request_id: {type: string}, resource_version: {type: integer}}
@@ -409,6 +459,7 @@ components:
     StudioBuildListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioBuild'}}}}
     StudioReleaseListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioRelease'}}}}
     StudioApplicationVersionListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioApplicationVersion'}}}}
+    StudioRuntimeInstanceListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioRuntimeInstance'}}}}
     ErrorResponse:
       type: object
       required: [code, value, message]

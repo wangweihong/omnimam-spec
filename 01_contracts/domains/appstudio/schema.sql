@@ -1,7 +1,7 @@
 -- AppStudio S2 design schema, v1.0.0-draft. This is not a migration.
 -- 源码正文和存储定位属于 Source Service 私有边界；本 schema 只保存索引、摘要和业务引用。
 
--- s1_refs: R-STUDIO-001, R-STUDIO-010, R-STUDIO-013; source: 2.1, 6 项目创建, 16 生命周期.
+-- s1_refs: R-STUDIO-001, R-STUDIO-010, R-STUDIO-022; source: 2.1, 6 StudioApplication 创建, 16 Agent 与 StudioApplication 生命周期.
 CREATE TABLE studio_applications (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE studio_applications (
 CREATE UNIQUE INDEX idx_studio_applications_owner_name ON studio_applications(owner_user_id, name);
 CREATE INDEX idx_studio_applications_owner_status ON studio_applications(owner_user_id, status, created_at);
 
--- s1_refs: R-STUDIO-001, R-STUDIO-002; source: 3 源码管理总体架构, 4.3 Workspace Service.
+-- s1_refs: R-STUDIO-001, R-STUDIO-010; source: 3 系统上下文, 4.3 Source Repository 与 StudioWorkspace.
 CREATE TABLE studio_source_repositories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE studio_source_repositories (
   current_revision INTEGER NOT NULL DEFAULT 0
 );
 
--- s1_refs: R-STUDIO-002, R-STUDIO-003, R-STUDIO-010; source: 5.3 WorkspaceBinding, 7 Coding Agent 开发.
+-- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.3 StudioWorkspace, 7 Coding Agent 开发.
 CREATE TABLE studio_workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE studio_workspaces (
 );
 CREATE INDEX idx_studio_workspaces_application ON studio_workspaces(studio_application_id);
 
--- s1_refs: R-STUDIO-002, R-STUDIO-005; source: 3.2 源码不保存到数据库字段.
+-- s1_refs: R-STUDIO-010, R-STUDIO-022; source: 4.3 Source Repository 与 StudioWorkspace.
 CREATE TABLE studio_source_files (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -72,7 +72,7 @@ CREATE TABLE studio_source_files (
 );
 CREATE INDEX idx_studio_source_files_revision ON studio_source_files(workspace_id, revision, path);
 
--- s1_refs: R-STUDIO-002, R-STUDIO-003, R-STUDIO-004; source: 5 核心领域对象, 7 Coding Agent 开发.
+-- s1_refs: R-STUDIO-010, R-STUDIO-022; source: 5.4 StudioWorkspaceRevision 与 StudioChangeSet, 7 Coding Agent 开发.
 CREATE TABLE studio_workspace_revisions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -90,7 +90,7 @@ CREATE TABLE studio_workspace_revisions (
   UNIQUE (workspace_id, revision)
 );
 
--- s1_refs: R-STUDIO-003, R-STUDIO-004, R-STUDIO-005; source: 7.1, 7.2, 7.4 Coding Agent.
+-- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.4 StudioWorkspaceRevision 与 StudioChangeSet, 7 Coding Agent 开发.
 CREATE TABLE studio_change_sets (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -113,7 +113,7 @@ CREATE TABLE studio_change_sets (
   UNIQUE (workspace_id, idempotency_key)
 );
 
--- s1_refs: R-STUDIO-011, R-STUDIO-012; source: 10 Build, 5.4 WorkspaceSnapshot.
+-- s1_refs: R-STUDIO-010, R-STUDIO-011; source: 5.5 StudioSourceSnapshot, 10 Build.
 CREATE TABLE studio_source_snapshots (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -133,7 +133,7 @@ CREATE TABLE studio_source_snapshots (
 );
 CREATE UNIQUE INDEX idx_studio_snapshots_digest ON studio_source_snapshots(studio_application_id, content_digest) WHERE content_digest IS NOT NULL;
 
--- s1_refs: R-STUDIO-011, R-STUDIO-012; source: 10 Build, 11 Release.
+-- s1_refs: R-STUDIO-010, R-STUDIO-011, R-STUDIO-013; source: 5.8 StudioApplicationVersion, 11 Release.
 CREATE TABLE studio_application_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -145,12 +145,14 @@ CREATE TABLE studio_application_versions (
   studio_application_id TEXT NOT NULL REFERENCES studio_applications(id),
   source_snapshot_id TEXT NOT NULL REFERENCES studio_source_snapshots(id),
   version TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('DRAFT', 'PUBLISHED', 'RETIRED')),
   published_at TIMESTAMPTZ,
-  UNIQUE (studio_application_id, version)
+  UNIQUE (studio_application_id, version),
+  UNIQUE (studio_application_id, idempotency_key)
 );
 
--- s1_refs: R-STUDIO-004, R-STUDIO-009, R-STUDIO-010; source: 9 Preview.
+-- s1_refs: R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024; source: 9 Preview.
 CREATE TABLE studio_preview_runtimes (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -170,7 +172,7 @@ CREATE TABLE studio_preview_runtimes (
 );
 CREATE INDEX idx_studio_preview_runtimes_workspace ON studio_preview_runtimes(workspace_id, workspace_revision, updated_at);
 
--- s1_refs: R-STUDIO-008, R-STUDIO-015; source: 18 Secret 与配置.
+-- s1_refs: R-STUDIO-008, R-STUDIO-013, R-STUDIO-022; source: 5.9 RuntimeConfig, 18 Secret 与配置.
 CREATE TABLE studio_runtime_configs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -188,7 +190,7 @@ CREATE TABLE studio_runtime_configs (
   UNIQUE (studio_application_version_id, environment, resource_version)
 );
 
--- s1_refs: R-STUDIO-011, R-STUDIO-013, R-STUDIO-018; source: 10 Build.
+-- s1_refs: R-STUDIO-011, R-STUDIO-017, R-STUDIO-018; source: 5.7 StudioBuild, 10 Build.
 CREATE TABLE studio_builds (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -202,17 +204,17 @@ CREATE TABLE studio_builds (
   source_snapshot_id TEXT NOT NULL REFERENCES studio_source_snapshots(id),
   studio_application_version_id TEXT REFERENCES studio_application_versions(id),
   atomic_task_id TEXT,
-  task_group_id TEXT,
   artifact_id TEXT,
   artifact_digest TEXT,
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELED')),
   diagnostics_summary_json TEXT NOT NULL DEFAULT '{}',
   idempotency_key TEXT NOT NULL,
+  CHECK (status <> 'SUCCEEDED' OR (atomic_task_id IS NOT NULL AND artifact_id IS NOT NULL AND artifact_digest IS NOT NULL)),
   UNIQUE (studio_application_id, idempotency_key)
 );
 CREATE INDEX idx_studio_builds_status ON studio_builds(studio_application_id, status, created_at);
 
--- s1_refs: R-STUDIO-004, R-STUDIO-009, R-STUDIO-012; source: 11 Release, 12 发布与 Deployment.
+-- s1_refs: R-STUDIO-013, R-STUDIO-015, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024; source: 5.10 StudioRelease, 11 Release, 12 发布与 StudioRuntimeInstance.
 CREATE TABLE studio_releases (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -230,13 +232,13 @@ CREATE TABLE studio_releases (
   artifact_digest TEXT NOT NULL,
   environment TEXT NOT NULL CHECK (environment IN ('preview', 'production')),
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'DEPLOYING', 'READY', 'FAILED', 'SUPERSEDED')),
-  rollback_of_release_id TEXT,
+  rollback_of_release_id TEXT REFERENCES studio_releases(id),
   idempotency_key TEXT NOT NULL,
   UNIQUE (studio_application_id, idempotency_key)
 );
 CREATE INDEX idx_studio_releases_application_env ON studio_releases(studio_application_id, environment, created_at);
 
--- s1_refs: R-STUDIO-004, R-STUDIO-009, R-STUDIO-012; source: 12 发布与 Deployment.
+-- s1_refs: R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024; source: 5.11 StudioRuntimeInstance, 12 发布与 StudioRuntimeInstance.
 CREATE TABLE studio_runtime_instances (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -247,17 +249,20 @@ CREATE TABLE studio_runtime_instances (
   resource_version INTEGER NOT NULL DEFAULT 0,
   studio_application_id TEXT NOT NULL REFERENCES studio_applications(id),
   studio_release_id TEXT NOT NULL REFERENCES studio_releases(id),
+  environment TEXT NOT NULL CHECK (environment IN ('preview', 'production')),
+  atomic_task_id TEXT,
   infra_runtime_id TEXT,
   endpoint_ref TEXT,
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'DEGRADED', 'STOPPED', 'FAILED')),
   health_status TEXT NOT NULL CHECK (health_status IN ('UNKNOWN', 'HEALTHY', 'UNHEALTHY')),
   error_code TEXT,
-  is_current BOOLEAN NOT NULL DEFAULT FALSE
+  is_current BOOLEAN NOT NULL DEFAULT FALSE,
+  CHECK (NOT is_current OR (status = 'READY' AND health_status = 'HEALTHY'))
 );
 CREATE INDEX idx_studio_runtime_instances_release ON studio_runtime_instances(studio_release_id, status);
-CREATE UNIQUE INDEX idx_studio_runtime_current ON studio_runtime_instances(studio_application_id, studio_release_id) WHERE is_current = TRUE;
+CREATE UNIQUE INDEX idx_studio_runtime_current ON studio_runtime_instances(studio_application_id, environment) WHERE is_current = TRUE;
 
--- s1_refs: R-STUDIO-014; source: 21 事件.
+-- s1_refs: R-STUDIO-017, R-STUDIO-020; source: 21 事件.
 CREATE TABLE appstudio_outbox (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',

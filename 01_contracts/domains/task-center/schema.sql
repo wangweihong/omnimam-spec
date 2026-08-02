@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023..024, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135, BR-TASK-142.
+-- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023..024, US-TASK-026, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135, BR-TASK-142, BR-TASK-147..153.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -13,6 +13,8 @@ CREATE TABLE atomic_tasks (
   system_name_key TEXT NOT NULL DEFAULT '',
   system_name_params_json TEXT NOT NULL DEFAULT '{}',
   function_ref TEXT NOT NULL,
+  function_contract_version TEXT NOT NULL DEFAULT '',
+  function_contract_digest TEXT NOT NULL DEFAULT '',
   arguments_json TEXT NOT NULL DEFAULT '{}',
   required_capabilities TEXT DEFAULT '',
   retry_policy_json TEXT NOT NULL DEFAULT '{}',
@@ -48,6 +50,20 @@ CREATE TABLE atomic_tasks (
   created_by TEXT NOT NULL,
   tags TEXT DEFAULT '',
   deleted_at TIMESTAMPTZ,
+  CHECK (
+    function_ref NOT IN (
+      'agent.runtime.ensure',
+      'agent.runtime.stop',
+      'appstudio.preview.ensure',
+      'appstudio.preview.stop',
+      'appstudio.build.execute',
+      'appstudio.production.reconcile',
+      'appstudio.production.stop'
+    ) OR (
+      function_contract_version <> ''
+      AND function_contract_digest ~ '^sha256:[0-9a-f]{64}$'
+    )
+  ),
   CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> '')),
   CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
 );
@@ -55,6 +71,7 @@ CREATE TABLE atomic_tasks (
 CREATE UNIQUE INDEX idx_atomic_tasks_idempotency ON atomic_tasks(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
 CREATE UNIQUE INDEX idx_atomic_tasks_owner_child ON atomic_tasks(owner_type, owner_id, child_key) WHERE owner_type IN ('TASK_GROUP','DAG_TASK_GROUP') AND child_key <> '';
 CREATE INDEX idx_atomic_tasks_status ON atomic_tasks(status, schedule_at);
+CREATE INDEX idx_atomic_tasks_function_contract ON atomic_tasks(function_ref, function_contract_version);
 CREATE INDEX idx_atomic_tasks_owner ON atomic_tasks(owner_type, owner_id, child_order);
 CREATE INDEX idx_atomic_tasks_dag_node ON atomic_tasks(owner_id, dag_node_key, child_order) WHERE owner_type = 'DAG_TASK_GROUP' AND dag_node_key <> '';
 CREATE INDEX idx_atomic_tasks_retry_root ON atomic_tasks(root_task_id);

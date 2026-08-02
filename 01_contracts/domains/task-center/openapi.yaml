@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.5.0
-  description: AtomicTask、组合任务、DAG 可观测详情、Schedule、Attempt、执行日志与汇总查询契约。
+  version: 1.6.0-draft
+  description: AtomicTask、版本化 function registry、组合任务、DAG 可观测详情、Schedule、Attempt、执行日志与汇总查询契约。
 servers:
   - url: /
 security:
@@ -20,7 +20,7 @@ paths:
       summary: 查询 AtomicTask 列表
       operationId: list_atomic_tasks
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-011, US-TASK-024], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-103, BR-TASK-142]}
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-011, US-TASK-024, US-TASK-026], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-103, BR-TASK-142, BR-TASK-153]}
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -36,10 +36,10 @@ paths:
           content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskListResponse'}}}
     post:
       tags: [atomic-tasks]
-      summary: 创建并启动 AtomicTask
+      summary: 按已注册函数合同创建并启动 AtomicTask
       operationId: create_atomic_task
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-008], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-100]}
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-026], business_rules: [BR-TASK-073, BR-TASK-087, BR-TASK-100, BR-TASK-147, BR-TASK-148, BR-TASK-153]}
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/AtomicTaskCreateRequest'}}}
@@ -53,7 +53,7 @@ paths:
       summary: 获取 AtomicTask 详情
       operationId: get_atomic_task
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-024], business_rules: [BR-TASK-075, BR-TASK-087, BR-TASK-142]}
+      x-s1-refs: {user_stories: [US-TASK-008, US-TASK-024, US-TASK-026], business_rules: [BR-TASK-075, BR-TASK-087, BR-TASK-142, BR-TASK-153]}
       parameters: [{$ref: '#/components/parameters/atomic_task_id'}]
       responses:
         '200':
@@ -519,6 +519,7 @@ components:
     LocalizedName:
       type: object
       description: 系统提供名称的 BCP 47 语言映射；当前至少包含 zh-CN 和 en-US，用户自定义名称不返回该字段。
+      x-naming-exception: properties 使用 BCP 47 标准语言标签，必须保留协议原始拼写。
       x-s1-refs: {user_stories: [US-TASK-024], business_rules: [BR-TASK-142]}
       readOnly: true
       required: [zh-CN, en-US]
@@ -573,11 +574,11 @@ components:
         key: {type: string, minLength: 1, maxLength: 128}
         name: {type: string, maxLength: 256}
         name_i18n: {$ref: '#/components/schemas/LocalizedName'}
-        function_ref: {type: string, minLength: 1, maxLength: 256}
-        arguments: {type: object, additionalProperties: true}
-        required_capabilities: {type: string, maxLength: 2048}
-        retry_policy: {$ref: '#/components/schemas/RetryPolicy'}
-        timeout_policy: {$ref: '#/components/schemas/TimeoutPolicy'}
+        function_ref: {type: string, minLength: 1, maxLength: 256, description: 必须解析到当前调用方可用的版本化函数合同；Infra-backed canonical 合同见 function-registry.yaml。}
+        arguments: {type: object, additionalProperties: true, description: 创建前按 function_ref 对应 input_schema 精确校验并保存不可变快照。}
+        required_capabilities: {type: string, maxLength: 2048, readOnly: true, description: 由函数合同派生，调用方不得提交或扩大。}
+        retry_policy: {allOf: [{$ref: '#/components/schemas/RetryPolicy'}], description: 省略时使用函数合同默认值；调用方覆盖不得超过合同上限。}
+        timeout_policy: {allOf: [{$ref: '#/components/schemas/TimeoutPolicy'}], description: 省略时使用函数合同默认值；调用方覆盖不得超过合同上限。}
     AtomicTaskCreateRequest:
       allOf:
         - {$ref: '#/components/schemas/AtomicTaskTemplate'}
@@ -640,6 +641,8 @@ components:
           required: [id, status, progress, resource_version, project_id, namespace, created_at, updated_at]
           properties:
             id: {type: string}
+            function_contract_version: {type: string, nullable: true, readOnly: true, description: Infra-backed AtomicTask 创建时固定的函数合同版本；未纳入版本化 registry 的函数为空。}
+            function_contract_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$', nullable: true, readOnly: true, description: Infra-backed AtomicTask 创建时固定的 RFC 8785 + SHA-256 函数合同摘要；未纳入版本化 registry 的函数为空。}
             status: {$ref: '#/components/schemas/AtomicTaskStatus'}
             progress: {type: number, minimum: 0, maximum: 1}
             resource_version: {type: integer, minimum: 0}

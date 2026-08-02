@@ -2,7 +2,7 @@
 
 ## 1. 领域职责
 
-`task-center` 为应用、素材、画布和系统维护任务提供统一异步执行、组合编排、周期或单次调度、运行汇总与故障恢复。它对外提供稳定业务资源和状态投影，对内通过已注册 `WorkflowRuntime` 使用 Conductor OSS 的调度、自动重试和 Task Worker 分发能力；Infra-backed 操作继续由 Task Worker 的 Infra Adapter 调用 infrastructure。
+`task-center` 为应用、素材、画布和系统维护任务提供统一异步执行、组合编排、周期或单次调度、运行汇总与故障恢复。它对外提供稳定业务资源和状态投影，对内通过已注册 `WorkflowRuntime` 使用 Conductor OSS 的调度、自动重试和 Task Worker 分发能力；Infra-backed 操作由版本化 Function Registry 校验，再由 Task Worker 的 Infra Adapter 调用 infrastructure。
 
 ## 2. 核心对象
 
@@ -11,6 +11,7 @@
 - `TaskGroup`：多个 AtomicTask 的 SERIAL 或 PARALLEL 组合及汇总。
 - `DAGTaskGroup`：AtomicTask 节点和有向无环依赖组成的编排资源。
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
+- `Function Registry`：第一阶段七个 Agent/AppStudio Infra-backed functionRef 的版本化 I/O、能力、策略、Infra 映射与结果投影合同。
 - `WorkflowRuntime`、`Task Worker`、`Infra Adapter`：内部运行时边界、已注册 handler 的执行者和 Infra-backed 请求适配边界。
 
 ## 3. 核心规则
@@ -22,6 +23,7 @@
 - `TaskRun`、`ExecutionLease`、Worker claim、自研 Dispatcher 和旧 DAG 状态机已废弃；Task Worker 不等于旧 Worker claim/lease 模型。
 - ApplicationRun、CanvasRun 和素材处理状态是上层业务投影，不由任务终态替代。
 - 任务结果只保存 Artifact 等小型引用，不保存媒体正文或其他领域私有数据。
+- Infra-backed AtomicTask 创建前按精确 registry schema 校验，并固定 function contract version/digest；重试和恢复不得漂移到新版本。
 - 可靠状态事件必须支持下游幂等消费，乱序事件不得回退较新投影。
 
 ## 4. 领域边界
@@ -39,6 +41,8 @@
 | `00_product/domains/task-center/product-spec.md` | S1 | 当前任务模型、编排、调度和恢复语义 |
 | `01_contracts/domains/task-center/openapi.yaml` | S2 | 任务查询、动作和调度 API |
 | `01_contracts/domains/task-center/schema.sql` | S2 | 设计态任务资源结构 |
+| `01_contracts/domains/task-center/function-registry.schema.yaml` | S2 | Infra-backed Function Registry 文件结构 |
+| `01_contracts/domains/task-center/function-registry.yaml` | S2 | 七个 canonical functionRef 的精确合同 |
 | `01_contracts/domains/task-center/events.yaml` | S2 | 可靠任务事件合同 |
 | `01_contracts/domains/task-center/module-contract.md` | S2 | Runtime 与跨域模块边界 |
 | `02_architecture/domains/task-center.md` | 参考 | 编译、调度、恢复和数据所有权 |
@@ -48,6 +52,7 @@
 | 任务 | 首先读取 | 继续读取条件 |
 | --- | --- | --- |
 | 修改任务状态、重试或取消 | S1 product-spec | 涉及接口时读 OpenAPI，涉及事件时读 events |
+| 修改 functionRef、Task Worker 或 Infra Adapter | S1 product-spec | 必须读 function-registry、module-contract；涉及运行层再读 infrastructure Context |
 | 修改 DAG 或 Schedule | S1 product-spec | 涉及运行时边界时读 module-contract/architecture |
 | 修改 Application 执行 | 当前 Context | 再读 application-platform Context |
 | 修改 Engine 健康或 object-info Schedule | 当前 Context | 再读 modelgateway Context |
@@ -55,7 +60,7 @@
 
 ## 8. 当前状态
 
-`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。具体实现门禁以 `RELEASE.md` 为准；旧编号只保留审计追溯意义。
+`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。本轮新增的 Infra-backed Function Registry 仍是未 Release 草稿；具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
 
 ## 9. 不在本领域定义的内容
 

@@ -2,7 +2,7 @@
 
 > 文档状态：S1 Draft
 > 文档版本：v1.1-draft
-> 修订日期：2026-08-02
+> 修订日期：2026-08-03
 > 适用范围：第一阶段单机 Docker 计算节点、Job、Service、资源、网络、挂载与运行凭证管理
 
 本次草稿修订将 Infra Service 收敛为第一阶段的 Docker 运行层：
@@ -405,9 +405,8 @@ Infra Service 只负责：
 * 提供临时输入目录。
 * 收集输出文件。
 * 返回输出文件描述。
-* 按要求调用 Artifact 登记接口。
 
-Infra Service 不拥有 Asset 业务事实。
+Task Worker 根据来源任务的 producer context，将受控输出文件描述提交给 Asset Library 登记 Artifact。Infra Service 不直接调用 Artifact 登记接口，也不拥有 Artifact ID、ready 状态、内容或生命周期；Task/Build 成功不能仅由 Infra Job 成功推断。
 
 ---
 
@@ -860,7 +859,7 @@ status
 createdAt
 ```
 
-Infra Service 可以负责将文件提交给 Artifact 登记接口，但 Artifact 的业务所有权仍属于 Asset Library。
+`artifactRef` 只允许在 Task Worker 完成 Asset Library 登记后作为可选稳定回链写入，不是 RuntimeOutput 创建或 Job 成功的前提。Infra 只返回路径受限的输出描述、大小、媒体类型和 digest，不上传媒体正文到业务响应。
 
 ---
 
@@ -923,8 +922,7 @@ infra.node.draining
     {
       "name": "result",
       "path": "/outputs/result.mp4",
-      "mediaType": "video/mp4",
-      "registerArtifact": true
+      "mediaType": "video/mp4"
     }
   ],
   "resources": {
@@ -945,9 +943,13 @@ infra.node.draining
   "owner": {
     "domain": "asset-library",
     "reference": "task-attempt-001"
-  }
+  },
+  "requestingService": "task-center",
+  "requestUserId": "user-from-principal-context"
 }
 ```
+
+Job 完成后 Infra 只返回 output descriptor；Task Worker 使用原任务的 producer context 向 Asset Library 登记 Artifact，并将稳定 Artifact ID 与 digest 写回 Task 小型结果。
 
 ---
 
@@ -960,13 +962,7 @@ infra.node.draining
     "id": "agent.coding",
     "revision": 1
   },
-  "workspaceBindings": [
-    {
-      "workspaceId": "workspace-001",
-      "targetPath": "/workspace",
-      "readOnly": false
-    }
-  ],
+  "sourceBindings": [],
   "configurationBindings": [
     {
       "name": "primary-model",
@@ -978,6 +974,11 @@ infra.node.draining
         "model": "qwen3-32b",
         "credentialRef": "secret://users/current/provider-001"
       }
+    },
+    {
+      "name": "appstudio-workspace-tool-endpoint",
+      "type": "SERVICE_ENDPOINT",
+      "valueRef": "service://appstudio/workspace-tool"
     }
   ],
   "resources": {
@@ -994,7 +995,8 @@ infra.node.draining
   },
   "network": {
     "outboundInternet": true,
-    "exposeEndpoint": true
+    "exposeEndpoint": true,
+    "accessMode": "INTERNAL"
   },
   "lifecycle": {
     "restartPolicy": "ON_FAILURE",
@@ -1004,63 +1006,33 @@ infra.node.draining
   "owner": {
     "domain": "agent",
     "reference": "agent-runtime-binding-001"
-  }
+  },
+  "requestingService": "task-center",
+  "requestUserId": "user-from-principal-context",
+  "authorizationRef": "agent-runtime-grant://grant-001"
 }
 ```
+
+该示例为 Coding Agent，因此 `sourceBindings` 为空：StudioWorkspace 不得作为文件系统挂载进入 Agent Runtime。Runtime 通过 AppStudio Workspace Tool 使用每个 Invocation 单独签发的短期授权。Platform Agent 的 AgentWorkspace 挂载必须使用来源领域签发的 `agent-workspace://...` sourceRef，并包含目标路径、读写上限和授权上下文。
 
 ---
 
 # 10. Runtime Provider
 
-## 10.1 RuntimeProvider 接口
+## 10.1 RuntimeProvider 产品职责
 
-```go
-type RuntimeProvider interface {
-	CreateJob(
-		ctx context.Context,
-		spec JobRuntimeSpec,
-	) (*ProviderRuntime, error)
+RuntimeProvider 必须支持以下受控能力：
 
-	CreateService(
-		ctx context.Context,
-		spec ServiceRuntimeSpec,
-	) (*ProviderRuntime, error)
-
-	StartRuntime(
-		ctx context.Context,
-		providerRuntimeRef string,
-	) error
-
-	StopRuntime(
-		ctx context.Context,
-		providerRuntimeRef string,
-	) error
-
-	DeleteRuntime(
-		ctx context.Context,
-		providerRuntimeRef string,
-	) error
-
-	InspectRuntime(
-		ctx context.Context,
-		providerRuntimeRef string,
-	) (*ProviderRuntimeStatus, error)
-
-	GetLogs(
-		ctx context.Context,
-		providerRuntimeRef string,
-		options LogOptions,
-	) (LogStream, error)
-
-	ExecHealthCheck(
-		ctx context.Context,
-		providerRuntimeRef string,
-		check HealthCheckSpec,
-	) (*HealthCheckResult, error)
-}
+```text
+创建 Job
+创建 Service
+启动、停止和删除 Runtime
+检查 Provider Runtime 状态
+读取受控日志流
+执行 RuntimeProfile 定义的健康检查
 ```
 
-Provider 接口只处理基础设施操作，不接收 Application、Agent 或 Task 领域对象。
+具体编程语言接口由 S2 或实现定义。Provider 只处理标准化基础设施运行规格，不接收 StudioApplication、Agent、AtomicTask 或其他业务对象；业务归属只能通过稳定 `ownerDomain/ownerReference` 透传。
 
 ---
 
@@ -1273,12 +1245,12 @@ Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sour
 | AgentRuntime | `AgentWorkspace` | Infra 只能依据 Agent 的有效授权挂载；读写范围由 Agent Workspace Binding 限制；Runtime 删除不删除 Workspace | `agent` |
 | Coding Agent Runtime | 受控 `StudioWorkspace` 引用 | 只能通过 AppStudio Workspace Tool 和受控授权访问；Infra 不得直接读取 AppStudio 私有存储 | `appstudio` |
 | Preview Runtime | 当前 `Workspace Revision` | 只能挂载启动时授权的当前 Revision；源代码默认只读，临时写入必须落到隔离临时卷；不得创建或改写 Release | `appstudio` |
-| Build Runtime | 固定 `Workspace Snapshot` | 只读挂载固定 Snapshot digest；Build 不得读取持续变化的 Workspace 或后续 Revision | `appstudio` |
+| Build Runtime | 固定 `StudioSourceSnapshot` | 只读挂载固定 Snapshot digest；Build 不得读取持续变化的 Workspace 或后续 Revision | `appstudio` |
 | Production Runtime | 固定 `Artifact` 和 digest | 只读挂载固定 Artifact；禁止挂载可写 Workspace、Workspace Revision 或 Snapshot | `appstudio` |
 
-所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把它解释为宿主机路径。`StudioWorkspace`、Workspace Revision、Workspace Snapshot 与 Artifact 的物理存储位置不得进入 Infra 普通查询、事件或日志。
+所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把它解释为宿主机路径。`StudioWorkspace`、Workspace Revision、StudioSourceSnapshot 与 Artifact 的物理存储位置不得进入 Infra 普通查询、事件或日志。
 
-挂载策略的优先级为：`Production Artifact` > `Build Snapshot` > `Preview Workspace Revision` > `StudioWorkspace`/`AgentWorkspace` 授权。任何低层挂载请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使同时收到 Workspace 引用，也必须拒绝该请求。
+挂载策略的优先级为：`Production Artifact` > `Build StudioSourceSnapshot` > `Preview Workspace Revision` > `AgentWorkspace` 授权。Coding Agent 的 StudioWorkspace Tool 授权不是文件系统挂载。任何低层挂载请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使同时收到 Workspace 引用，也必须拒绝该请求。
 
 ---
 
@@ -1456,11 +1428,17 @@ USER_ACCESSIBLE
 PUBLIC
 ```
 
+语义：
+
+* `INTERNAL`：只允许平台内部受信调用方解析和访问。
+* `USER_ACCESSIBLE`：必须绑定 owner、当前受权 Principal 或短期访问授权；分配 Host Port 不等于公开访问。
+* `PUBLIC`：只有 RuntimeProfile 明确允许、来源领域显式请求并通过审计后才能创建；第一阶段默认不启用。
+
 S1 默认：
 
 * Agent Runtime：内部访问。
-* Preview Runtime：用户可访问。
-* StudioRuntime：用户可访问。
+* Preview Runtime：`USER_ACCESSIBLE`，由 AppStudio 返回权限裁剪摘要。
+* StudioRuntime：私有应用使用 `USER_ACCESSIBLE`；当前 S1 不自动创建 `PUBLIC` Endpoint。
 * 模型 Runtime：内部访问。
 * Job：不暴露 Endpoint。
 
@@ -1474,9 +1452,9 @@ S1 默认：
 http://<host-ip>:<allocated-port>
 ```
 
-Infra Service 负责端口分配和冲突处理。
+Infra Service 负责端口分配和冲突处理。地址只通过受控 Endpoint 解析返回；普通列表、事件、日志和跨域摘要不得传播 Host Port、私网地址或 Provider 网络细节。
 
-上层只保存 `endpointRef`，不直接保存 Host Port 作为业务事实。
+上层只保存 `endpointRef` 和权限裁剪摘要，不直接保存 Host Port 作为业务事实。Endpoint 授权失效、Runtime 停止或 owner 不再可访问时，解析必须立即拒绝。
 
 ---
 
@@ -1678,14 +1656,17 @@ requestId
 相同调用方和相同 `requestId` 重复请求时：
 
 * 不得创建重复 Runtime。
-* 返回已创建 Runtime。
-* 若原请求已失败，应返回原失败结果或明确允许重试的新请求规则。
+* 请求规范化摘要一致时，返回第一次请求的同一 Runtime 或同一终态结果。
+* 第一次请求失败时，重复请求返回原失败分类，不得隐式重新执行；显式重试必须使用新的 `requestId`，并由 Task Center 关联新的 Attempt。
+* 请求规范化摘要不一致时，返回幂等冲突，不得复用、覆盖或创建第二个 Runtime。
 
 推荐幂等键：
 
 ```text
 callerService + requestId
 ```
+
+第一阶段 `callerService` 固定为受信 `task-center`，实际幂等作用域为 `requestingService + requestId`。Infra 必须在调用 Provider 前持久化幂等占位，以覆盖 Provider 创建成功但响应超时的恢复场景。
 
 ---
 
@@ -1869,9 +1850,8 @@ StartRuntime
 StopRuntime
 CancelJob
 DeleteRuntime
-GetRuntimeStatus
 GetRuntimeLogs
-StreamRuntimeLogs
+ReconcileRuntime
 ```
 
 ---
@@ -1880,8 +1860,6 @@ StreamRuntimeLogs
 
 ```text
 GetRuntimeEndpoint
-ListRuntimeEndpoints
-RefreshRuntimeEndpoint
 ```
 
 ---
@@ -1889,34 +1867,24 @@ RefreshRuntimeEndpoint
 ## 24.3 Node
 
 ```text
-RegisterNode
 GetNode
 ListNodes
-UpdateNodeStatus
-DrainNode
-EnableNode
-DisableNode
-DeleteNode
-ReportNodeHeartbeat
-ReportNodeResources
 ```
 
-Edge Node Agent 使用专用内部接口。
+第一阶段只有平台受控的单机 Docker 节点；Edge Node Agent 及其内部接口属于下一版本，不在当前操作集合中。
 
 ---
 
 ## 24.4 RuntimeProfile
 
-S1 管理接口：
+S1 只读操作：
 
 ```text
 GetRuntimeProfile
 ListRuntimeProfiles
-ValidateRuntimeProfile
-ReloadRuntimeProfiles
 ```
 
-RuntimeProfile 可以采用内置和目录加载方式，修改后重载或重启生效。
+RuntimeProfile 可以采用内置和目录加载方式，修改后由运维重载或重启生效；当前 S1 不提供业务 API 修改、校验或重载 Profile。
 
 ---
 
@@ -1924,9 +1892,9 @@ RuntimeProfile 可以采用内置和目录加载方式，修改后重载或重�
 
 ```text
 ListRuntimeOutputs
-GetRuntimeOutput
-RegisterRuntimeOutputArtifact
 ```
+
+Artifact 登记由 Task Worker 使用来源任务 producer context 调用 Asset Library，不属于 Infrastructure 操作。
 
 ---
 
@@ -1942,6 +1910,7 @@ INFRA_UNSUPPORTED_RUNTIME_MODE
 INFRA_UNSUPPORTED_CONFIGURATION_BINDING
 INFRA_INVALID_RESOURCE_REQUIREMENT
 INFRA_INVALID_PLACEMENT_REQUIREMENT
+INFRA_IDEMPOTENCY_CONFLICT
 ```
 
 ## 25.2 节点与资源错误
@@ -1981,6 +1950,7 @@ INFRA_SECRET_RESOLUTION_FAILED
 INFRA_SECRET_ACCESS_DENIED
 INFRA_MODEL_ACCESS_BINDING_FAILED
 INFRA_ENDPOINT_ALLOCATION_FAILED
+INFRA_ENDPOINT_ACCESS_DENIED
 ```
 
 ## 25.5 Provider 错误
@@ -2075,12 +2045,12 @@ Infra Service 自身日志和 Runtime 日志必须分离。
 * CPU、内存和基础 GPU 资源声明。
 * 单机 Docker 节点和基本资源匹配。
 * Workspace 挂载。
-* Workspace Snapshot 只读挂载。
+* StudioSourceSnapshot 只读挂载。
 * Artifact 输入挂载。
 * 输出文件收集。
 * Secret 注入。
 * ModelAccessSpec 注入。
-* IP 加端口 Endpoint。
+* 受控 IP 加端口 Endpoint 及访问裁剪。
 * 健康检查。
 * Runtime 日志。
 * Runtime 超时。
@@ -2167,7 +2137,7 @@ http://<host-ip>:<allocated-port>
 
 ## R-INFRA-002
 
-所有实际运行必须通过 Infra Service。
+所有实际运行必须由 Task Worker 通过 Infra Adapter 调用 Infra Service；业务领域不得直接调用。
 
 ## R-INFRA-003
 
@@ -2191,11 +2161,11 @@ Task Center 负责业务任务，Infra Service 负责实际运行，两者不得
 
 ## R-INFRA-008
 
-Infra Service 不理解 Agent、ApplicationVersion、StudioRelease、StudioRuntimeInstance 或 Asset 的业务语义。
+Infra Service 不理解 Agent、ApplicationVersion、StudioRelease、StudioRuntimeInstance 或 Asset 的业务语义，也不直接登记 Artifact；只返回受控输出描述，Artifact 登记由 Task Worker 调用 Asset Library。
 
 ## R-INFRA-009
 
-AgentRuntime 只能按 Agent 授权挂载 AgentWorkspace；Coding Agent 只能通过 AppStudio 受控授权访问 StudioWorkspace；Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact，禁止挂载可写 Workspace。
+AgentRuntime 只能按 Agent 授权挂载 AgentWorkspace；Coding Agent 只能通过 AppStudio Workspace Tool 访问 StudioWorkspace，且不得形成文件系统挂载；Preview 只能挂载启动时固定的 Workspace Revision；Build 只能只读挂载固定 StudioSourceSnapshot；Production 只能只读使用固定 Artifact，禁止挂载可写 Workspace。
 
 ## R-INFRA-010
 
@@ -2223,7 +2193,7 @@ AgentRuntime 和 StudioRuntime 自行调用 LLM，Infra Service 只注入 ModelA
 
 ## R-INFRA-016
 
-每个创建请求必须支持幂等 requestId。
+每个创建请求必须支持 `requestingService + requestId` 幂等。相同摘要重放原结果，不同摘要返回冲突；失败重试必须使用新的 requestId。
 
 ## R-INFRA-017
 
@@ -2231,7 +2201,7 @@ AgentRuntime 和 StudioRuntime 自行调用 LLM，Infra Service 只注入 ModelA
 
 ## R-INFRA-018
 
-Infra Service 必须定期对账持久化状态与 Provider 实际状态。
+Infra Service 必须定期对账持久化状态与 Provider 实际状态。孤儿清理只能处理带平台受控标记且通过宽限期复核的 Runtime，不得删除未知或未归属的 Docker 对象。
 
 ## R-INFRA-019（下一版本规则）
 
@@ -2296,3 +2266,23 @@ flowchart TB
 Infra Service 的最终边界是：
 
 > 上层描述需要运行什么，Infra Service 决定使用什么运行环境、在哪个节点以及如何安全地运行。
+
+## 32. S2 追溯锚点
+
+以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
+
+- `US-INFRA-001`：受信 Task Worker 可以创建、管理、对账第一阶段 Docker Job/Service 及其受控挂载和输出。
+- `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、28、29、30 节及 `R-INFRA-001..020`。
+
+验收标准：
+
+- `AC-INFRA-001-01`：Infra 写操作只接受 Task Worker 的受信身份，并同时校验 `requestingService=task-center`、`ownerDomain`、`ownerReference`、`requestId` 和 RuntimeProfile Revision。
+- `AC-INFRA-001-02`：第一阶段只允许 DockerRuntimeProvider 和一个受控 MANAGED 节点；Kubernetes、Edge、Local Process、多节点及跨 Provider 参数必须拒绝。
+- `AC-INFRA-001-03`：相同幂等作用域和相同请求摘要重放同一 Runtime 或原终态；摘要不同返回幂等冲突，原失败重试必须使用新 requestId。
+- `AC-INFRA-001-04`：Coding Agent Runtime 不得携带 StudioWorkspace 文件系统挂载；Platform AgentWorkspace、Preview Revision、Build Snapshot 和 Production Artifact 必须分别使用来源领域签发的受控 sourceRef。
+- `AC-INFRA-001-05`：Production 请求只允许固定 Artifact ID/digest；包含 Workspace、Revision、Snapshot 或其他可写源码输入时整体拒绝。
+- `AC-INFRA-001-06`：Infra Job 成功只产生受控 output descriptor；Artifact 登记由 Task Worker 调用 Asset Library，Infra 不得据此生成 Artifact ready 事实。
+- `AC-INFRA-001-07`：Secret 只在 Runtime 启动边界短期解析和注入，数据库、普通响应、事件、日志和输出不得包含明文凭证。
+- `AC-INFRA-001-08`：`USER_ACCESSIBLE` Endpoint 必须校验 owner 与当前授权，`PUBLIC` 默认禁用；Host Port 或私网地址不得进入普通列表、事件和跨域摘要。
+- `AC-INFRA-001-09`：Provider 创建成功但响应超时后，恢复必须依赖 requestId 和 Provider 引用对账，不得创建第二个 Runtime。
+- `AC-INFRA-001-10`：孤儿清理只能作用于有平台受控标记、稳定 owner 且超过宽限期的 Runtime；未知 Docker 对象只告警，不自动删除。

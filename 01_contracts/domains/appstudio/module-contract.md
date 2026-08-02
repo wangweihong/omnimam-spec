@@ -1,10 +1,10 @@
 # AppStudio Module Contract
 
-产品语义以 `00_product/domains/appstudio/product-spec.md` 为准。本合同只覆盖当前 S1 草稿；旧版 S2 不属于输入。S2 使用 `StudioApplication`、`StudioWorkspace`、`StudioSourceSnapshot`、`StudioBuild`、`StudioRelease`、`StudioRuntimeInstance` 作为 canonical 名称；S1 中的 Project/StudioApp/Deployment 仅作为产品语义别名，不新增第二套事实对象。
+产品语义以 `00_product/domains/appstudio/product-spec.md` 为准。本合同只覆盖当前 S1 草稿；旧版 S2 不属于输入。`StudioApplication`、`StudioSourceRepository`、`StudioWorkspace`、`StudioWorkspaceRevision`、`StudioChangeSet`、`StudioSourceSnapshot`、`StudioApplicationVersion`、`StudioBuild`、`RuntimeConfig`、`StudioRelease`、`StudioRuntimeInstance` 是唯一 canonical 对象；旧 Project/StudioApp/Deployment 名称不再构成产品事实或兼容别名。
 
 ## 1. 追溯状态
 
-当前 AppStudio S1 只有 `R-STUDIO-*` 强制规则和章节语义，没有标准 `US-*`/`BR-*` 编号。契约中的 `user_stories` 保持为空，规则引用使用真实 `R-STUDIO-*` 和 `source_sections`。补齐标准编号是 Release 前置任务。
+当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..12` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
 
 ## 2. 模块边界
 
@@ -23,6 +23,7 @@
 - 所有源码写入必须带 `base_revision` 和幂等键；冲突不得自动覆盖、部分应用或隐式合并。
 - Source Snapshot 是不可变 Build 输入；Build 不得读取当前 Workspace。Production Release 固定 Artifact ID 和 digest，不得挂载 Workspace、Revision 或 Snapshot。
 - Build、Preview、Release/升级/回滚的实际运行均通过 Task Center -> Task Worker -> Infra Adapter -> Infrastructure。
+- Preview 创建/刷新与停止分别使用 `appstudio.preview.ensure/stop`，Build 使用 `appstudio.build.execute`，部署/升级/回滚与停止分别使用 `appstudio.production.reconcile/stop`；arguments、结果、能力和策略必须符合 Task Center `function-registry.yaml` 固定版本，AppStudio 不提交 Infra DTO。
 - AppStudio 只保存 Task ID、InfraRuntime ID、Endpoint 摘要、Artifact ID/digest 和脱敏诊断；不保存 TaskAttempt、容器 ID、Host Port、Provider response 或 storage_ref。
 - `RuntimeConfig` 使用 PUT 整体替换并以 `resource_version` 乐观控制，只保存 `secret://`/`integration://` 引用和校验状态。
 
@@ -42,8 +43,9 @@
 - ChangeSet、Revision、Snapshot、Version、Build、Release 和 RuntimeInstance 的历史不可被后续可变资源覆盖。
 - Build 成功必须同时满足 Task 终态、Asset Library Artifact 内容完成和 digest 一致；AtomicTask SUCCESS 不能单独推断 Artifact ready。
 - 新生产 Runtime 只有健康后才能切换入口；部署失败、健康失败或回滚失败不得破坏旧健康实例。
+- 回滚必须创建新的 StudioRelease 和候选 StudioRuntimeInstance，并引用目标历史 Release 的不可变内容；不得修改或重新激活旧 Release。
 - API/事件列表使用 `total/items`、统一分页和最多一跳摘要；文件正文按大小上限返回，禁止把源码大对象放进列表。
 
 ## 6. S1 追溯
 
-主要规则：`R-STUDIO-001..024`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/Deployment（11-12）、权限/Secret（17-18）、事件（21）、错误与范围（22-25）。
+主要规则：`R-STUDIO-001..024`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/RuntimeInstance（11-12）、权限/Secret（17-18）、事件（21）、错误与范围（22-25）。

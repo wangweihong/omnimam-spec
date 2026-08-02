@@ -23,7 +23,7 @@ paths:
       operationId: list_agent_profiles
       summary: 查询只读 AgentProfile
       x-permission: agent.profile.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-005], source_sections: ['6 Agent 类型与 AgentProfile']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-005], source_sections: ['6 Agent 类型与 AgentProfile']}
       responses:
         '200': {description: AgentProfile 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentProfileListResponse'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -33,7 +33,7 @@ paths:
       operationId: list_agents
       summary: 查询当前主体可见 Agent
       x-permission: agent.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}, {name: statuses, in: query, schema: {type: string}, description: Agent 状态，逗号分隔。}]
       responses:
         '200': {description: Agent 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentListResponse'}}}}
@@ -43,7 +43,7 @@ paths:
       operationId: create_agent
       summary: 创建 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-014, R-AGENT-016], source_sections: ['10 创建 Agent']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-014, R-AGENT-016], source_sections: ['10 创建 Agent']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentCreateRequest'}}}}
       responses:
         '200': {description: 创建后的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
@@ -55,7 +55,7 @@ paths:
       operationId: get_agent
       summary: 获取 Agent
       x-permission: agent.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
       responses:
         '200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -64,7 +64,7 @@ paths:
       operationId: update_agent
       summary: 更新 Agent 非敏感配置
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-016, R-AGENT-017], source_sections: ['10 创建 Agent', '23 权限模型']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-016, R-AGENT-017], source_sections: ['10 创建 Agent', '23 权限模型']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentUpdateRequest'}}}}
       responses:
         '200': {description: 更新后的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
@@ -74,7 +74,7 @@ paths:
       operationId: delete_agent
       summary: 删除 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-011], source_sections: ['18.3 Agent 删除']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-011], source_sections: ['18.3 Agent 删除']}
       responses:
         '200': {description: 进入删除流程的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -84,7 +84,7 @@ paths:
       operationId: start_agent_runtime
       summary: 启动或恢复 AgentRuntime
       x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-008, R-AGENT-014, R-AGENT-018], source_sections: ['11 Runtime 启动', '19 挂起与恢复']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-008, R-AGENT-014, R-AGENT-018], source_sections: ['11 Runtime 启动', '19 挂起与恢复']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
       responses:
@@ -96,7 +96,7 @@ paths:
       operationId: suspend_agent_runtime
       summary: 挂起 AgentRuntime
       x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-010, R-AGENT-018], source_sections: ['19 挂起与恢复']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-003, R-AGENT-010, R-AGENT-018], source_sections: ['19 挂起与恢复']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses:
@@ -108,7 +108,7 @@ paths:
       operationId: recover_agent_runtime
       summary: 对账并恢复 AgentRuntime
       x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-004, R-AGENT-018, R-AGENT-019], source_sections: ['20 异常恢复', '27.1 Task Center 结果与 Infra 事件处理']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-004, R-AGENT-018, R-AGENT-019], source_sections: ['20 异常恢复', '27.1 Task Center 结果与 Infra 事件处理']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
       responses:
@@ -120,7 +120,7 @@ paths:
       operationId: enable_agent
       summary: 启用 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 状态模型', '23 权限模型']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 Agent 状态模型', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       responses: {'200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agents/{agent_id}/disable:
@@ -129,7 +129,7 @@ paths:
       operationId: disable_agent
       summary: 禁用 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 状态模型', '23 权限模型']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 Agent 状态模型', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -139,7 +139,7 @@ paths:
       operationId: stop_agent_runtime
       summary: 停止 AgentRuntime
       x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-018], source_sections: ['19 挂起与恢复']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-018], source_sections: ['19 挂起与恢复']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: AgentRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -150,7 +150,7 @@ paths:
       operationId: list_agent_sessions
       summary: 查询 AgentSession
       x-permission: agent.session.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses:
         '200': {description: Session 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionListResponse'}}}}
@@ -160,7 +160,7 @@ paths:
       operationId: create_agent_session
       summary: 创建 AgentSession
       x-permission: agent.session.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession', '12 消息与交互']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession', '12 消息与交互']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionCreateRequest'}}}}
       responses:
         '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
@@ -172,7 +172,7 @@ paths:
       operationId: get_agent_session
       summary: 获取 AgentSession
       x-permission: agent.session.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
       responses:
         '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -181,7 +181,7 @@ paths:
       operationId: update_agent_session
       summary: 更新 Session 元数据
       x-permission: agent.session.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionUpdateRequest'}}}}
       responses:
         '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
@@ -192,7 +192,7 @@ paths:
       operationId: send_agent_message
       summary: 发送消息并创建 AgentInvocation
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-005, R-AGENT-014, R-AGENT-020], source_sections: ['12 消息与交互']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-005, R-AGENT-014, R-AGENT-020], source_sections: ['12 消息与交互']}
       parameters: [{$ref: '#/components/parameters/session_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMessageRequest'}}}}
       responses:
@@ -203,7 +203,7 @@ paths:
       operationId: list_agent_messages
       summary: 查询 Session 消息
       x-permission: agent.session.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.3 AgentMessage']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['8.3 AgentMessage']}
       parameters: [{$ref: '#/components/parameters/session_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses:
         '200': {description: 消息列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMessageListResponse'}}}}
@@ -214,7 +214,7 @@ paths:
       operationId: close_agent_session
       summary: 关闭 Session
       x-permission: agent.session.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
       parameters: [{$ref: '#/components/parameters/session_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -224,7 +224,7 @@ paths:
       operationId: archive_agent_session
       summary: 归档 Session
       x-permission: agent.session.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
       parameters: [{$ref: '#/components/parameters/session_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -234,7 +234,7 @@ paths:
       operationId: list_agent_invocations
       summary: 查询 Session Invocation
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-014], source_sections: ['8.4 AgentOperation']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-014], source_sections: ['8.4 AgentInvocation']}
       parameters: [{$ref: '#/components/parameters/session_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: Invocation 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocationListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agent-invocations/{invocation_id}:
@@ -243,7 +243,7 @@ paths:
       operationId: get_agent_invocation
       summary: 获取 AgentInvocation
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-014, R-AGENT-018], source_sections: ['8.4 AgentOperation', '21 Task Center 集成']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-014, R-AGENT-018], source_sections: ['8.4 AgentInvocation', '21 Task Center 集成']}
       parameters: [{$ref: '#/components/parameters/invocation_id'}]
       responses:
         '200': {description: Invocation。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocation'}}}}
@@ -254,7 +254,7 @@ paths:
       operationId: cancel_agent_invocation
       summary: 请求取消 Invocation
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-014, R-AGENT-018, R-AGENT-020], source_sections: ['12 消息与交互', '21 Task Center 集成']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-014, R-AGENT-018, R-AGENT-020], source_sections: ['12 消息与交互', '21 Task Center 集成']}
       parameters: [{$ref: '#/components/parameters/invocation_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses:
@@ -266,8 +266,8 @@ paths:
       operationId: stream_agent_invocation_events
       summary: 订阅 Invocation 事件
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-020], source_sections: ['12.3 Agent Event', '12.4 Streaming']}
-      parameters: [{$ref: '#/components/parameters/invocation_id'}, {name: Last-Event-ID, in: header, schema: {type: string}, description: 当前 Invocation 的短期恢复游标。}]
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-020], source_sections: ['12.3 Agent Invocation Event', '12.4 Streaming']}
+      parameters: [{$ref: '#/components/parameters/invocation_id'}, {name: Last-Event-ID, in: header, schema: {type: string}, description: 当前 Invocation 的短期恢复游标。, x-naming-exception: SSE 标准请求头，必须保留协议原始拼写。}]
       responses:
         '200': {description: SSE 事件流。, content: {text/event-stream: {schema: {type: string}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -278,7 +278,7 @@ paths:
       operationId: list_agent_memories
       summary: 查询 AgentMemory
       x-permission: agent.memory.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14 Memory']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14 Memory']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: scope, in: query, schema: {type: string, enum: [AGENT, SESSION]}}]
       responses:
         '200': {description: Memory 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryListResponse'}}}}
@@ -288,7 +288,7 @@ paths:
       operationId: create_agent_memory
       summary: 创建 AgentMemory
       x-permission: agent.memory.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14.2 Memory 写入方式']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14.2 Memory 写入方式']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryCreateRequest'}}}}
       responses:
         '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
@@ -300,7 +300,7 @@ paths:
       operationId: get_agent_memory
       summary: 获取 AgentMemory
       x-permission: agent.memory.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
       responses:
         '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -309,7 +309,7 @@ paths:
       operationId: update_agent_memory
       summary: 更新 AgentMemory
       x-permission: agent.memory.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryUpdateRequest'}}}}
       responses:
         '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
@@ -319,35 +319,26 @@ paths:
       operationId: delete_agent_memory
       summary: 删除 AgentMemory
       x-permission: agent.memory.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
       responses:
         '200': {description: 删除结果。, content: {application/json: {schema: {$ref: '#/components/schemas/OperationResult'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-  /api/v1/agents/{agent_id}/workspace-bindings:
+  /api/v1/agents/{agent_id}/workspace-binding:
     get:
       tags: [agents]
-      operationId: list_agent_workspace_bindings
-      summary: 查询 Agent Workspace Binding
+      operationId: get_agent_workspace_binding
+      summary: 查询 Agent 固定 Workspace Binding
       x-permission: agent.workspace.read
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-010, R-AGENT-015, R-AGENT-017], source_sections: ['18 Workspace']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-010, R-AGENT-017], source_sections: ['18 Workspace']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      responses: {'200': {description: Workspace Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
-    post:
-      tags: [agents]
-      operationId: bind_agent_workspace
-      summary: 绑定 Agent Workspace
-      x-permission: agent.workspace.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-010, R-AGENT-015, R-AGENT-017], source_sections: ['18.1 Workspace Binding', '18.2 Coding Agent']}
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBindingRequest'}}}}
-      responses: {'200': {description: Workspace Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      responses: {'200': {description: 创建 Agent 时固定且不可切换的 Workspace Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agents/{agent_id}/model-bindings:
     get:
       tags: [agents]
       operationId: list_agent_model_bindings
       summary: 查询 Agent ModelBinding
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding', '24 Secret 与模型凭证']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding', '24 Secret 与模型凭证']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       responses: {'200': {description: ModelBinding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     put:
@@ -355,7 +346,7 @@ paths:
       operationId: replace_agent_model_binding
       summary: 设置 Agent ModelBinding
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBindingInput'}}}}
       responses: {'200': {description: ModelBinding。, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -365,7 +356,7 @@ paths:
       operationId: list_agent_skill_bindings
       summary: 查询 Skill Binding
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['15 Skills', '17 工具权限']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016], source_sections: ['15 Skills', '17 工具权限']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       responses: {'200': {description: Skill Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/SkillBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agents/{agent_id}/mcp-bindings:
@@ -374,7 +365,7 @@ paths:
       operationId: list_agent_mcp_bindings
       summary: 查询 MCP Binding
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       responses: {'200': {description: MCP Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
@@ -382,7 +373,7 @@ paths:
       operationId: create_agent_mcp_binding
       summary: 创建 MCP Binding
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingRequest'}}}}
       responses: {'200': {description: MCP Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -485,7 +476,7 @@ components:
         status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, SUCCEEDED, FAILED, CANCELING, CANCELED]}
         user_message_id: {type: string, nullable: true}
         assistant_message_id: {type: string, nullable: true}
-        atomic_task_id: {type: string, nullable: true}
+        atomic_task_id: {type: string, nullable: true, description: 纯 CHAT 可为空；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必填。}
         failure_code: {type: string, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
@@ -589,11 +580,18 @@ components:
     WorkspaceBinding:
       type: object
       required: [id, agent_id, workspace_type, workspace_id, access_mode]
-      properties: {id: {type: string}, agent_id: {type: string}, workspace_type: {type: string, enum: [agent, studio]}, workspace_id: {type: string}, access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}, mount_path: {type: string}, is_primary: {type: boolean}}
-    WorkspaceBindingRequest:
-      type: object
-      required: [workspace_type, workspace_id, access_mode, mount_path]
-      properties: {workspace_type: {type: string, enum: [agent, studio]}, workspace_id: {type: string}, access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}, mount_path: {type: string}, is_primary: {type: boolean}}
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        workspace_type: {type: string, enum: [agent, studio]}
+        workspace_id: {type: string}
+        access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}
+        authorization_summary:
+          type: object
+          additionalProperties: false
+          properties:
+            source: {type: string, enum: [agent, appstudio]}
+            validated_at: {type: string, format: date-time, nullable: true}
     ModelBinding:
       allOf: [{$ref: '#/components/schemas/ModelBindingInput'}, {type: object, properties: {id: {type: string}, status: {type: string}, is_primary: {type: boolean}}}]
     SkillBinding:
@@ -608,7 +606,6 @@ components:
       type: object
       required: [name, server_type, endpoint_ref]
       properties: {name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, credential_ref: {type: string, nullable: true}, allowed_tools: {type: array, items: {type: string}}, configuration: {type: object, additionalProperties: true}}
-    WorkspaceBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/WorkspaceBinding'}}}}
     ModelBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ModelBinding'}}}}
     SkillBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/SkillBinding'}}}}
     McpBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/McpBinding'}}}}

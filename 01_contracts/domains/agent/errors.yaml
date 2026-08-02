@@ -1,5 +1,5 @@
 # Agent S2 error codes, v1.0.0-draft.
-# 当前 S1 没有 US/BR 编号；related_rules 使用现有 R-AGENT-*，related_user_stories 保持为空。
+# 当前 S1 通过 US-AGENT-001/BR-AGENT-001 锚点映射既有 R-AGENT-* 规则。
 - code: ERR_AGENT_NOT_VISIBLE
   value: 200200
   http: 200
@@ -10,8 +10,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-001, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_PROFILE_INVALID
   value: 200201
   http: 200
@@ -22,8 +22,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-001, R-AGENT-005]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-005]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_STATE_INVALID
   value: 200202
   http: 200
@@ -34,8 +34,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-001, R-AGENT-018]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-018]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_WORKSPACE_BINDING_INVALID
   value: 200203
   http: 200
@@ -46,8 +46,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-010, R-AGENT-015, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-010, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_ACCESS_DENIED
   value: 201000
   http: 200
@@ -58,8 +58,8 @@
   range: 201000-201199
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_SESSION_NOT_VISIBLE
   value: 200400
   http: 200
@@ -70,8 +70,8 @@
   range: 200400-200599
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-002, R-AGENT-017]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-017]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_SESSION_CLOSED
   value: 200401
   http: 200
@@ -82,8 +82,8 @@
   range: 200400-200599
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-002]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_INVOCATION_CONFLICT
   value: 200402
   http: 200
@@ -94,8 +94,8 @@
   range: 200400-200599
   retryable: true
   deprecated: false
-  related_rules: [R-AGENT-002, R-AGENT-014]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-014]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_INVOCATION_TASK_UNAVAILABLE
   value: 200403
   http: 200
@@ -106,8 +106,8 @@
   range: 200400-200599
   retryable: true
   deprecated: false
-  related_rules: [R-AGENT-014, R-AGENT-018]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-014, R-AGENT-018]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_MODEL_BINDING_INVALID
   value: 200204
   http: 200
@@ -118,8 +118,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-005, R-AGENT-006]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-005, R-AGENT-006]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_MEMORY_INVALID
   value: 200205
   http: 200
@@ -130,8 +130,8 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-002]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-002]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_RUNTIME_NOT_VISIBLE
   value: 200800
   http: 200
@@ -142,8 +142,8 @@
   range: 200800-200999
   retryable: false
   deprecated: false
-  related_rules: [R-AGENT-001, R-AGENT-018]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-018]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_RUNTIME_OPERATION_FAILED
   value: 200801
   http: 200
@@ -154,8 +154,8 @@
   range: 200800-200999
   retryable: true
   deprecated: false
-  related_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-014, R-AGENT-019]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-014, R-AGENT-019]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_RUNTIME_UNHEALTHY
   value: 200802
   http: 200
@@ -166,5 +166,5 @@
   range: 200800-200999
   retryable: true
   deprecated: false
-  related_rules: [R-AGENT-018, R-AGENT-019]
-  related_user_stories: []
+  related_rules: [BR-AGENT-001, R-AGENT-018, R-AGENT-019]
+  related_user_stories: [US-AGENT-001]

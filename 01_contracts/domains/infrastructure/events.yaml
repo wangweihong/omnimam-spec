@@ -1,4 +1,4 @@
-# Infrastructure 事件只表达运行层事实，不携带业务正文、凭证、宿主路径或 Provider 原始响应。
+# Infrastructure 事件只表达运行层事实，不携带业务正文、凭证、宿主路径或 Provider 原始响应；追溯使用 US-INFRA-001/BR-INFRA-001。
 infra_runtime_status_changed:
   producer: infrastructure-runtime-service
   consumers: [task-center, agent, appstudio, operations-monitor, audit-service]
@@ -18,8 +18,8 @@ infra_runtime_status_changed:
   idempotency_key: infra_runtime_id:resource_version
   retry_policy: infrastructure outbox 重试，消费者按 Runtime 版本幂等。
   failure_policy: 事件失败不回滚 Provider 或 InfraRuntime；Task Center/来源领域可对账。
-  related_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-015, R-INFRA-018]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-006, R-INFRA-015, R-INFRA-018]
+  related_user_stories: [US-INFRA-001]
 infra_runtime_output_changed:
   producer: infrastructure-output-service
   consumers: [task-center, appstudio, asset-library, audit-service]
@@ -35,8 +35,8 @@ infra_runtime_output_changed:
   idempotency_key: output_id:resource_version
   retry_policy: outbox 重试；消费者按输出版本幂等。
   failure_policy: 不在 Infra 事件中保存媒体正文；Artifact 内容由 asset-library 负责。
-  related_rules: [R-INFRA-002, R-INFRA-008]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008]
+  related_user_stories: [US-INFRA-001]
 infra_runtime_reconciled:
   producer: infrastructure-reconciler
   consumers: [task-center, operations-monitor, audit-service]
@@ -51,5 +51,5 @@ infra_runtime_reconciled:
   idempotency_key: infra_runtime_id:resource_version:reconciled
   retry_policy: outbox 重试。
   failure_policy: 对账记录保留；事件失败不撤销已完成的单调修复。
-  related_rules: [R-INFRA-017, R-INFRA-018]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-017, R-INFRA-018]
+  related_user_stories: [US-INFRA-001]

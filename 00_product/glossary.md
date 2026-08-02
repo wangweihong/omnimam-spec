@@ -55,7 +55,7 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | --- | --- | --- |
 | Agent | 持久化 platform 或 coding 智能代理；固定引用一个 Workspace，但不等于运行容器 | agent |
 | AgentSession | 用户与 Agent 的持续交互会话；继承 Agent 的固定 Workspace 引用 | agent |
-| AgentInvocation | AgentSession 中的一轮用户交互，关联一个 AtomicTask；需要用户补充时结束当前轮次 | agent |
+| AgentInvocation | AgentSession 中的一轮用户交互；纯 CHAT 可不建 Task，异步、工具、Coding 与 Runtime 操作必须关联 AtomicTask | agent |
 | AgentWorkspace | Platform Agent 使用的独立持久化工作区，保存受权输入、产物和可恢复本地状态 | agent |
 | AgentRuntime | 按需运行 Hermes 或 OpenCode 的 Agent 执行实例，不承载 StudioApplication | agent |
 | AgentRuntimeProvider | 创建、恢复、检查 AgentRuntime 的系统注册组件 | agent |
@@ -63,14 +63,15 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | StudioWorkspace | StudioApplication 的可编辑源码、当前 Revision 和预览关联事实 | appstudio |
 | StudioChangeSet | Coding Agent 或用户基于 `base_revision` 提交的原子文件变更及校验结果 | appstudio |
 | StudioSourceSnapshot | 从一个 Workspace Revision 创建、供正式 Build 使用的不可变源码版本 | appstudio |
-| StudioApplicationVersion | 固定 StudioSourceSnapshot、Blueprint Revision 和运行 Profile 的发布版本 | appstudio |
-| StudioBuild | Source Snapshot 到可运行 Bundle 的业务投影，引用 TaskGroup/AtomicTask 和 Artifact | appstudio |
+| StudioApplicationVersion | 固定 StudioSourceSnapshot 的生成应用版本 | appstudio |
+| StudioBuild | StudioSourceSnapshot 到可运行 Bundle 的业务投影，引用 AtomicTask 和 Artifact | appstudio |
 | StudioPreviewRuntime | 基于当前 StudioWorkspace Revision 的编辑态快速预览，不可直接发布 | appstudio |
-| StudioRelease | 固定 StudioBuild、Artifact ID/digest 和环境的发布事实 | appstudio |
+| RuntimeConfig | StudioApplicationVersion 按环境使用的公开配置、Secret/Integration 引用和乐观版本事实 | appstudio |
+| StudioRelease | 固定 StudioBuild、StudioApplicationVersion、RuntimeConfig、Artifact ID/digest 和环境的发布事实 | appstudio |
 | StudioRuntimeInstance | StudioRelease 当前部署实例、健康状态与访问入口事实 | appstudio |
 | StudioDeploymentProvider | 从固定 Artifact 部署 StudioRuntimeInstance 的系统注册组件 | appstudio |
 | WorkspaceRevision | StudioWorkspace 在某一时点的可授权源码版本；Preview 可挂载当前 Revision | appstudio |
-| WorkspaceSnapshot | 从 Workspace Revision 形成的不可变源码输入；Build 只能只读使用固定 Snapshot | appstudio |
+| WorkspaceSnapshot | `StudioSourceSnapshot` 的已废弃别名；新规格不得继续作为独立对象使用 | appstudio |
 
 `Application` 和 `StudioApplication` 是不同产品对象：前者封装可运行 AI 能力，后者表示 Agent 辅助开发的 Web/BFF 应用。Coding Agent 可以固定引用一个 StudioWorkspace，但不能拥有其源码、Build、Release 或 Runtime 生命周期。
 

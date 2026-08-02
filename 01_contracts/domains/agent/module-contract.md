@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 Agent S1 只有 `R-AGENT-*` 强制规则和章节语义，没有标准 `US-*`/`BR-*` 编号。OpenAPI、错误、权限和事件因此保留空的 `user_stories` 字段，并引用真实 `R-*` 规则与 `source_sections`。补齐标准编号是 Release 前置任务。
+当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..08` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守固定 Workspace、分类后的 Invocation/AtomicTask 和 Workspace Tool 授权语义。
 
 ## 2. 模块边界
 
@@ -23,9 +23,11 @@
 - 外部输入必须带可信 Principal；请求中的 `user_id` 不参与授权决策。
 - Coding Agent 创建时固定 `workspace_type=studio` 和 `workspace_id`；Session/Invocation 不得切换。
 - Platform Agent 只允许 `workspace_type=agent`。多个 Coding Agent 可引用同一 StudioWorkspace，但写入由 AppStudio ChangeSet 和 `base_revision` 校验。
+- Agent 创建事务必须同时写入 `agents.workspace_type/workspace_id` 和唯一 `agent_workspace_bindings`，两处类型与 ID 必须一致；既有 Agent 不提供修改或重建 Binding 的写接口。
 - Runtime 创建、启动、挂起、恢复、停止和删除只能通过 Task Center 的已注册 `functionRef`；Task Worker 再调用唯一 Infra Adapter。
+- Agent Runtime 创建/启动/恢复只使用 `agent.runtime.ensure`，挂起/停止/删除只使用 `agent.runtime.stop`；arguments、结果、能力和策略必须符合 Task Center `function-registry.yaml` 固定版本，Agent 不提交 Infra DTO。
 - Agent 只保存 `infra_runtime_id`、`endpoint_ref`、状态和脱敏错误。Infra Provider、容器、宿主机路径和明文 Secret 不得进入 Agent API、事件或业务表。
-- Invocation 的 `atomic_task_id` 是一跳稳定引用；重试、取消、超时和 Attempt 状态归 Task Center。
+- 纯 CHAT 且不启动 Runtime、工具或后台工作的 Invocation 可以不带 `atomic_task_id`；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必须带一跳稳定 AtomicTask 引用，重试、取消、超时和 Attempt 状态归 Task Center。
 
 ## 4. 跨域协作
 

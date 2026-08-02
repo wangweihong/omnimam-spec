@@ -1,5 +1,5 @@
 # AppStudio S2 error codes, v1.0.0-draft.
-# 当前 S1 没有 US/BR 编号；related_rules 使用现有 R-STUDIO-*，related_user_stories 保持为空。
+# 当前 S1 通过 US-APPSTUDIO-001/BR-APPSTUDIO-001 锚点映射既有 R-STUDIO-* 规则。
 - code: ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE
   value: 210200
   http: 200
@@ -10,8 +10,8 @@
   range: 210200-210399
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-001, R-STUDIO-010]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_APPLICATION_INVALID_STATE
   value: 210201
   http: 200
@@ -22,8 +22,8 @@
   range: 210200-210399
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-001, R-STUDIO-014]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-014]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE
   value: 210400
   http: 200
@@ -34,8 +34,8 @@
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-002, R-STUDIO-010]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-002, R-STUDIO-010]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT
   value: 210401
   http: 200
@@ -46,8 +46,8 @@
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-003, R-STUDIO-004]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_WORKSPACE_CHANGE_REJECTED
   value: 210402
   http: 200
@@ -58,8 +58,20 @@
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-003, R-STUDIO-005]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_WORKSPACE_TOOL_GRANT_INVALID
+  value: 210403
+  http: 200
+  cn: Workspace Tool 授权已过期、范围不匹配或不允许当前操作。
+  en: The Workspace Tool grant is expired, scope-mismatched, or does not allow the operation.
+  owning_domain: appstudio
+  owning_module: workspace
+  range: 210400-210599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_SNAPSHOT_NOT_VISIBLE
   value: 210600
   http: 200
@@ -70,8 +82,8 @@
   range: 210600-210799
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-011, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-011]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_SNAPSHOT_INVALID
   value: 210601
   http: 200
@@ -82,8 +94,8 @@
   range: 210600-210799
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-011, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-011]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_BUILD_NOT_VISIBLE
   value: 210800
   http: 200
@@ -94,8 +106,8 @@
   range: 210800-210999
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-011, R-STUDIO-013]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_BUILD_FAILED
   value: 210801
   http: 200
@@ -106,8 +118,8 @@
   range: 210800-210999
   retryable: true
   deprecated: false
-  related_rules: [R-STUDIO-004, R-STUDIO-011, R-STUDIO-013]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_BUILD_CANCELED
   value: 210802
   http: 200
@@ -118,8 +130,32 @@
   range: 210800-210999
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-013, R-STUDIO-018]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_BUILD_ARTIFACT_NOT_READY
+  value: 210803
+  http: 200
+  cn: Build 任务已完成，但 Artifact 尚未 READY 或登记失败。
+  en: The Build task completed, but the Artifact is not READY or registration failed.
+  owning_domain: appstudio
+  owning_module: build
+  range: 210800-210999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-017, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_BUILD_ARTIFACT_DIGEST_MISMATCH
+  value: 210804
+  http: 200
+  cn: Asset Library Artifact digest 与 Build 输出不一致。
+  en: The Asset Library Artifact digest does not match the Build output.
+  owning_domain: appstudio
+  owning_module: build
+  range: 210800-210999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-018]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_RELEASE_INVALID
   value: 211000
   http: 200
@@ -130,8 +166,8 @@
   range: 211000-211199
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-004, R-STUDIO-008, R-STUDIO-009, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-008, R-STUDIO-013, R-STUDIO-018, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_RUNTIME_DEPLOY_FAILED
   value: 211001
   http: 200
@@ -142,8 +178,8 @@
   range: 211000-211199
   retryable: true
   deprecated: false
-  related_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_RELEASE_IMMUTABLE
   value: 211002
   http: 200
@@ -154,8 +190,8 @@
   range: 211000-211199
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-012]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-012]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_ACCESS_DENIED
   value: 211200
   http: 200
@@ -166,5 +202,5 @@
   range: 211200-211399
   retryable: false
   deprecated: false
-  related_rules: [R-STUDIO-010]
-  related_user_stories: []
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-010]
+  related_user_stories: [US-APPSTUDIO-001]

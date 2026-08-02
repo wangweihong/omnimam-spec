@@ -2,10 +2,10 @@
 
 > 文档状态：S1 Draft
 > 文档版本：v1.2
-> 修订日期：2026-08-02
-> 适用范围：AppStudio 项目创建、Coding Agent 开发、预览、构建、发布与运行管理
+> 修订日期：2026-08-03
+> 适用范围：StudioApplication 创建、Coding Agent 开发、源码版本、预览、构建、发布与运行管理
 >
-> 本文中的 `StudioApp` 指 AppStudio 生成的独立应用，不等同于 `application-platform.Application`。
+> 本文中的 `StudioApplication` 指 AppStudio 生成的独立应用，不等同于 `application-platform.Application`。
 
 ---
 
@@ -21,15 +21,15 @@ AppStudio 生成的应用可以：
 4. 复用 Task Center 执行复杂异步任务。
 5. 复用 Asset Library 管理素材和生成制品。
 6. 复用 OmniMAM 用户身份、通知和权限体系。
-7. 运行在 Docker、Kubernetes、Edge 或其他 Infra Provider 上。
+7. 第一阶段运行在 Infrastructure 提供的单机 Docker Runtime 上。
 
-AppStudio 不直接操作容器、Pod、GPU、端口、节点或宿主机进程。所有实际 Runtime 操作都先创建 Task Center 任务，再由 `Task Worker -> Infra Service` 创建和管理。
+Kubernetes、Edge、Local Process、多节点和跨 Provider 运行属于后续版本，不是当前 S1 能力。AppStudio 不直接操作容器、Pod、GPU、端口、节点或宿主机进程。所有实际 Runtime 操作都先创建 Task Center 任务，再由 `Task Worker -> Infra Adapter -> Infra Service` 创建和管理。
 
 ---
 
 # 2. 核心设计结论
 
-## 2.1 StudioApp 与 Application Platform 分离
+## 2.1 StudioApplication 与 Application Platform 分离
 
 OmniMAM 中存在两种不同类型的应用。
 
@@ -57,11 +57,11 @@ ApplicationVersion
 ApplicationRun
 ```
 
-### appstudio.StudioApp
+### appstudio.StudioApplication
 
 定位：
 
-> 由 Coding Agent 开发、具有独立代码、Release、Deployment 和访问入口的完整应用。
+> 由 Coding Agent 开发、具有独立源码谱系、Release、RuntimeInstance 和访问入口的完整应用。
 
 典型用途：
 
@@ -78,11 +78,11 @@ ApplicationRun
 application-platform.Application
     能力包装对象，主要供 Canvas 和平台能力调用
 
-appstudio.StudioApp
-    独立可部署应用，具有代码、Release 和 Deployment
+appstudio.StudioApplication
+    独立可部署应用，具有源码谱系、Release 和 RuntimeInstance
 ```
 
-StudioApp 可以调用 Application Platform，但不存在强绑定。
+StudioApplication 可以调用 Application Platform，但不存在强绑定。
 
 ---
 
@@ -105,7 +105,7 @@ Infra Service
     ↓ 创建 Agent Runtime
 Coding Agent Runtime
     ↓ 直接调用 LLM Provider
-    ↓ 修改 Workspace
+    ↓ 使用 AppStudio Workspace Tool 提交 ChangeSet
 ```
 
 AppStudio 只保存：
@@ -113,7 +113,7 @@ AppStudio 只保存：
 ```text
 agentId
 agentSessionId
-agentOperationId
+agentInvocationId
 ```
 
 不保存：
@@ -150,7 +150,7 @@ Coding Agent、Hermes、OpenCode 等 Runtime 通常已经实现：
 ```text
 Agent Service
     ↓
-model-manager
+model-management
     决定当前用户使用哪个模型
     ↓
 modelgateway
@@ -174,18 +174,17 @@ LLM Provider
 
 ## 2.4 所有实际运行统一通过 Infra Service
 
-以下操作均通过 Infra Service：
+以下当前操作均通过 Task Center 和 Infra Service：
 
 * Coding Agent Runtime。
 * AppStudio Preview Runtime。
 * Build Job。
 * Test Job。
-* StudioApp Runtime。
+* StudioApplication Runtime。
 * FFmpeg Job。
 * Python 图像处理 Job。
 * 外部素材下载 Job。
 * 平台模型 Runtime。
-* Edge Runtime。
 
 上层服务不得直接操作：
 
@@ -202,14 +201,13 @@ Volume
 Edge Node Agent
 ```
 
-Infra Service 统一屏蔽：
+Infra Service 在第一阶段只提供：
 
 ```text
 DockerRuntimeProvider
-KubernetesRuntimeProvider
-EdgeRuntimeProvider
-LocalProcessRuntimeProvider
 ```
+
+其他 Provider 只能作为后续版本规划，不得进入当前 AppStudio 请求、RuntimeProfile 或验收范围。
 
 ---
 
@@ -229,7 +227,7 @@ AppStudio 存在三种运行环境。
 归属：
 
 ```text
-Agent Service → Task Center → Task Worker → Infra Service
+Agent Service → Task Center → Task Worker → Infra Adapter → Infra Service
 ```
 
 ### Preview Runtime
@@ -243,33 +241,33 @@ Agent Service → Task Center → Task Worker → Infra Service
 归属：
 
 ```text
-AppStudio → Task Center → Task Worker → Infra Service
+AppStudio → Task Center → Task Worker → Infra Adapter → Infra Service
 ```
 
 ### Production Runtime
 
 用途：
 
-* 运行不可变 StudioAppRelease。
+* 运行不可变 StudioRelease。
 * 提供正式访问 Endpoint。
 * 支持启动、停止、升级和回滚。
 
 归属：
 
 ```text
-AppStudio → Deploy Service → Task Center → Task Worker → Infra Service
+AppStudio → StudioDeploymentProvider → Task Center → Task Worker → Infra Adapter → Infra Service
 ```
 
 三者必须隔离。
 
 ---
 
-## 2.6 Deploy Service 只负责发布态
+## 2.6 StudioDeploymentProvider 只负责发布态
 
-Deploy Service 负责：
+`StudioDeploymentProvider` 是 AppStudio 内部注册的发布业务组件，不是独立事实领域。它负责：
 
-* StudioAppRelease 部署。
-* StudioDeployment。
+* StudioRelease 部署。
+* StudioRuntimeInstance。
 * 期望运行状态。
 * 记录 Task Center 返回的 Endpoint 摘要。
 * 升级。
@@ -277,7 +275,7 @@ Deploy Service 负责：
 * 实例重建。
 * 发布健康状态。
 
-Deploy Service 不负责直接调用 Infra；它只创建或更新 Production 任务，并消费 Task Center 的结果。它也不负责：
+StudioApplication、StudioRelease、StudioRuntimeInstance 和当前入口事实仍由 AppStudio 拥有。StudioDeploymentProvider 不保存第二套业务状态，也不直接调用 Infra；它只创建或更新 Production 任务，并消费 Task Center 的结果。它也不负责：
 
 * Coding Agent。
 * Workspace。
@@ -298,59 +296,61 @@ flowchart TB
     API[omni-apiserver]
 
     subgraph STUDIO["AppStudio"]
-        PROJECT[StudioProject]
-        CONVERSATION[StudioConversation]
-        SNAPSHOT[WorkspaceSnapshot]
-        PREVIEW[PreviewSession]
+        APPLICATION[StudioApplication]
+        REPOSITORY[StudioSourceRepository]
+        WORKSPACE[StudioWorkspace / Revision / ChangeSet]
+        SNAPSHOT[StudioSourceSnapshot]
+        VERSION[StudioApplicationVersion]
+        PREVIEW[StudioPreviewRuntime]
         BUILD[StudioBuild]
-        RELEASE[StudioAppRelease]
-        APP[StudioApp]
-        DEPLOYMENT[StudioDeployment]
+        CONFIG[RuntimeConfig]
+        RELEASE[StudioRelease]
+        RUNTIME[StudioRuntimeInstance]
     end
 
     AGENT[Agent Service]
-    WORKSPACE[Workspace Service]
-    MM[model-manager]
+    MM[model-management]
     MG[modelgateway]
     TASK[Task Center]
     WORKER[Task Worker]
     INFRA[Infra Service]
-    DEPLOY[Deploy Service]
+    DEPLOY[StudioDeploymentProvider]
     ASSET[Asset Library]
     APP_PLATFORM[application-platform]
     NOTICE[Notification Center]
 
     USER --> API
-    API --> PROJECT
+    API --> APPLICATION
 
-    PROJECT --> CONVERSATION
-    PROJECT --> WORKSPACE
-    PROJECT --> SNAPSHOT
+    APPLICATION --> REPOSITORY
+    REPOSITORY --> WORKSPACE
+    WORKSPACE --> SNAPSHOT
+    SNAPSHOT --> VERSION
 
-    CONVERSATION --> AGENT
+    APPLICATION --> AGENT
     AGENT --> MM
     AGENT --> MG
     AGENT --> TASK
-    AGENT --> WORKSPACE
 
-    PROJECT --> PREVIEW
+    APPLICATION --> PREVIEW
     PREVIEW --> TASK
     TASK --> WORKER
 
-    PROJECT --> BUILD
+    APPLICATION --> BUILD
     BUILD --> TASK
     TASK --> WORKER
 
-    BUILD --> RELEASE
-    RELEASE --> APP
-
-    APP --> DEPLOYMENT
-    DEPLOYMENT --> DEPLOY
+    BUILD --> ASSET
+    ASSET --> RELEASE
+    VERSION --> RELEASE
+    CONFIG --> RELEASE
+    RELEASE --> DEPLOY
     DEPLOY --> TASK
     WORKER --> INFRA
+    INFRA --> RUNTIME
 
-    APP --> APP_PLATFORM
-    APP --> ASSET
+    RUNTIME --> APP_PLATFORM
+    RUNTIME --> ASSET
 
     TASK --> NOTICE
     DEPLOY --> NOTICE
@@ -364,17 +364,16 @@ flowchart TB
 
 AppStudio 负责：
 
-* StudioProject。
-* StudioConversation 与 Agent 会话关联。
-* Workspace 关联。
-* WorkspaceSnapshot。
-* PreviewSession。
+* StudioApplication 与 StudioApplicationVersion。
+* StudioSourceRepository。
+* StudioWorkspace、SourceFile、Revision 和 StudioChangeSet。
+* StudioSourceSnapshot。
+* StudioPreviewRuntime。
 * StudioBuild。
-* StudioAppRelease。
-* StudioApp。
-* StudioDeployment 业务投影。
+* StudioRelease。
+* RuntimeConfig、StudioRelease 和 StudioRuntimeInstance。
 * 发布、升级和回滚入口。
-* 项目活动记录。
+* 源码、构建和发布活动记录。
 * 页面和用户交互。
 
 AppStudio 不负责：
@@ -399,10 +398,10 @@ Agent Service 负责：
 * AgentProfile。
 * AgentSession。
 * AgentMessage。
-* AgentOperation。
+* AgentInvocation。
 * AgentMemory。
 * AgentModelBinding。
-* AgentWorkspaceBinding。
+* Agent 的固定 StudioWorkspace 引用。
 * AgentSkillBinding。
 * AgentMCPBinding。
 * AgentRuntimeBinding。
@@ -411,20 +410,20 @@ Agent Service 负责：
 AppStudio 通过 Agent Service 使用 Coding Agent。
 
 ```text
-StudioProject
+StudioApplication
     ↓
-Coding Agent
+固定绑定 StudioWorkspace 的 Coding Agent
     ↓
-Workspace
+AppStudio Workspace Tool
 ```
 
 AppStudio 不直接调用 Coding Agent Runtime Endpoint。
 
 ---
 
-## 4.3 Workspace Service
+## 4.3 Source Repository 与 StudioWorkspace
 
-Workspace 负责开发期间的代码和配置存储。
+AppStudio 拥有逻辑源码仓库、StudioWorkspace、文件索引、单调 Revision、StudioChangeSet 和不可变 StudioSourceSnapshot。底层存储 Provider 只实现存取，不形成第二个 Workspace 事实领域。
 
 Workspace 生命周期独立于：
 
@@ -432,17 +431,19 @@ Workspace 生命周期独立于：
 * Agent Runtime。
 * Preview Runtime。
 * Build Runtime。
-* StudioApp Runtime。
+* StudioApplication Runtime。
 
 规则：
 
 * AgentWorkspace 由 Infra 按 Agent 的有效授权挂载。
 * Coding Agent 访问 StudioWorkspace 只能通过 AppStudio Workspace Tool 和受控授权；Agent/Infra 不得直接读取 AppStudio 私有存储。
+* 所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；只在当前 Revision 等于 `base_revision` 时原子应用并生成下一个 Revision。
+* Revision 冲突、路径越权、操作无效或安全校验失败时，整个 ChangeSet 拒绝，不自动覆盖、不隐式合并、不部分应用。
 * Preview Runtime 只能挂载启动时授权的当前 Workspace Revision；源代码默认只读，临时写入使用隔离临时卷。
-* Build 只能只读挂载固定 Workspace Snapshot，不得读取持续变化的 Workspace。
+* Build 只能只读挂载固定 StudioSourceSnapshot，不得读取持续变化的 Workspace。
 * Production Runtime 只能只读挂载固定 Artifact digest，禁止挂载可写 Workspace、Revision 或 Snapshot。
 * Agent 删除不自动删除 Workspace。
-* StudioApp 发布不改变 Workspace 内容。
+* StudioApplication 发布不改变 Workspace 内容。
 
 ---
 
@@ -455,7 +456,7 @@ Infra Service 负责：
 * 分配 CPU、内存、GPU 和磁盘。
 * 解析 RuntimeProfile。
 * 挂载 Workspace。
-* 挂载 WorkspaceSnapshot。
+* 挂载 StudioSourceSnapshot。
 * 挂载 Artifact。
 * 注入配置和 Secret。
 * 分配 Endpoint。
@@ -468,8 +469,8 @@ Infra Service 负责：
 AppStudio 只持有：
 
 ```text
-previewRuntimeId
-buildInfraJobId
+atomicTaskId
+infraRuntimeId
 endpointRef
 runtimeStatusSummary
 ```
@@ -478,9 +479,9 @@ AppStudio 不保存 Provider 专属信息。
 
 ---
 
-## 4.5 model-manager
+## 4.5 model-management
 
-`model-manager` 管理当前用户私有模型：
+`model-management` 管理当前用户私有模型：
 
 ```text
 UserModelProvider
@@ -524,7 +525,7 @@ capabilities
 
 Infra Service 根据 `credentialRef` 注入凭证。
 
-Coding Agent Runtime 或 StudioApp Runtime 自行调用模型服务。
+Coding Agent Runtime 或 StudioApplication Runtime 自行调用模型服务。
 
 ---
 
@@ -555,31 +556,29 @@ APPSTUDIO_ROLLBACK
 APPSTUDIO_DELETE
 ```
 
-以上任务均由 Task Center 分发给 Task Worker；AppStudio、Deploy Service 和 Agent Service 不直接调用 Infra Service。Task Worker 的 Infra Adapter 才能把业务授权引用转换为 Infra 请求。
+以上任务均由 Task Center 分发给 Task Worker；AppStudio、StudioDeploymentProvider 和 Agent Service 不直接调用 Infra Service。Task Worker 的 Infra Adapter 才能把业务授权引用转换为 Infra 请求。
 
 Coding Agent 的启动和长操作任务由 Agent Service 创建。
 
 ---
 
-## 4.8 Deploy Service
+## 4.8 StudioDeploymentProvider
 
-Deploy Service 负责：
+StudioDeploymentProvider 负责：
 
-* StudioAppRelease 的长期运行。
-* StudioDeployment。
+* StudioRelease 的长期运行。
+* StudioRuntimeInstance。
 * 实例期望状态。
 * Release 切换。
 * 回滚。
 * Endpoint。
 * 健康策略。
 
-AppStudio 保存 Task Center/Task Worker 返回的：
+AppStudio 只保存自身 StudioRuntimeInstance 及 Task Center/Task Worker 返回的稳定引用和摘要：
 
 ```text
-deploymentId
 infraRuntimeId
 endpointRef
-actualState
 healthStatus
 ```
 
@@ -587,7 +586,7 @@ healthStatus
 
 ## 4.9 Application Platform
 
-StudioApp 可以调用已发布：
+StudioApplication 可以调用已发布：
 
 ```text
 ApplicationVersion
@@ -596,7 +595,7 @@ ApplicationVersion
 调用链：
 
 ```text
-StudioApp Runtime
+StudioApplication Runtime
     ↓
 Application Platform API
     ↓
@@ -605,13 +604,13 @@ ApplicationRun
 Task Center
 ```
 
-StudioApp 不读取应用引擎、能力绑定或 Provider 内部配置。
+StudioApplication 不读取应用引擎、能力绑定或 Provider 内部配置。
 
 ---
 
 ## 4.10 Asset Library
 
-StudioApp 可以：
+StudioApplication 可以：
 
 * 选择 Asset。
 * 上传素材。
@@ -620,7 +619,7 @@ StudioApp 可以：
 * 接收 ArtifactReference。
 * 将输出登记为 Asset。
 
-StudioApp 不直接操作 Blob 物理路径。
+StudioApplication 不直接操作 Blob 物理路径。
 
 ---
 
@@ -628,26 +627,24 @@ StudioApp 不直接操作 Blob 物理路径。
 
 ```mermaid
 erDiagram
-    STUDIO_PROJECT ||--o{ STUDIO_CONVERSATION : contains
-    STUDIO_PROJECT ||--|| WORKSPACE_BINDING : uses
-    STUDIO_PROJECT ||--o{ WORKSPACE_SNAPSHOT : snapshots
-    STUDIO_PROJECT ||--o{ PREVIEW_SESSION : previews
-    STUDIO_PROJECT ||--o{ STUDIO_BUILD : builds
-    STUDIO_PROJECT ||--o| STUDIO_APP : produces
+    STUDIO_APPLICATION ||--|| STUDIO_SOURCE_REPOSITORY : owns
+    STUDIO_SOURCE_REPOSITORY ||--o{ STUDIO_WORKSPACE : contains
+    STUDIO_WORKSPACE ||--o{ STUDIO_WORKSPACE_REVISION : advances
+    STUDIO_WORKSPACE ||--o{ STUDIO_CHANGE_SET : applies
+    STUDIO_WORKSPACE ||--o{ STUDIO_SOURCE_SNAPSHOT : snapshots
+    STUDIO_WORKSPACE ||--o{ STUDIO_PREVIEW_RUNTIME : previews
 
-    STUDIO_CONVERSATION }o--|| AGENT_REFERENCE : uses
-
-    STUDIO_BUILD }o--|| WORKSPACE_SNAPSHOT : reads
-    STUDIO_BUILD ||--o| STUDIO_APP_RELEASE : produces
-
-    STUDIO_APP ||--o{ STUDIO_APP_RELEASE : versions
-    STUDIO_APP ||--o{ STUDIO_DEPLOYMENT : deploys
-    STUDIO_DEPLOYMENT }o--|| STUDIO_APP_RELEASE : runs
+    STUDIO_SOURCE_SNAPSHOT ||--o{ STUDIO_APPLICATION_VERSION : versions
+    STUDIO_SOURCE_SNAPSHOT ||--o{ STUDIO_BUILD : builds
+    STUDIO_BUILD ||--o{ STUDIO_RELEASE : releases
+    STUDIO_APPLICATION_VERSION ||--o{ RUNTIME_CONFIG : configures
+    STUDIO_RELEASE }o--|| RUNTIME_CONFIG : fixes
+    STUDIO_RELEASE ||--o{ STUDIO_RUNTIME_INSTANCE : runs_as
 ```
 
 ---
 
-## 5.1 StudioProject
+## 5.1 StudioApplication
 
 字段：
 
@@ -657,9 +654,8 @@ ownerUserId
 name
 description
 status
-workspaceRef
-primaryConversationId
-studioAppId
+defaultWorkspaceId
+currentVersionId
 createdAt
 updatedAt
 lastActivityAt
@@ -668,33 +664,26 @@ lastActivityAt
 状态：
 
 ```text
-DRAFT
-GENERATING
-EDITING
-PREVIEWING
-BUILDING
-READY_TO_RELEASE
-RELEASED
+CREATING
+READY
 ARCHIVED
 ERROR
 ```
 
-项目状态只表示 AppStudio 业务状态，不表示 Infra Runtime 状态。
+StudioApplication 状态只表示应用身份是否可编辑和可管理，不承载 Preview、Build、Release 或 Runtime 的活动状态。同一应用可以同时存在 Preview、Build 和健康的 Production Runtime，各自状态由对应对象拥有。
 
 ---
 
-## 5.2 StudioConversation
+## 5.2 StudioSourceRepository
 
-用于关联 AppStudio 对话界面和 Agent Service Session。
+表示 StudioApplication 的逻辑源码仓库身份。它不暴露 Git、对象存储或文件系统 Provider 私有配置。
 
 字段：
 
 ```text
 id
-projectId
-agentId
-agentSessionId
-title
+studioApplicationId
+defaultWorkspaceId
 status
 createdAt
 updatedAt
@@ -703,49 +692,78 @@ updatedAt
 状态：
 
 ```text
-OPEN
-CLOSED
+CREATING
+READY
 ARCHIVED
+ERROR
 ```
 
-实际消息、AgentOperation 和 Memory 归 Agent Service 所有。
-
-AppStudio 可保存项目活动摘要，但不复制 Agent Message 数据。
+AppStudio 不创建第二套 Conversation。AgentSession、AgentMessage、AgentInvocation 和 Memory 全部归 Agent Service；AppStudio 只在 ChangeSet 审计上下文中保存稳定的 Agent、Session 和 Invocation ID。
 
 ---
 
-## 5.3 WorkspaceBinding
+## 5.3 StudioWorkspace
 
 字段：
 
 ```text
 id
-projectId
-workspaceRef
-accessMode
-isPrimary
+studioApplicationId
+repositoryId
+currentRevision
+status
 createdAt
 updatedAt
 ```
 
-默认：
-
-```text
-accessMode = READ_WRITE
-```
+每个 StudioApplication 至少有一个默认 StudioWorkspace。当前 S1 不支持多人实时协作，但允许多个 Coding Agent 固定引用同一 Workspace；所有写入仍按 Revision 串行提交。
 
 ---
 
-## 5.4 WorkspaceSnapshot
+## 5.4 StudioWorkspaceRevision 与 StudioChangeSet
+
+`StudioWorkspaceRevision` 是 Workspace 每次成功原子变更后的单调版本：
+
+```text
+workspaceId
+revision
+changeSetId
+contentDigest
+createdAt
+```
+
+`StudioChangeSet` 表示一次完整源码写入：
+
+```text
+id
+workspaceId
+baseRevision
+targetRevision
+idempotencyKey
+operations
+agentId
+agentSessionId
+agentInvocationId
+status
+failureReason
+createdAt
+```
+
+`operations` 只允许受控的 `CREATE`、`UPDATE`、`DELETE`、`MOVE`。提交时必须校验 Workspace、Tool 授权、路径、内容大小、安全限制和 `baseRevision`。只有全部校验通过才一次性应用并生成 `targetRevision=baseRevision+1`；任一项失败都不得修改 Workspace。
+
+---
+
+## 5.5 StudioSourceSnapshot
 
 字段：
 
 ```text
 id
-projectId
-workspaceRef
-snapshotRef
+workspaceId
+revision
 contentDigest
+manifestDigest
+status
 reason
 createdBy
 createdAt
@@ -759,19 +777,20 @@ createdAt
 * 用户主动保存版本点。
 * 大范围 Agent 修改前。
 
-Build 必须引用固定 Snapshot，不允许直接读取持续变化的 Workspace。
+Snapshot 创建后不可变。Build 必须引用状态为 `READY` 的固定 Snapshot，不允许直接读取持续变化的 Workspace；Snapshot 失败或 digest 不完整时不得创建 Build。
 
 ---
 
-## 5.5 PreviewSession
+## 5.6 StudioPreviewRuntime
 
 字段：
 
 ```text
 id
-projectId
-workspaceRef
-taskId
+studioApplicationId
+workspaceId
+workspaceRevision
+atomicTaskId
 infraRuntimeId
 runtimeProfileId
 runtimeProfileRevision
@@ -785,33 +804,31 @@ updatedAt
 状态：
 
 ```text
-CREATING
-STARTING
+PENDING
 RUNNING
-STOPPING
 STOPPED
-ERROR
+FAILED
 EXPIRED
 ```
 
-PreviewSession 是 AppStudio 对 Infra Runtime 的业务投影。
+StudioPreviewRuntime 是 AppStudio 对 Infra Runtime 的业务投影。
 
 ---
 
-## 5.6 StudioBuild
+## 5.7 StudioBuild
 
 字段：
 
 ```text
 id
-projectId
-snapshotId
-taskId
+studioApplicationId
+sourceSnapshotId
+atomicTaskId
 infraJobId
 status
 runtimeProfileId
 runtimeProfileRevision
-releaseArtifactRef
+artifactId
 artifactDigest
 validationResult
 logsRef
@@ -822,96 +839,107 @@ completedAt
 状态：
 
 ```text
-QUEUED
-PREPARING
-INSTALLING
-BUILDING
-VALIDATING
+PENDING
+RUNNING
 SUCCEEDED
 FAILED
 CANCELED
 ```
 
+`PREPARING/INSTALLING/BUILDING/VALIDATING` 可以作为 Task 进度阶段展示，但不是 AppStudio 自有状态机。StudioBuild 只有在 AtomicTask 成功、Asset Library 中 Artifact 已完成且其 digest 与 Build 返回值一致后才能进入 `SUCCEEDED`；Task 成功不能单独推断 Build 成功。
+
 ---
 
-## 5.7 StudioAppRelease
+## 5.8 StudioApplicationVersion
 
 字段：
 
 ```text
 id
-studioAppId
+studioApplicationId
 version
-buildId
-snapshotId
-releaseArtifactRef
-artifactDigest
-runtimeProfileId
-runtimeProfileRevision
-entrypoint
-environmentSchema
-modelBindingSchema
-healthCheck
-resourceRequirement
-createdBy
-createdAt
-releaseNotes
-```
-
-Release 创建后不可变。
-
----
-
-## 5.8 StudioApp
-
-字段：
-
-```text
-id
-ownerUserId
-projectId
-name
-description
-iconArtifactRef
-visibility
+sourceSnapshotId
 status
-currentReleaseId
-createdAt
-updatedAt
-```
-
-S1 可见性：
-
-```text
-PRIVATE
+publishedAt
 ```
 
 状态：
 
 ```text
 DRAFT
-ACTIVE
-DISABLED
-ARCHIVED
+PUBLISHED
+RETIRED
 ```
+
+Version 固定一个 StudioSourceSnapshot。发布后不可变，后续源码 Revision 和 Snapshot 不得改写历史 Version。
 
 ---
 
-## 5.9 StudioDeployment
+## 5.9 RuntimeConfig
 
 字段：
 
 ```text
 id
-studioAppId
-releaseId
-deployServiceDeploymentId
-desiredState
-actualState
+studioApplicationVersionId
+environment
+publicConfig
+secretReferences
+integrationReferences
+validationStatus
+resourceVersion
+```
+
+RuntimeConfig 只保存公开配置和 `secret://`、`integration://` 引用，不保存明文 Secret。更新采用整体替换并校验 `resourceVersion`；Release 创建时固定一个已校验的 RuntimeConfig 引用，后续配置更新不得改写历史 Release。
+
+---
+
+## 5.10 StudioRelease
+
+字段：
+
+```text
+id
+studioApplicationId
+studioBuildId
+studioApplicationVersionId
+environment
+runtimeConfigId
+artifactId
+artifactDigest
+status
+runtimeInstanceId
+createdBy
+createdAt
+```
+
+状态：
+
+```text
+PENDING
+DEPLOYING
+READY
+FAILED
+SUPERSEDED
+```
+
+Release 创建后，Build、Version、RuntimeConfig、Artifact ID 和 digest 均不可变。说明性 `releaseNotes` 可以作为独立元数据修改，但不属于不可变运行契约。
+
+---
+
+## 5.11 StudioRuntimeInstance
+
+字段：
+
+```text
+id
+studioReleaseId
+atomicTaskId
+infraRuntimeId
 endpointRef
 healthStatus
-environmentBinding
-modelBindings
+status
+isCurrent
 createdAt
 updatedAt
 ```
@@ -920,19 +948,17 @@ updatedAt
 
 ```text
 CREATING
-STARTING
-RUNNING
+READY
 DEGRADED
-STOPPING
 STOPPED
-UPDATING
-ERROR
-DELETING
+FAILED
 ```
+
+StudioRuntimeInstance 是 AppStudio 对一个具体发布运行实例的业务事实。每个 StudioApplication/Environment 最多一个 `isCurrent=true` 实例。新实例只有通过 Release 固定的健康检查并进入 `READY/HEALTHY` 后才能原子切换当前入口；创建、部署或健康检查失败不得停止、覆盖或改写旧健康实例。
 
 ---
 
-# 6. 项目创建
+# 6. StudioApplication 创建
 
 ## 6.1 创建输入
 
@@ -950,14 +976,14 @@ codingModelSelection
 创建结果：
 
 ```text
-StudioProject
-WorkspaceBinding
-StudioConversation
+StudioApplication
+StudioSourceRepository
+StudioWorkspace(revision=0)
 Coding Agent
 AgentSession
 ```
 
-其中 Coding Agent 和 AgentSession 由 Agent Service 创建。
+其中源码对象归 AppStudio；Coding Agent 和 AgentSession 由 Agent Service 创建。Coding Agent 必须以 `kind=coding`、`workspaceType=studio` 固定绑定新建的 StudioWorkspace。
 
 ---
 
@@ -988,24 +1014,22 @@ WEB_WITH_LIGHT_BACKEND
 sequenceDiagram
     participant U as User
     participant ST as AppStudio
-    participant WS as Workspace Service
     participant AS as Agent Service
 
-    U->>ST: CreateStudioProject
-    ST->>WS: 创建或绑定 Workspace
-    WS-->>ST: WorkspaceRef
+    U->>ST: CreateStudioApplication
+    ST->>ST: 原子创建 Application / Repository / Workspace(revision=0)
 
-    ST->>AS: Create Coding Agent
+    ST->>AS: Create Coding Agent(workspaceType=studio, workspaceId)
     AS-->>ST: agentId
 
     ST->>AS: Create AgentSession
     AS-->>ST: agentSessionId
 
-    ST->>ST: 创建 StudioProject 和 StudioConversation
-    ST-->>U: Project DRAFT
+    ST->>ST: 保存默认 Agent 稳定引用
+    ST-->>U: StudioApplication READY
 ```
 
-创建项目时默认不强制立即启动 Agent Runtime。
+创建时默认不强制立即启动 Agent Runtime。Agent 创建失败时 StudioApplication 进入 `ERROR`，已创建的 Repository/Workspace 保留以支持幂等重试；不得留下没有固定 Workspace 的 Coding Agent。
 
 ---
 
@@ -1020,7 +1044,7 @@ agentId
 agentSessionId
 instruction
 attachments
-projectContext
+studioApplicationContext
 ```
 
 附件可以包含：
@@ -1047,10 +1071,11 @@ sequenceDiagram
     participant INFRA as Infra Service
     participant AR as Coding Agent Runtime
     participant LLM as LLM Provider
-    participant WS as Workspace
+    participant WT as AppStudio Workspace Tool
 
     U->>ST: 描述应用需求
-    ST->>AS: SendAgentMessage
+    ST->>AS: SendAgentMessage(CODING)
+    AS->>TC: 创建并绑定 Invocation AtomicTask
 
     alt Agent Runtime 未运行
         AS->>TC: 创建 agent.runtime.ensure Task
@@ -1063,30 +1088,36 @@ sequenceDiagram
 
     AS->>AR: 发送开发指令
     AR->>LLM: 直接调用 LLM
-    AR->>WS: 读取和修改代码
+    AS->>ST: 请求当前 Invocation 的短期 Workspace Tool 授权
+    ST-->>AS: grantRef(principal/agent/session/invocation/workspace/actions/expiry)
+    AS->>AR: 转交当前 Invocation grantRef
+    AR->>WT: 按 Revision 读取源码
+    AR->>WT: Submit ChangeSet(base_revision, idempotency_key, operations)
+    WT->>WT: 原子校验并生成新 Revision
+    WT-->>AR: applied Revision 或完整拒绝
 
-    loop Agent Event Stream
+    loop Agent Invocation Event Stream
         AR-->>AS: 文件变更、日志、进度
-        AS-->>ST: 标准 Agent Event
+        AS-->>ST: 标准 Agent Invocation Event
         ST-->>U: SSE 更新
     end
 
-    AR-->>AS: Operation Completed
-    AS-->>ST: AgentOperation Result
+    AR-->>AS: Invocation Completed
+    AS-->>ST: AgentInvocation Result
 ```
 
 ---
 
 ## 7.3 AppStudio 保存的信息
 
-AppStudio 保存：
+AppStudio 保存源码事实和审计引用：
 
 ```text
-agentOperationId
-changeSummary
-changedFiles
+StudioChangeSet
+baseRevision / targetRevision
+agentId / agentSessionId / agentInvocationId
+operations 摘要
 validationSummary
-createdAt
 ```
 
 详细 Agent 消息和事件归 Agent Service 所有。
@@ -1097,9 +1128,9 @@ createdAt
 
 默认允许：
 
-* 读取 Workspace。
-* 修改 Workspace。
-* 创建和删除文件。
+* 通过短期 Workspace Tool 授权读取当前 Revision。
+* 提交带 `base_revision` 和幂等键的原子 ChangeSet。
+* 在 ChangeSet 内创建、修改、移动和删除受权文件。
 * 执行受控开发命令。
 * 执行测试。
 * 读取 Build 日志。
@@ -1113,6 +1144,8 @@ createdAt
 * 操作 Kubernetes API。
 * 获取宿主机 Shell。
 * 访问其他用户 Workspace。
+* 直接挂载 StudioWorkspace 或读取 AppStudio 私有存储。
+* 绕过 ChangeSet 写文件、自动覆盖 Revision 冲突或部分应用操作。
 * 读取明文 Secret。
 * 修改不可变 Release。
 * 修改生产 Runtime。
@@ -1212,7 +1245,7 @@ Preview 用于运行启动时授权的当前 Workspace Revision，不直接跟�
 * 临时 Service。
 * 挂载当前 Workspace Revision。
 * 支持重启。
-* 可支持热更新。
+* 重启或显式切换 Revision 时创建新的 Preview Task，不隐式跟随后续源码变化。
 * 不创建 Release。
 * 不作为正式生产服务。
 * 删除 Preview 不影响 Workspace。
@@ -1230,14 +1263,15 @@ sequenceDiagram
     participant TW as Task Worker
     participant INFRA as Infra Service
     participant PR as Preview Runtime
-    participant WS as Workspace
+    participant SS as StudioSource
 
     U->>ST: StartPreview
-    ST->>TC: 创建 Preview Task
+    ST->>ST: 固定 workspaceId + currentRevision
+    ST->>TC: 创建 Preview Task(revision sourceRef)
     TC->>TW: 分发 appstudio.preview.ensure
     TW->>INFRA: CreateService(appstudio.preview)
     INFRA->>PR: 启动运行环境
-    PR->>WS: 挂载 Workspace
+    INFRA->>SS: 只读解析受控 Revision sourceRef
     PR-->>INFRA: 健康检查成功
     INFRA-->>TW: runtimeId + endpointRef
     TW-->>TC: runtimeId + endpointRef + health summary
@@ -1260,6 +1294,8 @@ AppStudio
     ↓
 Task Center
     ↓
+Task Worker / Infra Adapter
+    ↓
 Infra Service
 ```
 
@@ -1275,7 +1311,7 @@ Infra Service
 http://<host-ip>:<allocated-port>
 ```
 
-AppStudio 保存 `endpointRef`，而非将 Host Port 作为业务主键。
+AppStudio 保存受控 `endpointRef` 和权限裁剪后的 Endpoint 摘要，而非将 Host Port 作为业务主键。Preview 默认只能由当前受权用户访问；不得因为分配了 Host Port 就自动成为公开 Endpoint。
 
 ---
 
@@ -1284,15 +1320,16 @@ AppStudio 保存 `endpointRef`，而非将 Host Port 作为业务主键。
 ## 10.1 Build 输入
 
 ```text
-projectId
-workspaceSnapshotId
+studioApplicationId
+sourceSnapshotId
+studioApplicationVersionId
 runtimeProfileId
 runtimeProfileRevision
 buildConfig
 dependencyLock
-environmentSchema
-modelBindingSchema
 ```
+
+`studioApplicationVersionId` 可以在探索性 Build 中为空；用于 Release 的 Build 必须绑定一个固定相同 Snapshot 的 StudioApplicationVersion。
 
 ---
 
@@ -1301,17 +1338,17 @@ modelBindingSchema
 ```text
 buildId
 status
-releaseArtifactRef
+artifactId
 artifactDigest
 validationResult
 logsRef
 sourceSnapshotId
 ```
 
-发布物统一抽象为：
+发布物统一引用 Asset Library 的：
 
 ```text
-ReleaseArtifactRef
+Artifact ID + immutable digest
 ```
 
 AppStudio 不关心其底层是：
@@ -1329,27 +1366,28 @@ Archive
 ```mermaid
 sequenceDiagram
     participant ST as AppStudio
-    participant WS as Workspace Service
     participant TC as Task Center
     participant TW as Task Worker
     participant INFRA as Infra Service
     participant BJ as Build Job
-    participant RS as Release Storage
+    participant AL as Asset Library
 
-    ST->>WS: CreateSnapshot
-    WS-->>ST: snapshotRef + digest
+    ST->>ST: Create StudioSourceSnapshot(revision)
 
-    ST->>TC: Create Build Task
+    ST->>TC: Create Build Task(sourceSnapshotId)
     TC->>TW: 分发 appstudio.build.execute
     TW->>INFRA: CreateJob(appstudio.build)
     INFRA->>BJ: 创建隔离构建环境
-    BJ->>WS: 读取固定 Snapshot
+    BJ->>BJ: 只读挂载固定 Snapshot sourceRef
     BJ->>BJ: 安装、编译、检查、启动验证
-    BJ->>RS: 保存发布物
-    BJ-->>INFRA: ReleaseArtifactRef
-    INFRA-->>TW: Job Succeeded
-    TW-->>TC: artifact_ref + digest + logs_ref
-    TC-->>ST: Build Result
+    BJ-->>INFRA: 输出文件描述 + digest
+    INFRA-->>TW: Job Succeeded + output descriptor
+    TW->>AL: 受控登记 Bundle Artifact
+    AL-->>TW: artifactId + digest + processing status
+    TW-->>TC: artifactId + digest + logsRef
+    TC-->>ST: Task Result
+    ST->>AL: 复核 Artifact READY 与 digest
+    ST->>ST: StudioBuild SUCCEEDED
 ```
 
 ---
@@ -1369,7 +1407,7 @@ sequenceDiagram
 9. 禁止明文 Secret 检查。
 10. Release Artifact 完整性检查。
 
-Build 失败不得创建 Release。
+Build 失败不得创建 Release。AtomicTask 成功但 Artifact 未完成、登记失败或 digest 不一致时，StudioBuild 仍不能进入 `SUCCEEDED`。
 
 ---
 
@@ -1389,13 +1427,15 @@ Build 失败不得创建 Release。
 ## 11.1 创建流程
 
 ```text
-WorkspaceSnapshot
+StudioSourceSnapshot
     ↓
 StudioBuild
     ↓
-ReleaseArtifactRef
+Artifact READY + digest verified
     ↓
-StudioAppRelease
+StudioApplicationVersion + RuntimeConfig
+    ↓
+StudioRelease
 ```
 
 ---
@@ -1408,12 +1448,9 @@ Release 创建后禁止修改：
 * 依赖。
 * Artifact。
 * Artifact Digest。
-* RuntimeProfile。
-* Entrypoint。
-* Environment Schema。
-* ModelBinding Schema。
-* Health Check。
-* Resource Requirement。
+* StudioApplicationVersion。
+* RuntimeConfig 引用。
+* Environment。
 
 允许单独修改：
 
@@ -1423,7 +1460,7 @@ releaseNotes
 
 ---
 
-# 12. 发布与 Deployment
+# 12. 发布与 StudioRuntimeInstance
 
 ## 12.1 发布流程
 
@@ -1431,15 +1468,17 @@ releaseNotes
 sequenceDiagram
     participant U as User
     participant ST as AppStudio
-    participant DS as Deploy Service
+    participant DS as StudioDeploymentProvider
     participant TC as Task Center
     participant TW as Task Worker
     participant INFRA as Infra Service
     participant SEC as Secret Service
-    participant APP as StudioApp Runtime
+    participant APP as StudioApplication Runtime
 
-    U->>ST: Deploy Release
-    ST->>DS: Create StudioDeployment
+    U->>ST: Create and deploy Release
+    ST->>ST: 校验 Build/Artifact/Version/RuntimeConfig
+    ST->>ST: 创建不可变 StudioRelease(PENDING)
+    ST->>DS: Create StudioRuntimeInstance(candidate)
     DS->>TC: 创建 appstudio.production.reconcile Task
     TC->>TW: 分发 functionRef
     TW->>INFRA: CreateService(studioapp.runtime)
@@ -1453,15 +1492,19 @@ sequenceDiagram
     INFRA-->>TW: runtimeId + endpointRef
     TW-->>TC: 运行引用与健康摘要
     TC-->>DS: Task 结果
-    DS-->>ST: Deployment Running
-    ST-->>U: 返回访问地址
+    DS->>ST: 候选实例 READY + HEALTHY
+    ST->>ST: 原子切换当前入口
+    ST->>ST: 旧 Release 标记 SUPERSEDED，旧实例按策略停止
+    ST-->>U: 返回受控访问入口
 ```
+
+部署、升级和回滚都先创建候选 Release/RuntimeInstance。候选实例未健康前不得修改当前入口或停止旧健康实例；失败时新 Release 标记 `FAILED`，旧 Release 和入口保持不变。
 
 ---
 
 ## 12.2 ModelBinding
 
-StudioAppRelease 保存 `ModelBindingSchema`，Deployment 保存实际绑定。
+StudioApplicationVersion 定义 ModelBinding 需求，RuntimeConfig 保存实际绑定引用，StudioRelease 固定该 RuntimeConfig。
 
 支持：
 
@@ -1488,49 +1531,49 @@ NONE
 ```text
 ModelBinding
     ↓
-model-manager 校验模型
+model-management 校验模型
     ↓
 modelgateway 生成 ModelAccessSpec
     ↓
 Infra Service 注入 Runtime
 ```
 
-StudioApp Runtime 自行调用模型。
+StudioApplication Runtime 自行调用模型。
 
 ---
 
 ## 12.3 用户私有模型限制
 
-当 StudioApp 使用用户私有模型时：
+当 StudioApplication 使用用户私有模型时：
 
 * 必须具有当前用户授权上下文。
-* model-manager 校验模型所有权。
+* model-management 校验模型所有权。
 * 不允许客户端传入任意 userId。
-* 不向 StudioApp 前端返回 CredentialRef。
+* 不向 StudioApplication 前端返回 CredentialRef。
 * Infra Service 仅向 Runtime 注入运行期凭证。
 * Runtime 日志必须脱敏。
 
 需要说明：
 
-> 如果 StudioApp 面向多个用户，不能在 Deployment 启动时永久注入应用创建者的用户私有模型凭证。
+> 如果 StudioApplication 面向多个用户，不能在 RuntimeInstance 启动时永久注入应用创建者的用户私有模型凭证。
 
-多用户 StudioApp 应采用以下方式之一：
+多用户 StudioApplication 应采用以下方式之一：
 
 1. 由每个用户提供运行时授权。
 2. 使用平台模型。
 3. 后续使用受控 Gateway Proxy。
 
-S1 中使用用户私有模型的 StudioApp 默认仅支持应用所有者私有使用。
+S1 中使用用户私有模型的 StudioApplication 默认仅支持应用所有者私有使用。
 
 ---
 
-# 13. StudioApp 调用 Application Platform
+# 13. StudioApplication 调用 Application Platform
 
-StudioApp 可以调用已发布的 `ApplicationVersion`。
+StudioApplication 可以调用已发布的 `ApplicationVersion`。
 
 ```mermaid
 sequenceDiagram
-    participant APP as StudioApp Runtime
+    participant APP as StudioApplication Runtime
     participant AP as Application Platform
     participant TC as Task Center
     participant AR as Application Runner
@@ -1548,15 +1591,15 @@ sequenceDiagram
 * 只能引用已发布 ApplicationVersion。
 * 必须经过权限校验。
 * 长任务必须通过 Task Center。
-* StudioApp 不得直接读取底层 Engine 配置。
+* StudioApplication 不得直接读取底层 Engine 配置。
 
 ---
 
-# 14. StudioApp 调用素材能力
+# 14. StudioApplication 调用素材能力
 
 ## 14.1 输入
 
-StudioApp 可以使用：
+StudioApplication 可以使用：
 
 ```text
 AssetReference
@@ -1579,12 +1622,14 @@ ArtifactReference
 ```text
 Runtime Output
     ↓
-Artifact
+Task Worker 提交 Asset Library
+    ↓
+Artifact READY
     ↓
 可选登记为 Asset
 ```
 
-StudioApp 不直接写入 Blob 物理路径。
+StudioApplication 不直接写入 Blob 物理路径。
 
 ---
 
@@ -1592,7 +1637,7 @@ StudioApp 不直接写入 Blob 物理路径。
 
 ```mermaid
 flowchart LR
-    APP[StudioApp]
+    APP[StudioApplication]
     TASK[Task Center]
     WORKER[Task Worker]
     INFRA[Infra Service]
@@ -1621,7 +1666,7 @@ flowchart LR
 ```text
 当前 Release
     ↓
-创建 Hotfix Snapshot 或 Workspace 分支
+从目标 StudioSourceSnapshot 创建受控 Hotfix Workspace 或恢复 ChangeSet
     ↓
 Coding Agent 修改
     ↓
@@ -1631,20 +1676,22 @@ Build
     ↓
 新 Release
     ↓
-更新 Deployment
+创建新 StudioRelease 和候选 StudioRuntimeInstance
 ```
 
 ---
 
 ## 15.2 回滚
 
-回滚表示重新部署旧 Release：
+回滚不修改或重新激活旧 Release，而是基于目标历史 Release 的不可变 Version、Artifact ID/digest 和兼容 RuntimeConfig 创建一条新的 StudioRelease：
 
 ```text
 Release 5
     ↓ rollback
-Release 3
+Release 6 (content copied from Release 3)
 ```
+
+新 RuntimeInstance 健康后才切换入口，因此回滚同样保留完整审计顺序，并遵守与普通升级相同的失败保护。
 
 禁止：
 
@@ -1655,33 +1702,30 @@ Release 3
 
 ---
 
-# 16. Agent 与项目生命周期
+# 16. Agent 与 StudioApplication 生命周期
 
-## 16.1 项目归档
+## 16.1 StudioApplication 归档
 
-项目归档时：
+StudioApplication 归档时：
 
 * 停止 Preview。
 * 可以挂起 Coding Agent。
-* 保留 Workspace。
-* 保留 Snapshot。
+* 保留 Repository、Workspace、Revision、ChangeSet 和 Snapshot。
 * 保留 Build 和 Release。
-* 不自动停止已发布 StudioApp。
+* 不自动停止已发布 StudioApplication。
 
 ---
 
-## 16.2 项目删除
+## 16.2 StudioApplication 删除
 
 S1 建议软删除。
 
-删除项目时：
+删除 StudioApplication 时：
 
-* 删除或归档 StudioConversation 关联。
-* 请求 Agent Service 删除 Coding Agent。
-* 不自动删除外部 Workspace，除非用户显式选择。
-* 不自动删除 StudioApp。
-* 不自动删除 Release。
-* 不自动删除 Deployment。
+* 默认软删除或归档应用身份及其源码入口。
+* 可以请求 Agent Service 删除默认 Coding Agent，但 Agent 删除失败不得改写源码历史。
+* Repository、Workspace、Revision、ChangeSet、Snapshot、Version、Build 和 Release 按保留策略继续存在，不做隐式级联硬删除。
+* 不自动停止仍对外服务的健康 StudioRuntimeInstance；必须先显式停止或确认解除入口。
 
 ---
 
@@ -1689,35 +1733,40 @@ S1 建议软删除。
 
 Coding Agent 删除规则归 Agent Service。
 
-AppStudio 只解除项目关联。
+AppStudio 只解除默认 Agent 稳定引用；不得删除或改写 AgentSession/Invocation，也不得因 Agent 删除而改写源码、Build、Release 或 RuntimeInstance。
 
 ---
 
 # 17. 权限模型
 
-## 17.1 项目所有权
+## 17.1 应用所有权
 
 以下对象必须校验当前用户：
 
 ```text
-StudioProject
-StudioConversation
-WorkspaceBinding
-WorkspaceSnapshot
-PreviewSession
+StudioApplication
+StudioSourceRepository
+StudioWorkspace
+StudioWorkspaceRevision
+StudioChangeSet
+StudioSourceSnapshot
+StudioApplicationVersion
+StudioPreviewRuntime
 StudioBuild
-StudioAppRelease
-StudioApp
-StudioDeployment
+RuntimeConfig
+StudioRelease
+StudioRuntimeInstance
 ```
 
 用户身份必须来自认证上下文。
+
+Workspace Tool 授权不得仅凭 `agentId`。每次授权必须同时绑定 Principal、Agent、Session、Invocation、Workspace、动作集合和有效期；AppStudio 每次读写都重新校验，且 Agent Runtime Identity 不自动继承应用所有者权限。
 
 ---
 
 ## 17.2 Service Identity
 
-StudioApp Runtime 使用独立 Service Identity。
+StudioApplication Runtime 使用独立 Service Identity。
 
 区分：
 
@@ -1747,8 +1796,8 @@ StudioApp Runtime 使用独立 Service Identity。
 
 Preview Runtime 只能访问：
 
-* 当前项目启动时授权的 Workspace Revision。
-* 当前项目开发配置。
+* 当前应用启动时固定的 Workspace Revision。
+* 当前应用开发配置。
 * 当前用户显式授权的模型或素材。
 * 开发环境专用 Secret。
 
@@ -1760,7 +1809,7 @@ Preview 不得自动使用生产 Secret。
 
 ## 18.1 Environment Schema
 
-Release 只保存 Schema：
+StudioApplicationVersion 定义配置需求 Schema，RuntimeConfig 保存实际 Binding 引用，Release 只固定 RuntimeConfig ID：
 
 ```json
 {
@@ -1781,7 +1830,7 @@ Release 只保存 Schema：
 }
 ```
 
-Deployment 保存实际 Binding。
+RuntimeConfig 更新必须整体替换并校验 `resourceVersion`。已创建 Release 不受后续 RuntimeConfig 更新影响。
 
 ---
 
@@ -1813,22 +1862,22 @@ SecretRef
 
 展示：
 
-* 我的项目。
+* 我的应用。
 * 最近编辑。
 * 最近发布。
-* 正在运行的 StudioApp。
-* Build 失败项目。
-* Preview 中的项目。
+* 正在运行的 StudioApplication。
+* Build 失败应用。
+* Preview 中的应用。
 * 快速创建入口。
 
 ---
 
-## 19.2 项目工作台
+## 19.2 应用工作台
 
 建议布局：
 
 ```text
-左侧：文件树、页面结构、项目资源
+左侧：文件树、页面结构、应用资源
 中间：Preview
 右侧：Coding Agent 对话
 底部：Task、Preview、Build、Runtime 状态
@@ -1837,7 +1886,7 @@ SecretRef
 主要操作：
 
 * 描述需求。
-* 查看 AgentOperation。
+* 查看 AgentInvocation。
 * 查看代码变更。
 * 查看 Diff。
 * 启动或刷新 Preview。
@@ -1855,7 +1904,7 @@ SecretRef
 展示：
 
 * Coding Agent 状态。
-* 当前 AgentOperation。
+* 当前 AgentInvocation。
 * 模型选择。
 * Session。
 * 最近修改摘要。
@@ -1890,23 +1939,21 @@ Agent 详细配置跳转 Agent Service 页面管理。
 * 来源 Snapshot。
 * Build。
 * Artifact Digest。
-* RuntimeProfile。
-* Environment Schema。
-* ModelBinding Schema。
-* Health Check。
+* StudioApplicationVersion。
+* RuntimeConfig 摘要。
 * 发布说明。
-* 关联 Deployment。
+* 关联 StudioRuntimeInstance。
 
 ---
 
-## 19.6 StudioApp 页面
+## 19.6 StudioApplication 页面
 
 展示：
 
 * 应用信息。
 * 当前 Release。
 * 访问地址。
-* Deployment 状态。
+* StudioRuntimeInstance 状态和健康。
 * ModelBindings。
 * Environment Bindings。
 * 启动和停止。
@@ -1922,25 +1969,22 @@ Agent 详细配置跳转 Agent Service 页面管理。
 
 以下为逻辑接口，不限定 HTTP 或 RPC 路径。
 
-## 20.1 Project
+## 20.1 StudioApplication
 
 ```text
-CreateStudioProject
-GetStudioProject
-ListStudioProjects
-UpdateStudioProject
-CloneStudioProject
-ArchiveStudioProject
-DeleteStudioProject
+CreateStudioApplication
+GetStudioApplication
+ListStudioApplications
+UpdateStudioApplication
+ArchiveStudioApplication
+DeleteStudioApplication
 ```
 
 ---
 
-## 20.2 Conversation 与 Agent
+## 20.2 Agent 协作
 
 ```text
-CreateStudioConversation
-GetStudioConversation
 SendStudioMessage
 GetStudioAgentStatus
 SuspendStudioAgent
@@ -1955,13 +1999,15 @@ ReplaceStudioAgent
 ## 20.3 Workspace
 
 ```text
-GetProjectWorkspace
-BindProjectWorkspace
-UnbindProjectWorkspace
-CreateWorkspaceSnapshot
-GetWorkspaceSnapshot
-ListWorkspaceSnapshots
-RestoreWorkspaceSnapshot
+GetStudioWorkspace
+ListSourceFiles
+GetSourceFile
+ApplyStudioChangeSet
+ListWorkspaceRevisions
+CreateStudioSourceSnapshot
+GetStudioSourceSnapshot
+ListStudioSourceSnapshots
+RestoreWorkspaceRevisionAsChangeSet
 GetWorkspaceDiff
 ```
 
@@ -1996,6 +2042,11 @@ GetBuildLogs
 ## 20.6 Release
 
 ```text
+CreateStudioApplicationVersion
+GetStudioApplicationVersion
+ListStudioApplicationVersions
+GetRuntimeConfig
+ReplaceRuntimeConfig
 CreateRelease
 GetRelease
 ListReleases
@@ -2004,34 +2055,24 @@ UpdateReleaseNotes
 
 ---
 
-## 20.7 StudioApp
+## 20.7 Artifact 与构建结果
 
 ```text
-CreateStudioApp
-GetStudioApp
-ListStudioApps
-UpdateStudioAppMetadata
-DisableStudioApp
-EnableStudioApp
-ArchiveStudioApp
+GetBuildArtifactSummary
+RetryArtifactRegistration
 ```
 
 ---
 
-## 20.8 Deployment
+## 20.8 StudioRuntimeInstance
 
 ```text
 DeployRelease
-GetDeployment
-ListDeployments
-StartDeployment
-StopDeployment
-UpdateDeploymentRelease
-RollbackDeployment
-DeleteDeployment
-GetDeploymentLogs
-UpdateEnvironmentBindings
-UpdateModelBindings
+GetStudioRuntimeInstance
+ListStudioRuntimeInstances
+StopStudioRuntimeInstance
+RollbackRelease
+GetStudioRuntimeLogs
 ```
 
 ---
@@ -2041,16 +2082,18 @@ UpdateModelBindings
 ## 21.1 AppStudio 业务事件
 
 ```text
-appstudio.project.created
-appstudio.project.updated
-appstudio.project.archived
+appstudio.application.created
+appstudio.application.updated
+appstudio.application.archived
 
 appstudio.agent.bound
-appstudio.agent.operation.completed
-appstudio.agent.operation.failed
+appstudio.agent.invocation.completed
+appstudio.agent.invocation.failed
 
+appstudio.changeset.applied
+appstudio.changeset.rejected
 appstudio.snapshot.created
-appstudio.snapshot.restored
+appstudio.version.published
 
 appstudio.preview.starting
 appstudio.preview.running
@@ -2064,11 +2107,11 @@ appstudio.build.canceled
 
 appstudio.release.created
 
-appstudio.deployment.created
-appstudio.deployment.running
-appstudio.deployment.degraded
-appstudio.deployment.failed
-appstudio.deployment.rolled_back
+appstudio.runtime.created
+appstudio.runtime.ready
+appstudio.runtime.degraded
+appstudio.runtime.failed
+appstudio.release.rolled_back
 ```
 
 ---
@@ -2080,7 +2123,7 @@ appstudio.deployment.rolled_back
 ```text
 agent.started
 agent.suspended
-agent.operation.started
+agent.invocation.started
 agent.runtime.failed
 ```
 
@@ -2117,13 +2160,12 @@ AppStudio 只消费必要事件并更新业务投影。
 * CredentialRef 不可用。
 * Workspace 不可访问。
 * Agent Runtime 启动失败。
-* AgentOperation 失败。
+* AgentInvocation 失败。
 
 处理：
 
 * 保留 Workspace。
-* 保留 StudioConversation。
-* 保留 Snapshot。
+* 保留 Repository、Workspace、Revision、ChangeSet 和 Snapshot。
 * 允许更换模型。
 * 允许恢复或替换 Coding Agent。
 
@@ -2157,9 +2199,11 @@ Preview 失败不修改 Workspace。
 
 Build 失败不得创建 Release。
 
+AtomicTask 成功但 Artifact 登记失败、Artifact 未 READY 或 digest 不一致时，Build 必须保持失败或等待可恢复状态，不能伪装为成功。
+
 ---
 
-## 22.4 Deployment 错误
+## 22.4 StudioRuntimeInstance 错误
 
 可能原因：
 
@@ -2178,13 +2222,13 @@ Build 失败不得创建 Release。
 
 # 23. 标准错误码
 
-## 23.1 Project
+## 23.1 StudioApplication
 
 ```text
-APPSTUDIO_PROJECT_NOT_FOUND
-APPSTUDIO_PROJECT_ACCESS_DENIED
-APPSTUDIO_PROJECT_INVALID_STATE
-APPSTUDIO_PROJECT_ARCHIVED
+APPSTUDIO_APPLICATION_NOT_FOUND
+APPSTUDIO_APPLICATION_ACCESS_DENIED
+APPSTUDIO_APPLICATION_INVALID_STATE
+APPSTUDIO_APPLICATION_ARCHIVED
 ```
 
 ## 23.2 Agent
@@ -2192,7 +2236,7 @@ APPSTUDIO_PROJECT_ARCHIVED
 ```text
 APPSTUDIO_AGENT_NOT_BOUND
 APPSTUDIO_AGENT_UNAVAILABLE
-APPSTUDIO_AGENT_OPERATION_FAILED
+APPSTUDIO_AGENT_INVOCATION_FAILED
 APPSTUDIO_AGENT_MODEL_INVALID
 ```
 
@@ -2201,6 +2245,10 @@ APPSTUDIO_AGENT_MODEL_INVALID
 ```text
 APPSTUDIO_WORKSPACE_NOT_FOUND
 APPSTUDIO_WORKSPACE_ACCESS_DENIED
+APPSTUDIO_WORKSPACE_REVISION_CONFLICT
+APPSTUDIO_CHANGESET_INVALID
+APPSTUDIO_CHANGESET_NOT_ATOMIC
+APPSTUDIO_WORKSPACE_TOOL_GRANT_INVALID
 APPSTUDIO_WORKSPACE_SNAPSHOT_FAILED
 APPSTUDIO_WORKSPACE_SNAPSHOT_NOT_FOUND
 ```
@@ -2223,6 +2271,8 @@ APPSTUDIO_BUILD_ALREADY_RUNNING
 APPSTUDIO_BUILD_FAILED
 APPSTUDIO_BUILD_CANCELED
 APPSTUDIO_BUILD_VALIDATION_FAILED
+APPSTUDIO_BUILD_ARTIFACT_NOT_READY
+APPSTUDIO_BUILD_ARTIFACT_DIGEST_MISMATCH
 ```
 
 ## 23.6 Release
@@ -2234,39 +2284,32 @@ APPSTUDIO_RELEASE_BUILD_INVALID
 APPSTUDIO_RELEASE_IMMUTABLE
 ```
 
-## 23.7 Deployment
+## 23.7 StudioRuntimeInstance
 
 ```text
-APPSTUDIO_DEPLOYMENT_NOT_FOUND
-APPSTUDIO_DEPLOYMENT_CREATE_FAILED
-APPSTUDIO_DEPLOYMENT_UPDATE_FAILED
-APPSTUDIO_DEPLOYMENT_ROLLBACK_FAILED
-APPSTUDIO_DEPLOYMENT_MODEL_BINDING_INVALID
-APPSTUDIO_DEPLOYMENT_ENVIRONMENT_INVALID
+APPSTUDIO_RUNTIME_NOT_FOUND
+APPSTUDIO_RUNTIME_CREATE_FAILED
+APPSTUDIO_RUNTIME_HEALTH_FAILED
+APPSTUDIO_RUNTIME_CUTOVER_FAILED
+APPSTUDIO_ROLLBACK_FAILED
+APPSTUDIO_RUNTIME_MODEL_BINDING_INVALID
+APPSTUDIO_RUNTIME_ENVIRONMENT_INVALID
 ```
 
 ---
 
-# 24. 数据表建议
+# 24. 事实持久化边界
 
 ```text
-studio_projects
-studio_conversations
-studio_workspace_bindings
-studio_workspace_snapshots
-
-studio_preview_sessions
-studio_builds
-studio_build_validations
-
-studio_apps
-studio_app_releases
-studio_deployments
-studio_deployment_model_bindings
-studio_deployment_environment_bindings
-
-studio_activity_events
+StudioApplication / StudioApplicationVersion
+StudioSourceRepository / StudioWorkspace / SourceFile
+StudioWorkspaceRevision / StudioChangeSet / StudioSourceSnapshot
+StudioPreviewRuntime / StudioBuild
+RuntimeConfig / StudioRelease / StudioRuntimeInstance
+可靠 AppStudio 事件
 ```
+
+具体表、列、索引和外键由 S2 定义。
 
 不应在 AppStudio 数据库中复制：
 
@@ -2287,26 +2330,28 @@ asset_blobs
 
 ## 25.1 S1 必须实现
 
-* StudioProject。
-* StudioConversation。
-* Workspace Binding。
-* WorkspaceSnapshot。
+* StudioApplication。
+* StudioSourceRepository 与 StudioWorkspace。
+* Workspace Revision 与原子 StudioChangeSet。
+* StudioSourceSnapshot。
+* StudioApplicationVersion。
 * Agent Service Coding Agent 集成。
-* AgentOperation 事件展示。
-* PreviewSession。
+* AgentInvocation 事件展示。
+* 短期 Workspace Tool 授权。
+* StudioPreviewRuntime。
 * StudioBuild。
 * Build Gate。
-* 不可变 StudioAppRelease。
-* StudioApp。
-* StudioDeployment。
+* RuntimeConfig。
+* 不可变 StudioRelease。
+* StudioRuntimeInstance 与健康切换。
 * Task Center 集成。
 * Infra Service 集成。
-* Deploy Service 集成。
+* StudioDeploymentProvider 集成。
 * Asset Library 集成。
 * Application Platform 调用。
 * 用户模型和平台模型 Binding。
 * Secret 安全注入。
-* IP 加端口访问。
+* 第一阶段受控 IP 加端口 Endpoint。
 * Hotfix。
 * Release 回滚。
 * 用户权限隔离。
@@ -2334,7 +2379,7 @@ asset_blobs
 * 完整 Git 托管。
 * Agent 直接修改生产 Runtime。
 * Agent 修改不可变 Release。
-* StudioApp 与 Application 自动转换。
+* StudioApplication 与 Application 自动转换。
 * 用户上传任意可执行 Build 插件。
 * 任意动态 Shell 执行。
 
@@ -2344,7 +2389,7 @@ asset_blobs
 
 ## R-STUDIO-001
 
-`StudioApp` 与 `application-platform.Application` 是不同领域对象。
+`StudioApplication` 与 `application-platform.Application` 是不同领域对象。
 
 ## R-STUDIO-002
 
@@ -2356,7 +2401,7 @@ Coding Agent、Session、Memory、Skills 和 MCP 归 Agent Service 管理。
 
 ## R-STUDIO-004
 
-所有实际运行必须通过 Infra Service。
+所有实际运行必须通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`。
 
 ## R-STUDIO-005
 
@@ -2380,11 +2425,11 @@ Coding Agent Runtime、Preview Runtime 和 Production Runtime 必须隔离。
 
 ## R-STUDIO-010
 
-Workspace 生命周期独立于 Coding Agent 和 Runtime。
+AppStudio 拥有 StudioWorkspace、Revision、ChangeSet 和 Snapshot；其生命周期独立于 Coding Agent 和 Runtime。所有写入必须带 `base_revision` 和幂等键并原子应用。
 
 ## R-STUDIO-011
 
-Build 必须读取固定 WorkspaceSnapshot。
+Build 必须读取固定 StudioSourceSnapshot。
 
 ## R-STUDIO-012
 
@@ -2392,7 +2437,7 @@ Production Runtime 禁止挂载可写 Workspace。
 
 ## R-STUDIO-013
 
-StudioAppRelease 创建后不可变。
+StudioRelease 固定 Build、Version、RuntimeConfig、Environment、Artifact ID 和 digest，创建后不可变。
 
 ## R-STUDIO-014
 
@@ -2400,11 +2445,11 @@ Hotfix 必须生成新 Build 和新 Release。
 
 ## R-STUDIO-015
 
-回滚必须重新部署旧 Release。
+回滚必须基于目标历史 Release 的不可变内容创建新 Release 和候选 RuntimeInstance，不得修改或重新激活旧 Release。
 
 ## R-STUDIO-016
 
-Deploy Service 只负责发布态长期运行。
+StudioDeploymentProvider 是 AppStudio 内部注册组件，只负责发布态 Task 编排和结果投影，不拥有第二套 Release/RuntimeInstance 状态。
 
 ## R-STUDIO-017
 
@@ -2412,11 +2457,11 @@ Deploy Service 只负责发布态长期运行。
 
 ## R-STUDIO-018
 
-素材和制品必须复用 Asset Library。
+素材和制品必须复用 Asset Library；StudioBuild 只有在 Task 成功、Artifact READY 且 digest 一致后才能成功。
 
 ## R-STUDIO-019
 
-StudioApp 调用平台能力时只能引用已发布 ApplicationVersion。
+StudioApplication 调用平台能力时只能引用已发布 ApplicationVersion。
 
 ## R-STUDIO-020
 
@@ -2424,7 +2469,7 @@ AppStudio 不得复制 Agent Service、Infra Service 或 Task Center 的领域�
 
 ## R-STUDIO-021
 
-使用用户私有模型的 StudioApp，S1 默认仅支持应用所有者私有运行。
+使用用户私有模型的 StudioApplication，S1 默认仅支持应用所有者私有运行。
 
 ## R-STUDIO-022
 
@@ -2432,11 +2477,11 @@ AppStudio 不得复制 Agent Service、Infra Service 或 Task Center 的领域�
 
 ## R-STUDIO-023
 
-Preview、Build、Production 及其他 Infra-backed 操作必须先创建 Task Center 任务，由 Task Worker 通过 Infra Adapter 调用 Infra Service；AppStudio、Deploy Service 和 Agent Service 不得直接调用 Infra Service。
+Preview、Build、Production 及其他 Infra-backed 操作必须先创建 Task Center 任务，由 Task Worker 通过 Infra Adapter 调用 Infra Service；AppStudio、StudioDeploymentProvider 和 Agent Service 不得直接调用 Infra Service。
 
 ## R-STUDIO-024
 
-Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Workspace Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace、Revision 或 Snapshot。
+Preview 只能只读挂载启动时固定的 Workspace Revision；Build 只能只读挂载固定 StudioSourceSnapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace、Revision 或 Snapshot。
 
 ---
 
@@ -2444,12 +2489,12 @@ Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 W
 
 ```text
 AppStudio
-    管理项目、Workspace 引用、Preview、Build、Release、StudioApp 和 Deployment
+    管理 StudioApplication、源码谱系、Preview、Build、RuntimeConfig、Release 和 RuntimeInstance
 
 Agent Service
     管理 Coding Agent、Session、Memory、Skills、MCP、模型绑定和 Runtime Binding
 
-model-manager
+model-management
     决定用户可以使用哪个模型
 
 modelgateway
@@ -2459,19 +2504,19 @@ Infra Service
     接收 Task Worker 的受控请求，创建实际 Runtime，并注入 Workspace、配置和 Secret
 
 Coding Agent Runtime
-    自行调用 LLM，执行 Agent Loop 并修改 Workspace
+    自行调用 LLM，执行 Agent Loop，并通过 AppStudio Workspace Tool 提交 ChangeSet
 
 Task Center
     管理异步任务、重试、取消、依赖和进度
 
-Deploy Service
-    管理 StudioAppRelease 的长期部署、升级和回滚，并通过 Task Center 触发实际运行操作
+StudioDeploymentProvider
+    作为 AppStudio 内部组件编排 StudioRelease 的部署、升级和回滚
 
 Application Platform
-    提供 StudioApp 可调用的 ApplicationVersion
+    提供 StudioApplication 可调用的 ApplicationVersion
 
 Asset Library
-    管理 StudioApp 使用和生成的 Asset 与 Artifact
+    管理 StudioApplication 使用和生成的 Asset 与 Artifact
 
 Notification Center
     通知 Build、发布和后台操作结果
@@ -2484,12 +2529,12 @@ flowchart LR
     USER[User]
     STUDIO[AppStudio]
     AGENT_SERVICE[Agent Service]
-    MM[model-manager]
+    MM[model-management]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Coding Agent Runtime]
     LLM[LLM Provider]
-    WS[Workspace]
+    WT[AppStudio Workspace Tool]
 
     USER --> STUDIO
     STUDIO --> AGENT_SERVICE
@@ -2501,37 +2546,61 @@ flowchart LR
     WORKER --> INFRA
 
     INFRA --> AGENT
-    INFRA -->|挂载| WS
     INFRA -->|注入模型配置与凭证| AGENT
 
     AGENT -->|直接调用| LLM
-    AGENT -->|读写| WS
+    AGENT -->|ChangeSet| WT
 ```
 
 完整发布链路：
 
 ```mermaid
 flowchart LR
-    WS[Workspace]
-    SNAPSHOT[WorkspaceSnapshot]
+    WS[StudioWorkspace Revision]
+    SNAPSHOT[StudioSourceSnapshot]
     TASK[Task Center]
     WORKER[Task Worker]
     INFRA[Infra Service]
     BUILD[Build Job]
-    RELEASE[StudioAppRelease]
-    DEPLOY[Deploy Service]
-    RUNTIME[StudioApp Runtime]
+    RELEASE[StudioRelease]
+    DEPLOY[StudioDeploymentProvider]
+    RUNTIME[StudioApplication Runtime]
 
     WS --> SNAPSHOT
     SNAPSHOT --> TASK
     TASK --> WORKER
+    WORKER --> INFRA
     INFRA --> BUILD
-    BUILD --> RELEASE
+    BUILD --> ARTIFACT[Asset Library Artifact READY]
+    ARTIFACT --> RELEASE
     RELEASE --> DEPLOY
     DEPLOY --> TASK
+    WORKER --> INFRA
     INFRA --> RUNTIME
 ```
 
 最终边界为：
 
-> AppStudio 管理应用开发和发布业务；Agent Service 管理 Coding Agent；Infra Service 管理实际运行；Coding Agent 与 StudioApp Runtime 自行调用模型。
+> AppStudio 管理应用开发和发布业务；Agent Service 管理 Coding Agent；Infra Service 管理实际运行；Coding Agent 与 StudioApplication Runtime 自行调用模型。
+
+## 28. S2 追溯锚点
+
+以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
+
+- `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Workspace、Snapshot、Build、Preview、Release 和 Runtime。
+- `BR-APPSTUDIO-001`：StudioApplication、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、7、9、10、11、12、15、16、17、18、21、22、26 节及 `R-STUDIO-001..024`。
+
+验收标准：
+
+- `AC-APPSTUDIO-001-01`：创建 StudioApplication 时必须原子创建 Repository 和默认 Workspace；默认 Coding Agent 必须固定引用该 Workspace，不能产生未绑定 Workspace 的 Agent。
+- `AC-APPSTUDIO-001-02`：所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；Revision 冲突、越权或校验失败时不覆盖、不隐式合并、不部分应用。
+- `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、Workspace、动作和有效期的短期 Tool 授权。
+- `AC-APPSTUDIO-001-04`：Preview 固定启动时的 Workspace Revision，后续源码变化不会隐式改变正在运行的 Preview。
+- `AC-APPSTUDIO-001-05`：Build 只读取 `READY` 的 StudioSourceSnapshot；当前 Workspace 的后续 Revision 不影响进行中或历史 Build。
+- `AC-APPSTUDIO-001-06`：AtomicTask 成功但 Artifact 未 READY、登记失败或 digest 不一致时，StudioBuild 不得进入 `SUCCEEDED`。
+- `AC-APPSTUDIO-001-07`：StudioRelease 必须固定 Build、Version、RuntimeConfig、Environment、Artifact ID 和 digest，后续可变配置不得改写历史 Release。
+- `AC-APPSTUDIO-001-08`：新 RuntimeInstance 只有健康后才能切换当前入口；部署或健康检查失败时旧健康实例和入口保持不变。
+- `AC-APPSTUDIO-001-09`：回滚创建新的 StudioRelease 和 RuntimeInstance，并复用目标历史内容；旧 Release 不被修改或重新激活。
+- `AC-APPSTUDIO-001-10`：Preview、Build、发布、升级和回滚只能走 Task Center、Task Worker、Infra Adapter 和 Infra Service，AppStudio 与 StudioDeploymentProvider 不得直接调用 Infra。
+- `AC-APPSTUDIO-001-11`：Production 只读使用固定 Artifact digest，携带 Workspace、Revision 或 Snapshot 挂载的请求必须拒绝。
+- `AC-APPSTUDIO-001-12`：第一阶段只允许 Infrastructure 的单机 Docker 能力；Kubernetes、Edge、Local Process、多节点和跨 Provider 参数必须保持禁用。

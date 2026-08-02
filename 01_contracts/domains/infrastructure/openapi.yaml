@@ -16,7 +16,7 @@ paths:
       summary: 查询 InfraRuntime
       x-permission: infra.runtime.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015], source_sections: ['8.2 InfraRuntime', '21 权限与安全']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015], source_sections: ['8.2 InfraRuntime', '21 权限与安全']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: owner_domain, in: query, schema: {type: string}}, {name: owner_reference, in: query, schema: {type: string}}, {name: status, in: query, schema: {type: string}}]
       responses: {'200': {description: InfraRuntime 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
@@ -25,7 +25,7 @@ paths:
       summary: 创建 Job 或 Service Runtime
       x-permission: infra.runtime.create
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-009, R-INFRA-015, R-INFRA-016, R-INFRA-017], source_sections: ['9 运行请求', '20 幂等性']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-009, R-INFRA-015, R-INFRA-016, R-INFRA-017], source_sections: ['9 运行请求', '20 幂等性']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateRuntimeRequest'}}}}
       responses: {'200': {description: InfraRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtimes/{runtime_id}:
@@ -36,7 +36,7 @@ paths:
       summary: 获取 InfraRuntime
       x-permission: infra.runtime.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015, R-INFRA-017], source_sections: ['8.2 InfraRuntime', '17 状态模型']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015, R-INFRA-017], source_sections: ['8.2 InfraRuntime', '17 状态模型']}
       responses: {'200': {description: InfraRuntime；仅返回脱敏状态。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     delete:
       tags: [runtimes]
@@ -44,7 +44,7 @@ paths:
       summary: 删除 Runtime
       x-permission: infra.runtime.delete
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.3 Delete Runtime', '23 对账与故障恢复']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.3 Delete Runtime', '23 对账与故障恢复']}
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 删除后的 Runtime 摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtimes/{runtime_id}/start:
@@ -54,7 +54,7 @@ paths:
       summary: 启动 Runtime
       x-permission: infra.runtime.operate
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-005, R-INFRA-016, R-INFRA-018], source_sections: ['10 Runtime Provider', '18 取消、停止与删除']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-005, R-INFRA-016, R-INFRA-018], source_sections: ['10 Runtime Provider', '18 取消、停止与删除']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -65,7 +65,7 @@ paths:
       summary: 停止 Service 或取消 Job
       x-permission: infra.runtime.operate
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.1 Cancel Job', '18.2 Stop Service']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.1 Cancel Job', '18.2 Stop Service']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -76,7 +76,7 @@ paths:
       summary: 取消 Job
       x-permission: infra.runtime.operate
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-016], source_sections: ['18.1 Cancel Job', '20 幂等性']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-016], source_sections: ['18.1 Cancel Job', '20 幂等性']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -87,7 +87,7 @@ paths:
       summary: 对账 Provider 状态
       x-permission: infra.runtime.reconcile
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-017, R-INFRA-018], source_sections: ['23 对账与故障恢复']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-017, R-INFRA-018], source_sections: ['23 对账与故障恢复']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 对账后的 Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -98,7 +98,7 @@ paths:
       summary: 获取受控 Endpoint 摘要
       x-permission: infra.endpoint.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.3 RuntimeEndpoint', '14 网络管理']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.3 RuntimeEndpoint', '14 网络管理']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       responses: {'200': {description: Endpoint 摘要；不返回宿主机地址。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeEndpoint'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtimes/{runtime_id}/logs:
@@ -108,7 +108,7 @@ paths:
       summary: 查询脱敏 Runtime 日志
       x-permission: infra.runtime.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-013], source_sections: ['16 日志管理', '27.3 日志']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-013], source_sections: ['16 日志管理', '27.3 日志']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: 日志页；不返回 Provider 原始响应和凭证。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/nodes:
@@ -118,7 +118,7 @@ paths:
       summary: 查询受管节点摘要
       x-permission: infra.node.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['11 节点与资源管理']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['11 节点与资源管理']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: status, in: query, schema: {type: string}}]
       responses: {'200': {description: 节点列表。, content: {application/json: {schema: {$ref: '#/components/schemas/NodeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/nodes/{node_id}:
@@ -128,7 +128,7 @@ paths:
       summary: 获取节点摘要
       x-permission: infra.node.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['8.1 InfraNode', '11 节点与资源管理']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['8.1 InfraNode', '11 节点与资源管理']}
       parameters: [{$ref: '#/components/parameters/node_id'}]
       responses: {'200': {description: 节点摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraNode'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtime-profiles:
@@ -138,7 +138,7 @@ paths:
       summary: 查询只读 RuntimeProfile
       x-permission: infra.profile.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
       responses: {'200': {description: RuntimeProfile 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfileListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtime-profiles/{profile_id}:
     get:
@@ -147,7 +147,7 @@ paths:
       summary: 获取 RuntimeProfile
       x-permission: infra.profile.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
       parameters: [{$ref: '#/components/parameters/profile_id'}]
       responses: {'200': {description: RuntimeProfile。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfile'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtimes/{runtime_id}/outputs:
@@ -157,7 +157,7 @@ paths:
       summary: 查询运行输出引用
       x-permission: infra.output.read
       x-service-auth: task-center
-      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.6 RuntimeOutput', '12 Workspace 与文件挂载']}
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.6 RuntimeOutput', '12 Workspace 与文件挂载']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: 输出引用列表；内容由 Asset Library 负责。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeOutputListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
 components:
@@ -176,7 +176,7 @@ components:
       properties:
         request_id: {type: string}
         requesting_service: {type: string, enum: [task-center]}
-        owner_domain: {type: string, enum: [agent, appstudio]}
+        owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library]}
         owner_reference: {type: string}
         request_user_id: {type: string}
         runtime_mode: {type: string, enum: [JOB, SERVICE]}
@@ -229,8 +229,8 @@ components:
         updated_at: {type: string, format: date-time}
     RuntimeEndpoint:
       type: object
-      required: [id, runtime_id, access_mode, status]
-      properties: {id: {type: string}, runtime_id: {type: string}, access_mode: {type: string, enum: [INTERNAL, USER_PROXY]}, status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}, display_ref: {type: string, nullable: true}, expires_at: {type: string, format: date-time, nullable: true}}
+      required: [id, runtime_id, visibility, status]
+      properties: {id: {type: string}, runtime_id: {type: string}, visibility: {type: string, enum: [INTERNAL, USER_ACCESSIBLE, PUBLIC]}, status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}, display_ref: {type: string, nullable: true}, expires_at: {type: string, format: date-time, nullable: true}}
     InfraNode:
       type: object
       required: [id, status, cpu_cores, memory_mb, provider_type]

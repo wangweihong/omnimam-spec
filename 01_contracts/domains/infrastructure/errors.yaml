@@ -1,5 +1,5 @@
 # Infrastructure S2 error codes, v1.0.0-draft.
-# 当前 S1 没有 US/BR 编号；related_rules 使用现有 R-INFRA-*，related_user_stories 保持为空。
+# 当前 S1 通过 US-INFRA-001/BR-INFRA-001 锚点映射既有 R-INFRA-* 规则。
 - code: ERR_INFRA_REQUEST_INVALID
   value: 240200
   http: 200
@@ -10,8 +10,8 @@
   range: 240200-240399
   retryable: false
   deprecated: false
-  related_rules: [R-INFRA-003, R-INFRA-004, R-INFRA-015, R-INFRA-016]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-003, R-INFRA-004, R-INFRA-015, R-INFRA-016]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_RUNTIME_PROFILE_NOT_FOUND
   value: 240201
   http: 200
@@ -22,8 +22,8 @@
   range: 240200-240399
   retryable: false
   deprecated: false
-  related_rules: [R-INFRA-004, R-INFRA-017]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-004, R-INFRA-017]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_UNSUPPORTED_RUNTIME_MODE
   value: 240202
   http: 200
@@ -34,8 +34,20 @@
   range: 240200-240399
   retryable: false
   deprecated: false
-  related_rules: [R-INFRA-003, R-INFRA-005, R-INFRA-020]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-003, R-INFRA-005, R-INFRA-020]
+  related_user_stories: [US-INFRA-001]
+- code: ERR_INFRA_IDEMPOTENCY_CONFLICT
+  value: 240203
+  http: 200
+  cn: 相同 requestingService/requestId 对应的请求摘要不一致。
+  en: The request fingerprint differs for the same requestingService/requestId scope.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-001, R-INFRA-016]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_NO_ELIGIBLE_NODE
   value: 240400
   http: 200
@@ -46,8 +58,8 @@
   range: 240400-240599
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-003, R-INFRA-018]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-003, R-INFRA-018]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_RESOURCE_INSUFFICIENT
   value: 240401
   http: 200
@@ -58,8 +70,8 @@
   range: 240400-240599
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-003]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-003]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_RUNTIME_NOT_FOUND
   value: 240600
   http: 200
@@ -70,8 +82,8 @@
   range: 240600-240799
   retryable: false
   deprecated: false
-  related_rules: [R-INFRA-006, R-INFRA-008, R-INFRA-015]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-006, R-INFRA-008, R-INFRA-015]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_RUNTIME_OPERATION_FAILED
   value: 240601
   http: 200
@@ -82,8 +94,8 @@
   range: 240600-240799
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-002, R-INFRA-005, R-INFRA-018]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-005, R-INFRA-018]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_RUNTIME_STATE_CONFLICT
   value: 240602
   http: 200
@@ -94,8 +106,8 @@
   range: 240600-240799
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-006, R-INFRA-018]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-006, R-INFRA-018]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_MOUNT_NOT_ALLOWED
   value: 240800
   http: 200
@@ -106,8 +118,8 @@
   range: 240800-240999
   retryable: false
   deprecated: false
-  related_rules: [R-INFRA-009, R-INFRA-010, R-INFRA-011]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-009, R-INFRA-010, R-INFRA-011]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_SECRET_RESOLUTION_FAILED
   value: 240801
   http: 200
@@ -118,8 +130,8 @@
   range: 240800-240999
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-012, R-INFRA-013, R-INFRA-014]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-012, R-INFRA-013, R-INFRA-014]
+  related_user_stories: [US-INFRA-001]
 - code: ERR_INFRA_ENDPOINT_ALLOCATION_FAILED
   value: 240802
   http: 200
@@ -130,5 +142,17 @@
   range: 240800-240999
   retryable: true
   deprecated: false
-  related_rules: [R-INFRA-002, R-INFRA-008]
-  related_user_stories: []
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008]
+  related_user_stories: [US-INFRA-001]
+- code: ERR_INFRA_ENDPOINT_ACCESS_DENIED
+  value: 240803
+  http: 200
+  cn: 当前主体、owner 或短期授权不允许解析该 Endpoint。
+  en: The current principal, owner, or short-lived grant cannot resolve the endpoint.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 240800-240999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-001, R-INFRA-008, R-INFRA-015]
+  related_user_stories: [US-INFRA-001]
