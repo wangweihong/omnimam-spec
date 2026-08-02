@@ -22,7 +22,7 @@ CREATE TABLE identity_users (
   normalized_email TEXT,
   phone TEXT,
   password_hash TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'PENDING', 'DISABLED', 'LOCKED', 'DELETED')),
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'PENDING', 'REJECTED', 'DISABLED', 'LOCKED', 'DELETED')),
   first_login_required BOOLEAN NOT NULL DEFAULT FALSE,
   failed_login_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_count >= 0),
   locked_until TIMESTAMPTZ,
@@ -45,6 +45,40 @@ CREATE INDEX idx_identity_users_status
   ON identity_users (status, updated_at DESC);
 CREATE INDEX idx_identity_users_display_name
   ON identity_users (display_name);
+
+-- Registration decisions are immutable; a rejected user may submit a new attempt.
+-- s1_refs: US-IAM-001, US-IAM-015; BR-IAM-002, BR-IAM-023
+CREATE TABLE identity_registration_applications (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+
+  user_id TEXT NOT NULL REFERENCES identity_users(id),
+  attempt_no INTEGER NOT NULL CHECK (attempt_no > 0),
+  status TEXT NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+  submitted_at TIMESTAMPTZ NOT NULL,
+  decided_at TIMESTAMPTZ,
+  decided_by TEXT,
+  decision_reason TEXT,
+
+  CONSTRAINT uq_identity_registration_attempt UNIQUE (user_id, attempt_no),
+  CONSTRAINT chk_identity_registration_decision CHECK (
+    (status = 'PENDING' AND decided_at IS NULL AND decided_by IS NULL AND decision_reason IS NULL)
+    OR (status = 'APPROVED' AND decided_at IS NOT NULL AND decided_by IS NOT NULL)
+    OR (status = 'REJECTED' AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND decision_reason <> '')
+  ),
+  CONSTRAINT chk_identity_registration_version CHECK (resource_version >= 0)
+);
+
+CREATE UNIQUE INDEX uq_identity_registration_pending_user
+  ON identity_registration_applications (user_id)
+  WHERE status = 'PENDING';
+CREATE INDEX idx_identity_registration_applications_status
+  ON identity_registration_applications (status, submitted_at DESC);
 
 -- s1_refs: US-IAM-005; BR-IAM-008, BR-IAM-009
 CREATE TABLE identity_roles (
@@ -297,6 +331,25 @@ CREATE TABLE identity_service_accounts (
 CREATE INDEX idx_identity_service_accounts_owner
   ON identity_service_accounts (owner_type, owner_id, status);
 
+-- Service accounts receive permissions only through direct role grants.
+-- s1_refs: US-IAM-008, US-IAM-018; BR-IAM-014, BR-IAM-026
+CREATE TABLE identity_service_account_role_grants (
+  id TEXT PRIMARY KEY,
+  service_account_id TEXT NOT NULL REFERENCES identity_service_accounts(id),
+  role_id TEXT NOT NULL REFERENCES identity_roles(id),
+  effective_from TIMESTAMPTZ,
+  effective_to TIMESTAMPTZ,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL,
+  CONSTRAINT uq_identity_service_account_role UNIQUE (service_account_id, role_id),
+  CONSTRAINT chk_identity_service_role_period CHECK (
+    effective_to IS NULL OR effective_from IS NULL OR effective_to > effective_from
+  )
+);
+
+CREATE INDEX idx_identity_service_account_roles
+  ON identity_service_account_role_grants (service_account_id, effective_to);
+
 -- Service credential plaintext is never stored.
 -- s1_refs: US-IAM-008; BR-IAM-014, BR-IAM-015
 CREATE TABLE identity_service_account_credentials (
@@ -316,6 +369,9 @@ CREATE TABLE identity_service_account_credentials (
   expires_at TIMESTAMPTZ,
   revoked_at TIMESTAMPTZ,
   last_used_at TIMESTAMPTZ,
+  rotated_from_id TEXT REFERENCES identity_service_account_credentials(id),
+  revoked_reason TEXT,
+  created_by TEXT,
 
   CONSTRAINT uq_identity_service_credentials_hash UNIQUE (credential_hash),
   CONSTRAINT chk_identity_service_credentials_version CHECK (resource_version >= 0)
@@ -323,6 +379,51 @@ CREATE TABLE identity_service_account_credentials (
 
 CREATE INDEX idx_identity_service_credentials_account
   ON identity_service_account_credentials (service_account_id, status);
+
+-- Short-lived cross-domain deletion checks; summaries never replace source facts.
+-- s1_refs: US-IAM-002, US-IAM-017; BR-IAM-017, BR-IAM-028
+CREATE TABLE identity_user_deletion_checks (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+
+  user_id TEXT NOT NULL REFERENCES identity_users(id),
+  status TEXT NOT NULL CHECK (status IN ('COMPLETE', 'INCOMPLETE', 'STALE', 'CONSUMED')),
+  requested_by TEXT NOT NULL,
+  checked_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  source_set_version TEXT NOT NULL,
+
+  CONSTRAINT chk_identity_deletion_check_expiry CHECK (expires_at > checked_at),
+  CONSTRAINT chk_identity_deletion_check_version CHECK (resource_version >= 0)
+);
+
+CREATE INDEX idx_identity_user_deletion_checks_user
+  ON identity_user_deletion_checks (user_id, checked_at DESC);
+
+-- Snapshot item; general resource metadata does not apply.
+-- s1_refs: US-IAM-017; BR-IAM-017, BR-IAM-028
+CREATE TABLE identity_user_deletion_check_items (
+  id TEXT PRIMARY KEY,
+  check_id TEXT NOT NULL REFERENCES identity_user_deletion_checks(id),
+  source_domain TEXT NOT NULL,
+  category TEXT NOT NULL,
+  object_type TEXT NOT NULL,
+  item_count INTEGER NOT NULL DEFAULT 0 CHECK (item_count >= 0),
+  blocking BOOLEAN NOT NULL,
+  source_status TEXT NOT NULL CHECK (source_status IN ('AVAILABLE', 'UNAVAILABLE')),
+  handling_mode TEXT NOT NULL CHECK (handling_mode IN ('TRANSFER', 'DELETE', 'CANCEL', 'REVOKE', 'DISABLE', 'NONE')),
+  management_entry TEXT,
+  source_version TEXT,
+  created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_identity_deletion_check_items_check
+  ON identity_user_deletion_check_items (check_id, source_domain, category);
 
 -- Reliable events are written transactionally with their source fact.
 -- s1_refs: BR-IAM-015, BR-IAM-019; US-IAM-009, US-IAM-011

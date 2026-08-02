@@ -49,6 +49,8 @@
   deprecated: false
   related_rules: [BR-IAM-003]
   related_user_stories: [US-IAM-001]
+  data:
+    locked_until: string(date-time)|null
 
 - code: ERR_IDENTITY_FIRST_LOGIN_REQUIRED
   value: 220204
@@ -231,6 +233,9 @@
   deprecated: false
   related_rules: [BR-IAM-017, BR-IAM-019]
   related_user_stories: [US-IAM-002]
+  data:
+    dependency_check_id: string
+    blocking_count: integer
 
 - code: ERR_IDENTITY_SELF_DELETE_FORBIDDEN
   value: 220405
@@ -543,3 +548,133 @@
   deprecated: false
   related_rules: [BR-IAM-010, BR-IAM-019]
   related_user_stories: [US-IAM-006, US-IAM-011]
+
+- code: ERR_IDENTITY_ACCOUNT_REJECTED
+  value: 220213
+  http: 200
+  cn: 最近一次注册申请已被拒绝，可以重新提交申请。
+  en: The latest registration application was rejected and may be resubmitted.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-003, BR-IAM-023]
+  related_user_stories: [US-IAM-001, US-IAM-015, US-IAM-020]
+
+- code: ERR_IDENTITY_REGISTRATION_STATE_INVALID
+  value: 220214
+  http: 200
+  cn: 当前注册模式或账号申请状态不允许提交注册。
+  en: The active registration mode or account application state does not allow registration.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-002, BR-IAM-016, BR-IAM-023]
+  related_user_stories: [US-IAM-001, US-IAM-015]
+
+- code: ERR_IDENTITY_REGISTRATION_APPLICATION_NOT_VISIBLE
+  value: 220408
+  http: 200
+  cn: 注册申请不存在或当前主体不可见。
+  en: The registration application does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-023]
+  related_user_stories: [US-IAM-015]
+
+- code: ERR_IDENTITY_REGISTRATION_DECISION_CONFLICT
+  value: 220409
+  http: 200
+  cn: 注册申请已存在不可覆盖的相反审批结果。
+  en: The registration application already has an opposite immutable decision.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-023]
+  related_user_stories: [US-IAM-015]
+
+- code: ERR_IDENTITY_REGISTRATION_REASON_REQUIRED
+  value: 220410
+  http: 200
+  cn: 拒绝注册申请必须填写原因。
+  en: A reason is required to reject a registration application.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-023]
+  related_user_stories: [US-IAM-015]
+
+- code: ERR_IDENTITY_USER_DELETE_DEPENDENCY_UNAVAILABLE
+  value: 220411
+  http: 200
+  cn: 用户删除依赖来源不可用或返回结果不完整，当前不能删除用户。
+  en: A user-deletion dependency source is unavailable or incomplete, so the user cannot be deleted.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-IAM-017, BR-IAM-019, BR-IAM-028]
+  related_user_stories: [US-IAM-017, US-IAM-020]
+
+- code: ERR_IDENTITY_USER_DELETE_CHECK_STALE
+  value: 220412
+  http: 200
+  cn: 用户删除依赖检查已过期或不再匹配当前来源事实，请重新检查。
+  en: The user-deletion dependency check is expired or no longer matches current source facts.
+  owning_domain: identity
+  owning_module: user
+  range: 220400-220599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-IAM-017, BR-IAM-028]
+  related_user_stories: [US-IAM-017]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_OWNER_INVALID
+  value: 221006
+  http: 200
+  cn: 服务账号 owner 不存在、不可见或不允许作为该账号归属。
+  en: The service-account owner does not exist, is not visible, or cannot own this account.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-019, BR-IAM-026]
+  related_user_stories: [US-IAM-018]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_OWNER_UNAVAILABLE
+  value: 221007
+  http: 200
+  cn: 服务账号 owner 校验当前不可用，凭据交换已被拒绝。
+  en: Service-account owner validation is unavailable, so credential exchange was denied.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: true
+  deprecated: false
+  related_rules: [BR-IAM-014, BR-IAM-026]
+  related_user_stories: [US-IAM-008, US-IAM-018, US-IAM-020]
+
+- code: ERR_IDENTITY_SERVICE_ACCOUNT_CREDENTIAL_NOT_VISIBLE
+  value: 221008
+  http: 200
+  cn: 服务账号凭据不存在或当前主体不可见。
+  en: The service-account credential does not exist or is not visible to the current principal.
+  owning_domain: identity
+  owning_module: service-account
+  range: 221000-221199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-014, BR-IAM-027]
+  related_user_stories: [US-IAM-018]

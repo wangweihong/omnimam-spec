@@ -5,7 +5,7 @@ identity.user.read:
   action: read, list
   subject: ordinary_user, system_admin
   description: 查询当前主体可见的用户摘要和用户管理范围内的用户。
-  frontend_usage: 用户共享选择器和管理员用户管理。
+  frontend_usage: 用户共享选择器、当前用户资料和管理员用户管理。
   backend_enforcement: 普通用户只返回资源共享场景所需的最小摘要；管理员查询必须按身份管理范围过滤，不返回密码、Token 或安全字段。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-IAM-001, BR-IAM-012, BR-IAM-019]
@@ -15,14 +15,27 @@ identity.user.manage:
   domain: identity
   module: user
   resource: user
-  action: create, update, disable, enable, unlock, delete
+  action: create, update, disable, enable, unlock, reset_initial_password, assign_roles, check_delete_dependencies, delete
   subject: system_admin
   description: 管理用户资料、状态、角色归属和删除流程。
   frontend_usage: 管理后台用户管理。
-  backend_enforcement: 禁止读取密码或完整凭据；删除前检查业务资源、任务、服务账号、共享关系和最后一个 SUPER_ADMIN 保护。
+  backend_enforcement: 禁止读取密码或完整凭据；直接角色整体替换必须维护生效期和授权版本；删除前必须使用完整、未过期且提交前重验的跨域依赖检查，并执行最后一个 SUPER_ADMIN 保护。
   default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-IAM-002, BR-IAM-007, BR-IAM-017]
-  related_user_stories: [US-IAM-002]
+  related_rules: [BR-IAM-002, BR-IAM-007, BR-IAM-017, BR-IAM-025, BR-IAM-028]
+  related_user_stories: [US-IAM-002, US-IAM-017]
+
+identity.registration.review:
+  domain: identity
+  module: user
+  resource: registration_application
+  action: read, approve, reject
+  subject: system_admin
+  description: 查询并审批自主注册申请。
+  frontend_usage: 待审批注册申请列表、详情、批准和拒绝动作。
+  backend_enforcement: 只允许处理 PENDING 申请；拒绝必须有原因；相同决策幂等、相反决策冲突；批准/拒绝和重新申请必须保留不可变历史并在审计不可用时 fail closed。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-IAM-002, BR-IAM-015, BR-IAM-023]
+  related_user_stories: [US-IAM-015, US-IAM-020]
 
 identity.role.manage:
   domain: identity
@@ -47,8 +60,8 @@ identity.permission.read:
   frontend_usage: 动态菜单、按钮和权限目录展示。
   backend_enforcement: 普通用户只可读取当前主体可用权限投影；不得把权限目录视为授权结果或资源可见性证明。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-IAM-005, BR-IAM-009]
-  related_user_stories: [US-IAM-005, US-IAM-006]
+  related_rules: [BR-IAM-005, BR-IAM-009, BR-IAM-024, BR-IAM-025]
+  related_user_stories: [US-IAM-005, US-IAM-006, US-IAM-016]
 
 identity.group.manage:
   domain: identity
@@ -106,25 +119,25 @@ identity.service_account.read:
   resource: service_account
   action: read, list
   subject: system_admin
-  description: 查询服务账号非敏感摘要和状态。
+  description: 查询服务账号非敏感摘要、owner 状态、有效角色和凭据历史。
   frontend_usage: 服务账号管理页面。
-  backend_enforcement: 不返回 client_secret、凭据哈希或完整 Access Token；按管理范围过滤 owner_type/owner_id。
+  backend_enforcement: 不返回 client_secret、凭据哈希或完整 Access Token；只返回凭据前缀、状态、到期、最后使用和轮换历史；按管理范围过滤 owner_type/owner_id。
   default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-IAM-014, BR-IAM-015]
-  related_user_stories: [US-IAM-008, US-IAM-009]
+  related_rules: [BR-IAM-014, BR-IAM-015, BR-IAM-026, BR-IAM-027]
+  related_user_stories: [US-IAM-008, US-IAM-009, US-IAM-018]
 
 identity.service_account.manage:
   domain: identity
   module: service-account
   resource: service_account
-  action: create, update, disable, enable, rotate_credential
+  action: create, update, disable, enable, assign_roles, rotate_credential, revoke_credential
   subject: system_admin
   description: 管理受控 ServiceAccount 及其凭据轮换和撤销。
   frontend_usage: 服务账号创建、停用和凭据轮换。
-  backend_enforcement: 默认最小权限；凭据明文只展示一次；禁用或轮换必须使旧凭据/Token 失效并写审计。
+  backend_enforcement: 只允许直接角色且默认最小权限；owner 必须受控校验；凭据明文只展示一次；禁用、轮换或撤销必须使受影响凭据/Token 失效并写审计。
   default_roles: [SUPER_ADMIN]
-  related_rules: [BR-IAM-010, BR-IAM-014, BR-IAM-015]
-  related_user_stories: [US-IAM-008, US-IAM-009, US-IAM-011]
+  related_rules: [BR-IAM-010, BR-IAM-014, BR-IAM-015, BR-IAM-025, BR-IAM-026, BR-IAM-027]
+  related_user_stories: [US-IAM-008, US-IAM-009, US-IAM-011, US-IAM-018]
 
 identity.principal.introspect:
   domain: identity

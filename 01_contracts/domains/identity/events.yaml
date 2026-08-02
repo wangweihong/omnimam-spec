@@ -23,7 +23,7 @@ identity.user.created:
 identity.user.status_changed:
   producer: identity.user
   consumers: [platform-audit, notification-service, principal-cache]
-  trigger_condition: User 被禁用、恢复、解锁或进入逻辑删除状态并提交后。
+  trigger_condition: User 因注册批准/拒绝、禁用、恢复、解锁或逻辑删除发生状态变化并提交后。
   payload:
     event_id: string
     event_name: string
@@ -40,8 +40,33 @@ identity.user.status_changed:
   idempotency_key: identity.user.status_changed:{user_id}:{aggregate_version}
   retry_policy: 持久化 Outbox 重试；消费者按 user_id 与 aggregate_version 单调处理。
   failure_policy: 授权缓存和投影可重试；身份撤销事实以 identity 持久化状态为准。
-  related_rules: [BR-IAM-007, BR-IAM-015, BR-IAM-017]
-  related_user_stories: [US-IAM-002, US-IAM-009, US-IAM-011]
+  related_rules: [BR-IAM-007, BR-IAM-015, BR-IAM-017, BR-IAM-023, BR-IAM-028]
+  related_user_stories: [US-IAM-002, US-IAM-009, US-IAM-011, US-IAM-015, US-IAM-017]
+
+identity.registration.reviewed:
+  producer: identity.user
+  consumers: [platform-audit, notification-service, admin-projection]
+  trigger_condition: RegistrationApplication 被批准或拒绝并与 User 状态原子提交后。
+  payload:
+    event_id: string
+    event_name: string
+    occurred_at: string(date-time)
+    aggregate_id: string
+    aggregate_version: integer
+    registration_application_id: string
+    user_id: string
+    attempt_no: integer
+    decision: string(APPROVED|REJECTED)
+    decision_reason: string|null
+    authorization_version: integer
+    actor_principal_type: string(USER|SERVICE_ACCOUNT)
+    actor_principal_id: string
+    actor_user_id: string|null
+  idempotency_key: identity.registration.reviewed:{registration_application_id}:{aggregate_version}
+  retry_policy: 持久化 Outbox 重试；消费者按 registration_application_id 与 aggregate_version 去重。
+  failure_policy: 审批事实已提交后事件可重试；客户端不得因事件延迟自行推断批准或拒绝结果。
+  related_rules: [BR-IAM-015, BR-IAM-023]
+  related_user_stories: [US-IAM-015, US-IAM-020]
 
 identity.auth.session_created:
   producer: identity.session
@@ -81,7 +106,7 @@ identity.auth.session_revoked:
     principal_type: string(USER|SERVICE_ACCOUNT)
     principal_id: string
     user_id: string|null
-    reason: string(LOGOUT|LOGOUT_ALL|PASSWORD_CHANGED|TOKEN_REUSE|USER_DISABLED|CREDENTIAL_REVOKED)
+    reason: string(LOGOUT|LOGOUT_ALL|PASSWORD_CHANGED|INITIAL_PASSWORD_RESET|TOKEN_REUSE|USER_DISABLED|CREDENTIAL_REVOKED)
     actor_principal_type: string(USER|SERVICE_ACCOUNT)
     actor_principal_id: string
     actor_user_id: string|null
@@ -94,25 +119,27 @@ identity.auth.session_revoked:
 identity.authorization.changed:
   producer: identity.rbac
   consumers: [principal-cache, platform-audit, security-monitor]
-  trigger_condition: 角色权限、用户角色、用户组成员或用户组角色变化并提交后。
+  trigger_condition: 角色权限、用户/服务账号直接角色、用户组成员或用户组角色变化影响某个主体并提交后；每个受影响主体独立发布失效通知。
   payload:
     event_id: string
     event_name: string
     occurred_at: string(date-time)
     aggregate_id: string
     aggregate_version: integer
-    subject_type: string(USER|GROUP|ROLE)
-    subject_id: string
+    principal_type: string(USER|SERVICE_ACCOUNT)
+    principal_id: string
     authorization_version: integer
+    change_source_type: string(USER_ROLE|SERVICE_ACCOUNT_ROLE|GROUP_MEMBER|GROUP_ROLE|ROLE_PERMISSION|ROLE_STATUS)
+    change_source_id: string
     changed_permission_codes: string[]
     actor_principal_type: string(USER|SERVICE_ACCOUNT)
     actor_principal_id: string
     actor_user_id: string|null
-  idempotency_key: identity.authorization.changed:{subject_type}:{subject_id}:{aggregate_version}
-  retry_policy: 持久化 Outbox 重试；缓存按 subject 与 authorization_version 单调失效。
-  failure_policy: 权限事实以 Identity 提交结果为准；缓存失效和审计消费者可重试。
-  related_rules: [BR-IAM-008, BR-IAM-009, BR-IAM-015]
-  related_user_stories: [US-IAM-005, US-IAM-006, US-IAM-009]
+  idempotency_key: identity.authorization.changed:{principal_type}:{principal_id}:{authorization_version}
+  retry_policy: 持久化 Outbox 重试；缓存和 SSE 投影按 principal 与 authorization_version 单调失效。
+  failure_policy: 权限事实以 Identity 提交结果为准；客户端收到事件后必须重新读取完整授权投影，不能从事件 payload 拼装权限。
+  related_rules: [BR-IAM-008, BR-IAM-009, BR-IAM-015, BR-IAM-024, BR-IAM-025, BR-IAM-026]
+  related_user_stories: [US-IAM-005, US-IAM-006, US-IAM-009, US-IAM-016, US-IAM-018]
 
 identity.resource_grant.changed:
   producer: identity.resource-access
@@ -153,15 +180,16 @@ identity.service_account.changed:
     service_account_id: string
     owner_type: string
     owner_id: string
+    owner_state: string(AVAILABLE|DELETED|UNAVAILABLE|NOT_VISIBLE)
     status: string(ACTIVE|DISABLED)
     authorization_version: integer
     credential_version: integer
-    change_type: string(CREATED|UPDATED|DISABLED|ENABLED|ROTATED|REVOKED)
+    change_type: string(CREATED|UPDATED|DISABLED|ENABLED|ROLE_CHANGED|ROTATED|CREDENTIAL_REVOKED)
     actor_principal_type: string(USER|SERVICE_ACCOUNT)
     actor_principal_id: string
     actor_user_id: string|null
   idempotency_key: identity.service_account.changed:{service_account_id}:{aggregate_version}
   retry_policy: 持久化 Outbox 重试；消费者按 service_account_id 与 aggregate_version 去重。
   failure_policy: 凭据撤销和状态事实以 Identity 为准；消费者不可因事件延迟继续授权旧凭据。
-  related_rules: [BR-IAM-010, BR-IAM-014, BR-IAM-015]
-  related_user_stories: [US-IAM-008, US-IAM-009, US-IAM-011]
+  related_rules: [BR-IAM-010, BR-IAM-014, BR-IAM-015, BR-IAM-025, BR-IAM-026, BR-IAM-027]
+  related_user_stories: [US-IAM-008, US-IAM-009, US-IAM-011, US-IAM-018]

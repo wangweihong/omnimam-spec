@@ -16,7 +16,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 | 领域 | 一行职责 |
 | --- | --- |
-| `identity` | 统一认证流程、会话、JWT/RBAC、服务主体与授权基础。 |
+| `identity` | 统一认证、注册审批、会话、版本化 JWT/RBAC 投影、服务主体与跨域用户删除检查协调。 |
 | `platform-management` | 管理平台级只读信息、SystemAuthConfig、跨 domain 脱敏 AuditLog 与平台入口。 |
 | `modelgateway` | 管理能力目录、执行引擎、能力绑定、平台适配与 Operation 执行。 |
 | `model-management` | 管理当前用户私有的模型提供商、模型清单、健康状态与默认模型。 |

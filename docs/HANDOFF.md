@@ -2,70 +2,69 @@
 
 ## 当前目标与状态
 
-目标：将旧 Workflow Canvas compile-time built-ins 合同合入当前 `master`，以 `spec-v1.12.1` 发布并推送远端。
+目标：提交已补全的 Identity S1/S2，整合远端 `spec-v1.12.1`，发布 `spec-v1.12.2` 并推送 `master`。
 
-状态：完成。release commit `23cadc158af8e3ec3a6debaa07f44dbd292f0265` 和 annotated tag `spec-v1.12.1` 已通过 SSH 推送远端。
+状态：进行中。Identity 规格提交正在 rebase 到远端 `master=23d1313`；`CHANGELOG.md` 与本 handoff 的预期冲突已合并，下一步继续 rebase。
 
 ## 本次完成
 
-- 已读取 `AGENTS.md`、`skills/spec-workflow/SKILL.md`、`S1.md`、`S2.md`、全局 Context Map 及 workflow-canvas/task-center Domain Context。
-- 已从 `origin/master` commit `c83b7d70a8fca2fae7d0692b92914b5a661598c7` 创建 `codex/release-workflow-canvas-v1.12.1`。
-- 已将 `codex/canvas-compile-time-v1.12` 以 `--no-ff --no-commit` 合入当前分支。
-- Workflow Canvas product spec、OpenAPI、schema、module contract 和 Context 已自动合入。
-- Task Center S1 保留当前 function registry 的 `BR-TASK-147..153`，Canvas 有限静态 DAG 规则顺延为 `BR-TASK-154`。
-- `RELEASE.md` 保留 Agent/AppStudio/Infrastructure/Task Center 的 `spec-v1.12.0` 正式记录；旧 Canvas 记录不再占用该版本号。
-- 已创建合并内容提交 `261ef2aa56d1c7d141c1ebda8b7d04b3371fb5bf`（`merge: restore workflow canvas compile-time contracts`）。
-- 已新增 `spec-v1.12.1` release 记录并指向该合并内容提交。
-- 已创建 release commit `23cadc1`（`release: publish spec-v1.12.1`）和 annotated tag `spec-v1.12.1`。
-- `git push origin HEAD:master` 失败：HTTPS remote 无可用交互凭据，未改变远端状态。
-- 已通过 SSH 将 `23cadc158af8e3ec3a6debaa07f44dbd292f0265` 推送到远端 `master`，并推送 annotated tag `spec-v1.12.1`。
+- 已补全 Identity S1：版本化当前主体授权投影、注册审批/拒绝/重新申请、Service Account 直接角色与凭据生命周期、跨域用户删除依赖检查，以及页面状态、动作和恢复语义。
+- 已同步 Identity OpenAPI、设计态 Schema、错误、权限、事件、模块合同、Domain Context、领域架构、Global Context、Context Map 和 CHANGELOG。
+- 已新增 `BR-IAM-023..030`、`US-IAM-015..020`；Identity OpenAPI 当前为 `0.2.0-draft`。
+- 已完成结构化与语义校验：57 个 operation、307 个本地 `$ref`、19 张设计态表、52 个 Identity 错误、13 个权限、8 个事件；全仓 354 个错误 code/value 无重复。
+- 已创建本地 Identity 规格提交 `5f02a25`（rebase 后哈希会变化）。
+- 已 fetch 远端 `spec-v1.12.1`；远端 Workflow Canvas/Task Center 修改未触及 Identity 正式文件。
+- 已保留远端 `spec-v1.12.1` 的 Changelog 内容，并合入本次 Identity Unreleased 内容。
+- 用户已有 `skills/archive/` 两个删除已临时 stash；未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 未处理。
 
 ## 当前进行中
 
-- 无。
+- 标记 rebase 冲突已解决并继续 rebase。
+- 恢复用户已有归档删除。
+- 复验 rebase 后 Identity 契约，登记并发布 `spec-v1.12.2`。
 
 ## 文件变化
 
-- S1：`00_product/domains/workflow-canvas/product-spec.md`、`00_product/domains/task-center/product-spec.md`。
-- S2：`01_contracts/domains/workflow-canvas/openapi.yaml`、`schema.sql`、`module-contract.md`，以及 `01_contracts/domains/task-center/module-contract.md`。
-- Context：`domains/workflow-canvas/context.md`、`domains/task-center/context.md`。
-- 维护与发布：`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
-- 未新增错误码、权限码、事件、数据库表或实现代码。
+- Identity S1：`00_product/domains/identity/product-spec.md`。
+- Identity S2：`01_contracts/domains/identity/openapi.yaml`、`schema.sql`、`errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md`。
+- 架构与 Context：`02_architecture/domains/identity.md`、`domains/identity/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`。
+- 维护与发布：`CHANGELOG.md`、`docs/HANDOFF.md`；`RELEASE.md` 尚待新增 `spec-v1.12.2`。
+- 未新增正式 migration、实现代码、运行时配置、依赖或 CI/CD 文件。
 
 ## 关键设计决定
 
-- `spec-v1.12.0` 继续表示 Agent/AppStudio/Infrastructure/Task Center function registry release。
-- Workflow Canvas compile-time built-ins 使用新版本 `spec-v1.12.1`，不覆盖当前四域 release。
-- Canvas `loop` 只在编译期展开有限静态 AtomicTask DAG；Task Center 不新增运行时循环、回边或 iteration 状态机。
-- 当前 Task Center function registry 合同优先保留，Canvas DAG 规则使用新编号 `BR-TASK-154` 避免编号冲突。
+- 登录、Refresh 与独立接口返回同一版本化授权投影；角色只用于展示解释，后端继续按当前权限码实时鉴权。
+- ADMIN_APPROVAL 在批准前不分配角色、不创建会话或 Token；审批历史不可变，拒绝后允许同一身份重新申请。
+- Service Account 只通过直接角色授权；owner 不可用时凭据交换 fail closed；Secret 只返回一次。
+- 用户删除使用 Identity 聚合的完整、短期跨域依赖检查；资源转移和来源事实仍由目标 domain 拥有。
+- `spec-v1.12.2` 只发布 Identity 本次 S1/S2 及直接维护文件，不覆盖 `spec-v1.12.1` 的 Workflow Canvas/Task Center Release。
 
 ## API、Schema、依赖与配置变化
 
-- Workflow Canvas OpenAPI 引入 `compile_time` execution binding 和五个受控 compiler key。
-- Workflow Canvas schema 增加 compiler key 与六个 SYSTEM 内置 NodeDefinition 约束，不新增表。
-- 不新增依赖、运行时配置、权限、事件、错误码、migration 或实现代码。
+- Identity OpenAPI 包含 57 个 operation；新增注册审批、初始密码重置、用户/服务账号直接角色、删除依赖检查、共享目录、Service Account Token/凭据历史与撤销合同。
+- Identity 设计态 Schema 包含 19 张表，新增注册申请、服务账号角色和用户删除检查表。
+- 未新增依赖或运行时配置。
 
 ## 验证结果与剩余检查
 
-- 合并前确认远端不存在 `spec-v1.12.1` tag。
-- 已通过合并阶段冲突标记检查和 `git diff --check`。
-- 已确认 release 内容提交包含全部登记路径，远端 `master` 为 `23cadc158af8e3ec3a6debaa07f44dbd292f0265`。
-- 已确认远端 annotated tag object `711fe5a2b0c1b9c21c284504ccff742d5c3847c4` peel 到 release commit `23cadc158af8e3ec3a6debaa07f44dbd292f0265`。
-- 按用户要求直接合并并推送，不重复执行完整契约测试矩阵。
+- rebase 前 Identity YAML、OpenAPI、本地 `$ref`、权限、错误、追溯、分页、批量请求、SQL 表闭合及 `git diff --check` 均通过。
+- rebase 后需重新运行同一组校验，确认远端 `v1.12.1` 合入未引入全局错误码或维护文档冲突。
+- 当前环境没有 `mmdc`，Mermaid 未执行渲染器语法验证。
 
-## 待办
+## 待办事项
 
-- 回到 `omnimam-server` 同步 submodule gitlink 与 `SSOT_VERSION`。
+- 完成 rebase 并恢复用户改动。
+- 更新 `RELEASE.md`，创建 release commit 与 annotated tag `spec-v1.12.2`。
+- 推送 `master` 和 `spec-v1.12.2` 标签并核对远端引用。
 
 ## 已知问题与风险
 
-- 远端旧 `spec-v1.12.0` annotated tag 仍指向旧 Canvas release commit，但 `RELEASE.md` 已将该版本分配给当前四域 release；本任务不强制移动或删除该历史 tag。
-- 当前没有重新运行完整 OpenAPI/YAML/SQL/追溯校验；发布复用旧 Canvas release 和当前四域 release 已记录的验证结果。
-- `origin` 使用 HTTPS 且当前环境没有可读取的 GitHub HTTPS 凭据；本次已使用 SSH 地址成功推送。
+- 各资源 domain 仍需在正式实现前登记用户删除依赖检查和 Service Account owner 批量投影；未登记或不可用时必须 fail closed。
+- 用户已有归档删除和未跟踪资料不属于本次 Release，不得纳入提交。
 
 ## 推荐下一步
 
-回到 `omnimam-server`，将 `ssot` submodule 固定到 `spec-v1.12.1` release commit，并同步 `SSOT_VERSION` 与 server handoff。
+执行 `git add CHANGELOG.md docs/HANDOFF.md`，继续 rebase；成功后恢复 stash 并重新运行 Identity 校验。
 
 Next Prompt:
 

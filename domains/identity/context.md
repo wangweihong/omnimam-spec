@@ -12,7 +12,9 @@
 - `PermissionResource`、`RolePermissionGrant`：权限资源和角色授权。
 - `ResourceAccessGrant`：由目标资源 domain 选择接入的用户/用户组共享授权。
 - `AuthSession`、`TokenCredential`：认证中心会话与 Token 凭据。
-- `ServiceAccount`：Worker、Agent Runtime、AppStudio 构建/部署等受控服务主体。
+- `RegistrationApplication`：ADMIN_APPROVAL 自主注册的申请、批准、拒绝和重新申请历史。
+- `ServiceAccount`、`ServiceAccountRoleGrant`、`ServiceAccountCredential`：Worker、Agent Runtime、AppStudio 构建/部署等受控服务主体、直接角色和一次性凭据历史。
+- `UserDeletionCheck`：Identity 聚合的短期跨域删除依赖摘要，不替代来源 domain 事实。
 - `SystemAuthConfig`、`AuditLog`：由 `platform-management` 持有；Identity 只消费配置和审计写入边界。
 
 ## 3. 核心规则
@@ -22,9 +24,13 @@
 - 用户密码使用 Argon2id 不可逆哈希并以 PHC 字符串保存；成功登录或修改密码时按当前策略生成或升级哈希。
 - 用户在线状态由 ACTIVE 用户的有效 AuthSession 和最近活动时间派生，默认在线窗口为 300 秒；presence heartbeat 只更新当前会话活动时间。
 - Token 刷新、局部登出与全局注销必须维持会话撤销和审计语义。
+- 登录、Refresh 和独立授权查询返回同一版本化主体投影，包括有效角色来源、权限码和会话限制；投影不写入 JWT，客户端版本失效后整体重取。
 - 权限通过资源和权限码动态计算，前端展示控制不能替代后端校验。
 - 用户组授权必须参与最终权限计算；角色继承和互斥关系当前不属于支持范围。
 - 密码、Token、服务凭据和安全配置不得出现在普通响应或跨域摘要中。
+- ADMIN_APPROVAL 注册在批准前不分配角色、会话或 Token；批准/拒绝保留不可变申请历史，拒绝后允许同一身份重新申请。
+- ServiceAccount 只通过直接角色授权；owner 必须受控校验，owner 不可用时凭据交换 fail closed，Secret 只在创建或轮换时返回一次。
+- 用户删除必须使用完整、未过期且提交前重验的跨域依赖检查；任何来源不可用都阻断删除，资源转移由目标 domain 完成。
 - 登录失败保护、敏感操作和授权变化必须形成可追溯审计。
 - 资源 owner、visibility、project、namespace 和资源状态由目标 domain 定义；只有目标 domain 声明接入时才使用 Identity 的通用共享授权。
 - 邮箱验证、MFA、可信设备、LDAP、SSO、OAuth2/OIDC 登录、OAuth Provider 和 PAT 当前不支持。
@@ -32,7 +38,7 @@
 
 ## 4. 领域边界
 
-本领域拥有用户身份、认证会话、角色权限、服务主体和可选资源共享授权；不拥有 `SystemAuthConfig` 或 `AuditLog`。各业务资源的 owner、visibility 和业务权限语义仍由目标领域定义；identity 提供主体与授权基础，不拥有应用、任务、素材、画布或模型数据。
+本领域拥有用户身份、注册申请、认证会话、角色权限、服务主体、删除依赖聚合快照和可选资源共享授权；不拥有 `SystemAuthConfig` 或 `AuditLog`。各业务资源的 owner、visibility、删除依赖事实、转移动作和业务权限语义仍由目标领域定义；identity 提供主体与授权基础，不拥有应用、任务、素材、画布或模型数据。
 
 ## 5. 上游与下游
 
@@ -51,7 +57,7 @@
 | `01_contracts/domains/identity/module-contract.md` | S2 | PrincipalContext、跨 domain 边界、平台配置消费、审计写入和安全一致性 |
 | `02_architecture/domains/identity.md` | 参考 | 横向职责、核心链路和当前边界 |
 
-Identity S2 已从当前 S1 推导为未 Release 草稿。任何正式实现仍必须核对 `RELEASE.md`；本 Context 不能替代 S1/S2。
+Identity S2 已从当前 S1 推导为未 Release 草稿，并补充授权投影、注册审批、ServiceAccount 管理与用户删除依赖合同。任何正式实现仍必须核对 `RELEASE.md`；本 Context 不能替代 S1/S2。
 
 ## 7. 常见任务定位
 
