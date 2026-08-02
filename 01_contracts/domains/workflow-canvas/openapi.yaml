@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Workflow Canvas API
-  version: 1.2.0-draft
+  version: 1.3.0
   description: |
     Workflow Canvas S2 契约。Canvas 保存编辑事实并发布不可变版本；每次运行固定版本、
     输入、scope 与复用决策，并展平到 Task Center 的唯一 DAGTaskGroup。
@@ -600,7 +600,7 @@ components:
       enum: [data, processor, generator, controller, orchestrator, viewer]
     ExecutionMode:
       type: string
-      enum: [passive, atomic, expanded]
+      enum: [passive, compile_time, atomic, expanded]
     PortDirection:
       type: string
       enum: [input, output]
@@ -663,10 +663,14 @@ components:
       properties:
         mode: {$ref: '#/components/schemas/ExecutionMode'}
         binding_version: {type: string}
+        compiler_key:
+          type: string
+          nullable: true
+          enum: [builtin.media_input, builtin.prompt, builtin.loop, builtin.prompt_group, builtin.output]
         function_ref: {type: string, nullable: true}
         application_version_id: {type: string, nullable: true}
         max_dynamic_tasks: {type: integer, minimum: 1, maximum: 1000, nullable: true}
-      description: passive 不携带执行引用；atomic/expanded 只能携带受控 function_ref 或已发布 application_version_id。
+      description: passive 不携带执行引用；compile_time 只携带已注册 compiler_key；atomic/expanded 只能携带受控 function_ref 或已发布 application_version_id。
     RendererCapability:
       type: object
       required: [renderer_key, renderer_version]
@@ -678,7 +682,7 @@ components:
       type: object
       required: [node_type, definition_version, title, category, node_kind, ports, config_schema, execution_binding, availability_scope, deprecated, created_at]
       properties:
-        node_type: {type: string}
+        node_type: {type: string, pattern: '^[a-z][A-Za-z0-9._-]{0,99}$'}
         definition_version: {type: string}
         title: {type: string}
         description: {type: string}
@@ -708,7 +712,7 @@ components:
       type: object
       required: [node_type, definition_version, title, category, node_kind, execution_mode, availability_scope, deprecated, created_at]
       properties:
-        node_type: {type: string}
+        node_type: {type: string, pattern: '^[a-z][A-Za-z0-9._-]{0,99}$'}
         definition_version: {type: string}
         title: {type: string}
         description: {type: string}
@@ -729,7 +733,7 @@ components:
       type: object
       required: [node_type, definition_version, title, category, node_kind, ports, config_schema, execution_binding, availability_scope]
       properties:
-        node_type: {type: string}
+        node_type: {type: string, pattern: '^[a-z][A-Za-z0-9._-]{0,99}$'}
         definition_version: {type: string}
         title: {type: string, minLength: 1, maxLength: 200}
         description: {type: string, maxLength: 2000, default: ''}
@@ -762,7 +766,7 @@ components:
       required: [node_id, node_type, definition_version, position, config]
       properties:
         node_id: {type: string}
-        node_type: {type: string}
+        node_type: {type: string, pattern: '^[a-z][A-Za-z0-9._-]{0,99}$'}
         definition_version: {type: string}
         position: {$ref: '#/components/schemas/CanvasPosition'}
         size: {$ref: '#/components/schemas/CanvasSize'}
@@ -1216,7 +1220,7 @@ components:
         canvas_run_id: {type: string, description: 父运行已由 endpoint 或页面上下文提供，无需额外读取。}
         node_id: {type: string}
         execution_key: {type: string}
-        node_type: {type: string}
+        node_type: {type: string, pattern: '^[a-z][A-Za-z0-9._-]{0,99}$'}
         definition_version: {type: string}
         flow_ids: {type: array, items: {type: string}}
         execution_fingerprint: {type: string}

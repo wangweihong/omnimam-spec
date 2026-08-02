@@ -22,6 +22,7 @@
 4. 支持文本、图片、视频等多节点依赖和动态批量 fan-out/fan-in。
 5. 支持无限画布用户发布任意合法无环工作流，并固定版本执行。
 6. 查询 Schedule 的全部调度历史、Group/DAG 的全部子任务和 AtomicTask 的全部重试尝试。
+7. 接收 Workflow Canvas 将有界循环确定性展开后的静态无环 DAG，不在 Task Center 内引入运行时循环状态机。
 
 任务中心不得重新实现队列、Worker lease、DAG 状态机、cron 触发器或运行历史存储。这些运行职责由已注册 WorkflowRuntime 承担。
 
@@ -376,6 +377,7 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 72. `BR-TASK-144`：立即执行请求必须携带计划内唯一幂等键；同一键重复或并发提交返回同一 ScheduleExecution，不得重复启动运行时或创建目标。
 73. `BR-TASK-145`：手动与周期触发共用同一活动轮次约束；发生重叠时必须创建并返回 SKIPPED_OVERLAP，且不得修改计划 cron、runAt、暂停状态、nextTriggerAt 或其他未来触发事实。
 74. `BR-TASK-146`：手动轮次使用固定可恢复控制工作流异步执行 MATERIALIZED 或 RECONCILE 逻辑，运行时启动失败保存 TRIGGER_FAILED；Worker/API/运行时重启后使用 ScheduleExecution ID 恢复且不得重复创建目标。
+75. `BR-TASK-147`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
 
 ---
 
@@ -534,4 +536,4 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 
 ## 10. 非目标
 
-V1 不支持循环图、用户脚本、任意 HTTP 节点、Group 嵌套、错过周期补发、Schedule 允许重叠、跨项目 Worker 共享、自动拉起 GPU Worker，也不把 Conductor UI 作为产品前端。
+V1 不支持实际循环图、运行时条件或无限循环、用户脚本、任意 HTTP 节点、Group 嵌套、错过周期补发、Schedule 允许重叠、跨项目 Worker 共享、自动拉起 GPU Worker，也不把 Conductor UI 作为产品前端。上游将固定 count 确定性展开为静态无环 DAG 不属于 Task Center 循环能力。

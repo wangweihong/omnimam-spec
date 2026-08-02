@@ -1,6 +1,6 @@
 # Workflow Canvas Module Contract
 
-产品语义以 `00_product/domains/workflow-canvas/product-spec.md` 为准。本契约覆盖 S1 首期范围；`selected_subgraph`、容错 Join、流级/分片级取消与分片手动重跑未开放。
+产品语义以 `00_product/domains/workflow-canvas/product-spec.md` 为准。本契约覆盖 S1 首期范围；`selected_subgraph`、容错 Join、流级/分片级取消、分片手动重跑以及隐式/嵌套/条件/无界循环未开放。
 
 ## 1. 模块边界
 
@@ -18,14 +18,26 @@
 
 - NodeDefinition 只能由系统或 `workflow.node_definition.manage` 主体创建新固定版本或标记下线；历史版本不得原地改写。
 - `renderer_key` 只是已注册前端能力标识；无法识别时降级为通用配置视图，不能执行定义携带的代码。
-- `execution_mode=passive` 不创建 AtomicTask；`atomic` 和 `expanded` 必须固定一个受控 functionRef 或已发布 ApplicationVersion，不能同时提交两者。
+- `execution_mode=passive` 不创建 AtomicTask；`compile_time` 必须且只能携带注册的 `compiler_key`；`atomic` 和 `expanded` 必须固定一个受控 functionRef 或已发布 ApplicationVersion，不能同时提交两者。
+- SYSTEM 内置 compiler key 固定为 `builtin.media_input`、`builtin.prompt`、`builtin.loop`、`builtin.prompt_group`、`builtin.output`；未知 key 不得注册、发布或运行。
+- 系统幂等初始化 `image`、`prompt`、`loop`、`group`、`promptGroup`、`output` 六个 `1.0.0` 定义。`promptGroup` 不进入普通目录且只能由多 Prompt 连线规范化产生；`group` 使用 passive。
+- 内置定义的固定端口和配置如下；字段以 NodeDefinition 的 JSON Schema 校验，不能由实现扩展同版本语义：
+
+| type | ports | config |
+| --- | --- | --- |
+| `image` | single outputs `image:image`、`video:video`、`audio:audio`，运行时只激活一种 | required `asset_id:string`、`media_type:image\|video\|audio` |
+| `prompt` | single output `prompt:string` | required `text:string`，长度 0..20000 |
+| `promptGroup` | multiple input `prompts:string`、single output `prompt:string` | 无用户配置 |
+| `loop` | prompt/image/video/audio 同名 single inputs 与 multiple outputs | `count:integer=1` 范围 1..99；`mode:serial\|batch\|cascade`；`batch_inputs:object`；cascade 必填 `feedback_output_port`、`feedback_input_port` |
+| `group` | 无执行端口 | 可选展示标题；成员关系保存在 Canvas graph group 结构，不进入执行输入 |
+| `output` | multiple inputs `image:image`、`video:video`、`audio:audio` | 无执行配置 |
 - Canvas 草稿保存完整节点实例、稳定端口 key、独立 Edge、FlowDefinition、ControllerState、分组和视口；运行状态和大型制品不进入草稿 JSON。
 - 所有更新携带 `expected_draft_revision`。revision 冲突返回当前 revision，不静默覆盖本地未提交编辑。
 - ControllerState 必须匹配固定 schema version、坐标系、引用权限和大小限制；预览 URL、任意 URL、文件路径、凭证和大型二进制不得进入状态。
 
 ## 3. 发布契约
 
-- 发布事务重新校验 revision、节点定义、端口、类型、基数、流、外部引用权限、输入映射、数据边与控制边联合无环以及 1000 节点/5000 边上限。
+- 发布事务重新校验 revision、节点定义、端口、类型、基数、流、外部引用权限、输入映射、数据边与控制边联合无实际回边以及 1000 节点/5000 边上限；loop 只允许以编译期有限展开表达重复。
 - 发布编译生成规范化的完整 DAGTaskGroup template。只有 AtomicTaskTemplate 可执行；流、Data/Viewer、并发和复合节点不得形成 Group 嵌套。
 - workflow definition 名称与版本由 Canvas 内容摘要确定。相同摘要重复发布或注册后保存中断时幂等恢复，不生成漂移定义。
 - Task Center/WorkflowRuntime 注册成功后才能持久化 CanvasVersion；任一步失败均不形成部分可用版本。
@@ -39,6 +51,10 @@
 - `REUSED` NodeRun 保存来源运行、来源 NodeRun 和输出绑定，不创建伪造 AtomicTask；`passive` 与 `client_generated` 也可以没有 AtomicTask。
 - 同一 CanvasRun 内共享节点只有在执行指纹、依赖来源和策略完全相同时共享同一 `execution_key`；FlowRun 通过引用表共同聚合该 NodeRun。
 - 首期 fan-out 失败策略只支持 `all_success`，静态分片使用稳定 `shard_key`；动态展开不得超过声明上限与系统上限的较小值。
+- `image`、`prompt` 和 `promptGroup` 在任务创建前完成常量折叠和有序传播；promptGroup 严格按 `edge.order` 使用换行连接，媒体节点只传播经权限复核的 Asset 引用。
+- `loop` count 只能为 1..99，且只有一个直接 Application 目标；batch 字段长度为 1 或 count。serial 生成顺序依赖，batch 生成同层节点，cascade 生成顺序依赖并把显式、类型兼容的输出端口映射到下一迭代输入端口。
+- loop 展开任务使用稳定 iteration child key、`worker` binding role 和 shard index 绑定目标 CanvasNodeRun；嵌套、条件、无界循环、多个目标、反馈端口不兼容或展开后超限在创建 DAG 前整体拒绝。
+- loop 使用 all_success；状态聚合保留失败 iteration，输出按 iteration、port 和端口内 sequence 排序并可传给 multiple 输入。`output` 仅收集这些绑定，不创建 AtomicTask。
 - ExecutionPlan 必须包含唯一 DAGTaskGroup、展平 AtomicTask 节点、依赖边、稳定 child key、FlowRun/NodeRun 绑定、复用决策、规模与摘要；不得包含 HTTP/INLINE、脚本、Worker、凭证或运行时私有配置。
 
 ## 5. 启动、取消与重跑
