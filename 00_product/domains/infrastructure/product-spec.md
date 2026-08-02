@@ -1,0 +1,2298 @@
+# OmniMAM Infra Service 功能设计文档
+
+> 文档状态：S1 Draft
+> 文档版本：v1.1-draft
+> 修订日期：2026-08-02
+> 适用范围：第一阶段单机 Docker 计算节点、Job、Service、资源、网络、挂载与运行凭证管理
+
+本次草稿修订将 Infra Service 收敛为第一阶段的 Docker 运行层：
+
+* 当前版本只实现 `DockerRuntimeProvider` 和受控的单机 Docker 节点。
+* 当前版本保留 Job/Service、RuntimeProfile、资源、挂载、Secret、Endpoint、日志、超时、幂等和 Docker 对账语义。
+* Kubernetes、Edge、Local Process、多节点调度和 Edge Node Agent 迁移到下一版本规划，不属于本版实现范围。
+* 本文件仍是 S1 Draft，未形成 S2、架构参考或 Release，不得作为正式实现依据。
+
+---
+
+## 1. 文档目的
+
+`Infra Service` 是 OmniMAM 的统一基础设施执行层。
+
+所有涉及以下操作的上层服务，都必须通过 Infra Service：
+
+* 启动 Hermes Agent。
+* 启动 Coding Agent。
+* 启动 AppStudio Preview。
+* 构建 AppStudio 应用。
+* 运行 Coding Agent 发布的 StudioApplication。
+* 启动 ComfyUI、模型推理服务或其他常驻服务。
+* 执行 FFmpeg。
+* 执行 Python 图像处理程序。
+* 下载外部素材。
+* 执行压缩、解压、扫描、转码、抽帧等工具任务。
+* 在平台的受控 Docker 节点执行任务。
+* 分配 CPU、内存、GPU、磁盘、端口和网络资源。
+
+Infra Service 在本阶段屏蔽 Docker 容器、网络、Volume 和资源限制的实现差异。上层服务只描述执行要求，不关心任务实际运行在：
+
+* Docker。
+* 单机 CPU 节点。
+* 单机 GPU 节点。
+
+Kubernetes、Local Process、远程计算节点和用户 Edge 节点属于下一版本规划。
+
+---
+
+## 2. 核心定位
+
+Infra Service 的核心职责是：
+
+> 将上层提交的标准化运行要求转换为实际可执行的基础设施运行单元，并管理其完整运行生命周期。
+
+Infra Service 回答以下问题：
+
+* 在哪里运行。
+* 使用什么运行环境。
+* 分配哪些资源。
+* 如何挂载输入和工作目录。
+* 如何注入配置和凭证。
+* 如何启动、停止和清理。
+* 如何暴露 Endpoint。
+* 如何采集日志和运行状态。
+* 如何屏蔽 Docker 容器、网络、Volume 和资源限制等实现差异。
+
+Infra Service 不回答：
+
+* 为什么执行这个任务。
+* 任务之间有什么业务依赖。
+* 应用属于哪个业务领域。
+* Agent 如何进行对话。
+* 模型请求如何组织。
+* ApplicationVersion 如何执行。
+* Artifact 是否应该成为 Asset。
+* Deployment 应该升级到哪个 Release。
+
+---
+
+## 3. 强制架构原则
+
+### 3.1 统一运行入口
+
+任何上层服务不得直接操作：
+
+* Docker Engine。
+* 宿主机进程。
+* GPU 设备。
+* Host Port。
+* Volume。
+* 运行节点文件系统。
+
+所有实际执行必须经过 Infra Service。
+
+### 3.2 上层只描述要求
+
+上层服务只能提交：
+
+* 运行模式。
+* RuntimeProfile。
+* 输入和输出。
+* CPU、内存、GPU、磁盘要求。
+* 网络要求。
+* Workspace 或 Artifact 挂载要求。
+* 配置绑定。
+* Secret 引用。
+* 运行位置约束。
+* 超时和生命周期要求。
+
+### 3.3 Provider 对上层不可见
+
+以下实现仅存在于 Infra Service 内部：
+
+```text
+DockerRuntimeProvider
+```
+
+上层服务不得根据 Provider 编写不同业务流程。Kubernetes、Edge 和 Local Process Provider 只在下一版本规划中保留，不属于当前可调用实现。
+
+### 3.4 业务状态与运行状态分离
+
+例如：
+
+* Agent 状态由 `agent` 管理。
+* Build、Release 和 StudioRuntimeInstance 状态由 `appstudio` 管理。
+* Task 状态由 `task-center` 管理。
+* Docker Runtime 状态由 Infra Service 管理。
+
+Infra Service 不得成为第二套业务状态中心。
+
+---
+
+### 3.5 部署方式
+Infra Service 作为独立服务部署，不放进 omni-apiserver 进程。
+
+可以与其他 OmniMAM 服务处于同一代码仓库，但应是独立 binary、独立容器和独立运行权限。
+
+omni-apiserver
+    负责外部 API、认证、权限、聚合查询
+
+infra-service
+    负责节点、Runtime、Job、Service、Provider、资源和对账
+
+
+```mermaid
+flowchart LR
+    CLIENT[Web / External Client]
+    API[omni-apiserver]
+
+    TASK[Task Center]
+    WORKER[Task Worker]
+
+    INFRA[Infra Service]
+
+    DOCKER[Docker Provider]
+
+    CLIENT --> API
+
+    API --> TASK
+    API --> AGENT
+    API --> STUDIO
+
+    TASK --> WORKER
+    WORKER --> INFRA
+
+    INFRA --> DOCKER
+```
+
+单机 Docker 环境中，Infra Service 独占受控 Docker Runtime 访问权限：
+```
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
+## 4. 系统上下文
+
+```mermaid
+flowchart TB
+    APPSTUDIO[AppStudio]
+    AGENT[Agent Service]
+    TASK[Task Center]
+    WORKER[Task Worker]
+    ASSET[Asset Library]
+
+    INFRA[Infra Service]
+
+    subgraph Providers
+        DOCKER[Docker Runtime Provider]
+    end
+
+    subgraph RuntimeTargets
+        AGENT_RT[Agent Runtime]
+        PREVIEW_RT[Preview Runtime]
+        APP_RT[StudioRuntime]
+        MODEL_RT[Model / ComfyUI Runtime]
+        TOOL_JOB[FFmpeg / Python / Download Job]
+    end
+
+    APPSTUDIO --> TASK
+    AGENT --> TASK
+    TASK --> WORKER
+    WORKER --> INFRA
+    ASSET --> TASK
+
+    INFRA --> DOCKER
+
+    DOCKER --> AGENT_RT
+    DOCKER --> PREVIEW_RT
+    DOCKER --> APP_RT
+    DOCKER --> MODEL_RT
+    DOCKER --> TOOL_JOB
+
+```
+
+
+
+---
+
+## 5. 与其他服务的职责边界
+
+## 5.1 Task Center
+
+Task Center 负责：
+
+* 业务任务排队。
+* 任务依赖。
+* 串行和并行。
+* 重试策略。
+* 取消。
+* 业务超时。
+* 用户可见进度。
+* Task、TaskAttempt 和 TaskGroup。
+* 业务执行历史。
+
+Task Worker 负责：
+
+* 消费 Task Center 分发的已注册基础设施 `functionRef`。
+* 将任务输入转换为受控的 Job/Service 请求。
+* 使用 Task Center 服务身份调用 Infra Service。
+* 将 `infra_runtime_id`、`endpoint_ref`、输出引用和脱敏错误写回 Task 结果。
+* 将取消、超时和重试动作映射为 Infra 的受控运行操作。
+
+Infra Service 负责：
+
+* 创建实际 Job 或 Service。
+* 选择运行节点。
+* 分配资源。
+* 启动运行环境。
+* 收集原始日志。
+* 获取退出码。
+* 处理基础设施超时。
+* 清理实际运行资源。
+
+关系：
+
+```text
+Task Center Task
+    └── 0..N Task Worker Infra Action
+            └── 0..1 Infra Job / Infra Service Runtime
+```
+
+一个业务任务可以创建多个 Infra Job。
+
+例如素材处理任务：
+
+```text
+下载素材 Job
+    ↓
+FFmpeg 转码 Job
+    ↓
+Python 图像处理 Job
+    ↓
+输出 Artifact 登记
+```
+
+Task Center 负责编排，Task Worker 负责调用 Infra，Infra Service 负责每个步骤的实际运行。
+
+---
+
+## 5.2 AppStudio 发布与运行
+
+AppStudio 负责：
+
+* Release。
+* Deployment。
+* 期望运行状态。
+* 实例数量。
+* 应用升级。
+* Release 回滚。
+* 长期服务健康策略。
+* 发布历史。
+
+Infra Service 负责：
+
+* 根据 Deployment 要求创建 Service Runtime。
+* 实际启动、停止和删除实例。
+* 分配 Endpoint。
+* 返回 Runtime 状态。
+* 执行健康检查。
+* 实例异常时提供基础设施事实。
+
+AppStudio 表达：
+
+```text
+确保 Release R1 持续运行一个实例
+```
+
+Infra Service 执行：
+
+```text
+选择运行节点和 Provider，创建并维持对应 Runtime
+```
+
+AppStudio 只创建或请求 Task Center 任务；生产发布、Preview 和 Build 的 Infra 调用均由 Task Worker 完成。Preview/Build/Release 的业务状态仍由 AppStudio 管理。
+
+---
+
+## 5.3 agent
+
+`agent` 负责：
+
+* Agent 定义。
+* Agent Session。
+* Agent Memory。
+* Agent Skills。
+* MCP 配置。
+* 工具权限。
+* Agent 与 Workspace 的关联。
+* Agent 业务状态。
+* AgentRuntime 与 AgentRuntimeProvider 业务状态。
+
+Infra Service 负责：
+
+* 启动 Agent Runtime。
+* 挂载 Workspace。
+* 注入模型访问配置。
+* 注入运行凭证。
+* 分配资源。
+* 返回 Runtime Endpoint。
+* 停止和清理 Agent Runtime。
+
+`agent` 不得直接调用 Infra 或操作容器。`agent` 只向 Task Center 提交 Runtime 启动、恢复、挂起和删除任务；Task Worker 再通过 Infra Service 使用 Docker 运行能力。
+
+---
+
+## 5.4 AppStudio
+
+AppStudio 负责：
+
+* StudioApplication。
+* Workspace。
+* StudioPreviewRuntime。
+* StudioBuild。
+* StudioRelease。
+* StudioRuntimeInstance。
+
+Infra Service 负责：
+
+* 启动 Coding Agent Runtime。
+* 启动 Preview Runtime。
+* 执行 Build Job。
+* 执行测试 Job。
+* 运行已发布 StudioRuntime。
+* 挂载 Workspace 或固定 Snapshot。
+* 返回运行日志和 Endpoint。
+
+AppStudio 不直接调用 Infra。Preview、Build 和 Production Runtime 的 Infra 操作必须先形成 Task Center 任务，再由 Task Worker 执行。
+
+---
+
+## 5.5 model-management 与 modelgateway
+
+`model-management` 管理当前用户的模型选择和 Provider 配置。
+
+`modelgateway` 将模型引用解析为标准模型访问配置，例如：
+
+```text
+ModelAccessSpec
+```
+
+Infra Service 负责：
+
+* 接收由 `modelgateway` 或上层 Provider 解析后的 ModelAccessSpec。
+* 解析其中的 CredentialRef。
+* 在 Runtime 启动阶段注入 Endpoint、模型名称和凭证。
+* 防止 Secret 出现在普通查询接口和日志中。
+
+AgentRuntime 或 StudioRuntime 自行调用 LLM Provider。
+
+Infra Service 不代理每一次模型请求。
+
+---
+
+## 5.6 Asset Library
+
+Asset Library 负责：
+
+* Asset。
+* Artifact。
+* Blob。
+* Representation。
+* 预览。
+* 下载。
+* 生命周期。
+
+Infra Service 只负责：
+
+* 挂载 Artifact 输入。
+* 提供临时输入目录。
+* 收集输出文件。
+* 返回输出文件描述。
+* 按要求调用 Artifact 登记接口。
+
+Infra Service 不拥有 Asset 业务事实。
+
+---
+
+# 6. 统一运行模型
+
+Infra Service 对上层提供两种运行模式：
+
+```text
+JOB
+SERVICE
+```
+
+---
+
+## 6.1 Job
+
+Job 是一次性运行单元。
+
+典型场景：
+
+* FFmpeg 转码。
+* 图片缩放。
+* 视频抽帧。
+* Python 图像处理。
+* 外部素材下载。
+* 模型文件下载。
+* 应用构建。
+* 自动化测试。
+* 静态检查。
+* 压缩和解压。
+* 文件扫描。
+* Representation 生成。
+
+Job 运行流程：
+
+```mermaid
+flowchart LR
+    SUBMIT[提交 Job]
+    VALIDATE[验证请求]
+    PLACE[选择节点]
+    PREPARE[准备环境]
+    MOUNT[挂载输入]
+    RUN[执行]
+    COLLECT[收集输出]
+    COMPLETE[返回结果]
+    CLEANUP[清理环境]
+
+    SUBMIT --> VALIDATE
+    VALIDATE --> PLACE
+    PLACE --> PREPARE
+    PREPARE --> MOUNT
+    MOUNT --> RUN
+    RUN --> COLLECT
+    COLLECT --> COMPLETE
+    COMPLETE --> CLEANUP
+```
+
+Job 完成后原则上清理运行环境。
+
+---
+
+## 6.2 Service
+
+Service 是持续运行并可以提供 Endpoint 的运行单元。
+
+典型场景：
+
+* Hermes Agent Runtime。
+* Coding Agent Runtime。
+* AppStudio Preview Runtime。
+* StudioRuntime。
+* ComfyUI Runtime。
+* vLLM Runtime。
+* MCP Server。
+* 长期运行 Worker。
+* 其他平台服务。
+
+Service 运行流程：
+
+```mermaid
+flowchart LR
+    CREATE[创建 Service]
+    VALIDATE[验证请求]
+    PLACE[选择节点]
+    PREPARE[准备环境]
+    START[启动]
+    HEALTH[健康检查]
+    ENDPOINT[分配 Endpoint]
+    RUNNING[持续运行]
+    STOP[停止或删除]
+
+    CREATE --> VALIDATE
+    VALIDATE --> PLACE
+    PLACE --> PREPARE
+    PREPARE --> START
+    START --> HEALTH
+    HEALTH --> ENDPOINT
+    ENDPOINT --> RUNNING
+    RUNNING --> STOP
+```
+
+---
+
+# 7. RuntimeProfile
+
+## 7.1 定位
+
+`RuntimeProfile` 是平台维护的运行模板。
+
+上层服务不提交 Docker Image、宿主机命令或 Docker 专属运行参数，而是引用 RuntimeProfile。
+
+示例：
+
+```text
+agent.hermes
+agent.coding
+appstudio.preview.web
+appstudio.build.web
+studioapp.runtime.web
+media.ffmpeg
+media.python-image
+network.asset-downloader
+model.comfyui
+model.vllm
+sandbox.python
+```
+
+RuntimeProfile 负责定义：
+
+* 支持的运行模式。
+* 当前固定使用的 Runtime Provider：`DockerRuntimeProvider`。
+* 运行镜像和 Entrypoint。
+* 默认资源。
+* 最大资源。
+* 网络策略。
+* 支持的配置 Binding。
+* 输入输出目录。
+* 健康检查方式。
+* Secret 注入方式。
+* 日志采集方式。
+* 清理策略。
+* 安全限制。
+
+---
+
+## 7.2 RuntimeProfile 示例
+
+```yaml
+id: media.ffmpeg
+displayName: FFmpeg Media Processor
+supportedModes:
+  - JOB
+
+implementations:
+  docker:
+    image: registry.omnimam.local/runtime/ffmpeg:7
+    entrypoint:
+      - /usr/local/bin/omni-ffmpeg-runner
+
+resources:
+  defaults:
+    cpuCores: 2
+    memoryMb: 2048
+    diskMb: 4096
+
+  maximums:
+    cpuCores: 8
+    memoryMb: 16384
+    diskMb: 102400
+
+networkPolicy:
+  outboundInternet: false
+  exposeEndpoint: false
+
+filesystem:
+  inputRoot: /inputs
+  outputRoot: /outputs
+  tempRoot: /tmp/omnimam
+
+timeoutSeconds: 3600
+cleanupPolicy: always
+```
+
+---
+
+## 7.3 RuntimeProfile 管理规则
+
+S1 中：
+
+* RuntimeProfile 由平台管理员维护。
+* 业务用户不能自定义 RuntimeProfile。
+* RuntimeProfile 不通过业务 API 任意修改。
+* RuntimeProfile 修改后不影响已启动 Runtime。
+* RuntimeProfile 必须进行版本化。
+* Infra Runtime 必须记录实际使用的 Profile Revision。
+
+建议引用方式：
+
+```text
+runtimeProfileId
+runtimeProfileRevision
+```
+
+---
+
+# 8. 核心领域对象
+
+```mermaid
+erDiagram
+    INFRA_NODE ||--o{ INFRA_RUNTIME : hosts
+    RUNTIME_PROFILE ||--o{ INFRA_RUNTIME : defines
+    INFRA_RUNTIME ||--o{ RUNTIME_ENDPOINT : exposes
+    INFRA_RUNTIME ||--o{ RUNTIME_MOUNT : mounts
+    INFRA_RUNTIME ||--o{ RUNTIME_CONFIG_BINDING : configures
+    INFRA_RUNTIME ||--o{ RUNTIME_EVENT : emits
+    INFRA_RUNTIME ||--o{ RUNTIME_OUTPUT : produces
+```
+
+---
+
+## 8.1 InfraNode
+
+表示一个可以承载 Runtime 的计算节点。
+
+字段：
+
+```text
+id
+providerType
+displayName
+status
+locationType
+labels
+capabilities
+resourceCapacity
+resourceAllocated
+lastHeartbeatAt
+registeredAt
+updatedAt
+```
+
+`locationType`：
+
+```text
+MANAGED
+```
+
+`providerType`：
+
+```text
+DOCKER
+```
+
+节点状态：
+
+```text
+REGISTERING
+READY
+DEGRADED
+DRAINING
+OFFLINE
+DISABLED
+DELETING
+```
+
+---
+
+## 8.2 InfraRuntime
+
+表示一个实际运行单元。
+
+字段：
+
+```text
+id
+mode
+runtimeProfileId
+runtimeProfileRevision
+providerType
+providerRuntimeRef
+nodeId
+requestingService
+ownerDomain
+ownerReference
+requestUserId
+status
+resourceAllocation
+createdAt
+startedAt
+completedAt
+updatedAt
+expiresAt
+exitCode
+failureReason
+```
+
+`requestingService` 固定为：
+
+```text
+task-center
+```
+
+`ownerDomain` 表示真正拥有业务状态的领域：
+
+```text
+agent
+appstudio
+task-center
+asset-library
+```
+
+`ownerReference` 是上层业务对象引用，例如：
+
+```text
+task-attempt-001
+agent-runtime-001
+studio-preview-runtime-001
+studio-runtime-instance-001
+```
+
+Infra Service 不理解这些引用的业务语义，也不据此写入其他领域的业务表。
+
+---
+
+## 8.3 RuntimeEndpoint
+
+表示 Service Runtime 暴露的访问端点。
+
+字段：
+
+```text
+id
+runtimeId
+name
+protocol
+internalAddress
+externalAddress
+visibility
+status
+createdAt
+updatedAt
+```
+
+`visibility`：
+
+```text
+INTERNAL
+USER_ACCESSIBLE
+PUBLIC
+```
+
+S1 可以使用：
+
+```text
+http://<host-ip>:<allocated-port>
+```
+
+后续可以由 Gateway 提供统一域名。
+
+---
+
+## 8.4 RuntimeMount
+
+表示 Runtime 使用的挂载。
+
+字段：
+
+```text
+id
+runtimeId
+bindingType
+sourceRef
+targetPath
+readOnly
+status
+createdAt
+```
+
+`bindingType`：
+
+```text
+WORKSPACE
+WORKSPACE_SNAPSHOT
+ARTIFACT
+BLOB
+MODEL_FILES
+TEMPORARY_VOLUME
+PERSISTENT_VOLUME
+SECRET_VOLUME
+```
+
+上层不得直接传递任意宿主机路径。
+
+---
+
+## 8.5 RuntimeConfigBinding
+
+表示注入 Runtime 的配置。
+
+字段：
+
+```text
+id
+runtimeId
+name
+bindingType
+valueRef
+injectionMode
+status
+createdAt
+```
+
+`bindingType`：
+
+```text
+PLAIN_CONFIG
+SECRET
+MODEL_ACCESS
+SERVICE_ENDPOINT
+PLATFORM_CONFIG
+```
+
+`injectionMode`：
+
+```text
+ENVIRONMENT
+CONFIG_FILE
+SECRET_FILE
+RUNTIME_ARGUMENT
+```
+
+---
+
+## 8.6 RuntimeOutput
+
+表示 Job 产生的输出。
+
+字段：
+
+```text
+id
+runtimeId
+name
+path
+mediaType
+size
+contentDigest
+artifactRef
+status
+createdAt
+```
+
+Infra Service 可以负责将文件提交给 Artifact 登记接口，但 Artifact 的业务所有权仍属于 Asset Library。
+
+---
+
+## 8.7 RuntimeEvent
+
+Infra Service 产生基础设施事件：
+
+```text
+infra.runtime.created
+infra.runtime.placed
+infra.runtime.preparing
+infra.runtime.started
+infra.runtime.ready
+infra.runtime.completed
+infra.runtime.failed
+infra.runtime.stopping
+infra.runtime.stopped
+infra.runtime.deleted
+infra.runtime.expired
+infra.runtime.health_changed
+
+infra.node.registered
+infra.node.ready
+infra.node.degraded
+infra.node.offline
+infra.node.draining
+```
+
+这些事件属于基础设施事实。
+
+---
+
+# 9. 运行请求
+
+## 9.1 CreateJobRequest
+
+```json
+{
+  "requestId": "req-001",
+  "runtimeProfile": {
+    "id": "media.ffmpeg",
+    "revision": 1
+  },
+  "command": "transcode",
+  "arguments": {
+    "videoCodec": "h264",
+    "width": 1920,
+    "height": 1080
+  },
+  "inputs": [
+    {
+      "name": "source",
+      "type": "ARTIFACT",
+      "sourceRef": "artifact://input-001",
+      "targetPath": "/inputs/source.mp4",
+      "readOnly": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "path": "/outputs/result.mp4",
+      "mediaType": "video/mp4",
+      "registerArtifact": true
+    }
+  ],
+  "resources": {
+    "cpuCores": 2,
+    "memoryMb": 4096,
+    "diskMb": 10240,
+    "gpuCount": 0
+  },
+  "placement": {
+    "location": "MANAGED",
+    "requiredLabels": {}
+  },
+  "network": {
+    "outboundInternet": false,
+    "exposeEndpoint": false
+  },
+  "timeoutSeconds": 3600,
+  "owner": {
+    "domain": "asset-library",
+    "reference": "task-attempt-001"
+  }
+}
+```
+
+---
+
+## 9.2 CreateServiceRequest
+
+```json
+{
+  "requestId": "req-002",
+  "runtimeProfile": {
+    "id": "agent.coding",
+    "revision": 1
+  },
+  "workspaceBindings": [
+    {
+      "workspaceId": "workspace-001",
+      "targetPath": "/workspace",
+      "readOnly": false
+    }
+  ],
+  "configurationBindings": [
+    {
+      "name": "primary-model",
+      "type": "MODEL_ACCESS",
+      "value": {
+        "providerType": "openai_compatible",
+        "protocol": "openai_chat_completions",
+        "baseUrl": "https://llm.example.com/v1",
+        "model": "qwen3-32b",
+        "credentialRef": "secret://users/current/provider-001"
+      }
+    }
+  ],
+  "resources": {
+    "cpuCores": 4,
+    "memoryMb": 8192,
+    "diskMb": 20480,
+    "gpuCount": 0
+  },
+  "placement": {
+    "location": "MANAGED",
+    "requiredLabels": {
+      "runtime.agent.coding": "true"
+    }
+  },
+  "network": {
+    "outboundInternet": true,
+    "exposeEndpoint": true
+  },
+  "lifecycle": {
+    "restartPolicy": "ON_FAILURE",
+    "idleTimeoutSeconds": 1800,
+    "maximumLifetimeSeconds": 28800
+  },
+  "owner": {
+    "domain": "agent",
+    "reference": "agent-runtime-binding-001"
+  }
+}
+```
+
+---
+
+# 10. Runtime Provider
+
+## 10.1 RuntimeProvider 接口
+
+```go
+type RuntimeProvider interface {
+	CreateJob(
+		ctx context.Context,
+		spec JobRuntimeSpec,
+	) (*ProviderRuntime, error)
+
+	CreateService(
+		ctx context.Context,
+		spec ServiceRuntimeSpec,
+	) (*ProviderRuntime, error)
+
+	StartRuntime(
+		ctx context.Context,
+		providerRuntimeRef string,
+	) error
+
+	StopRuntime(
+		ctx context.Context,
+		providerRuntimeRef string,
+	) error
+
+	DeleteRuntime(
+		ctx context.Context,
+		providerRuntimeRef string,
+	) error
+
+	InspectRuntime(
+		ctx context.Context,
+		providerRuntimeRef string,
+	) (*ProviderRuntimeStatus, error)
+
+	GetLogs(
+		ctx context.Context,
+		providerRuntimeRef string,
+		options LogOptions,
+	) (LogStream, error)
+
+	ExecHealthCheck(
+		ctx context.Context,
+		providerRuntimeRef string,
+		check HealthCheckSpec,
+	) (*HealthCheckResult, error)
+}
+```
+
+Provider 接口只处理基础设施操作，不接收 Application、Agent 或 Task 领域对象。
+
+---
+
+## 10.2 DockerRuntimeProvider
+
+负责：
+
+* Docker 容器创建。
+* 网络创建或加入。
+* Volume 挂载。
+* 资源限制。
+* GPU Device Request。
+* 端口映射。
+* 健康检查。
+* 日志采集。
+* 容器停止和删除。
+
+Docker 细节不能泄漏到上层领域接口。
+
+---
+
+## 10.3 KubernetesRuntimeProvider（下一版本规划）
+
+以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+
+后续负责：
+
+* Kubernetes Job。
+* Pod 或工作负载创建。
+* Service。
+* PersistentVolumeClaim。
+* Secret 挂载。
+* Resource Request 和 Limit。
+* GPU 调度。
+* 健康探针。
+* 日志采集。
+
+上层不会感知 Pod、Deployment、Job 或 Namespace。
+
+---
+
+## 10.4 EdgeRuntimeProvider（下一版本规划）
+
+以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+
+负责与 Edge Node Agent 通信：
+
+* 下发 Runtime 创建命令。
+* 下发 Job 执行命令。
+* 上报节点资源。
+* 上报运行状态。
+* 上传日志。
+* 管理本地 Endpoint。
+* 管理本地 Workspace 或 Artifact 挂载。
+* 管理本地 GPU 使用。
+* 处理节点离线和恢复。
+
+Edge Node Agent 主动连接平台，平台不要求用户设备暴露入站管理端口。
+
+---
+
+## 10.5 LocalProcessRuntimeProvider（下一版本规划）
+
+以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+
+只允许执行平台预先注册的受控程序。
+
+适合：
+
+* FFmpeg。
+* 受控 Python Runner。
+* 文件扫描器。
+* 本地维护工具。
+
+禁止：
+
+* 上层提交任意 Shell。
+* 上层提交任意可执行文件路径。
+* 上层执行未经批准的系统命令。
+
+当前版本不开放该 Provider；下一版本再决定是否启用。
+
+---
+
+# 11. 节点与资源管理
+
+## 11.1 节点能力
+
+节点需要上报：
+
+```text
+CPU 架构
+CPU 核数
+可用内存
+磁盘容量
+GPU 数量
+GPU 型号
+GPU 显存
+操作系统
+Runtime Provider
+可用 RuntimeProfile
+网络能力
+存储能力
+节点标签
+```
+
+示例：
+
+```json
+{
+  "nodeId": "node-gpu-001",
+  "providerType": "DOCKER",
+  "labels": {
+    "gpu.vendor": "nvidia",
+    "gpu.model": "rtx-5090",
+    "runtime.comfyui": "true",
+    "location": "managed"
+  },
+  "capacity": {
+    "cpuCores": 32,
+    "memoryMb": 131072,
+    "diskMb": 2097152,
+    "gpus": [
+      {
+        "index": 0,
+        "vendor": "nvidia",
+        "model": "RTX 5090",
+        "memoryMb": 32768
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 11.2 Placement
+
+上层可以表达放置约束：
+
+```text
+MANAGED
+```
+
+还可以附加标签：
+
+```json
+{
+  "location": "MANAGED",
+  "requiredLabels": {
+    "gpu.vendor": "nvidia",
+    "runtime.comfyui": "true"
+  }
+}
+```
+
+Infra Service 负责选择具体节点。
+
+第一阶段部署只有一个受控 Docker 节点；`MANAGED` 只表达平台节点类型，不引入跨节点调度。多节点、指定节点和 Edge 放置约束迁移到下一版本。
+
+---
+
+## 11.3 资源分配
+
+支持的基础资源：
+
+```text
+cpuCores
+memoryMb
+diskMb
+gpuCount
+gpuMemoryMb
+```
+
+资源要求分为：
+
+* Requested：期望资源。
+* Minimum：最低资源。
+* Maximum：最大资源。
+
+S1 可以先采用固定请求，不实现复杂抢占和弹性调度。
+
+---
+
+## 11.4 资源不足
+
+当资源无法满足时，Infra Service 返回标准错误：
+
+```text
+INFRA_NO_ELIGIBLE_NODE
+INFRA_CPU_INSUFFICIENT
+INFRA_MEMORY_INSUFFICIENT
+INFRA_GPU_INSUFFICIENT
+INFRA_GPU_MEMORY_INSUFFICIENT
+INFRA_DISK_INSUFFICIENT
+```
+
+是否重试由 Task Center、`agent` 或 `appstudio` 决定。
+
+---
+
+# 12. Workspace 与文件挂载
+
+## 12.1 Workspace
+
+Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sourceRef`。Infra 不解析业务私有表，不接受宿主机路径，也不允许调用方通过通用 `WORKSPACE` 类型绕过源领域权限。
+
+| 运行场景 | 允许输入 | 挂载规则 | 业务事实 owner |
+| --- | --- | --- | --- |
+| AgentRuntime | `AgentWorkspace` | Infra 只能依据 Agent 的有效授权挂载；读写范围由 Agent Workspace Binding 限制；Runtime 删除不删除 Workspace | `agent` |
+| Coding Agent Runtime | 受控 `StudioWorkspace` 引用 | 只能通过 AppStudio Workspace Tool 和受控授权访问；Infra 不得直接读取 AppStudio 私有存储 | `appstudio` |
+| Preview Runtime | 当前 `Workspace Revision` | 只能挂载启动时授权的当前 Revision；源代码默认只读，临时写入必须落到隔离临时卷；不得创建或改写 Release | `appstudio` |
+| Build Runtime | 固定 `Workspace Snapshot` | 只读挂载固定 Snapshot digest；Build 不得读取持续变化的 Workspace 或后续 Revision | `appstudio` |
+| Production Runtime | 固定 `Artifact` 和 digest | 只读挂载固定 Artifact；禁止挂载可写 Workspace、Workspace Revision 或 Snapshot | `appstudio` |
+
+所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把它解释为宿主机路径。`StudioWorkspace`、Workspace Revision、Workspace Snapshot 与 Artifact 的物理存储位置不得进入 Infra 普通查询、事件或日志。
+
+挂载策略的优先级为：`Production Artifact` > `Build Snapshot` > `Preview Workspace Revision` > `StudioWorkspace`/`AgentWorkspace` 授权。任何低层挂载请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使同时收到 Workspace 引用，也必须拒绝该请求。
+
+---
+
+## 12.2 Artifact 输入
+
+Artifact 输入只能通过受控引用挂载：
+
+```text
+artifact://<artifact-id>
+```
+
+Task Worker 负责把已授权的 Artifact 输入转换为受控请求；Infra Service 负责将引用解析为实际可访问文件。
+
+上层不得传递 Blob 的物理路径。
+
+---
+
+## 12.3 输出目录
+
+RuntimeProfile 必须定义允许收集的输出目录。
+
+例如：
+
+```text
+/outputs
+```
+
+Infra Service 不得扫描 Runtime 任意文件系统并作为输出返回。
+
+---
+
+## 12.4 临时目录
+
+临时目录应满足：
+
+* Runtime 隔离。
+* 容量限制。
+* Job 完成后清理。
+* 不作为长期 Artifact 存储。
+* 不允许其他用户 Runtime 访问。
+
+---
+
+# 13. 配置和 Secret 注入
+
+## 13.1 配置类型
+
+支持：
+
+```text
+PLAIN_CONFIG
+PLATFORM_CONFIG
+SERVICE_ENDPOINT
+MODEL_ACCESS
+SECRET
+```
+
+---
+
+## 13.2 ModelAccessSpec
+
+示例：
+
+```json
+{
+  "providerType": "openai_compatible",
+  "protocol": "openai_chat_completions",
+  "baseUrl": "https://llm.example.com/v1",
+  "model": "qwen3-32b",
+  "credentialRef": "secret://users/current/provider-001",
+  "capabilities": {
+    "streaming": true,
+    "toolCalling": true,
+    "vision": false
+  }
+}
+```
+
+Infra Service 负责：
+
+1. 校验配置绑定是否被 RuntimeProfile 支持。
+2. 校验 CredentialRef 是否允许当前请求方使用。
+3. 解析 CredentialRef。
+4. 将凭证注入 Runtime。
+5. 确保普通查询接口不返回明文凭证。
+6. 对日志进行 Secret 脱敏。
+
+Agent Runtime 自行调用模型。
+
+---
+
+## 13.3 注入方式
+
+支持：
+
+```text
+ENVIRONMENT
+CONFIG_FILE
+SECRET_FILE
+RUNTIME_ARGUMENT
+```
+
+例如环境变量：
+
+```text
+LLM_PROVIDER=openai_compatible
+LLM_BASE_URL=https://llm.example.com/v1
+LLM_MODEL=qwen3-32b
+LLM_API_KEY=<runtime-injected-secret>
+```
+
+具体注入方式由 RuntimeProfile 定义，上层不能任意指定。
+
+---
+
+## 13.4 Secret 规则
+
+禁止：
+
+* 将明文 Secret 写入 Infra 数据库。
+* 将明文 Secret 返回调用方。
+* 将 Secret 输出到运行日志。
+* 将 Secret 写入 Workspace。
+* 将 Secret 打入应用 Release。
+* 将 Secret 放入基础设施事件。
+
+允许：
+
+* 启动阶段临时解析。
+* 通过 Secret File 或受控环境变量注入。
+* 使用短期凭证。
+* Runtime 删除后清理 Secret 数据。
+
+---
+
+# 14. 网络管理
+
+## 14.1 出站网络
+
+Runtime 请求可以声明：
+
+```text
+outboundInternet: true | false
+```
+
+对于下载任务，还可以声明域名白名单：
+
+```json
+{
+  "outboundInternet": true,
+  "allowedDomains": [
+    "cdn.example.com",
+    "assets.example.org"
+  ]
+}
+```
+
+RuntimeProfile 可以强制覆盖上层请求。
+
+---
+
+## 14.2 入站访问
+
+Service 可以请求 Endpoint：
+
+```text
+exposeEndpoint: true
+```
+
+Endpoint 类型：
+
+```text
+INTERNAL
+USER_ACCESSIBLE
+PUBLIC
+```
+
+S1 默认：
+
+* Agent Runtime：内部访问。
+* Preview Runtime：用户可访问。
+* StudioRuntime：用户可访问。
+* 模型 Runtime：内部访问。
+* Job：不暴露 Endpoint。
+
+---
+
+## 14.3 第一阶段端口访问
+
+单机 Docker 阶段允许：
+
+```text
+http://<host-ip>:<allocated-port>
+```
+
+Infra Service 负责端口分配和冲突处理。
+
+上层只保存 `endpointRef`，不直接保存 Host Port 作为业务事实。
+
+---
+
+# 15. 健康检查
+
+支持：
+
+```text
+HTTP
+TCP
+PROCESS
+COMMAND
+```
+
+示例：
+
+```yaml
+type: HTTP
+path: /health
+portName: http
+initialDelaySeconds: 5
+timeoutSeconds: 3
+failureThreshold: 5
+```
+
+Infra Service 只报告基础设施健康事实：
+
+```text
+UNKNOWN
+STARTING
+HEALTHY
+UNHEALTHY
+```
+
+`appstudio` 或 `agent` 根据健康事实决定业务状态。
+
+---
+
+# 16. 日志管理
+
+Infra Service 负责：
+
+* 标准输出。
+* 标准错误。
+* Runtime 系统日志。
+* 健康检查日志。
+* 启动错误。
+* 退出原因。
+
+日志接口支持：
+
+* 按 Runtime 查询。
+* 按时间范围查询。
+* 流式跟随。
+* 按游标分页。
+* 限制最大返回量。
+
+Infra Service 必须执行：
+
+* Secret 脱敏。
+* 凭证字段过滤。
+* 超长日志截断。
+* 二进制输出过滤。
+* 日志保留期管理。
+
+Infra Service 不负责将基础设施日志加工成用户业务解释。
+
+---
+
+# 17. 状态模型
+
+## 17.1 Job 状态
+
+```text
+ACCEPTED
+VALIDATING
+SCHEDULING
+PREPARING
+RUNNING
+SUCCEEDED
+FAILED
+CANCELING
+CANCELED
+EXPIRED
+DELETING
+DELETED
+```
+
+---
+
+## 17.2 Service 状态
+
+```text
+ACCEPTED
+VALIDATING
+SCHEDULING
+PREPARING
+STARTING
+RUNNING
+DEGRADED
+STOPPING
+STOPPED
+FAILED
+EXPIRED
+DELETING
+DELETED
+```
+
+---
+
+## 17.3 状态边界
+
+Infra Service 不应提供以下状态：
+
+```text
+AGENT_IDLE
+APP_RELEASED
+BUILD_VALIDATION_FAILED
+TASK_RETRYING
+MODEL_UNAVAILABLE_FOR_CHAT
+```
+
+这些属于上层业务服务。
+
+---
+
+# 18. 取消、停止与删除
+
+## 18.1 Cancel Job
+
+取消 Job 时：
+
+1. 标记为 `CANCELING`。
+2. 请求 Provider 停止运行。
+3. 等待优雅退出。
+4. 超时后强制终止。
+5. 收集已有日志。
+6. 根据策略保留或删除部分输出。
+7. 标记为 `CANCELED`。
+
+---
+
+## 18.2 Stop Service
+
+停止 Service 不等于删除：
+
+* Runtime 可以保留配置。
+* 挂载和资源可以根据 Provider 策略释放。
+* 后续允许重新启动。
+
+---
+
+## 18.3 Delete Runtime
+
+删除 Runtime：
+
+* 停止运行环境。
+* 释放计算资源。
+* 释放端口。
+* 删除临时 Volume。
+* 清理临时 Secret。
+* 删除 Provider 运行对象。
+* 保留必要审计记录。
+
+---
+
+# 19. 超时和过期
+
+Infra Service 支持：
+
+```text
+startupTimeoutSeconds
+executionTimeoutSeconds
+idleTimeoutSeconds
+maximumLifetimeSeconds
+expiresAt
+```
+
+示例：
+
+* Build Job：执行超时。
+* Coding Agent：空闲超时和最大生命周期。
+* Preview：过期时间。
+* 下载任务：网络超时。
+* 模型 Service：一般不设置最大生命周期。
+
+业务超时与基础设施超时应分离。
+
+---
+
+# 20. 幂等性
+
+所有创建接口必须支持：
+
+```text
+requestId
+```
+
+相同调用方和相同 `requestId` 重复请求时：
+
+* 不得创建重复 Runtime。
+* 返回已创建 Runtime。
+* 若原请求已失败，应返回原失败结果或明确允许重试的新请求规则。
+
+推荐幂等键：
+
+```text
+callerService + requestId
+```
+
+---
+
+# 21. 权限与安全
+
+## 21.1 调用方身份
+
+Infra Service 只接受平台服务调用。
+
+每个请求必须包含 Task Center Worker 的可信服务身份：
+
+```text
+task-center
+```
+
+前端用户不得直接调用 Runtime 创建接口。
+
+---
+
+## 21.2 请求方与业务归属
+
+每个 Runtime 必须记录：
+
+```text
+requestingService
+ownerDomain
+ownerReference
+requestUserId
+```
+
+其中：
+
+* `requestingService` 表示实际调用 Infra 的受信服务，第一阶段固定为 `task-center`；它不表示业务归属。
+* `ownerDomain` 表示真正拥有业务状态的领域，例如 `agent`、`appstudio`、`task-center` 或 `asset-library`。
+* `ownerReference` 表示上层对象，例如 `agent-runtime-001`、`studio-preview-runtime-001` 或 `studio-runtime-instance-001`。
+* `requestUserId` 用于资源隔离和审计，但不由客户端任意传入；由 Task Center 从原任务和 Principal 上下文传递。
+
+---
+
+## 21.3 运行隔离
+
+必须保证：
+
+* 不同用户 Workspace 隔离。
+* 不同 Runtime 文件系统隔离。
+* Secret 隔离。
+* 网络策略隔离。
+* GPU 和进程访问受控。
+* Runtime 不得访问宿主机任意目录。
+* Runtime 不得访问 Docker Socket。
+* Runtime 不得直接控制其他 Runtime。
+
+---
+
+## 21.4 任意命令执行限制
+
+上层不得提交：
+
+```text
+/bin/sh -c <arbitrary-command>
+```
+
+正确方式是：
+
+```text
+runtimeProfile: media.ffmpeg
+command: transcode
+arguments: ...
+```
+
+RuntimeProfile 内的 Runner 将标准化命令转换为受控程序参数。
+
+需要动态代码执行时，必须使用专门的 Sandbox RuntimeProfile。
+
+---
+
+# 22. Edge Node Agent（下一版本规划）
+
+本章不属于 `v1.1-draft` 实现范围，整体迁移到下一版本。
+
+## 22.1 定位
+
+Edge Node Agent 是安装在用户设备上的基础设施代理，不是 AI Agent。
+
+负责：
+
+* 节点注册。
+* 主动建立安全连接。
+* 心跳。
+* 资源上报。
+* 本地 Runtime 创建。
+* 本地 Job 执行。
+* GPU 资源使用。
+* 本地文件访问。
+* 日志和状态上报。
+* 本地 Endpoint 管理。
+
+---
+
+## 22.2 Edge 连接
+
+推荐 Edge Node Agent 主动连接 Infra Service：
+
+```mermaid
+sequenceDiagram
+    participant EA as Edge Node Agent
+    participant IS as Infra Service
+    participant TC as Task Center
+
+    EA->>IS: 注册节点
+    EA->>IS: 建立长期安全连接
+    EA->>IS: 上报资源和心跳
+
+    TC->>IS: 提交Edge Job
+    IS->>EA: 创建Runtime
+    EA-->>IS: Runtime Started
+    EA-->>IS: 日志与状态
+    EA-->>IS: Job Completed
+```
+
+平台不依赖用户设备开放公网入站端口。
+
+---
+
+## 22.3 Edge 离线
+
+Edge 节点离线时：
+
+* 节点状态变为 `OFFLINE`。
+* 不再分配新 Runtime。
+* 已运行 Runtime 标记为状态未知。
+* 上层根据任务策略决定等待、失败或迁移。
+* 节点恢复后进行状态对账。
+* 不假设离线期间 Runtime 一定已经停止。
+
+---
+
+# 23. 对账与故障恢复
+
+Infra Service 必须定期对账数据库状态与 Provider 实际状态。
+
+处理场景：
+
+* 数据库显示 Running，但容器已不存在。
+* 容器存在，但数据库记录缺失。
+* Service Endpoint 已失效。
+* Provider 创建成功但响应超时。
+* Runtime 停止成功但资源未释放。
+
+对账结果：
+
+```text
+infra.runtime.reconciled
+infra.runtime.orphan_detected
+infra.runtime.missing_detected
+infra.runtime.endpoint_repaired
+```
+
+S1 至少需要支持：
+
+* Docker Runtime 对账。
+* 僵尸 Runtime 清理。
+* 过期 Runtime 清理。
+
+Edge Runtime 状态恢复迁移到下一版本。
+
+---
+
+# 24. 主要接口
+
+以下为逻辑接口，不限定最终 HTTP 或 RPC 路径。
+
+## 24.1 Runtime
+
+```text
+CreateJob
+CreateService
+GetRuntime
+ListRuntimes
+StartRuntime
+StopRuntime
+CancelJob
+DeleteRuntime
+GetRuntimeStatus
+GetRuntimeLogs
+StreamRuntimeLogs
+```
+
+---
+
+## 24.2 Endpoint
+
+```text
+GetRuntimeEndpoint
+ListRuntimeEndpoints
+RefreshRuntimeEndpoint
+```
+
+---
+
+## 24.3 Node
+
+```text
+RegisterNode
+GetNode
+ListNodes
+UpdateNodeStatus
+DrainNode
+EnableNode
+DisableNode
+DeleteNode
+ReportNodeHeartbeat
+ReportNodeResources
+```
+
+Edge Node Agent 使用专用内部接口。
+
+---
+
+## 24.4 RuntimeProfile
+
+S1 管理接口：
+
+```text
+GetRuntimeProfile
+ListRuntimeProfiles
+ValidateRuntimeProfile
+ReloadRuntimeProfiles
+```
+
+RuntimeProfile 可以采用内置和目录加载方式，修改后重载或重启生效。
+
+---
+
+## 24.5 输出
+
+```text
+ListRuntimeOutputs
+GetRuntimeOutput
+RegisterRuntimeOutputArtifact
+```
+
+---
+
+# 25. 标准错误码
+
+## 25.1 请求错误
+
+```text
+INFRA_INVALID_REQUEST
+INFRA_RUNTIME_PROFILE_NOT_FOUND
+INFRA_RUNTIME_PROFILE_REVISION_NOT_FOUND
+INFRA_UNSUPPORTED_RUNTIME_MODE
+INFRA_UNSUPPORTED_CONFIGURATION_BINDING
+INFRA_INVALID_RESOURCE_REQUIREMENT
+INFRA_INVALID_PLACEMENT_REQUIREMENT
+```
+
+## 25.2 节点与资源错误
+
+```text
+INFRA_NO_ELIGIBLE_NODE
+INFRA_NODE_OFFLINE
+INFRA_NODE_DRAINING
+INFRA_CPU_INSUFFICIENT
+INFRA_MEMORY_INSUFFICIENT
+INFRA_GPU_INSUFFICIENT
+INFRA_GPU_MEMORY_INSUFFICIENT
+INFRA_DISK_INSUFFICIENT
+```
+
+## 25.3 运行错误
+
+```text
+INFRA_RUNTIME_CREATE_FAILED
+INFRA_RUNTIME_START_FAILED
+INFRA_RUNTIME_STOP_FAILED
+INFRA_RUNTIME_DELETE_FAILED
+INFRA_RUNTIME_NOT_FOUND
+INFRA_RUNTIME_ALREADY_COMPLETED
+INFRA_RUNTIME_TIMEOUT
+INFRA_HEALTH_CHECK_FAILED
+INFRA_EXIT_CODE_NON_ZERO
+```
+
+## 25.4 挂载与配置错误
+
+```text
+INFRA_WORKSPACE_MOUNT_FAILED
+INFRA_ARTIFACT_MOUNT_FAILED
+INFRA_OUTPUT_COLLECTION_FAILED
+INFRA_SECRET_RESOLUTION_FAILED
+INFRA_SECRET_ACCESS_DENIED
+INFRA_MODEL_ACCESS_BINDING_FAILED
+INFRA_ENDPOINT_ALLOCATION_FAILED
+```
+
+## 25.5 Provider 错误
+
+```text
+INFRA_PROVIDER_UNAVAILABLE
+INFRA_PROVIDER_REQUEST_FAILED
+INFRA_PROVIDER_STATE_CONFLICT
+```
+
+---
+
+# 26. 审计
+
+以下操作必须生成审计记录：
+
+* 创建 Runtime。
+* 启动 Runtime。
+* 停止 Runtime。
+* 删除 Runtime。
+* 注入 Secret。
+* 创建公网或用户可访问 Endpoint。
+* 分配 GPU。
+* 使用高资源配置。
+* 管理节点状态。
+* 修改或重载 RuntimeProfile。
+
+审计记录不得包含：
+
+* 明文 Secret。
+* 完整 API Key。
+* Runtime 内敏感配置内容。
+
+---
+
+# 27. 可观测性
+
+Infra Service 至少提供：
+
+## 27.1 指标
+
+```text
+infra_runtime_total
+infra_runtime_running
+infra_runtime_failed_total
+infra_runtime_start_duration
+infra_runtime_execution_duration
+infra_runtime_cleanup_duration
+infra_node_ready_total
+infra_node_offline_total
+infra_cpu_allocated
+infra_memory_allocated
+infra_gpu_allocated
+infra_endpoint_total
+infra_provider_error_total
+```
+
+## 27.2 追踪
+
+请求链路应携带：
+
+```text
+traceId
+taskId
+taskAttemptId
+runtimeId
+requestingService
+ownerDomain
+ownerReference
+```
+
+## 27.3 日志
+
+Infra Service 自身日志和 Runtime 日志必须分离。
+
+---
+
+# 28. S1 实现范围
+
+## 28.1 S1 必须实现
+
+* InfraNode。
+* InfraRuntime。
+* RuntimeEndpoint。
+* RuntimeMount。
+* RuntimeConfigBinding。
+* RuntimeOutput。
+* RuntimeProfile。
+* Job。
+* Service。
+* DockerRuntimeProvider。
+* CPU、内存和基础 GPU 资源声明。
+* 单机 Docker 节点和基本资源匹配。
+* Workspace 挂载。
+* Workspace Snapshot 只读挂载。
+* Artifact 输入挂载。
+* 输出文件收集。
+* Secret 注入。
+* ModelAccessSpec 注入。
+* IP 加端口 Endpoint。
+* 健康检查。
+* Runtime 日志。
+* Runtime 超时。
+* 幂等创建。
+* Runtime 对账。
+* Task Center 集成。
+* `agent` 集成。
+* `appstudio` 集成。
+
+---
+
+## 28.2 下一版本迁移范围
+
+* 完整 KubernetesRuntimeProvider。
+* EdgeRuntimeProvider 和 Edge Node Agent。
+* LocalProcessRuntimeProvider。
+* 多节点调度、指定节点和跨节点迁移。
+* 自动扩缩容。
+* 复杂资源抢占。
+* 多区域调度。
+* Spot 或竞价资源。
+* GPU 分时和显存切片。
+* 服务网格。
+* 复杂域名系统。
+* 蓝绿发布。
+* 灰度发布。
+
+---
+
+## 28.3 持续禁止能力
+
+* 用户自定义 RuntimeProfile。
+* 用户自定义 Dockerfile。
+* 任意 Shell 执行。
+* 任意宿主机目录挂载。
+* Runtime 之间共享 Docker Socket。
+* Infra Service 代理 LLM 请求。
+* Infra Service 管理业务任务依赖。
+* Infra Service 拥有 Asset 或 Application 业务数据。
+
+---
+
+# 29. 第一阶段单机 Docker 部署
+
+第一阶段采用单机 Docker。
+
+```text
+Single Host
+├── omni-apiserver
+├── infra-service
+├── task-worker
+├── agent-service
+├── appstudio-service
+├── notification-service
+├── runtime-agent-*
+├── runtime-preview-*
+├── runtime-build-*
+├── runtime-studioapp-*
+├── runtime-model-*
+└── runtime-tool-job-*
+```
+
+Infra Service 使用：
+
+```text
+DockerRuntimeProvider
+```
+
+访问 Endpoint：
+
+```text
+http://<host-ip>:<allocated-port>
+```
+
+后续切换 Kubernetes 或 Edge 时，需要在新的 S1/S2 版本中重新确认 Provider、节点和故障恢复契约；本版不提前承诺跨 Provider 兼容。
+
+---
+
+# 30. 强制架构规则
+
+## R-INFRA-001
+
+第一阶段任何上层服务不得直接操作 Docker Engine、宿主机进程、GPU、端口、Volume 或运行节点文件系统。
+
+## R-INFRA-002
+
+所有实际运行必须通过 Infra Service。
+
+## R-INFRA-003
+
+Infra Service 只接受标准化 Job 或 Service 请求。
+
+## R-INFRA-004
+
+上层必须通过 RuntimeProfile 表达运行环境，不得提交 Provider 专属配置。
+
+## R-INFRA-005
+
+Runtime Provider 只能存在于 Infra Service 内部。
+
+## R-INFRA-006
+
+Task Center 负责业务任务，Infra Service 负责实际运行，两者不得合并。
+
+## R-INFRA-007
+
+`appstudio` 负责 Release/StudioRuntimeInstance 的发布态期望，Infra Service 负责受控 Docker Runtime。
+
+## R-INFRA-008
+
+Infra Service 不理解 Agent、ApplicationVersion、StudioRelease、StudioRuntimeInstance 或 Asset 的业务语义。
+
+## R-INFRA-009
+
+AgentRuntime 只能按 Agent 授权挂载 AgentWorkspace；Coding Agent 只能通过 AppStudio 受控授权访问 StudioWorkspace；Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact，禁止挂载可写 Workspace。
+
+## R-INFRA-010
+
+上层不得传递任意宿主机文件路径。
+
+## R-INFRA-011
+
+上层不得提交任意 Shell 命令。
+
+## R-INFRA-012
+
+Secret 只能通过 SecretRef 传入，并由 Infra Service 在运行阶段解析和注入。
+
+## R-INFRA-013
+
+Infra Service 不得通过普通接口返回明文凭证。
+
+## R-INFRA-014
+
+AgentRuntime 和 StudioRuntime 自行调用 LLM，Infra Service 只注入 ModelAccessSpec 和凭证。
+
+## R-INFRA-015
+
+每个 Runtime 必须关联可信的 `requestingService=task-center`、`ownerDomain` 和 `ownerReference`；请求方身份不得替代业务归属。
+
+## R-INFRA-016
+
+每个创建请求必须支持幂等 requestId。
+
+## R-INFRA-017
+
+每个 Runtime 必须记录 RuntimeProfile Revision 和实际 Provider。
+
+## R-INFRA-018
+
+Infra Service 必须定期对账持久化状态与 Provider 实际状态。
+
+## R-INFRA-019（下一版本规则）
+
+Edge Node Agent 是基础设施代理，不属于 `agent` 的 AI Agent。
+
+## R-INFRA-020
+
+第一阶段业务服务只能依赖 Infra Service 的 Docker 无关逻辑接口，不得把 Docker 容器细节写入业务流程。未来增加 Provider 时，仍须沿用同一规则。
+
+---
+
+# 31. 最终职责总结
+
+```text
+Task Center
+    决定何时执行、依赖、重试、取消和业务状态
+
+agent
+    决定运行哪个Agent以及使用哪个Workspace和模型配置
+
+appstudio
+    决定如何开发、预览、构建和发布 StudioApplication
+
+model-management
+    决定用户选择哪个模型
+
+modelgateway
+    将模型引用解析为ModelAccessSpec
+
+Asset Library
+    管理素材、Artifact和Representation
+
+Infra Service
+    决定在哪里以及如何创建实际运行环境
+
+Runtime Provider
+    第一阶段执行 Docker 容器操作
+
+AgentRuntime / StudioRuntime
+    执行实际业务逻辑并自行调用模型
+```
+
+统一调用关系：
+
+```mermaid
+flowchart TB
+    BUSINESS[上层业务服务]
+    TASK[Task Center]
+    INFRA[Infra Service]
+
+    BUSINESS -->|一次性或临时运行| TASK
+    TASK --> WORKER[Task Worker]
+    WORKER --> ADAPTER[Infra Adapter]
+    ADAPTER --> INFRA
+
+    BUSINESS -->|发布态运行| APPSTUDIO[AppStudio]
+    APPSTUDIO --> TASK
+
+    INFRA --> DOCKER[Docker Provider]
+```
+
+Infra Service 的最终边界是：
+
+> 上层描述需要运行什么，Infra Service 决定使用什么运行环境、在哪个节点以及如何安全地运行。

@@ -1,0 +1,264 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Infrastructure API
+  version: 1.0.0-draft
+  description: >-
+    第一阶段单机 Docker 运行层契约。所有写操作只允许 Task Center Task Worker 的受信服务身份调用；
+    业务领域不得直接调用本 API。Provider、宿主机路径、容器 ID 和明文 Secret 不进入普通响应。
+servers: [{url: /}]
+security: [{serviceBearerAuth: []}]
+tags: [{name: runtimes}, {name: endpoints}, {name: nodes}, {name: profiles}, {name: outputs}]
+paths:
+  /api/v1/infra/runtimes:
+    get:
+      tags: [runtimes]
+      operationId: list_infra_runtimes
+      summary: 查询 InfraRuntime
+      x-permission: infra.runtime.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015], source_sections: ['8.2 InfraRuntime', '21 权限与安全']}
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: owner_domain, in: query, schema: {type: string}}, {name: owner_reference, in: query, schema: {type: string}}, {name: status, in: query, schema: {type: string}}]
+      responses: {'200': {description: InfraRuntime 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+    post:
+      tags: [runtimes]
+      operationId: create_infra_runtime
+      summary: 创建 Job 或 Service Runtime
+      x-permission: infra.runtime.create
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-009, R-INFRA-015, R-INFRA-016, R-INFRA-017], source_sections: ['9 运行请求', '20 幂等性']}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateRuntimeRequest'}}}}
+      responses: {'200': {description: InfraRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}:
+    parameters: [{$ref: '#/components/parameters/runtime_id'}]
+    get:
+      tags: [runtimes]
+      operationId: get_infra_runtime
+      summary: 获取 InfraRuntime
+      x-permission: infra.runtime.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-007, R-INFRA-008, R-INFRA-015, R-INFRA-017], source_sections: ['8.2 InfraRuntime', '17 状态模型']}
+      responses: {'200': {description: InfraRuntime；仅返回脱敏状态。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+    delete:
+      tags: [runtimes]
+      operationId: delete_infra_runtime
+      summary: 删除 Runtime
+      x-permission: infra.runtime.delete
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.3 Delete Runtime', '23 对账与故障恢复']}
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 删除后的 Runtime 摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/start:
+    post:
+      tags: [runtimes]
+      operationId: start_infra_runtime
+      summary: 启动 Runtime
+      x-permission: infra.runtime.operate
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-005, R-INFRA-016, R-INFRA-018], source_sections: ['10 Runtime Provider', '18 取消、停止与删除']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/stop:
+    post:
+      tags: [runtimes]
+      operationId: stop_infra_runtime
+      summary: 停止 Service 或取消 Job
+      x-permission: infra.runtime.operate
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-018], source_sections: ['18.1 Cancel Job', '18.2 Stop Service']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/cancel:
+    post:
+      tags: [runtimes]
+      operationId: cancel_infra_job
+      summary: 取消 Job
+      x-permission: infra.runtime.operate
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-016], source_sections: ['18.1 Cancel Job', '20 幂等性']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/reconcile:
+    post:
+      tags: [runtimes]
+      operationId: reconcile_infra_runtime
+      summary: 对账 Provider 状态
+      x-permission: infra.runtime.reconcile
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-017, R-INFRA-018], source_sections: ['23 对账与故障恢复']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 对账后的 Runtime。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/endpoint:
+    get:
+      tags: [endpoints]
+      operationId: get_infra_runtime_endpoint
+      summary: 获取受控 Endpoint 摘要
+      x-permission: infra.endpoint.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.3 RuntimeEndpoint', '14 网络管理']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}]
+      responses: {'200': {description: Endpoint 摘要；不返回宿主机地址。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeEndpoint'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/logs:
+    get:
+      tags: [runtimes]
+      operationId: get_infra_runtime_logs
+      summary: 查询脱敏 Runtime 日志
+      x-permission: infra.runtime.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-013], source_sections: ['16 日志管理', '27.3 日志']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 日志页；不返回 Provider 原始响应和凭证。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/nodes:
+    get:
+      tags: [nodes]
+      operationId: list_infra_nodes
+      summary: 查询受管节点摘要
+      x-permission: infra.node.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['11 节点与资源管理']}
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: status, in: query, schema: {type: string}}]
+      responses: {'200': {description: 节点列表。, content: {application/json: {schema: {$ref: '#/components/schemas/NodeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/nodes/{node_id}:
+    get:
+      tags: [nodes]
+      operationId: get_infra_node
+      summary: 获取节点摘要
+      x-permission: infra.node.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['8.1 InfraNode', '11 节点与资源管理']}
+      parameters: [{$ref: '#/components/parameters/node_id'}]
+      responses: {'200': {description: 节点摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraNode'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtime-profiles:
+    get:
+      tags: [profiles]
+      operationId: list_infra_runtime_profiles
+      summary: 查询只读 RuntimeProfile
+      x-permission: infra.profile.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
+      responses: {'200': {description: RuntimeProfile 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfileListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtime-profiles/{profile_id}:
+    get:
+      tags: [profiles]
+      operationId: get_infra_runtime_profile
+      summary: 获取 RuntimeProfile
+      x-permission: infra.profile.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
+      parameters: [{$ref: '#/components/parameters/profile_id'}]
+      responses: {'200': {description: RuntimeProfile。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfile'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/outputs:
+    get:
+      tags: [outputs]
+      operationId: list_infra_runtime_outputs
+      summary: 查询运行输出引用
+      x-permission: infra.output.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.6 RuntimeOutput', '12 Workspace 与文件挂载']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 输出引用列表；内容由 Asset Library 负责。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeOutputListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+components:
+  securitySchemes: {serviceBearerAuth: {type: http, scheme: bearer, bearerFormat: service-jwt}}
+  parameters:
+    runtime_id: {name: runtime_id, in: path, required: true, schema: {type: string}}
+    profile_id: {name: profile_id, in: path, required: true, schema: {type: string}}
+    node_id: {name: node_id, in: path, required: true, schema: {type: string}}
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+  responses: {UnexpectedError: {description: 未预期服务异常。, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}}
+  schemas:
+    CreateRuntimeRequest:
+      type: object
+      required: [request_id, requesting_service, owner_domain, owner_reference, runtime_mode, runtime_profile_id, runtime_profile_revision]
+      properties:
+        request_id: {type: string}
+        requesting_service: {type: string, enum: [task-center]}
+        owner_domain: {type: string, enum: [agent, appstudio]}
+        owner_reference: {type: string}
+        request_user_id: {type: string}
+        runtime_mode: {type: string, enum: [JOB, SERVICE]}
+        runtime_profile_id: {type: string}
+        runtime_profile_revision: {type: string}
+        source_ref: {type: string, description: 来源领域生成的受控引用，不是宿主机路径。}
+        mounts: {type: array, items: {$ref: '#/components/schemas/RuntimeMountInput'}}
+        configuration_bindings: {type: array, items: {$ref: '#/components/schemas/RuntimeConfigBindingInput'}}
+        resource_requirement: {$ref: '#/components/schemas/ResourceRequirement'}
+        timeout_policy: {$ref: '#/components/schemas/TimeoutPolicy'}
+    RuntimeMountInput:
+      type: object
+      required: [source_ref, target_path, read_only, mount_kind]
+      properties:
+        source_ref: {type: string}
+        target_path: {type: string}
+        read_only: {type: boolean}
+        mount_kind: {type: string, enum: [AGENT_WORKSPACE, STUDIO_WORKSPACE_REVISION, STUDIO_SNAPSHOT, ARTIFACT, TEMPORARY]}
+    RuntimeConfigBindingInput:
+      type: object
+      required: [name, binding_type, reference]
+      properties:
+        name: {type: string}
+        binding_type: {type: string, enum: [PLAIN_CONFIG, MODEL_ACCESS, SECRET_REF, INTEGRATION_REF]}
+        reference: {type: string, description: SecretRef、ModelAccessSpec 或受控 IntegrationRef，不是明文值。}
+    ResourceRequirement:
+      type: object
+      properties: {cpu_cores: {type: number, minimum: 0}, memory_mb: {type: integer, minimum: 0}, disk_mb: {type: integer, minimum: 0}, gpu_count: {type: integer, minimum: 0}, gpu_memory_mb: {type: integer, minimum: 0}}
+    TimeoutPolicy:
+      type: object
+      properties: {startup_timeout_seconds: {type: integer, minimum: 1}, execution_timeout_seconds: {type: integer, minimum: 1}, idle_timeout_seconds: {type: integer, minimum: 1}, maximum_lifetime_seconds: {type: integer, minimum: 1}, expires_at: {type: string, format: date-time, nullable: true}}
+    InfraRuntime:
+      type: object
+      required: [id, runtime_mode, status, requesting_service, owner_domain, owner_reference, runtime_profile_id, runtime_profile_revision, provider_type, request_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        runtime_mode: {type: string, enum: [JOB, SERVICE]}
+        status: {type: string, enum: [ACCEPTED, VALIDATING, SCHEDULING, PREPARING, RUNNING, SUCCEEDED, DEGRADED, STOPPING, STOPPED, FAILED, CANCELED, EXPIRED, DELETING, DELETED]}
+        requesting_service: {type: string, enum: [task-center]}
+        owner_domain: {type: string}
+        owner_reference: {type: string}
+        request_user_id: {type: string, nullable: true}
+        runtime_profile_id: {type: string}
+        runtime_profile_revision: {type: string}
+        provider_type: {type: string, enum: [docker]}
+        endpoint_ref: {type: string, nullable: true}
+        request_id: {type: string}
+        failure_code: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    RuntimeEndpoint:
+      type: object
+      required: [id, runtime_id, access_mode, status]
+      properties: {id: {type: string}, runtime_id: {type: string}, access_mode: {type: string, enum: [INTERNAL, USER_PROXY]}, status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}, display_ref: {type: string, nullable: true}, expires_at: {type: string, format: date-time, nullable: true}}
+    InfraNode:
+      type: object
+      required: [id, status, cpu_cores, memory_mb, provider_type]
+      properties: {id: {type: string}, status: {type: string, enum: [ONLINE, DRAINING, OFFLINE, DISABLED]}, cpu_cores: {type: number}, memory_mb: {type: integer}, gpu_count: {type: integer}, provider_type: {type: string, enum: [docker]}}
+    RuntimeProfile:
+      type: object
+      required: [id, revision, status, runtime_mode, provider_type]
+      properties: {id: {type: string}, revision: {type: string}, status: {type: string, enum: [ACTIVE, DISABLED]}, runtime_mode: {type: string, enum: [JOB, SERVICE]}, provider_type: {type: string, enum: [docker]}, capabilities: {type: array, items: {type: string}}}
+    RuntimeOutput:
+      type: object
+      required: [id, runtime_id, output_key, status]
+      properties: {id: {type: string}, runtime_id: {type: string}, output_key: {type: string}, artifact_id: {type: string, nullable: true}, status: {type: string, enum: [PENDING, COLLECTED, FAILED]}, media_type: {type: string, nullable: true}}
+    RuntimeLogListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeLogEntry'}}}
+    RuntimeLogEntry:
+      type: object
+      required: [occurred_at, level, message]
+      properties: {occurred_at: {type: string, format: date-time}, level: {type: string, enum: [INFO, WARN, ERROR]}, message: {type: string}, source: {type: string}}
+    ActionRequest:
+      type: object
+      properties: {request_id: {type: string}, reason: {type: string, maxLength: 1000}}
+    RuntimeListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/InfraRuntime'}}}}
+    NodeListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/InfraNode'}}}}
+    RuntimeProfileListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeProfile'}}}}
+    RuntimeOutputListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeOutput'}}}}
+    ErrorResponse:
+      type: object
+      required: [code, value, message]
+      properties: {code: {type: string}, value: {type: integer}, message: {type: string}, retryable: {type: boolean}, data: {type: object, additionalProperties: true}}

@@ -20,6 +20,7 @@
 | appstudio | `01_contracts/domains/appstudio/errors.yaml` | StudioApplication、Workspace、源码版本、Build、Release/Runtime 与访问控制错误码 |
 | platform-management | `01_contracts/domains/platform-management/errors.yaml` | SystemAuthConfig、平台审计和跨 domain 管理边界错误码 |
 | identity | `01_contracts/domains/identity/errors.yaml` | 认证流程、用户、RBAC、资源授权、服务主体和 PrincipalContext 错误码 |
+| infrastructure | `01_contracts/domains/infrastructure/errors.yaml` | Docker Runtime、节点资源、挂载配置、Endpoint 和 Provider 对账错误码 |
 
 ## 2. 错误码区间分配
 
@@ -84,6 +85,10 @@
 | 210800-210999 | appstudio | build | StudioBuild、Task 和 Build Artifact 错误 |
 | 211000-211199 | appstudio | release-runtime | RuntimeConfig、Preview、Release、部署、健康与回滚错误 |
 | 211200-211399 | appstudio | access | AppStudio 领域访问控制错误 |
+| 240200-240399 | infrastructure | request | Runtime 请求、Profile、模式和幂等校验错误 |
+| 240400-240599 | infrastructure | placement | Docker 节点、CPU/内存/磁盘/GPU 资源错误 |
+| 240600-240799 | infrastructure | runtime | InfraRuntime 状态、Provider 操作、停止和对账错误 |
+| 240800-240999 | infrastructure | mount-config | 挂载、Secret/ModelAccessSpec 注入和 Endpoint 错误 |
 | 220200-220399 | identity | authn / session | 登录、Token、Refresh Token 和会话错误 |
 | 220400-220599 | identity | user | 用户注册、状态、删除和可见性错误 |
 | 220600-220799 | identity | rbac / principal | 角色、用户组、权限和 PrincipalContext 错误 |

@@ -11,7 +11,9 @@
 | schedule | TaskSchedule、ScheduleExecution、ScheduleReconcileState、暂停恢复、重叠门禁和历史保留 | cron 引擎、具体领域巡检实现 |
 | reconcile-registry | 受控 reconcileRef、配置校验、轻量巡检路由和修复动作门禁 | 用户自定义代码、任意 Conductor 任务、具体领域数据归属 |
 | runtime | WorkflowRuntime 接口、Conductor 适配、运行时 binding、事件投影和对账 | 对外业务 API、Conductor 数据库所有权 |
-| function-registry | 可用 functionRef、输入输出 schema、能力要求和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
+| function-registry | 可用 functionRef、输入输出 schema、能力要求、执行模式和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
+| task-worker | 消费 AtomicTask、执行已注册 handler、管理 Attempt 级恢复和受控结果映射 | Agent/AppStudio/Infra 业务状态、业务数据库、Docker Provider 私有实现 |
+| infra-adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求，映射取消/超时/重试和稳定运行引用 | 任意用户命令、宿主机路径、Docker Socket、Provider 私有 API |
 | name-catalog | 系统任务名称 key、受控参数校验和 BCP 47 多语言投影 | 翻译用户自定义名称、按请求语言改写持久化 name |
 | access | project、namespace、createdBy 和服务身份访问控制 | identity 主体生命周期 |
 
@@ -41,6 +43,11 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 - Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
 - Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
+- Task Worker 只能接收 Task Center 已校验的不可变 `arguments` 和 `function_ref`，不得从 Agent、AppStudio 或客户端直接接收 Infra 请求。
+- Infra-backed `function_ref` 必须由 function-registry 声明 `execution_mode=JOB|SERVICE`、输入/输出 schema、required capabilities、幂等键、取消方式、超时边界和结果映射；首阶段只可路由到 DockerRuntimeProvider。
+- Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、宿主机路径、容器 ID、Host Port 或内部地址。
+- `infra-adapter` 使用 Task Center 服务身份调用 Infra Service，并将结果限制为 `infra_runtime_id`、`endpoint_ref`、外部作业引用、Artifact/Workspace 受控引用和脱敏错误；原始日志、凭证、Provider 响应和大型正文不得进入 Task 输出。
+- 取消、超时、自动重试和 Worker/Infra 重启必须使用稳定幂等键与已保存的运行引用恢复或清理。`IN_PROGRESS` 通过延迟回调保持同一 Attempt，不长期占用 Worker，也不得重复创建 Docker Job/Service。以上 Infra-backed 规则对应 S1 `BR-TASK-147..152`。
 
 ## 4. 调度与巡检契约
 
@@ -83,6 +90,10 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 ## 6. 跨域协作
 
+- Agent 和 AppStudio 只能创建带业务授权快照的 AtomicTask；Infra 操作统一经过 `Task Center -> Task Worker -> infra-adapter -> Infra Service`。Task Center 不把 Agent/AppStudio 的任务输入直接透传为 Docker 请求。
+- Agent 的 `agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
+- Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；StudioWorkspace 只能由 AppStudio 的受控授权产生；Preview 使用当前 Workspace Revision；Build 使用固定 Snapshot；Production 使用固定 Artifact。
+
 - 独立应用运行由 application-platform 创建 `application-platform.run` AtomicTask；Canvas Application 节点由 Workflow Canvas 创建 DAG 内同名 AtomicTask，Application Platform 只能通过受控绑定接口把 ApplicationRun 绑定到该现有任务，不得创建第二个任务。
 - DAG Worker 输入中的 `arguments` 是 Conductor 已解析 `input_mapping` 与上游输出后的最终参数。Task Center 绑定 ApplicationRun 时持久化该快照，并校验 AtomicTask、CanvasRun、CanvasNodeRun 和 execution key 不漂移。
 - SSE 领域消费 Task Center 可靠事件，建立当前用户的短期可重放投影；SSE 不得成为任务事实源，也不得直接消费 Conductor 原生事件。
@@ -107,6 +118,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。
 - Conductor UI 和 API 只供内部运维，且不能替代 Task Center 权限、审计和租户隔离。
 - 日志消息在 Worker 写入和 Task Center 读取边界双重脱敏并限制为 4096 字节；禁止自动捕获全局进程日志，禁止记录鉴权信息、凭证、Provider 原始响应、任意 URL、文件路径或大型正文。
+- 普通 Task Worker 结果不得暴露 Docker container ID、Host Port、节点、宿主机路径或 Provider runtime ID；`endpoint_ref` 只能由来源领域按其授权和展示规则投影。
 - 巡检指标固定包含 `reconcile_runs_total{ref,status}`、`reconcile_scanned_total{ref}`、`reconcile_findings_total{ref}`、`reconcile_actions_total{ref}`、`reconcile_duration_seconds{ref}`、`reconcile_checkpoint_age_seconds{ref}`、`reconcile_overlap_skipped_total{ref}` 和 `reconcile_retention_failures_total{backend}`。label 不得包含 schedule ID、engine ID 等无界值。
 
 执行日志与 DAG 可观测详情相关 S1：US-TASK-022..023、BR-TASK-129..141。

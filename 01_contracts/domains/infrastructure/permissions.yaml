@@ -1,0 +1,109 @@
+# Infrastructure 只接受 Task Center 服务身份；当前 S1 没有 US/BR 编号。
+infra.runtime.read:
+  domain: infrastructure
+  module: runtime
+  resource: infra_runtime
+  action: read, list
+  subject: task_center_worker, system_admin
+  description: 查询 InfraRuntime 脱敏状态。
+  frontend_usage: 仅供来源领域通过受控摘要读取，不作为普通用户直接入口。
+  backend_enforcement: 校验 Task Center 服务身份和 ownerDomain/ownerReference 范围；禁止返回 Provider 私有数据。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-008, R-INFRA-015, R-INFRA-017]
+  related_user_stories: []
+infra.runtime.create:
+  domain: infrastructure
+  module: request
+  resource: infra_runtime
+  action: create
+  subject: task_center_worker
+  description: 创建受控 Docker Job/Service。
+  frontend_usage: 无直接前端入口。
+  backend_enforcement: 只接受 requestingService=task-center、受控 RuntimeProfile、source_ref 和 requestId；拒绝任意命令/宿主路径。
+  default_roles: [SERVICE_TASK_CENTER]
+  related_rules: [R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-010, R-INFRA-011, R-INFRA-015, R-INFRA-016]
+  related_user_stories: []
+infra.runtime.operate:
+  domain: infrastructure
+  module: runtime
+  resource: infra_runtime
+  action: start, stop, cancel
+  subject: task_center_worker
+  description: 操作已存在 Runtime。
+  frontend_usage: 无直接前端入口。
+  backend_enforcement: 依据稳定 Runtime 引用和幂等键执行；不修改来源领域业务状态。
+  default_roles: [SERVICE_TASK_CENTER]
+  related_rules: [R-INFRA-002, R-INFRA-006, R-INFRA-016, R-INFRA-018]
+  related_user_stories: []
+infra.runtime.delete:
+  domain: infrastructure
+  module: runtime
+  resource: infra_runtime
+  action: delete
+  subject: task_center_worker, system_admin
+  description: 清理已停止或过期 Runtime。
+  frontend_usage: 运维清理入口。
+  backend_enforcement: 保留必要审计和运行引用；不得级联删除 Agent/AppStudio 业务对象。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-006, R-INFRA-018]
+  related_user_stories: []
+infra.runtime.reconcile:
+  domain: infrastructure
+  module: runtime
+  resource: infra_runtime
+  action: reconcile
+  subject: task_center_worker, system_admin
+  description: 对账持久化状态和 Docker Provider 状态。
+  frontend_usage: 运维对账入口。
+  backend_enforcement: 对账只更新 Infra 运行事实，业务投影由来源领域和 Task Center 消费受控结果。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-017, R-INFRA-018]
+  related_user_stories: []
+infra.endpoint.read:
+  domain: infrastructure
+  module: mount-config
+  resource: runtime_endpoint
+  action: read
+  subject: task_center_worker, system_admin
+  description: 读取受控 Endpoint 摘要。
+  frontend_usage: 来源领域展示入口的内部读取能力。
+  backend_enforcement: 不返回宿主端口、私网地址或 Provider endpoint 原文。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-008, R-INFRA-014]
+  related_user_stories: []
+infra.node.read:
+  domain: infrastructure
+  module: placement
+  resource: infra_node
+  action: read, list
+  subject: system_admin, task_center_worker
+  description: 查询节点资源摘要。
+  frontend_usage: 运维节点状态入口。
+  backend_enforcement: 不向普通业务响应暴露节点地址或宿主机信息。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-003, R-INFRA-018]
+  related_user_stories: []
+infra.profile.read:
+  domain: infrastructure
+  module: request
+  resource: runtime_profile
+  action: read, list
+  subject: task_center_worker, system_admin
+  description: 查询内置 RuntimeProfile。
+  frontend_usage: 受控 Profile 选择和运维查看。
+  backend_enforcement: 用户不得提交或修改 Provider 专属 RuntimeProfile。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020]
+  related_user_stories: []
+infra.output.read:
+  domain: infrastructure
+  module: mount-config
+  resource: runtime_output
+  action: read
+  subject: task_center_worker, system_admin
+  description: 查询输出引用和交付状态。
+  frontend_usage: 来源领域读取 Artifact 引用摘要。
+  backend_enforcement: 不返回媒体正文、宿主路径或存储 Provider 细节。
+  default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
+  related_rules: [R-INFRA-008]
+  related_user_stories: []

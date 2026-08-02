@@ -16,7 +16,10 @@ flowchart LR
   Runtime --> Reconcile["Fixed Reconcile Controller"]
   Reconcile --> Registry["ReconcileRegistry"]
   Runtime --> Conductor["Conductor OSS"]
-  Conductor --> Workers["Go AtomicTask Workers"]
+  Conductor --> Workers["Go Task Workers"]
+  Workers --> Adapter["Infra Adapter"]
+  Adapter --> Infra["Infra Service"]
+  Infra --> Docker["DockerRuntimeProvider"]
   Conductor --> Events["Runtime events"]
   Events --> Projector["Projector + Reconciler"]
   Projector --> DB
@@ -31,6 +34,8 @@ flowchart LR
 | Schedule service | 双模式计划管理、ScheduleExecution、ScheduleReconcileState、活动锁与 retention |
 | ReconcileRegistry | 注册受控巡检器、校验配置、路由轻量巡检与幂等修复动作 |
 | Function registry | 将受控 functionRef 映射到 Worker handler 和 schema |
+| Task Worker | 消费 AtomicTask，执行注册 handler，并维护 Attempt 级恢复和结果映射 |
+| Infra Adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求；统一处理幂等、取消、超时和运行引用 |
 | Name catalog | 将稳定系统名称 key 和参数投影为 zh-CN、en-US 及后续 BCP 47 语言映射 |
 | ConductorRuntime | 注册、启动、查询、取消、Schedule 和事件适配 |
 | Projection consumer | 幂等消费运行时事件并推进业务投影 |
@@ -48,6 +53,8 @@ flowchart LR
 - ComfyUI 使用 `submit -> poll -> download_artifact`；poll 使用 callback/delay 并保存外部 job ID，下载结果受控交付 asset-library 并只向任务输出返回 artifact 引用。
 - AssetVersion 首次派生使用 `asset-library.representation.build` DAG，周期缺口由 `asset-library.representation-backfill` RECONCILE 发现并创建单项 generate AtomicTask；Task Center 不决定媒体策略。
 - ComfyUI WorkflowTestRun 使用 `submit -> poll -> collect_preview`；Worker 返回 `IN_PROGRESS + callbackAfterSeconds` 后由 Conductor 延迟重投同一 task，期间释放 Worker。
+- AgentRuntime、AppStudio Preview、Build 和 Production 的 Infra 操作均通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；来源领域不得直接调用 Infra Service。
+- Task Worker 的 Infra Adapter 只接受 Task Center 已校验的业务授权引用，并生成 Infra `source_ref`。首阶段只调用 Docker Job/Service；不透传镜像、任意命令、宿主机路径、凭证或 Provider 私有字段。
 
 ## 4. 调度模型
 
@@ -79,14 +86,15 @@ RECONCILE 历史由 retention worker 按状态、数量与时长幂等清理；�
 - 投影仅接受更高运行时序列，业务 `resource_version` 单调递增。
 - reconciler 对账非终态 execution，因此 Worker、Conductor、API 或消息消费者重启不依赖内存状态恢复。
 - 运行时不可用时保留可恢复业务状态，不启用旧 Dispatcher 或双写旧 TaskRun。
+- Task Worker 或 Infra Adapter 重启后，使用 AtomicTask 的幂等键、Attempt 和已保存运行引用恢复或清理 Infra Job/Service；不得因重试重复创建同一运行单元。
 - Worker 通过运行时绑定的 TaskLogger 向 Conductor runtime task 追加版本化日志；Task Center 以 Attempt ID 授权后代理读取。日志写入和读取失败不参与业务状态事务，运行时历史被清理后稳定返回日志不可用。
 
 ## 6. 数据所有权
 
-Task Center 拥有 AtomicTask、Attempt、Group、DAG、Schedule、ScheduleExecution、ScheduleReconcileState、runtime binding 和 projection event。Conductor 拥有其 workflow/task/schedule 内部历史，并使用独立数据库或 schema。application-platform 拥有 ApplicationRun 与 Artifact 引用投影，asset-library 拥有 Artifact、Asset、AssetVersion 和 Representation，workflow-canvas 拥有 Canvas 版本和运行视图。
+Task Center 拥有 AtomicTask、Attempt、Group、DAG、Schedule、ScheduleExecution、ScheduleReconcileState、runtime binding 和 projection event。Task Worker/Infra Adapter 不拥有业务状态。Conductor 拥有其 workflow/task/schedule 内部历史，并使用独立数据库或 schema。application-platform 拥有 ApplicationRun 与 Artifact 引用投影，asset-library 拥有 Artifact、Asset、AssetVersion 和 Representation，workflow-canvas 拥有 Canvas 版本和运行视图，infrastructure 拥有 Docker Job/Service 与 InfraRuntime 事实。
 
 执行日志正文属于 Conductor 运行历史，TaskAttempt 只保存 `task-attempt-log:<attempt_id>` 稳定引用。该引用不暴露后端地址，并为未来替换 runtime 或增加归档保留业务标识兼容性。
 
 ## 7. 安全边界
 
-Task Center 根据服务身份和用户权限解析 functionRef，拒绝用户提供的任意 HTTP、INLINE、脚本、Worker 名、凭证和内部运行时配置。所有列表、详情、取消和重试都应用 project/namespace/owner 过滤；内部运维访问也必须审计。
+Task Center 根据服务身份和用户权限解析 functionRef，拒绝用户提供的任意 HTTP、INLINE、脚本、Worker 名、凭证、挂载路径和内部运行时配置。所有列表、详情、取消和重试都应用 project/namespace/owner 过滤；Task Worker 只使用来源领域授权生成的 `source_ref`，内部运维访问也必须审计。

@@ -1,501 +1,391 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Agent API
-  version: 0.1.0-draft
+  version: 1.0.0-draft
   description: >-
-    Agent、Session、Invocation、AgentWorkspace 与 AgentRuntime 的 S2 合同。
-    业务错误使用 HTTP 200 和稳定 code/value；404 仅表示路由不存在，500 仅表示未预期异常。
+    Agent、Session、Invocation、Memory、Workspace Binding 与 AgentRuntime 的实现契约。
+    本文件只按当前 Agent S1 生成；旧版 S2 不属于本契约输入。
 servers:
   - url: /
 security:
   - bearerAuth: []
 tags:
+  - {name: agent-profiles}
   - {name: agents}
-  - {name: agent-sessions}
-  - {name: agent-invocations}
-  - {name: agent-runtimes}
-  - {name: agent-workspaces}
-  - {name: agent-runtime-providers}
-
+  - {name: sessions}
+  - {name: invocations}
+  - {name: memories}
+  - {name: runtimes}
 paths:
+  /api/v1/agent-profiles:
+    get:
+      tags: [agent-profiles]
+      operationId: list_agent_profiles
+      summary: 查询只读 AgentProfile
+      x-permission: agent.profile.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-005], source_sections: ['6 Agent 类型与 AgentProfile']}
+      responses:
+        '200': {description: AgentProfile 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentProfileListResponse'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
   /api/v1/agents:
     get:
       tags: [agents]
-      summary: 查询 Agent 列表
       operationId: list_agents
+      summary: 查询当前主体可见 Agent
       x-permission: agent.read
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-014]}
-      parameters:
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-        - {name: kinds, in: query, description: 'platform,coding 逗号分隔。', schema: {type: string}}
-        - {name: statuses, in: query, description: Agent 状态逗号分隔。, schema: {type: string}}
-      x-error-codes: [ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}, {name: statuses, in: query, schema: {type: string}, description: Agent 状态，逗号分隔。}]
       responses:
-        '200': {description: Agent 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: Agent 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentListResponse'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     post:
       tags: [agents]
-      summary: 创建 Agent
       operationId: create_agent
+      summary: 创建 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001, US-AGENT-006], business_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-003, BR-AGENT-009, BR-AGENT-013]}
-      x-error-codes: [ERR_AGENT_KIND_PROVIDER_INVALID, ERR_AGENT_WORKSPACE_BINDING_INVALID, ERR_AGENT_STUDIO_WORKSPACE_AUTH_FAILED, ERR_AGENT_QUOTA_EXCEEDED, ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-014, R-AGENT-016], source_sections: ['10 创建 Agent']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentCreateRequest'}}}}
       responses:
-        '200': {description: 已创建的 Agent 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: 创建后的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
   /api/v1/agents/{agent_id}:
+    parameters: [{$ref: '#/components/parameters/agent_id'}]
     get:
       tags: [agents]
-      summary: 获取 Agent 详情
       operationId: get_agent
+      summary: 获取 Agent
       x-permission: agent.read
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
       responses:
-        '200': {description: Agent 详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     patch:
       tags: [agents]
-      summary: 更新 Agent 非敏感配置
       operationId: update_agent
+      summary: 更新 Agent 非敏感配置
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-001, BR-AGENT-002, BR-AGENT-008]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_KIND_PROVIDER_INVALID, ERR_AGENT_STATE_INVALID, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-016, R-AGENT-017], source_sections: ['10 创建 Agent', '23 权限模型']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentUpdateRequest'}}}}
       responses:
-        '200': {description: 更新后的 Agent 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: 更新后的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     delete:
       tags: [agents]
-      summary: 删除 Agent
       operationId: delete_agent
+      summary: 删除 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-003, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-011], source_sections: ['18.3 Agent 删除']}
       responses:
-        '200': {description: 进入 DELETING 的 Agent 或业务错误；StudioWorkspace 不受影响。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: 进入删除流程的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/disable:
+  /api/v1/agents/{agent_id}/runtime/start:
     post:
-      tags: [agents]
-      summary: 停用 Agent
-      operationId: disable_agent
-      x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-007, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_ACCESS_DENIED]
+      tags: [runtimes]
+      operationId: start_agent_runtime
+      summary: 启动或恢复 AgentRuntime
+      x-permission: agent.runtime.operate
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-008, R-AGENT-014, R-AGENT-018], source_sections: ['11 Runtime 启动', '19 挂起与恢复']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
       responses:
-        '200': {description: 停用后的 Agent 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: AgentRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentRuntime'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
+  /api/v1/agents/{agent_id}/runtime/suspend:
+    post:
+      tags: [runtimes]
+      operationId: suspend_agent_runtime
+      summary: 挂起 AgentRuntime
+      x-permission: agent.runtime.operate
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-010, R-AGENT-018], source_sections: ['19 挂起与恢复']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses:
+        '200': {description: AgentRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentRuntime'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/agents/{agent_id}/runtime/recover:
+    post:
+      tags: [runtimes]
+      operationId: recover_agent_runtime
+      summary: 对账并恢复 AgentRuntime
+      x-permission: agent.runtime.operate
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-004, R-AGENT-018, R-AGENT-019], source_sections: ['20 异常恢复', '27.1 Task Center 结果与 Infra 事件处理']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
+      responses:
+        '200': {description: AgentRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentRuntime'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
   /api/v1/agents/{agent_id}/enable:
     post:
       tags: [agents]
-      summary: 启用 Agent
       operationId: enable_agent
+      summary: 启用 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [BR-AGENT-007, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 状态模型', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      responses:
-        '200': {description: 启用后的 Agent 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/suspend:
+      responses: {'200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/disable:
     post:
       tags: [agents]
-      summary: 挂起 Agent 并释放 Runtime
-      operationId: suspend_agent
+      operationId: disable_agent
+      summary: 禁用 Agent
       x-permission: agent.manage
-      x-s1-refs: {user_stories: [US-AGENT-001, US-AGENT-004], business_rules: [BR-AGENT-005, BR-AGENT-007, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_RUNTIME_STATE_CONFLICT, ERR_AGENT_RUNTIME_OPERATION_FAILED, ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['9 状态模型', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
-      responses:
-        '200': {description: 挂起后的 Agent 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/Agent'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/runtime/stop:
+    post:
+      tags: [runtimes]
+      operationId: stop_agent_runtime
+      summary: 停止 AgentRuntime
+      x-permission: agent.runtime.operate
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-003, R-AGENT-004, R-AGENT-018], source_sections: ['19 挂起与恢复']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: AgentRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agents/{agent_id}/sessions:
+    parameters: [{$ref: '#/components/parameters/agent_id'}]
     get:
-      tags: [agent-sessions]
-      summary: 查询 Agent Session 列表
+      tags: [sessions]
       operationId: list_agent_sessions
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002, US-AGENT-007], business_rules: [BR-AGENT-004, BR-AGENT-006]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/agent_id'}
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-        - {name: statuses, in: query, description: Session 状态逗号分隔。, schema: {type: string}}
+      summary: 查询 AgentSession
+      x-permission: agent.session.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses:
-        '200': {description: Session 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentSessionListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: Session 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionListResponse'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     post:
-      tags: [agent-sessions]
-      summary: 创建 Agent Session
+      tags: [sessions]
       operationId: create_agent_session
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002], business_rules: [BR-AGENT-002, BR-AGENT-004, BR-AGENT-006]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      summary: 创建 AgentSession
+      x-permission: agent.session.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession', '12 消息与交互']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionCreateRequest'}}}}
       responses:
-        '200': {description: 已创建的 Session 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentSession'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
   /api/v1/agent-sessions/{session_id}:
+    parameters: [{$ref: '#/components/parameters/session_id'}]
     get:
-      tags: [agent-sessions]
-      summary: 获取 Agent Session 详情
+      tags: [sessions]
       operationId: get_agent_session
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002, US-AGENT-007], business_rules: [BR-AGENT-004, BR-AGENT-006]}
-      x-error-codes: [ERR_AGENT_SESSION_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/session_id'}]
+      summary: 获取 AgentSession
+      x-permission: agent.session.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['8.2 AgentSession']}
       responses:
-        '200': {description: Session 详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentSession'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
+    patch:
+      tags: [sessions]
+      operationId: update_agent_session
+      summary: 更新 Session 元数据
+      x-permission: agent.session.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSessionUpdateRequest'}}}}
+      responses:
+        '200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/agent-sessions/{session_id}/messages:
+    post:
+      tags: [invocations]
+      operationId: send_agent_message
+      summary: 发送消息并创建 AgentInvocation
+      x-permission: agent.invoke
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-005, R-AGENT-014, R-AGENT-020], source_sections: ['12 消息与交互']}
+      parameters: [{$ref: '#/components/parameters/session_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMessageRequest'}}}}
+      responses:
+        '200': {description: Invocation 和输入 Message 的持久化摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocation'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    get:
+      tags: [sessions]
+      operationId: list_agent_messages
+      summary: 查询 Session 消息
+      x-permission: agent.session.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.3 AgentMessage']}
+      parameters: [{$ref: '#/components/parameters/session_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses:
+        '200': {description: 消息列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMessageListResponse'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
   /api/v1/agent-sessions/{session_id}/close:
     post:
-      tags: [agent-sessions]
-      summary: 关闭 Agent Session
+      tags: [sessions]
       operationId: close_agent_session
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002], business_rules: [BR-AGENT-004, BR-AGENT-006]}
-      x-error-codes: [ERR_AGENT_SESSION_NOT_VISIBLE, ERR_AGENT_SESSION_NOT_ACTIVE, ERR_AGENT_ACCESS_DENIED]
+      summary: 关闭 Session
+      x-permission: agent.session.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
       parameters: [{$ref: '#/components/parameters/session_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
-      responses:
-        '200': {description: 已关闭的 Session 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentSession'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-sessions/{session_id}/invocations:
-    get:
-      tags: [agent-invocations]
-      summary: 查询 Session Invocation 列表
-      operationId: list_agent_invocations
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002, US-AGENT-003], business_rules: [BR-AGENT-004, BR-AGENT-010]}
-      x-error-codes: [ERR_AGENT_SESSION_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/session_id'}
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-        - {name: statuses, in: query, description: Invocation 状态逗号分隔。, schema: {type: string}}
-      responses:
-        '200': {description: Invocation 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentInvocationListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agent-sessions/{session_id}/archive:
     post:
-      tags: [agent-invocations]
-      summary: 发送消息并创建 AgentInvocation
-      operationId: create_agent_invocation
-      x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002, US-AGENT-003, US-AGENT-006], business_rules: [BR-AGENT-002, BR-AGENT-004, BR-AGENT-005, BR-AGENT-009, BR-AGENT-010, BR-AGENT-013]}
-      x-error-codes: [ERR_AGENT_SESSION_NOT_VISIBLE, ERR_AGENT_SESSION_NOT_ACTIVE, ERR_AGENT_INVOCATION_CONFLICT, ERR_AGENT_INVOCATION_TASK_UNAVAILABLE, ERR_AGENT_STUDIO_WORKSPACE_AUTH_FAILED, ERR_AGENT_QUOTA_EXCEEDED, ERR_AGENT_ACCESS_DENIED]
+      tags: [sessions]
+      operationId: archive_agent_session
+      summary: 归档 Session
+      x-permission: agent.session.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['8.2 AgentSession']}
       parameters: [{$ref: '#/components/parameters/session_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocationCreateRequest'}}}}
-      responses:
-        '200': {description: 已持久化 Invocation、输入 Message 与 AtomicTask 引用，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentInvocation'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: AgentSession。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentSession'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agent-sessions/{session_id}/operations:
+    get:
+      tags: [invocations]
+      operationId: list_agent_invocations
+      summary: 查询 Session Invocation
+      x-permission: agent.invoke
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-014], source_sections: ['8.4 AgentOperation']}
+      parameters: [{$ref: '#/components/parameters/session_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: Invocation 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocationListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agent-invocations/{invocation_id}:
     get:
-      tags: [agent-invocations]
-      summary: 获取 AgentInvocation 详情
+      tags: [invocations]
       operationId: get_agent_invocation
+      summary: 获取 AgentInvocation
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-002, US-AGENT-003], business_rules: [BR-AGENT-004, BR-AGENT-010]}
-      x-error-codes: [ERR_AGENT_INVOCATION_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-014, R-AGENT-018], source_sections: ['8.4 AgentOperation', '21 Task Center 集成']}
       parameters: [{$ref: '#/components/parameters/invocation_id'}]
       responses:
-        '200': {description: Invocation 详情或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentInvocation'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: Invocation。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocation'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
   /api/v1/agent-invocations/{invocation_id}/cancel:
     post:
-      tags: [agent-invocations]
-      summary: 请求取消 AgentInvocation
+      tags: [invocations]
       operationId: cancel_agent_invocation
+      summary: 请求取消 Invocation
       x-permission: agent.invoke
-      x-delegated-permissions: [task.atomic.operate]
-      x-s1-refs: {user_stories: [US-AGENT-002], business_rules: [BR-AGENT-004, BR-AGENT-010]}
-      x-error-codes: [ERR_AGENT_INVOCATION_NOT_VISIBLE, ERR_AGENT_INVOCATION_NOT_CANCELLABLE, ERR_AGENT_INVOCATION_TASK_UNAVAILABLE, ERR_AGENT_ACCESS_DENIED]
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-014, R-AGENT-018, R-AGENT-020], source_sections: ['12 消息与交互', '21 Task Center 集成']}
       parameters: [{$ref: '#/components/parameters/invocation_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses:
-        '200': {description: 已转发取消请求的 Invocation；仅 Task Center 终态可确认 CANCELED。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentInvocation'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: 取消请求后的 Invocation。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentInvocation'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
   /api/v1/agent-invocations/{invocation_id}/events:
     get:
-      tags: [agent-invocations]
-      summary: 订阅当前 Invocation 的实时输出
+      tags: [invocations]
       operationId: stream_agent_invocation_events
+      summary: 订阅 Invocation 事件
       x-permission: agent.invoke
-      x-s1-refs: {user_stories: [US-AGENT-003], business_rules: [BR-AGENT-004, BR-AGENT-006, BR-AGENT-011]}
-      x-error-codes: [ERR_AGENT_INVOCATION_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/invocation_id'}
-        - name: Last-Event-ID
-          in: header
-          required: false
-          schema: {type: string}
-          description: 当前 Invocation 流的短期恢复游标；不是通用 UserEvent 游标。
-          x-naming-exception: SSE 标准 Header，必须保留标准拼写。
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-020], source_sections: ['12.3 Agent Event', '12.4 Streaming']}
+      parameters: [{$ref: '#/components/parameters/invocation_id'}, {name: Last-Event-ID, in: header, schema: {type: string}, description: 当前 Invocation 的短期恢复游标。}]
       responses:
-        '200':
-          description: >-
-            text/event-stream。只投递当前 Invocation 的 token、状态与 Tool 摘要；完整事实仍通过详情 API 重查。
-          content: {text/event-stream: {schema: {type: string}}}
+        '200': {description: SSE 事件流。, content: {text/event-stream: {schema: {type: string}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/runtime:
+  /api/v1/agents/{agent_id}/memories:
+    parameters: [{$ref: '#/components/parameters/agent_id'}]
     get:
-      tags: [agent-runtimes]
-      summary: 获取当前 AgentRuntime
-      operationId: get_agent_runtime
-      x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [US-AGENT-004], business_rules: [BR-AGENT-005, BR-AGENT-007, BR-AGENT-008]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      tags: [memories]
+      operationId: list_agent_memories
+      summary: 查询 AgentMemory
+      x-permission: agent.memory.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14 Memory']}
+      parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: scope, in: query, schema: {type: string, enum: [AGENT, SESSION]}}]
       responses:
-        '200': {description: 当前 Runtime；不存在时返回 null data 包装，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/NullableAgentRuntimeResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/runtime/start:
-    post:
-      tags: [agent-runtimes]
-      summary: 显式启动或恢复 AgentRuntime
-      operationId: start_agent_runtime
-      x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [US-AGENT-004], business_rules: [BR-AGENT-005, BR-AGENT-007, BR-AGENT-008, BR-AGENT-013]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_STATE_INVALID, ERR_AGENT_RUNTIME_PROVIDER_UNAVAILABLE, ERR_AGENT_RUNTIME_STATE_CONFLICT, ERR_AGENT_RUNTIME_OPERATION_FAILED, ERR_AGENT_QUOTA_EXCEEDED, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
-      responses:
-        '200': {description: 当前 Runtime 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentRuntime'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/runtime/suspend:
-    post:
-      tags: [agent-runtimes]
-      summary: 挂起 AgentRuntime
-      operationId: suspend_agent_runtime
-      x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [US-AGENT-004], business_rules: [BR-AGENT-005, BR-AGENT-007]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_RUNTIME_STATE_CONFLICT, ERR_AGENT_RUNTIME_OPERATION_FAILED, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
-      responses:
-        '200': {description: 挂起中的 Runtime 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentRuntime'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agents/{agent_id}/runtime/rebuild:
-    post:
-      tags: [agent-runtimes]
-      summary: 重建 AgentRuntime
-      operationId: rebuild_agent_runtime
-      x-permission: agent.runtime.operate
-      x-s1-refs: {user_stories: [US-AGENT-004, US-AGENT-007], business_rules: [BR-AGENT-005, BR-AGENT-006, BR-AGENT-007, BR-AGENT-008]}
-      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_RUNTIME_PROVIDER_UNAVAILABLE, ERR_AGENT_RUNTIME_STATE_CONFLICT, ERR_AGENT_RUNTIME_OPERATION_FAILED, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeActionRequest'}}}}
-      responses:
-        '200': {description: 新一代 Runtime 或业务错误；旧 Runtime 历史保留。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentRuntime'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-runtimes/{runtime_id}/logs:
-    get:
-      tags: [agent-runtimes]
-      summary: 查询 AgentRuntime 脱敏日志
-      operationId: list_agent_runtime_logs
-      x-permission: agent.runtime.logs.read
-      x-s1-refs: {user_stories: [US-AGENT-004], business_rules: [BR-AGENT-008]}
-      x-error-codes: [ERR_AGENT_RUNTIME_LOG_UNAVAILABLE, ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/runtime_id'}
-        - {$ref: '#/components/parameters/page_num'}
-        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 100}}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {name: sort_field, in: query, schema: {type: string, enum: [occurred_at], default: occurred_at}}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-      responses:
-        '200': {description: 脱敏日志列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/RuntimeLogListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-workspaces:
-    get:
-      tags: [agent-workspaces]
-      summary: 查询 AgentWorkspace 列表
-      operationId: list_agent_workspaces
-      x-permission: agent.workspace.read
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-002, BR-AGENT-003]}
-      x-error-codes: [ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-        - {name: statuses, in: query, description: Workspace 状态逗号分隔。, schema: {type: string}}
-      responses:
-        '200': {description: AgentWorkspace 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspaceListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: Memory 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryListResponse'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     post:
-      tags: [agent-workspaces]
-      summary: 创建 AgentWorkspace
-      operationId: create_agent_workspace
-      x-permission: agent.workspace.manage
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003, BR-AGENT-013]}
-      x-error-codes: [ERR_AGENT_QUOTA_EXCEEDED, ERR_AGENT_ACCESS_DENIED]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentWorkspaceCreateRequest'}}}}
+      tags: [memories]
+      operationId: create_agent_memory
+      summary: 创建 AgentMemory
+      x-permission: agent.memory.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002, R-AGENT-017], source_sections: ['14.2 Memory 写入方式']}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryCreateRequest'}}}}
       responses:
-        '200': {description: AgentWorkspace 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspace'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-workspaces/{workspace_id}:
+  /api/v1/agent-memories/{memory_id}:
+    parameters: [{$ref: '#/components/parameters/memory_id'}]
     get:
-      tags: [agent-workspaces]
-      summary: 获取 AgentWorkspace 详情
-      operationId: get_agent_workspace
-      x-permission: agent.workspace.read
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003]}
-      x-error-codes: [ERR_AGENT_WORKSPACE_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/workspace_id'}]
+      tags: [memories]
+      operationId: get_agent_memory
+      summary: 获取 AgentMemory
+      x-permission: agent.memory.read
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
       responses:
-        '200': {description: AgentWorkspace 详情，不返回 storage_ref，或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspace'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    patch:
+      tags: [memories]
+      operationId: update_agent_memory
+      summary: 更新 AgentMemory
+      x-permission: agent.memory.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemoryUpdateRequest'}}}}
+      responses:
+        '200': {description: AgentMemory。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentMemory'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     delete:
-      tags: [agent-workspaces]
-      summary: 删除 AgentWorkspace
-      operationId: delete_agent_workspace
-      x-permission: agent.workspace.manage
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003, BR-AGENT-014]}
-      x-error-codes: [ERR_AGENT_WORKSPACE_NOT_VISIBLE, ERR_AGENT_WORKSPACE_STATE_INVALID, ERR_AGENT_WORKSPACE_OWNER_MISMATCH, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/workspace_id'}]
-      requestBody: {$ref: '#/components/requestBodies/ActionReason'}
+      tags: [memories]
+      operationId: delete_agent_memory
+      summary: 删除 AgentMemory
+      x-permission: agent.memory.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-002], source_sections: ['14 Memory']}
       responses:
-        '200': {description: 进入 DELETING 的 Workspace 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspace'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '200': {description: 删除结果。, content: {application/json: {schema: {$ref: '#/components/schemas/OperationResult'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-workspaces/{workspace_id}/snapshots:
+  /api/v1/agents/{agent_id}/workspace-bindings:
     get:
-      tags: [agent-workspaces]
-      summary: 查询 AgentWorkspace Snapshot
-      operationId: list_agent_workspace_snapshots
+      tags: [agents]
+      operationId: list_agent_workspace_bindings
+      summary: 查询 Agent Workspace Binding
       x-permission: agent.workspace.read
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003]}
-      x-error-codes: [ERR_AGENT_WORKSPACE_NOT_VISIBLE, ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/workspace_id'}
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-      responses:
-        '200': {description: Snapshot 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspaceSnapshotListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-010, R-AGENT-015, R-AGENT-017], source_sections: ['18 Workspace']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      responses: {'200': {description: Workspace Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
-      tags: [agent-workspaces]
-      summary: 创建 AgentWorkspace Snapshot
-      operationId: create_agent_workspace_snapshot
+      tags: [agents]
+      operationId: bind_agent_workspace
+      summary: 绑定 Agent Workspace
       x-permission: agent.workspace.manage
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003]}
-      x-error-codes: [ERR_AGENT_WORKSPACE_NOT_VISIBLE, ERR_AGENT_WORKSPACE_STATE_INVALID, ERR_AGENT_QUOTA_EXCEEDED, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/workspace_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SnapshotCreateRequest'}}}}
-      responses:
-        '200': {description: Snapshot 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspaceSnapshot'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-workspaces/{workspace_id}/restore:
-    post:
-      tags: [agent-workspaces]
-      summary: 从 Snapshot 恢复 AgentWorkspace
-      operationId: restore_agent_workspace
-      x-permission: agent.workspace.manage
-      x-s1-refs: {user_stories: [US-AGENT-005], business_rules: [BR-AGENT-003, BR-AGENT-005]}
-      x-error-codes: [ERR_AGENT_WORKSPACE_NOT_VISIBLE, ERR_AGENT_WORKSPACE_STATE_INVALID, ERR_AGENT_WORKSPACE_OWNER_MISMATCH, ERR_AGENT_WORKSPACE_SNAPSHOT_INVALID, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/workspace_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceRestoreRequest'}}}}
-      responses:
-        '200': {description: 恢复中的 Workspace 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AgentWorkspace'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-runtime-providers:
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-010, R-AGENT-015, R-AGENT-017], source_sections: ['18.1 Workspace Binding', '18.2 Coding Agent']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBindingRequest'}}}}
+      responses: {'200': {description: Workspace Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/model-bindings:
     get:
-      tags: [agent-runtime-providers]
-      summary: 查询 AgentRuntimeProvider
-      operationId: list_agent_runtime_providers
-      x-permission: agent.runtime_provider.admin
-      x-s1-refs: {user_stories: [US-AGENT-008], business_rules: [BR-AGENT-008, BR-AGENT-012]}
-      x-error-codes: [ERR_AGENT_ACCESS_DENIED]
-      parameters:
-        - {$ref: '#/components/parameters/page_num'}
-        - {$ref: '#/components/parameters/page_size'}
-        - {$ref: '#/components/parameters/keyword'}
-        - {$ref: '#/components/parameters/search_fields'}
-        - {$ref: '#/components/parameters/sort_field'}
-        - {$ref: '#/components/parameters/sort_order'}
-        - {$ref: '#/components/parameters/created_after'}
-        - {$ref: '#/components/parameters/created_before'}
-        - {name: statuses, in: query, description: Provider 状态逗号分隔。, schema: {type: string}}
-      responses:
-        '200': {description: Provider 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/RuntimeProviderListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
-  /api/v1/agent-runtime-providers/{runtime_provider_id}/reconcile:
+      tags: [agents]
+      operationId: list_agent_model_bindings
+      summary: 查询 Agent ModelBinding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding', '24 Secret 与模型凭证']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      responses: {'200': {description: ModelBinding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+    put:
+      tags: [agents]
+      operationId: replace_agent_model_binding
+      summary: 设置 Agent ModelBinding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-005, R-AGENT-006, R-AGENT-007], source_sections: ['8.6 AgentModelBinding']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBindingInput'}}}}
+      responses: {'200': {description: ModelBinding。, content: {application/json: {schema: {$ref: '#/components/schemas/ModelBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/skill-bindings:
+    get:
+      tags: [agents]
+      operationId: list_agent_skill_bindings
+      summary: 查询 Skill Binding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['15 Skills', '17 工具权限']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      responses: {'200': {description: Skill Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/SkillBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/mcp-bindings:
+    get:
+      tags: [agents]
+      operationId: list_agent_mcp_bindings
+      summary: 查询 MCP Binding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      responses: {'200': {description: MCP Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
-      tags: [agent-runtime-providers]
-      summary: 触发 AgentRuntimeProvider 对账
-      operationId: reconcile_agent_runtime_provider
-      x-permission: agent.runtime_provider.admin
-      x-s1-refs: {user_stories: [US-AGENT-008], business_rules: [BR-AGENT-008, BR-AGENT-010, BR-AGENT-012]}
-      x-error-codes: [ERR_AGENT_RUNTIME_PROVIDER_UNAVAILABLE, ERR_AGENT_ACCESS_DENIED]
-      parameters: [{$ref: '#/components/parameters/runtime_provider_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ReconcileRequest'}}}}
-      responses:
-        '200': {description: 创建的 AtomicTask 引用或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/TaskReference'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
-
+      tags: [agents]
+      operationId: create_agent_mcp_binding
+      summary: 创建 MCP Binding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
+      parameters: [{$ref: '#/components/parameters/agent_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingRequest'}}}}
+      responses: {'200': {description: MCP Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -503,429 +393,231 @@ components:
     agent_id: {name: agent_id, in: path, required: true, schema: {type: string}}
     session_id: {name: session_id, in: path, required: true, schema: {type: string}}
     invocation_id: {name: invocation_id, in: path, required: true, schema: {type: string}}
-    runtime_id: {name: runtime_id, in: path, required: true, schema: {type: string}}
-    workspace_id: {name: workspace_id, in: path, required: true, schema: {type: string}}
-    runtime_provider_id: {name: runtime_provider_id, in: path, required: true, schema: {type: string}}
+    memory_id: {name: memory_id, in: path, required: true, schema: {type: string}}
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
-    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
-    keyword: {name: keyword, in: query, schema: {type: string, default: '', maxLength: 256}}
-    search_fields: {name: search_fields, in: query, schema: {type: string, default: 'name,description'}}
-    sort_field: {name: sort_field, in: query, schema: {type: string, default: created_at}, description: '允许 created_at,updated_at,name；逗号分隔多字段。'}
-    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
-    created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
-    created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
-  requestBodies:
-    ActionReason:
-      required: false
-      content: {application/json: {schema: {$ref: '#/components/schemas/ActionReason'}}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+    keyword: {name: keyword, in: query, schema: {type: string, maxLength: 256}}
   responses:
     UnexpectedError:
-      description: 未预期服务器异常。
+      description: 未预期服务异常。
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
   schemas:
-    ErrorResponse:
+    AgentProfile:
       type: object
-      additionalProperties: false
-      required: [code, value, message, messages, retryable]
-      properties:
-        code: {type: string, pattern: '^ERR_AGENT_'}
-        value: {type: integer}
-        message: {type: string}
-        messages:
-          type: object
-          additionalProperties: false
-          x-naming-exception: BCP 47 语言标签必须保留 `zh-CN` 与 `en-US`。
-          required: [zh-CN, en-US]
-          properties: {zh-CN: {type: string}, en-US: {type: string}}
-        retryable: {type: boolean}
-        detail: {type: string}
-        data: {type: object, additionalProperties: true}
-    ActionReason:
-      type: object
-      additionalProperties: false
-      properties: {reason: {type: string, maxLength: 512}}
-    AgentSummary:
-      type: object
-      additionalProperties: false
-      required: [id, name, kind, provider, status]
+      required: [id, name, revision, status, supported_agent_kinds]
       properties:
         id: {type: string}
         name: {type: string}
-        kind: {type: string, enum: [platform, coding]}
-        provider: {type: string, enum: [hermes, opencode]}
-        status: {$ref: '#/components/schemas/AgentStatus'}
-    WorkspaceSummary:
-      type: object
-      additionalProperties: false
-      required: [id, workspace_type, name, status]
-      properties:
-        id: {type: string}
-        workspace_type: {type: string, enum: [agent, studio]}
-        name: {type: string}
-        status: {type: string}
-        current_revision: {type: integer, nullable: true, description: 仅 StudioWorkspace 返回；AgentWorkspace 为 null。}
-    RuntimeProviderSummary:
-      type: object
-      additionalProperties: false
-      required: [id, name, provider_type, status]
-      properties:
-        id: {type: string}
-        name: {type: string}
-        provider_type: {type: string, enum: [docker, kubernetes]}
-        status: {type: string, enum: [ACTIVE, DEGRADED, UNAVAILABLE, DISABLED]}
-    AgentRuntimeSummary:
-      type: object
-      additionalProperties: false
-      required: [id, state, activity_state, generation]
-      properties:
-        id: {type: string}
-        state: {$ref: '#/components/schemas/RuntimeState'}
-        activity_state: {type: string, enum: [IDLE, BUSY, UNKNOWN]}
-        generation: {type: integer}
-        ready_at: {type: string, format: date-time, nullable: true}
-    AtomicTaskSummary:
-      type: object
-      additionalProperties: false
-      required: [id, status, progress, resource_version]
-      properties:
-        id: {type: string}
-        status: {type: string}
-        progress: {type: number, minimum: 0, maximum: 1}
-        resource_version: {type: integer}
-      description: 由 Task Center 受控摘要接口返回；目标不可见、删除或不可用时整个 atomic_task 字段为 null。
-    AgentStatus: {type: string, enum: [CREATING, READY, STARTING, RUNNING, IDLE, SUSPENDED, ERROR, DISABLED, DELETING]}
-    RuntimeState: {type: string, enum: [PENDING, CREATING, STARTING, RUNNING, SUSPENDING, SUSPENDED, STOPPING, FAILED, DELETING, DELETED]}
+        revision: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+        supported_agent_kinds: {type: array, items: {type: string, enum: [platform, coding]}}
+        description: {type: string}
     Agent:
       type: object
-      additionalProperties: false
-      required: [id, name, description, owner_user_id, kind, provider, workspace_type, workspace_id, workspace, status, disabled, resource_version, created_at, updated_at]
+      required: [id, name, agent_profile_id, kind, workspace_type, workspace_id, status, disabled, resource_version, created_at, updated_at]
       properties:
         id: {type: string}
         name: {type: string}
         description: {type: string}
-        owner_user_id: {type: string, description: 当前调用者无需额外读取即可理解所有权；管理员列表按权限范围过滤。}
+        agent_profile_id: {type: string}
+        agent_profile_revision: {type: string}
         kind: {type: string, enum: [platform, coding]}
-        provider: {type: string, enum: [hermes, opencode]}
         workspace_type: {type: string, enum: [agent, studio]}
         workspace_id: {type: string}
-        workspace: {$ref: '#/components/schemas/WorkspaceSummary'}
-        status: {$ref: '#/components/schemas/AgentStatus'}
-        status_reason_code: {type: string, nullable: true}
+        status: {type: string, enum: [CREATING, READY, STARTING, RUNNING, IDLE, SUSPENDED, ERROR, DISABLED, DELETING]}
         disabled: {type: boolean}
-        current_runtime_id: {type: string, nullable: true}
-        current_runtime: {type: object, allOf: [{$ref: '#/components/schemas/AgentRuntimeSummary'}], nullable: true}
-        runtime_profile_id: {type: string, nullable: true, description: 平台注册配置 ID；客户端不需要展开运行时私有配置。}
-        preferred_runtime_provider_id: {type: string, nullable: true}
-        preferred_runtime_provider: {type: object, allOf: [{$ref: '#/components/schemas/RuntimeProviderSummary'}], nullable: true}
-        system_prompt: {type: string, writeOnly: true}
-        permission_profile_id: {type: string, nullable: true, description: Identity/权限模块稳定 ID；详情不递归展开。}
-        last_started_at: {type: string, format: date-time, nullable: true}
-        last_active_at: {type: string, format: date-time, nullable: true}
-        last_suspended_at: {type: string, format: date-time, nullable: true}
         resource_version: {type: integer}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
+        last_active_at: {type: string, format: date-time, nullable: true}
     AgentCreateRequest:
       type: object
-      additionalProperties: false
-      required: [name, kind, provider]
+      required: [name, agent_profile_id, kind, workspace_type, workspace_id]
       properties:
-        name: {type: string, minLength: 1, maxLength: 128}
-        description: {type: string, maxLength: 2048, default: ''}
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        agent_profile_id: {type: string}
+        agent_profile_revision: {type: string}
         kind: {type: string, enum: [platform, coding]}
-        provider: {type: string, enum: [hermes, opencode]}
-        agent_workspace_id: {type: string, description: Platform Agent 可选；为空时自动创建 AgentWorkspace。}
-        studio_workspace_id: {type: string, description: Coding Agent 必填；创建后固定且不可切换。}
-        runtime_profile_id: {type: string}
-        preferred_runtime_provider_id: {type: string}
-        provider_config: {type: object, additionalProperties: true, description: 非敏感 Provider 配置；禁止 Secret。}
-        system_prompt: {type: string, maxLength: 32768}
-        permission_profile_id: {type: string}
+        workspace_type: {type: string, enum: [agent, studio]}
+        workspace_id: {type: string}
+        model_binding: {$ref: '#/components/schemas/ModelBindingInput'}
+        runtime_policy: {type: object, additionalProperties: false}
     AgentUpdateRequest:
       type: object
-      additionalProperties: false
-      minProperties: 1
       properties:
-        name: {type: string, minLength: 1, maxLength: 128}
-        description: {type: string, maxLength: 2048}
-        preferred_runtime_provider_id: {type: string}
-        provider_config: {type: object, additionalProperties: true, description: 非敏感配置。}
-        system_prompt: {type: string, maxLength: 32768}
-        permission_profile_id: {type: string}
-        resource_version: {type: integer, minimum: 0}
-    AgentListResponse:
-      type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/Agent'}}}
+        name: {type: string, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        runtime_policy: {type: object, additionalProperties: false}
+        resource_version: {type: integer}
     AgentSession:
       type: object
-      additionalProperties: false
-      required: [id, name, agent_id, agent, owner_user_id, title, status, context_version, summary, resource_version, created_at, updated_at]
+      required: [id, agent_id, status, created_at, updated_at]
       properties:
         id: {type: string}
-        name: {type: string}
         agent_id: {type: string}
-        agent: {$ref: '#/components/schemas/AgentSummary'}
-        owner_user_id: {type: string, description: 当前会话所有者；无需额外展开。}
         title: {type: string}
-        status: {type: string, enum: [CREATING, ACTIVE, PROCESSING, IDLE, SUSPENDED, CLOSED, ERROR]}
-        status_reason_code: {type: string, nullable: true}
-        current_runtime_id: {type: string, nullable: true}
-        current_runtime: {type: object, allOf: [{$ref: '#/components/schemas/AgentRuntimeSummary'}], nullable: true}
-        context_version: {type: integer}
-        summary: {type: string}
-        last_message_at: {type: string, format: date-time, nullable: true}
-        last_invocation_at: {type: string, format: date-time, nullable: true}
-        last_compacted_at: {type: string, format: date-time, nullable: true}
-        closed_at: {type: string, format: date-time, nullable: true}
-        resource_version: {type: integer}
+        status: {type: string, enum: [OPEN, CLOSED, ARCHIVED]}
+        runtime_session_ref: {type: string, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
     AgentSessionCreateRequest:
       type: object
-      additionalProperties: false
-      properties:
-        title: {type: string, maxLength: 256, default: ''}
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-    AgentSessionListResponse:
+      properties: {title: {type: string, maxLength: 200}}
+    AgentSessionUpdateRequest:
       type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/AgentSession'}}}
-    AgentMessage:
+      properties: {title: {type: string, maxLength: 200}, resource_version: {type: integer}}
+    AgentMessageRequest:
       type: object
-      additionalProperties: false
-      required: [id, session_id, role, message_type, content, sequence_no, created_at]
+      required: [content]
       properties:
-        id: {type: string}
-        session_id: {type: string, description: 与当前 Invocation 已在同一详情中，无需额外 Session 摘要。}
-        invocation_id: {type: string, nullable: true, description: 当前详情上下文已标识 Invocation，无需递归展开。}
-        role: {type: string, enum: [user, assistant, system, tool]}
-        message_type: {type: string, enum: [text, tool_call, tool_result, code_diff, artifact, approval_request, error, status]}
-        content: {type: string}
-        structured_content: {type: object, additionalProperties: true}
-        sequence_no: {type: integer}
-        parent_message_id: {type: string, nullable: true, description: 仅用于同一消息流排序，客户端不需跨资源导航。}
-        token_count: {type: integer}
-        created_at: {type: string, format: date-time}
+        content: {type: string, minLength: 1, maxLength: 20000}
+        attachments: {type: array, items: {$ref: '#/components/schemas/Reference'}}
+        idempotency_key: {type: string, maxLength: 200}
     AgentInvocation:
       type: object
-      additionalProperties: false
-      required: [id, name, agent_id, agent, session_id, owner_user_id, atomic_task_id, sequence_no, status, messages, resource_version, created_at, updated_at]
+      required: [id, agent_id, session_id, type, status, created_at, updated_at]
       properties:
         id: {type: string}
-        name: {type: string}
         agent_id: {type: string}
-        agent: {$ref: '#/components/schemas/AgentSummary'}
-        session_id: {type: string, description: 当前详情通过 Session 导航；不递归展开 Session。}
-        owner_user_id: {type: string, description: 当前调用者所有权字段，无需额外展开。}
-        runtime_id: {type: string, nullable: true}
-        runtime: {type: object, allOf: [{$ref: '#/components/schemas/AgentRuntimeSummary'}], nullable: true}
-        atomic_task_id: {type: string}
-        atomic_task: {type: object, allOf: [{$ref: '#/components/schemas/AtomicTaskSummary'}], nullable: true}
-        sequence_no: {type: integer}
-        parent_invocation_id: {type: string, nullable: true, description: 仅表达同 Session 父轮次，不递归展开。}
-        input_message_id: {type: string, nullable: true, description: 对应输入已包含在 messages 中。}
-        status: {type: string, enum: [QUEUED, WAITING_RUNTIME, RESTORING_CONTEXT, RUNNING, WAITING_USER, SUCCEEDED, FAILED, CANCELED, TIMEOUT, LOST]}
-        started_at: {type: string, format: date-time, nullable: true}
-        heartbeat_at: {type: string, format: date-time, nullable: true}
-        completed_at: {type: string, format: date-time, nullable: true}
-        output_summary: {type: string}
-        result: {type: object, additionalProperties: true}
-        error_code: {type: string, nullable: true}
-        error_message: {type: string, nullable: true}
-        messages: {type: array, items: {$ref: '#/components/schemas/AgentMessage'}}
-        resource_version: {type: integer}
+        session_id: {type: string}
+        type: {type: string, enum: [CHAT, CODING, TOOL_OPERATION, BACKGROUND_OPERATION]}
+        status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, SUCCEEDED, FAILED, CANCELING, CANCELED]}
+        user_message_id: {type: string, nullable: true}
+        assistant_message_id: {type: string, nullable: true}
+        atomic_task_id: {type: string, nullable: true}
+        failure_code: {type: string, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-    AgentInvocationCreateRequest:
+    AgentMessage:
       type: object
-      additionalProperties: false
-      required: [content, idempotency_key]
+      required: [id, session_id, role, content, created_at]
       properties:
-        content: {type: string, minLength: 1, maxLength: 131072}
-        structured_content: {type: object, additionalProperties: true}
-        parent_invocation_id: {type: string}
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-    AgentInvocationListResponse:
+        id: {type: string}
+        session_id: {type: string}
+        invocation_id: {type: string, nullable: true}
+        role: {type: string, enum: [USER, ASSISTANT, SYSTEM, TOOL]}
+        content: {type: string}
+        attachments: {type: array, items: {$ref: '#/components/schemas/Reference'}}
+        created_at: {type: string, format: date-time}
+    AgentMemory:
       type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/AgentInvocation'}}}
+      required: [id, agent_id, scope, type, content, created_at, updated_at]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        session_id: {type: string, nullable: true}
+        scope: {type: string, enum: [AGENT, SESSION]}
+        type: {type: string, enum: [FACT, PREFERENCE, SUMMARY, INSTRUCTION, CONTEXT]}
+        content: {type: string, maxLength: 20000}
+        source_message_id: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AgentMemoryCreateRequest:
+      type: object
+      required: [scope, type, content]
+      properties:
+        session_id: {type: string, nullable: true}
+        scope: {type: string, enum: [AGENT, SESSION]}
+        type: {type: string, enum: [FACT, PREFERENCE, SUMMARY, INSTRUCTION, CONTEXT]}
+        content: {type: string, maxLength: 20000}
+        source_message_id: {type: string, nullable: true}
+    AgentMemoryUpdateRequest:
+      type: object
+      required: [content]
+      properties: {content: {type: string, maxLength: 20000}, resource_version: {type: integer}}
     AgentRuntime:
       type: object
-      additionalProperties: false
-      required: [id, name, agent_id, agent, runtime_provider_id, runtime_provider, agent_provider, state, activity_state, workspace_type, workspace_id, generation, resource_version, created_at, updated_at]
+      required: [id, agent_id, state, activity_state, runtime_profile_id, runtime_profile_revision, created_at, updated_at]
       properties:
         id: {type: string}
-        name: {type: string}
         agent_id: {type: string}
-        agent: {$ref: '#/components/schemas/AgentSummary'}
-        runtime_provider_id: {type: string}
-        runtime_provider: {$ref: '#/components/schemas/RuntimeProviderSummary'}
-        agent_provider: {type: string, enum: [hermes, opencode]}
-        state: {$ref: '#/components/schemas/RuntimeState'}
-        activity_state: {type: string, enum: [IDLE, BUSY, UNKNOWN]}
-        workspace_type: {type: string, enum: [agent, studio]}
-        workspace_id: {type: string}
-        workspace: {$ref: '#/components/schemas/WorkspaceSummary'}
-        image_digest: {type: string}
-        generation: {type: integer}
-        heartbeat_at: {type: string, format: date-time, nullable: true}
-        ready_at: {type: string, format: date-time, nullable: true}
-        idle_since: {type: string, format: date-time, nullable: true}
-        stopped_at: {type: string, format: date-time, nullable: true}
-        error_code: {type: string, nullable: true}
-        error_message: {type: string, nullable: true}
-        resource_version: {type: integer}
+        infra_runtime_id: {type: string, nullable: true}
+        endpoint_ref: {type: string, nullable: true}
+        runtime_profile_id: {type: string}
+        runtime_profile_revision: {type: string}
+        state: {type: string, enum: [CREATING, STARTING, READY, RUNNING, STOPPING, STOPPED, FAILED, DELETED]}
+        activity_state: {type: string, enum: [IDLE, ACTIVE, SUSPENDED]}
+        health_status: {type: string, enum: [UNKNOWN, HEALTHY, UNHEALTHY]}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
-      description: provider_runtime_id、bootstrap endpoint、宿主地址和运行凭证永不公开。
-    NullableAgentRuntimeResponse:
-      type: object
-      additionalProperties: false
-      required: [data]
-      properties: {data: {type: object, allOf: [{$ref: '#/components/schemas/AgentRuntime'}], nullable: true}}
     RuntimeActionRequest:
       type: object
-      additionalProperties: false
-      required: [idempotency_key]
-      properties:
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-        runtime_provider_id: {type: string, description: 可选注册 Provider；不得指定未注册值。}
-        reason: {type: string, maxLength: 512}
-    RuntimeLogItem:
+      properties: {request_id: {type: string, maxLength: 200}, resource_version: {type: integer}}
+    ActionRequest:
       type: object
-      additionalProperties: false
-      required: [sequence_no, occurred_at, level, message]
+      properties: {reason: {type: string, maxLength: 1000}, request_id: {type: string, maxLength: 200}, resource_version: {type: integer}}
+    ModelBindingInput:
+      type: object
+      required: [source_type, source_ref, purpose]
       properties:
-        sequence_no: {type: integer}
-        occurred_at: {type: string, format: date-time}
-        level: {type: string, enum: [DEBUG, INFO, WARN, ERROR]}
+        source_type: {type: string, enum: [USER_DEFAULT_MODEL, USER_PROVIDER_MODEL, PLATFORM_MODEL]}
+        source_ref: {type: string}
+        purpose: {type: string, enum: [CHAT, CODING, VISION, EMBEDDING]}
+    Reference:
+      type: object
+      required: [reference_type, reference_id]
+      properties: {reference_type: {type: string}, reference_id: {type: string}}
+    OperationResult:
+      type: object
+      required: [success]
+      properties: {success: {type: boolean}}
+    AgentProfileListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentProfile'}}}
+    AgentListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/Agent'}}}
+    AgentSessionListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentSession'}}}
+    AgentMessageListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentMessage'}}}
+    AgentMemoryListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentMemory'}}}
+    AgentInvocationListResponse:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentInvocation'}}}
+    WorkspaceBinding:
+      type: object
+      required: [id, agent_id, workspace_type, workspace_id, access_mode]
+      properties: {id: {type: string}, agent_id: {type: string}, workspace_type: {type: string, enum: [agent, studio]}, workspace_id: {type: string}, access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}, mount_path: {type: string}, is_primary: {type: boolean}}
+    WorkspaceBindingRequest:
+      type: object
+      required: [workspace_type, workspace_id, access_mode, mount_path]
+      properties: {workspace_type: {type: string, enum: [agent, studio]}, workspace_id: {type: string}, access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}, mount_path: {type: string}, is_primary: {type: boolean}}
+    ModelBinding:
+      allOf: [{$ref: '#/components/schemas/ModelBindingInput'}, {type: object, properties: {id: {type: string}, status: {type: string}, is_primary: {type: boolean}}}]
+    SkillBinding:
+      type: object
+      required: [id, agent_id, skill_id, skill_version, enabled]
+      properties: {id: {type: string}, agent_id: {type: string}, skill_id: {type: string}, skill_version: {type: string}, enabled: {type: boolean}, configuration: {type: object, additionalProperties: true}}
+    McpBinding:
+      type: object
+      required: [id, agent_id, name, server_type, endpoint_ref, enabled]
+      properties: {id: {type: string}, agent_id: {type: string}, name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, allowed_tools: {type: array, items: {type: string}}, enabled: {type: boolean}}
+    McpBindingRequest:
+      type: object
+      required: [name, server_type, endpoint_ref]
+      properties: {name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, credential_ref: {type: string, nullable: true}, allowed_tools: {type: array, items: {type: string}}, configuration: {type: object, additionalProperties: true}}
+    WorkspaceBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/WorkspaceBinding'}}}}
+    ModelBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ModelBinding'}}}}
+    SkillBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/SkillBinding'}}}}
+    McpBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/McpBinding'}}}}
+    ErrorResponse:
+      type: object
+      required: [code, value, message]
+      properties:
+        code: {type: string}
+        value: {type: integer}
         message: {type: string}
-    RuntimeLogListResponse:
-      type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeLogItem'}}}
-    AgentWorkspace:
-      type: object
-      additionalProperties: false
-      required: [id, name, description, owner_type, owner_id, status, storage_type, size_bytes, quota_bytes, resource_version, created_at, updated_at]
-      properties:
-        id: {type: string}
-        name: {type: string}
-        description: {type: string}
-        owner_type: {type: string, enum: [agent, user, system]}
-        owner_id: {type: string, description: owner_type=agent 时可与 Agent 摘要配合；其他类型只作稳定审计引用。}
-        owner_agent: {type: object, allOf: [{$ref: '#/components/schemas/AgentSummary'}], nullable: true, description: 仅 owner_type=agent 且目标可见时返回，否则为 null。}
-        status: {type: string, enum: [CREATING, READY, MOUNTED, ERROR, DELETING, DELETED]}
-        storage_type: {type: string, enum: [local_directory, docker_volume, nfs, pvc]}
-        size_bytes: {type: integer, format: int64}
-        quota_bytes: {type: integer, format: int64}
-        current_snapshot_id: {type: string, nullable: true}
-        current_snapshot: {type: object, allOf: [{$ref: '#/components/schemas/AgentWorkspaceSnapshotSummary'}], nullable: true}
-        status_reason_code: {type: string, nullable: true}
-        resource_version: {type: integer}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-      description: storage_ref 和底层挂载位置永不公开。
-    AgentWorkspaceCreateRequest:
-      type: object
-      additionalProperties: false
-      required: [name]
-      properties:
-        name: {type: string, minLength: 1, maxLength: 128}
-        description: {type: string, maxLength: 2048, default: ''}
-        storage_type: {type: string, enum: [local_directory, docker_volume, nfs, pvc], description: 只能选择平台允许的类型；不能提供 storage_ref。}
-        quota_bytes: {type: integer, format: int64, minimum: 0}
-    AgentWorkspaceListResponse:
-      type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/AgentWorkspace'}}}
-    AgentWorkspaceSnapshotSummary:
-      type: object
-      additionalProperties: false
-      required: [id, name, status, size_bytes, created_at]
-      properties:
-        id: {type: string}
-        name: {type: string}
-        status: {type: string}
-        size_bytes: {type: integer, format: int64}
-        created_at: {type: string, format: date-time}
-    AgentWorkspaceSnapshot:
-      allOf:
-        - {$ref: '#/components/schemas/AgentWorkspaceSnapshotSummary'}
-        - type: object
-          additionalProperties: false
-          required: [workspace_id, resource_version, updated_at]
-          properties:
-            workspace_id: {type: string, description: 当前 Workspace 子资源上下文已明确，无需递归展开。}
-            content_digest: {type: string, nullable: true}
-            error_code: {type: string, nullable: true}
-            completed_at: {type: string, format: date-time, nullable: true}
-            resource_version: {type: integer}
-            updated_at: {type: string, format: date-time}
-      description: storage_ref 永不公开。
-    AgentWorkspaceSnapshotListResponse:
-      type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/AgentWorkspaceSnapshot'}}}
-    SnapshotCreateRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        name: {type: string, maxLength: 128}
-        description: {type: string, maxLength: 2048}
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-    WorkspaceRestoreRequest:
-      type: object
-      additionalProperties: false
-      required: [snapshot_id, idempotency_key]
-      properties:
-        snapshot_id: {type: string}
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-        reason: {type: string, maxLength: 512}
-    RuntimeProvider:
-      type: object
-      additionalProperties: false
-      required: [id, name, description, provider_type, status, enabled, is_default, capacity_summary, resource_version, created_at, updated_at]
-      properties:
-        id: {type: string}
-        name: {type: string}
-        description: {type: string}
-        provider_type: {type: string, enum: [docker, kubernetes]}
-        status: {type: string, enum: [ACTIVE, DEGRADED, UNAVAILABLE, DISABLED]}
-        enabled: {type: boolean}
-        is_default: {type: boolean}
-        capabilities: {type: object, additionalProperties: true}
-        capacity_summary: {type: object, additionalProperties: true}
-        status_reason_code: {type: string, nullable: true}
-        last_health_check_at: {type: string, format: date-time, nullable: true}
-        last_reconciled_at: {type: string, format: date-time, nullable: true}
-        resource_version: {type: integer}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-    RuntimeProviderListResponse:
-      type: object
-      additionalProperties: false
-      required: [total, items]
-      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeProvider'}}}
-    ReconcileRequest:
-      type: object
-      additionalProperties: false
-      required: [idempotency_key]
-      properties:
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
-        repair: {type: boolean, default: false}
-        reason: {type: string, maxLength: 512}
-    TaskReference:
-      type: object
-      additionalProperties: false
-      required: [atomic_task_id, atomic_task]
-      properties:
-        atomic_task_id: {type: string}
-        atomic_task: {$ref: '#/components/schemas/AtomicTaskSummary'}
+        retryable: {type: boolean}
+        data: {type: object, additionalProperties: true}

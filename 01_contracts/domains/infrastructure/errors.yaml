@@ -1,0 +1,134 @@
+# Infrastructure S2 error codes, v1.0.0-draft.
+# 当前 S1 没有 US/BR 编号；related_rules 使用现有 R-INFRA-*，related_user_stories 保持为空。
+- code: ERR_INFRA_REQUEST_INVALID
+  value: 240200
+  http: 200
+  cn: Infra 请求缺少受控身份、归属或运行参数。
+  en: The Infra request lacks a trusted identity, ownership, or runtime parameter.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [R-INFRA-003, R-INFRA-004, R-INFRA-015, R-INFRA-016]
+  related_user_stories: []
+- code: ERR_INFRA_RUNTIME_PROFILE_NOT_FOUND
+  value: 240201
+  http: 200
+  cn: RuntimeProfile 不存在或版本不可用。
+  en: The RuntimeProfile does not exist or its revision is unavailable.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [R-INFRA-004, R-INFRA-017]
+  related_user_stories: []
+- code: ERR_INFRA_UNSUPPORTED_RUNTIME_MODE
+  value: 240202
+  http: 200
+  cn: 当前第一阶段不支持该运行模式。
+  en: The requested runtime mode is not supported in the first phase.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [R-INFRA-003, R-INFRA-005, R-INFRA-020]
+  related_user_stories: []
+- code: ERR_INFRA_NO_ELIGIBLE_NODE
+  value: 240400
+  http: 200
+  cn: 没有满足资源和状态要求的节点。
+  en: No node satisfies the requested resource and status requirements.
+  owning_domain: infrastructure
+  owning_module: placement
+  range: 240400-240599
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-003, R-INFRA-018]
+  related_user_stories: []
+- code: ERR_INFRA_RESOURCE_INSUFFICIENT
+  value: 240401
+  http: 200
+  cn: 可用 CPU、内存、磁盘或 GPU 资源不足。
+  en: Available CPU, memory, disk, or GPU resources are insufficient.
+  owning_domain: infrastructure
+  owning_module: placement
+  range: 240400-240599
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-003]
+  related_user_stories: []
+- code: ERR_INFRA_RUNTIME_NOT_FOUND
+  value: 240600
+  http: 200
+  cn: InfraRuntime 不存在或不可见。
+  en: The InfraRuntime does not exist or is not visible.
+  owning_domain: infrastructure
+  owning_module: runtime
+  range: 240600-240799
+  retryable: false
+  deprecated: false
+  related_rules: [R-INFRA-006, R-INFRA-008, R-INFRA-015]
+  related_user_stories: []
+- code: ERR_INFRA_RUNTIME_OPERATION_FAILED
+  value: 240601
+  http: 200
+  cn: Runtime Provider 操作失败。
+  en: The Runtime Provider operation failed.
+  owning_domain: infrastructure
+  owning_module: runtime
+  range: 240600-240799
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-002, R-INFRA-005, R-INFRA-018]
+  related_user_stories: []
+- code: ERR_INFRA_RUNTIME_STATE_CONFLICT
+  value: 240602
+  http: 200
+  cn: InfraRuntime 当前状态与操作不一致。
+  en: The InfraRuntime state conflicts with the requested operation.
+  owning_domain: infrastructure
+  owning_module: runtime
+  range: 240600-240799
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-006, R-INFRA-018]
+  related_user_stories: []
+- code: ERR_INFRA_MOUNT_NOT_ALLOWED
+  value: 240800
+  http: 200
+  cn: 挂载引用、目标路径或只读策略不符合安全规则。
+  en: The mount reference, target path, or read-only policy violates security rules.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 240800-240999
+  retryable: false
+  deprecated: false
+  related_rules: [R-INFRA-009, R-INFRA-010, R-INFRA-011]
+  related_user_stories: []
+- code: ERR_INFRA_SECRET_RESOLUTION_FAILED
+  value: 240801
+  http: 200
+  cn: SecretRef 或 ModelAccessSpec 解析失败。
+  en: SecretRef or ModelAccessSpec resolution failed.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 240800-240999
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-012, R-INFRA-013, R-INFRA-014]
+  related_user_stories: []
+- code: ERR_INFRA_ENDPOINT_ALLOCATION_FAILED
+  value: 240802
+  http: 200
+  cn: Endpoint 分配或刷新失败。
+  en: Endpoint allocation or refresh failed.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 240800-240999
+  retryable: true
+  deprecated: false
+  related_rules: [R-INFRA-002, R-INFRA-008]
+  related_user_stories: []

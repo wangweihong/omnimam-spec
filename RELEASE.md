@@ -39,9 +39,10 @@
 ## spec-v1.10.0
 
 - commit: 28ceccbb623dea1387719958f953416585b83bd6
-- status: released
-- confirmed_by: user（2026-08-01 明确要求“提交并发布” Agent/AppStudio S1/S2）
-- allowed_as_formal_implementation_basis: true
+- status: superseded
+- confirmed_by: user（2026-08-02 已移除旧版 Agent/AppStudio S2，并要求按 Task Worker 与 Docker-only 约束重新作为草稿修订）
+- allowed_as_formal_implementation_basis: false
+- superseded_by: 当前工作区未 Release 的 Agent/AppStudio S1 草稿；当前不提供 Agent/AppStudio S2 实施依据
 - domains:
   - agent
   - appstudio
@@ -49,20 +50,7 @@
   - 00_product/domains/agent/product-spec.md
   - 00_product/domains/appstudio/product-spec.md
   - 00_product/glossary.md
-- S2:
-  - 01_contracts/domains/agent/openapi.yaml
-  - 01_contracts/domains/agent/schema.sql
-  - 01_contracts/domains/agent/errors.yaml
-  - 01_contracts/domains/agent/permissions.yaml
-  - 01_contracts/domains/agent/events.yaml
-  - 01_contracts/domains/agent/module-contract.md
-  - 01_contracts/domains/appstudio/openapi.yaml
-  - 01_contracts/domains/appstudio/schema.sql
-  - 01_contracts/domains/appstudio/errors.yaml
-  - 01_contracts/domains/appstudio/permissions.yaml
-  - 01_contracts/domains/appstudio/events.yaml
-  - 01_contracts/domains/appstudio/module-contract.md
-  - 01_contracts/error-code-index.md
+- S2: []（旧版文件已移除，仅保留本条历史发布记录）
 - architecture: []
 - context:
   - domains/agent/context.md

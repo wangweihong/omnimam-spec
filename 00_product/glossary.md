@@ -41,7 +41,11 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | TaskGroup | 多个 AtomicTask 的 SERIAL 或 PARALLEL 组合及其汇总视图 | task-center |
 | DAGTaskGroup | 多个 AtomicTask 节点及有向无环依赖组成的编排资源 | task-center |
 | TaskSchedule | 周期或单次触发 AtomicTask、TaskGroup 或 DAGTaskGroup 的计划资源 | task-center |
-| Worker | 由 WorkflowRuntime 分发并执行已注册 AtomicTask handler 的工作器 | task-center |
+| Task Worker | 由 WorkflowRuntime 分发并执行已注册 AtomicTask handler 的工作器；Infra-backed handler 通过 Infra Adapter 调用基础设施，不拥有业务状态 | task-center |
+| Infra Adapter | Task Worker 内将已授权业务引用转换为受控 Infra 请求并映射幂等、取消、超时和恢复的适配边界 | task-center / infrastructure |
+| InfraRuntime | Docker Job 或 Service 的基础设施运行事实；只保存运行状态和稳定关联，不等于 AgentRuntime 或 StudioRuntimeInstance | infrastructure |
+| RuntimeMount | InfraRuntime 使用的受控挂载记录，包含来源引用、目标路径、只读标志和授权上下文 | infrastructure |
+| source_ref | 由来源领域授权生成的不可变或受控资源引用；不得解释为宿主机路径 | infrastructure |
 
 `EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 modelgateway 的正式能力事实源。
 
@@ -65,6 +69,8 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | StudioRelease | 固定 StudioBuild、Artifact ID/digest 和环境的发布事实 | appstudio |
 | StudioRuntimeInstance | StudioRelease 当前部署实例、健康状态与访问入口事实 | appstudio |
 | StudioDeploymentProvider | 从固定 Artifact 部署 StudioRuntimeInstance 的系统注册组件 | appstudio |
+| WorkspaceRevision | StudioWorkspace 在某一时点的可授权源码版本；Preview 可挂载当前 Revision | appstudio |
+| WorkspaceSnapshot | 从 Workspace Revision 形成的不可变源码输入；Build 只能只读使用固定 Snapshot | appstudio |
 
 `Application` 和 `StudioApplication` 是不同产品对象：前者封装可运行 AI 能力，后者表示 Agent 辅助开发的 Web/BFF 应用。Coding Agent 可以固定引用一个 StudioWorkspace，但不能拥有其源码、Build、Release 或 Runtime 生命周期。
 

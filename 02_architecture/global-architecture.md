@@ -19,6 +19,9 @@
 | `asset-library` | Artifact、用户素材、AssetVersion、Representation、存储、派生任务与周期补全 | 已有 S1/S2，部分普通素材 API 待补 |
 | `application-platform` | ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
+| `agent` | Agent、Session、AgentWorkspace、AgentRuntime 业务事实 | S1 Draft；旧 S2 已移除 |
+| `appstudio` | StudioApplication、StudioWorkspace、Revision、Snapshot、Build、Release 与 RuntimeInstance | S1 Draft；旧 S2 已移除 |
+| `infrastructure` | 第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载与 Provider 对账 | S1 Draft；S2 待建立 |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
 | `notification-center` | 可靠源事件消费、通知规则、用户收件箱、偏好、聚合与 Notification Outbox | 已有 S1/S2，`spec-v1.8.0` released |
@@ -35,6 +38,9 @@ graph TD
   Gateway["modelgateway<br/>Capability、Engine、Adapter、Executor"]
   App["application-platform<br/>工作流、模板、应用与运行"]
   Task["task-center<br/>业务任务与 Conductor 适配"]
+  Agent["agent<br/>Agent 与 AgentRuntime"]
+  Studio["appstudio<br/>生成应用开发与发布"]
+  Infra["infrastructure<br/>Docker Runtime"]
   Canvas["workflow-canvas<br/>画布版本与运行视图"]
   Notify["notification-center<br/>通知规则与用户收件箱"]
   SSE["sse<br/>用户级短期事件投影"]
@@ -44,6 +50,9 @@ graph TD
   Chat --> Asset
   App --> Gateway
   App --> Task
+  Agent --> Task
+  Studio --> Task
+  Task --> Infra
   App --> Asset
   Gateway --> Task
   Task --> App
@@ -74,6 +83,8 @@ graph TD
   Notify --> Identity
   SSE --> Identity
   MCP --> Identity
+  Agent --> Identity
+  Studio --> Identity
 ```
 
 说明：
@@ -83,11 +94,27 @@ graph TD
 - `modelgateway` 定义只读 Runtime Registry、ProviderCapability、Engine、Binding、Adapter、OperationExecutor、健康检测和 ComfyUI 当前 object_info。
 - `application-platform` 定义 ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 投影和 Artifact 引用，通过受控边界消费 Model Gateway。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
+- `agent` 和 `appstudio` 的所有 Infra-backed 操作都先创建 AtomicTask，再由 Task Worker 通过 Infra Adapter 调用 `infrastructure`；两者不直接访问 Docker 或 Infra Service。
+- `infrastructure` 只拥有 Docker Job/Service、InfraRuntime、Endpoint、挂载和 Provider 对账事实，不拥有 Agent、Studio、Workspace、Snapshot、Artifact 或任务状态。
 - `workflow-canvas` 发布不可变 CanvasVersion，并将多流、fan-out 和复合节点展平到唯一 task-center DAGTaskGroup；一个 CanvasNodeRun 可以映射零个、一个或多个 AtomicTask。
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
 - `notification-center` 消费已登记业务领域 source event，规范化为 NotificationEvent 并生成用户 Notification；不读取其他领域私表或从低层任务终态猜测上层业务结果。
 - `sse` 只投影 task-center、asset-library、workflow-canvas 和 notification-center 的可靠事件；不拥有上述业务事实。AI Chat 单次生成的 token/delta 流仍归 ai-chatting 请求边界，不进入本用户级事件历史。
 - `mcp` 通过固定 Tool 和 Resource URI 读取受控领域投影，只通过 Application 创建异步运行，并将 ApplicationRun 的 AtomicTask 映射为 MCP Task；不订阅业务事件或复制业务状态。
+
+### 4.5 Agent 与 AppStudio 运行链路
+
+```mermaid
+flowchart LR
+  Agent["Agent"] --> Task["Task Center"]
+  Studio["AppStudio"] --> Task
+  Task --> Worker["Task Worker"]
+  Worker --> Adapter["Infra Adapter"]
+  Adapter --> Infra["Infra Service"]
+  Infra --> Docker["DockerRuntimeProvider"]
+```
+
+Preview 使用当前 Workspace Revision，Build 使用固定 Snapshot，Production 使用固定 Artifact digest；Production 禁止挂载可写 Workspace。
 
 ## 4. 运行链路
 

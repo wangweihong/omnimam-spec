@@ -1,42 +1,29 @@
+# AppStudio S2 error codes, v1.0.0-draft.
+# 当前 S1 没有 US/BR 编号；related_rules 使用现有 R-STUDIO-*，related_user_stories 保持为空。
 - code: ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE
   value: 210200
   http: 200
-  cn: StudioApplication 不存在或当前用户不可见。
-  en: The StudioApplication does not exist or is not visible to the current user.
+  cn: StudioApplication 不存在或当前主体不可见。
+  en: The StudioApplication does not exist or is not visible to the current principal.
   owning_domain: appstudio
   owning_module: application
   range: 210200-210399
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-001]
-
-- code: ERR_APPSTUDIO_APPLICATION_STATE_INVALID
+  related_rules: [R-STUDIO-001, R-STUDIO-010]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_APPLICATION_INVALID_STATE
   value: 210201
   http: 200
-  cn: StudioApplication 当前状态不允许执行该操作。
-  en: The StudioApplication cannot perform this action in its current state.
+  cn: StudioApplication 当前状态不允许该操作。
+  en: The StudioApplication is not in a state that permits this operation.
   owning_domain: appstudio
   owning_module: application
   range: 210200-210399
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-001, BR-APPSTUDIO-002]
-  related_user_stories: [US-APPSTUDIO-001]
-
-- code: ERR_APPSTUDIO_TEMPLATE_INVALID
-  value: 210202
-  http: 200
-  cn: StudioApplication 初始化模板不存在、不可见或与技术栈不兼容。
-  en: The StudioApplication template is missing, invisible, or incompatible with the technology profile.
-  owning_domain: appstudio
-  owning_module: application
-  range: 210200-210399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-002]
-  related_user_stories: [US-APPSTUDIO-001]
-
+  related_rules: [R-STUDIO-001, R-STUDIO-014]
+  related_user_stories: []
 - code: ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE
   value: 210400
   http: 200
@@ -47,304 +34,137 @@
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-003, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-002, US-APPSTUDIO-003]
-
-- code: ERR_APPSTUDIO_WORKSPACE_STATE_INVALID
+  related_rules: [R-STUDIO-002, R-STUDIO-010]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT
   value: 210401
   http: 200
-  cn: StudioWorkspace 当前状态不允许读取、修改、快照或恢复。
-  en: The StudioWorkspace cannot be read, changed, snapshotted, or restored in its current state.
+  cn: Workspace 当前 Revision 与 base_revision 冲突。
+  en: The Workspace current Revision conflicts with base_revision.
   owning_domain: appstudio
   owning_module: workspace
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-002, BR-APPSTUDIO-004, BR-APPSTUDIO-005]
-  related_user_stories: [US-APPSTUDIO-002, US-APPSTUDIO-003, US-APPSTUDIO-004]
-
-- code: ERR_APPSTUDIO_WORKSPACE_TOOL_AUTH_FAILED
+  related_rules: [R-STUDIO-003, R-STUDIO-004]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_WORKSPACE_CHANGE_REJECTED
   value: 210402
   http: 200
-  cn: Workspace Tool 授权无效、过期或与当前调用上下文不匹配。
-  en: The Workspace Tool authorization is invalid, expired, or does not match the current call context.
+  cn: ChangeSet 未通过路径、依赖或安全校验。
+  en: The ChangeSet failed path, dependency, or security validation.
   owning_domain: appstudio
   owning_module: workspace
   range: 210400-210599
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-002, US-APPSTUDIO-003, US-APPSTUDIO-006]
-
-- code: ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT
-  value: 210403
-  http: 200
-  cn: base_revision 已落后于 StudioWorkspace 当前 Revision。
-  en: The base_revision is behind the current StudioWorkspace revision.
-  owning_domain: appstudio
-  owning_module: workspace
-  range: 210400-210599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-004]
-  related_user_stories: [US-APPSTUDIO-003]
-
-- code: ERR_APPSTUDIO_CHANGESET_INVALID
-  value: 210404
-  http: 200
-  cn: StudioChangeSet 结构、路径、操作或大小不符合约束。
-  en: The StudioChangeSet structure, paths, operations, or size violate the contract.
-  owning_domain: appstudio
-  owning_module: workspace
-  range: 210400-210599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-004]
-  related_user_stories: [US-APPSTUDIO-003]
-
-- code: ERR_APPSTUDIO_PROTECTED_FILE_CHANGE
-  value: 210405
-  http: 200
-  cn: StudioChangeSet 试图修改受保护文件或受控配置。
-  en: The StudioChangeSet attempts to modify a protected file or controlled configuration.
-  owning_domain: appstudio
-  owning_module: workspace
-  range: 210400-210599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-004]
-  related_user_stories: [US-APPSTUDIO-003]
-
-- code: ERR_APPSTUDIO_DANGEROUS_CHANGE
-  value: 210406
-  http: 200
-  cn: StudioChangeSet 包含危险代码、非法依赖或越权集成变更。
-  en: The StudioChangeSet contains dangerous code, a forbidden dependency, or an unauthorized integration change.
-  owning_domain: appstudio
-  owning_module: workspace
-  range: 210400-210599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-004, BR-APPSTUDIO-010]
-  related_user_stories: [US-APPSTUDIO-003]
-
-- code: ERR_APPSTUDIO_FILE_NOT_VISIBLE
-  value: 210407
-  http: 200
-  cn: 文件不存在、路径无效或当前 Workspace Tool 不可读取。
-  en: The file does not exist, has an invalid path, or is not readable by the current Workspace Tool.
-  owning_domain: appstudio
-  owning_module: workspace
-  range: 210400-210599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-003]
-  related_user_stories: [US-APPSTUDIO-002]
-
+  related_rules: [R-STUDIO-003, R-STUDIO-005]
+  related_user_stories: []
 - code: ERR_APPSTUDIO_SNAPSHOT_NOT_VISIBLE
   value: 210600
   http: 200
-  cn: StudioSourceSnapshot 不存在或当前用户不可见。
-  en: The StudioSourceSnapshot does not exist or is not visible to the current user.
+  cn: Source Snapshot 不存在或当前主体不可见。
+  en: The Source Snapshot does not exist or is not visible to the current principal.
   owning_domain: appstudio
   owning_module: source-version
   range: 210600-210799
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-004, US-APPSTUDIO-005]
-
-- code: ERR_APPSTUDIO_SNAPSHOT_CREATION_FAILED
+  related_rules: [R-STUDIO-011, R-STUDIO-012]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_SNAPSHOT_INVALID
   value: 210601
   http: 200
-  cn: 源码快照创建、摘要计算或不可变存储写入失败。
-  en: Source snapshot creation, digest calculation, or immutable storage failed.
-  owning_domain: appstudio
-  owning_module: source-version
-  range: 210600-210799
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-005]
-  related_user_stories: [US-APPSTUDIO-004]
-
-- code: ERR_APPSTUDIO_VERSION_INVALID
-  value: 210602
-  http: 200
-  cn: StudioApplicationVersion 不存在、版本号冲突或 Snapshot 绑定无效。
-  en: The StudioApplicationVersion is missing, conflicts by version, or has an invalid snapshot binding.
+  cn: Source Snapshot 未完成或 digest 校验失败。
+  en: The Source Snapshot is incomplete or its digest validation failed.
   owning_domain: appstudio
   owning_module: source-version
   range: 210600-210799
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006]
-  related_user_stories: [US-APPSTUDIO-004]
-
+  related_rules: [R-STUDIO-011, R-STUDIO-012]
+  related_user_stories: []
 - code: ERR_APPSTUDIO_BUILD_NOT_VISIBLE
   value: 210800
   http: 200
-  cn: StudioBuild 不存在或当前用户不可见。
-  en: The StudioBuild does not exist or is not visible to the current user.
+  cn: StudioBuild 不存在或当前主体不可见。
+  en: The StudioBuild does not exist or is not visible to the current principal.
   owning_domain: appstudio
   owning_module: build
   range: 210800-210999
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-007, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-005, US-APPSTUDIO-007]
-
-- code: ERR_APPSTUDIO_BUILD_SOURCE_INVALID
+  related_rules: [R-STUDIO-011, R-STUDIO-013]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_BUILD_FAILED
   value: 210801
   http: 200
-  cn: StudioBuild 的 Snapshot 或 ApplicationVersion 来源无效。
-  en: The StudioBuild snapshot or application version source is invalid.
+  cn: Build 执行或 Artifact 交付失败。
+  en: The Build execution or Artifact delivery failed.
   owning_domain: appstudio
   owning_module: build
   range: 210800-210999
-  retryable: false
+  retryable: true
   deprecated: false
-  related_rules: [BR-APPSTUDIO-005, BR-APPSTUDIO-006, BR-APPSTUDIO-007]
-  related_user_stories: [US-APPSTUDIO-005]
-
-- code: ERR_APPSTUDIO_BUILD_STATE_INVALID
+  related_rules: [R-STUDIO-004, R-STUDIO-011, R-STUDIO-013]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_BUILD_CANCELED
   value: 210802
   http: 200
-  cn: StudioBuild 当前状态不允许执行该操作或创建 Release。
-  en: The StudioBuild cannot perform this action or create a release in its current state.
+  cn: Build 已取消。
+  en: The Build was canceled.
   owning_domain: appstudio
   owning_module: build
   range: 210800-210999
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-007, BR-APPSTUDIO-008, BR-APPSTUDIO-011]
-  related_user_stories: [US-APPSTUDIO-005, US-APPSTUDIO-007]
-
-- code: ERR_APPSTUDIO_BUILD_TASK_UNAVAILABLE
-  value: 210803
-  http: 200
-  cn: StudioBuild 对应的 TaskGroup 或 AtomicTask 无法创建或读取。
-  en: The TaskGroup or AtomicTask for the StudioBuild could not be created or read.
-  owning_domain: appstudio
-  owning_module: build
-  range: 210800-210999
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-007, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-005]
-
-- code: ERR_APPSTUDIO_BUILD_ARTIFACT_INVALID
-  value: 210804
-  http: 200
-  cn: Build Artifact 不存在、未就绪、类型错误或 digest 不匹配。
-  en: The build artifact is missing, not ready, has the wrong type, or has a digest mismatch.
-  owning_domain: appstudio
-  owning_module: build
-  range: 210800-210999
-  retryable: false
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-008, BR-APPSTUDIO-011]
-  related_user_stories: [US-APPSTUDIO-005, US-APPSTUDIO-007]
-
-- code: ERR_APPSTUDIO_RELEASE_NOT_VISIBLE
+  related_rules: [R-STUDIO-013, R-STUDIO-018]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_RELEASE_INVALID
   value: 211000
   http: 200
-  cn: StudioRelease 不存在或当前用户不可见。
-  en: The StudioRelease does not exist or is not visible to the current user.
+  cn: Release 的 Build、Artifact、配置或环境无效。
+  en: The Release Build, Artifact, configuration, or environment is invalid.
   owning_domain: appstudio
   owning_module: release-runtime
   range: 211000-211199
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-011, BR-APPSTUDIO-012, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008]
-
-- code: ERR_APPSTUDIO_RELEASE_CONFIG_INVALID
+  related_rules: [R-STUDIO-004, R-STUDIO-008, R-STUDIO-009, R-STUDIO-012]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_RUNTIME_DEPLOY_FAILED
   value: 211001
   http: 200
-  cn: 目标环境运行配置、Secret 引用或 Integration 引用无效。
-  en: The target environment runtime config, secret references, or integration references are invalid.
+  cn: StudioRuntimeInstance 部署或健康检查失败。
+  en: StudioRuntimeInstance deployment or health checking failed.
   owning_domain: appstudio
   owning_module: release-runtime
   range: 211000-211199
-  retryable: false
+  retryable: true
   deprecated: false
-  related_rules: [BR-APPSTUDIO-010, BR-APPSTUDIO-011]
-  related_user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-009]
-
-- code: ERR_APPSTUDIO_DEPLOYMENT_PROVIDER_UNAVAILABLE
+  related_rules: [R-STUDIO-004, R-STUDIO-009, R-STUDIO-012]
+  related_user_stories: []
+- code: ERR_APPSTUDIO_RELEASE_IMMUTABLE
   value: 211002
   http: 200
-  cn: StudioDeploymentProvider 当前不可用。
-  en: The StudioDeploymentProvider is currently unavailable.
-  owning_domain: appstudio
-  owning_module: release-runtime
-  range: 211000-211199
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-009, BR-APPSTUDIO-011]
-  related_user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008]
-
-- code: ERR_APPSTUDIO_DEPLOYMENT_FAILED
-  value: 211003
-  http: 200
-  cn: StudioRelease 部署或运行实例启动失败。
-  en: StudioRelease deployment or runtime instance startup failed.
-  owning_domain: appstudio
-  owning_module: release-runtime
-  range: 211000-211199
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-011, BR-APPSTUDIO-012]
-  related_user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008]
-
-- code: ERR_APPSTUDIO_HEALTH_CHECK_FAILED
-  value: 211004
-  http: 200
-  cn: 新 StudioRuntimeInstance 未通过健康检查，访问入口未切换。
-  en: The new StudioRuntimeInstance failed its health check and the route was not switched.
-  owning_domain: appstudio
-  owning_module: release-runtime
-  range: 211000-211199
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-011, BR-APPSTUDIO-012]
-  related_user_stories: [US-APPSTUDIO-007, US-APPSTUDIO-008]
-
-- code: ERR_APPSTUDIO_ROLLBACK_SOURCE_INVALID
-  value: 211005
-  http: 200
-  cn: 回滚来源 Release 或其固定 Artifact 不可用。
-  en: The rollback source release or its pinned artifact is unavailable.
+  cn: 不允许修改不可变 Release。
+  en: An immutable Release cannot be modified.
   owning_domain: appstudio
   owning_module: release-runtime
   range: 211000-211199
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-012]
-  related_user_stories: [US-APPSTUDIO-008]
-
-- code: ERR_APPSTUDIO_PREVIEW_FAILED
-  value: 211006
-  http: 200
-  cn: 编辑态 Preview Runtime 启动、刷新或检查失败。
-  en: The edit-time Preview Runtime failed to start, refresh, or complete its check.
-  owning_domain: appstudio
-  owning_module: release-runtime
-  range: 211000-211199
-  retryable: true
-  deprecated: false
-  related_rules: [BR-APPSTUDIO-009]
-  related_user_stories: [US-APPSTUDIO-006]
-
+  related_rules: [R-STUDIO-012]
+  related_user_stories: []
 - code: ERR_APPSTUDIO_ACCESS_DENIED
   value: 211200
   http: 200
-  cn: 当前主体没有执行该 AppStudio 操作的权限。
-  en: The current principal is not allowed to perform this AppStudio operation.
+  cn: 无权访问 AppStudio 资源。
+  en: The current principal is not authorized to access the AppStudio resource.
   owning_domain: appstudio
   owning_module: access
   range: 211200-211399
   retryable: false
   deprecated: false
-  related_rules: [BR-APPSTUDIO-003, BR-APPSTUDIO-010, BR-APPSTUDIO-013]
-  related_user_stories: [US-APPSTUDIO-001, US-APPSTUDIO-002, US-APPSTUDIO-003, US-APPSTUDIO-004, US-APPSTUDIO-005, US-APPSTUDIO-006, US-APPSTUDIO-007, US-APPSTUDIO-008, US-APPSTUDIO-009]
+  related_rules: [R-STUDIO-010]
+  related_user_stories: []

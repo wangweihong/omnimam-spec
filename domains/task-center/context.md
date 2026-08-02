@@ -2,7 +2,7 @@
 
 ## 1. 领域职责
 
-`task-center` 为应用、素材、画布和系统维护任务提供统一异步执行、组合编排、周期或单次调度、运行汇总与故障恢复。它对外提供稳定业务资源和状态投影，对内通过已注册 `WorkflowRuntime` 使用 Conductor OSS 的调度、自动重试和 Worker 分发能力。
+`task-center` 为应用、素材、画布和系统维护任务提供统一异步执行、组合编排、周期或单次调度、运行汇总与故障恢复。它对外提供稳定业务资源和状态投影，对内通过已注册 `WorkflowRuntime` 使用 Conductor OSS 的调度、自动重试和 Task Worker 分发能力；Infra-backed 操作继续由 Task Worker 的 Infra Adapter 调用 infrastructure。
 
 ## 2. 核心对象
 
@@ -11,7 +11,7 @@
 - `TaskGroup`：多个 AtomicTask 的 SERIAL 或 PARALLEL 组合及汇总。
 - `DAGTaskGroup`：AtomicTask 节点和有向无环依赖组成的编排资源。
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
-- `WorkflowRuntime`、`Worker`：内部运行时边界和已注册 handler 的执行者。
+- `WorkflowRuntime`、`Task Worker`、`Infra Adapter`：内部运行时边界、已注册 handler 的执行者和 Infra-backed 请求适配边界。
 
 ## 3. 核心规则
 
@@ -19,7 +19,7 @@
 - TaskGroup、DAGTaskGroup 和 TaskSchedule 只组合或触发 AtomicTask，不能作为 Worker 任务。
 - TaskAttempt 记录一次自动尝试；手动重试创建新的 AtomicTask，并保留来源关系。
 - 幂等、权限、租户、业务摘要和状态投影由 Task Center 保证，Conductor 不是产品 API。
-- `TaskRun`、`ExecutionLease`、Worker claim、自研 Dispatcher 和旧 DAG 状态机已废弃。
+- `TaskRun`、`ExecutionLease`、Worker claim、自研 Dispatcher 和旧 DAG 状态机已废弃；Task Worker 不等于旧 Worker claim/lease 模型。
 - ApplicationRun、CanvasRun 和素材处理状态是上层业务投影，不由任务终态替代。
 - 任务结果只保存 Artifact 等小型引用，不保存媒体正文或其他领域私有数据。
 - 可靠状态事件必须支持下游幂等消费，乱序事件不得回退较新投影。
@@ -30,7 +30,7 @@
 
 ## 5. 上游与下游
 
-上游是 application-platform、modelgateway、workflow-canvas、asset-library 和系统维护模块提交的受控任务定义。Model Gateway 使用既有 system_key 注册 Engine 健康与 object-info ReconcileHandler；下游是 WorkflowRuntime/Worker 执行边界，以及消费任务事件的业务投影、notification-center 和 sse。Worker 执行业务 handler，但不拥有调用方的业务定义。
+上游是 application-platform、modelgateway、workflow-canvas、asset-library、agent、appstudio 和系统维护模块提交的受控任务定义。Model Gateway 使用既有 system_key 注册 Engine 健康与 object-info ReconcileHandler；下游是 WorkflowRuntime/Task Worker/Infra Adapter 执行边界，以及消费任务事件的业务投影、notification-center、sse 和 infrastructure。Task Worker 执行业务 handler，但不拥有调用方的业务定义。
 
 ## 6. 正式事实源
 

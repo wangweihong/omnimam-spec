@@ -1,6 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- 按当前 S1 草稿全新生成 `agent`、`appstudio`、`infrastructure` 的 S2：OpenAPI、设计态 Schema、错误码、权限码、事件和模块契约。
+- 新增 Infrastructure 错误码索引区间 `240200-240999`。
+- 本轮不读取、不恢复旧版 Agent/AppStudio S2；当前三个 S1 尚无标准 `US-*`/`BR-*` 编号，S2 使用现有 `R-*` 规则和源章节追溯，并将编号补齐列为 Release 前置任务。
+
 ## 2026-08-02
+
+- 按第一阶段 Docker-only 约束重新梳理 agent、appstudio、task-center 与 infrastructure：Agent/AppStudio 的 Infra 操作统一经 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`，Task Worker 不拥有业务状态，只回写运行引用、制品引用和脱敏摘要。
+- 明确 Workspace 挂载矩阵：AgentWorkspace 按 Agent 授权挂载，StudioWorkspace 只能通过 AppStudio 受控授权访问，Preview 挂载当前 Workspace Revision，Build 只读固定 Snapshot，Production 只读固定 Artifact digest 且禁止可写 Workspace。
+- 新增 `infrastructure` Domain Context 和架构参考，补充 Task Center 的 Task Worker/Infra Adapter 产品、模块和架构语义；第一阶段仅保留 DockerRuntimeProvider，未新增 infrastructure S2。
+- 移除旧 Agent/AppStudio S2 后同步 Context 入口；两域当前只保留未 Release S1 草稿，本轮不恢复或生成新的 Agent/AppStudio S2。
 
 - 收敛 platform-management 当前范围：移除 Platform 自有在线配置、`platform_settings`、维护模式和系统配置页面/流程；系统概览中的素材、应用、模型、任务和通知统计延期到下一阶段，当前仅保留平台基础信息与最近审计摘要。
 - 补全收敛后 Platform S2：新增只读系统概览 OpenAPI、`PlatformOverview` 与 `PlatformAuditLogSummary` schema、overview 权限、230600-230699 错误码和模块查询合同；概览不新增数据库表或领域事件。

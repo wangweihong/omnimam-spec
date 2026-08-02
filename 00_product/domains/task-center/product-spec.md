@@ -69,6 +69,31 @@ RECONCILE：每轮执行受控轻量巡检，不创建根 AtomicTask、TaskGroup
 
 RECONCILE 可以在发现需要耗时、重试或产生外部副作用的修复时，按稳定幂等键请求 Task Center 创建已注册 functionRef 的 AtomicTask。查询、探测、比较、轻量投影更新和 outbox 事件属于巡检本身，不应为了保留每项检测历史而物化任务。
 
+### 3.7 Task Worker 是统一的受控执行入口
+
+所有需要调用 Infra Service 的 Agent、AppStudio、素材处理或其他业务操作，都必须先创建 `AtomicTask`，再由 WorkflowRuntime 将已注册的 `functionRef` 分发给 Task Worker。业务领域不得直接调用 Infra Service。
+
+```text
+Agent / AppStudio
+    -> Task Center: 创建 AtomicTask
+Task Center
+    -> WorkflowRuntime: 分发已注册 functionRef
+Task Worker
+    -> Infra Adapter: 校验任务输入并转换为受控请求
+Infra Adapter
+    -> Infra Service: 以 Task Center 服务身份调用
+Infra Service
+    -> DockerRuntimeProvider: 创建或操作 Docker Job / Service
+```
+
+Task Worker 只负责一次任务尝试的执行，不拥有 AgentRuntime、StudioPreviewRuntime、StudioBuild、StudioRuntimeInstance、InfraRuntime 或 Artifact 的业务事实。它可以保存或返回 `infra_runtime_id`、`endpoint_ref`、外部作业引用和脱敏错误等小型结果，但这些结果必须回写到所属 AtomicTask 或由来源领域消费，不能在 Task Worker 内形成第二套状态机。
+
+### 3.8 Infra-backed functionRef
+
+Infra-backed `functionRef` 必须在 Task Center 注册表中声明输入/输出 schema、执行模式、所需能力、取消方式、幂等键策略和结果映射。第一阶段只允许映射到 Docker Job 或 Docker Service；Task Worker 不接受用户传入的镜像、任意命令、Docker 参数、宿主机路径、凭证或内部 endpoint。
+
+AgentRuntime 的创建、启动、恢复、挂起和删除，以及 AppStudio 的 Preview、Build、Production 发布/升级/回滚等操作，均以业务领域定义的 `functionRef` 进入 Task Center。Task Center 负责排队、重试、取消、超时和状态投影；Task Worker 负责调用 Infra；业务领域负责把任务结果投影回自己的业务对象。
+
 ---
 
 ## 4. 核心领域对象
@@ -197,6 +222,22 @@ WorkflowRuntime 是任务中心消费的可替换运行边界，负责：
 
 首个正式实现为 Conductor OSS。运行时数据库、内部 UI 和原生 API 不对普通用户开放。
 
+### 4.9 Task Worker 与 Infra Adapter
+
+Task Worker 是 WorkflowRuntime 的消费方，不是新的业务领域。它必须：
+
+- 只消费已注册的 `functionRef`，并使用 Task Center 传入的不可变输入快照；
+- 对 Infra-backed functionRef 调用同一受控 `Infra Adapter`，禁止业务域各自实现 Docker 调用；
+- 将 Infra 的运行状态、取消、超时和重试结果映射为 Task Center 可投影的状态和小型输出；
+- 对 `IN_PROGRESS` 的外部或 Infra 作业保存稳定引用并使用延迟回调，不长期占用 Worker；
+- 在 Worker 重启、Task Center 重启或 Infra 重启后依据幂等键和已有运行引用恢复，不重复创建 Job/Service。
+
+Task Worker 不得：
+
+- 直接操作 Docker Socket、容器、宿主机目录或 Provider 私有 API；
+- 直接修改 Agent、AppStudio、Asset Library 或 Infra Service 的业务数据库；
+- 把原始运行日志、凭证、Provider 响应、地址或大型输入输出写入 AtomicTask 结果。
+
 ---
 
 ## 5. 核心流程
@@ -267,6 +308,20 @@ CanvasVersion 发布时由 workflow-canvas 校验并编译为不可变 DAGTaskGr
 ### 5.7 Artifact 上传后处理
 
 asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。Task Center 按 `artifact-process:<artifact_id>:<processing_profile_version>` 幂等创建 `asset-library.artifact.process` AtomicTask。handler 只接收 Artifact ID 和处理 profile，只返回 Artifact 引用；内容读取和状态写回必须经过 asset-library 受控能力。
+
+### 5.8 Agent 与 AppStudio 的 Infra-backed 任务
+
+Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。典型任务如下：
+
+| 来源领域 | `functionRef` 示例 | Task Worker 结果 | 业务投影归属 |
+| --- | --- | --- | --- |
+| agent | `agent.runtime.ensure` | `infra_runtime_id`、受控运行状态、`endpoint_ref` | AgentRuntime / AgentRuntimeBinding |
+| agent | `agent.runtime.stop` | 停止结果和脱敏错误 | AgentRuntime / AgentRuntimeBinding |
+| appstudio | `appstudio.preview.ensure` | `infra_runtime_id`、`endpoint_ref`、健康摘要 | StudioPreviewRuntime |
+| appstudio | `appstudio.build.execute` | `artifact_ref`、digest、日志引用 | StudioBuild / asset-library |
+| appstudio | `appstudio.production.reconcile` | `infra_runtime_id`、`endpoint_ref`、健康摘要 | StudioRuntimeInstance |
+
+这些名称表示注册函数，不是允许用户直接调用的 HTTP 路径。Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`，并从业务输入中的授权引用生成 Infra 的受控 `source_ref`；不得把业务域的 Workspace、Snapshot 或 Artifact ID 直接解释成任意宿主机路径。
 
 ---
 
@@ -376,6 +431,12 @@ asset-library 在 Artifact 内容完成事务写 `artifact_content_completed`。
 72. `BR-TASK-144`：立即执行请求必须携带计划内唯一幂等键；同一键重复或并发提交返回同一 ScheduleExecution，不得重复启动运行时或创建目标。
 73. `BR-TASK-145`：手动与周期触发共用同一活动轮次约束；发生重叠时必须创建并返回 SKIPPED_OVERLAP，且不得修改计划 cron、runAt、暂停状态、nextTriggerAt 或其他未来触发事实。
 74. `BR-TASK-146`：手动轮次使用固定可恢复控制工作流异步执行 MATERIALIZED 或 RECONCILE 逻辑，运行时启动失败保存 TRIGGER_FAILED；Worker/API/运行时重启后使用 ScheduleExecution ID 恢复且不得重复创建目标。
+75. `BR-TASK-147`：任何需要调用 Infra Service 的业务操作必须先创建 AtomicTask，并由 Task Worker 通过已注册 functionRef 执行；Agent、AppStudio 和其他业务领域不得直接调用 Infra Service。
+76. `BR-TASK-148`：Infra-backed functionRef 必须声明输入/输出 schema、JOB/SERVICE 执行模式、能力、幂等键、取消和结果映射；第一阶段只允许 Docker Job 或 Docker Service。
+77. `BR-TASK-149`：Task Worker 不拥有 AgentRuntime、StudioPreviewRuntime、StudioBuild、StudioRuntimeInstance、InfraRuntime 或 Artifact 业务状态，只回写稳定运行引用、小型结果和脱敏错误。
+78. `BR-TASK-150`：Task Worker 必须通过唯一 Infra Adapter 调用 Infra Service，不得直接操作 Docker Socket、Provider 私有 API、宿主机路径或其他业务数据库。
+79. `BR-TASK-151`：AgentRuntime、Preview、Build 和 Production 的 Infra 操作必须使用业务域授权生成的 Workspace、Revision、Snapshot 或 Artifact `source_ref`；Task Worker 不得把用户输入解释为任意挂载路径。
+80. `BR-TASK-152`：Infra-backed Task Worker 在取消、超时、重试和重启后必须依据稳定幂等键及已有运行引用恢复或清理，不得重复创建 Docker Job/Service。
 
 ---
 
