@@ -4,7 +4,7 @@
 
 目标：提交已补全的 Identity S1/S2，整合远端 `spec-v1.12.1`，发布 `spec-v1.12.2` 并推送 `master`。
 
-状态：进行中。Identity 规格提交正在 rebase 到远端 `master=23d1313`；`CHANGELOG.md` 与本 handoff 的预期冲突已合并，下一步继续 rebase。
+状态：进行中。Identity 规格提交已 rebase 到远端 `master=23d1313`，发布前校验通过；`spec-v1.12.2` Release 元数据已写入，正在创建 release commit 和 annotated tag。
 
 ## 本次完成
 
@@ -12,16 +12,17 @@
 - 已同步 Identity OpenAPI、设计态 Schema、错误、权限、事件、模块合同、Domain Context、领域架构、Global Context、Context Map 和 CHANGELOG。
 - 已新增 `BR-IAM-023..030`、`US-IAM-015..020`；Identity OpenAPI 当前为 `0.2.0-draft`。
 - 已完成结构化与语义校验：57 个 operation、307 个本地 `$ref`、19 张设计态表、52 个 Identity 错误、13 个权限、8 个事件；全仓 354 个错误 code/value 无重复。
-- 已创建本地 Identity 规格提交 `5f02a25`（rebase 后哈希会变化）。
+- 已创建并 rebase Identity 规格提交 `a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5`。
 - 已 fetch 远端 `spec-v1.12.1`；远端 Workflow Canvas/Task Center 修改未触及 Identity 正式文件。
 - 已保留远端 `spec-v1.12.1` 的 Changelog 内容，并合入本次 Identity Unreleased 内容。
+- 已恢复用户已有的两个 `skills/archive/` 删除；它们继续保持未暂存，不进入本次提交。
+- 已在 `RELEASE.md` 新增 `spec-v1.12.2`，Release 内容 commit 指向 `a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5`。
 - 用户已有 `skills/archive/` 两个删除已临时 stash；未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 未处理。
 
 ## 当前进行中
 
-- 标记 rebase 冲突已解决并继续 rebase。
-- 恢复用户已有归档删除。
-- 复验 rebase 后 Identity 契约，登记并发布 `spec-v1.12.2`。
+- 提交 `spec-v1.12.2` Release 元数据并创建 annotated tag。
+- 更新最终 handoff，推送 `master` 和标签并核对远端引用。
 
 ## 文件变化
 
@@ -48,13 +49,12 @@
 ## 验证结果与剩余检查
 
 - rebase 前 Identity YAML、OpenAPI、本地 `$ref`、权限、错误、追溯、分页、批量请求、SQL 表闭合及 `git diff --check` 均通过。
-- rebase 后需重新运行同一组校验，确认远端 `v1.12.1` 合入未引入全局错误码或维护文档冲突。
+- rebase 后已重新通过 YAML、OpenAPI、S1 追溯、全局错误码、分页、批量请求、SQL 表闭合、内容路径和 `git diff --check` 校验。
 - 当前环境没有 `mmdc`，Mermaid 未执行渲染器语法验证。
 
 ## 待办事项
 
-- 完成 rebase 并恢复用户改动。
-- 更新 `RELEASE.md`，创建 release commit 与 annotated tag `spec-v1.12.2`。
+- 创建 release commit 与 annotated tag `spec-v1.12.2`。
 - 推送 `master` 和 `spec-v1.12.2` 标签并核对远端引用。
 
 ## 已知问题与风险
@@ -64,7 +64,7 @@
 
 ## 推荐下一步
 
-执行 `git add CHANGELOG.md docs/HANDOFF.md`，继续 rebase；成功后恢复 stash 并重新运行 Identity 校验。
+暂存 `RELEASE.md`、`CHANGELOG.md` 和 `docs/HANDOFF.md`，创建 `spec-v1.12.2` release commit 与 annotated tag。
 
 Next Prompt:
 

@@ -5,7 +5,7 @@
 - 补全 Identity S1 用户投影与管理闭环：登录/Refresh/独立查询统一返回带 `authorizationVersion`、直接/用户组角色来源、权限码和会话限制的当前主体授权投影；补充客户端失效刷新与后端实时鉴权边界。
 - 新增 `RegistrationApplication` 审批、拒绝和重新申请语义；ADMIN_APPROVAL 在批准前不创建角色、会话或 Token，并补齐待审批管理、一次性初始密码、会话、资料、RBAC、共享和在线状态页面的动作、失败与恢复结果。
 - 补全 ServiceAccount 直接角色、owner 受控摘要、Token 交换、凭据状态/到期/最后使用/轮换历史及一次性 Secret；补充用户删除跨域依赖聚合、短期检查快照、来源不可用 fail closed 和目标 domain 资源转移边界。
-- 同步 Identity OpenAPI、设计态 Schema、错误码、权限码、可靠事件、模块合同、Domain Context、领域架构、Global Context 和 Context Map；新增 `BR-IAM-023..030`、`US-IAM-015..020`，本轮不创建 Release。
+- 同步 Identity OpenAPI、设计态 Schema、错误码、权限码、可靠事件、模块合同、Domain Context、领域架构、Global Context 和 Context Map；新增 `BR-IAM-023..030`、`US-IAM-015..020`，并由用户确认为 `spec-v1.12.2` Release。
 - 将旧 Workflow Canvas compile-time built-ins release 从冲突的 `spec-v1.12.0` 修正为 `spec-v1.12.1`；合同已合入当前 Task Center function registry 基线，未新增运行时循环、任务组类型、权限、事件或错误码。
 - 补齐 Task Center 第一阶段 Infra-backed Function Registry：S1 固定 Agent/AppStudio 七个 canonical functionRef、合同版本冻结规则、`BR-TASK-153` 和 `US-TASK-026`；新增 registry meta-schema 与逐项 I/O、JOB/SERVICE、能力、幂等、重试、取消、超时、Infra 映射、Artifact 登记和结果 transform 合同。
 - Task Center AtomicTask 新增 function contract version/digest 设计态字段和 API 投影，调用方 capability 改为 registry 派生；新增输入无效、输出无效、合同不可用和 capability 不可用错误，并同步模块契约、领域架构、Context 与导航。本轮未修改 `RELEASE.md`。

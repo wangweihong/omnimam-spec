@@ -1,5 +1,30 @@
 # Release Records
 
+## spec-v1.12.2
+
+- commit: a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5
+- status: released
+- confirmed_by: user（2026-08-03 明确要求“远端已经更新了v1.12.1.本地提交后发布v1.12.2然后推送”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+- S1:
+  - 00_product/domains/identity/product-spec.md
+- S2:
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/identity/errors.yaml
+  - 01_contracts/domains/identity/permissions.yaml
+  - 01_contracts/domains/identity/events.yaml
+  - 01_contracts/domains/identity/module-contract.md
+- architecture:
+  - 02_architecture/domains/identity.md
+- context:
+  - domains/identity/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: Identity 登录、Refresh 和独立授权查询必须返回同一版本化授权投影，包含有效角色来源、权限码和会话限制；角色摘要只用于展示解释，完整角色/权限不得写入 JWT，后端仍按当前主体状态、凭据和权限码实时鉴权。`ADMIN_APPROVAL` 注册在批准前不得分配角色、创建会话或签发 Token，审批/拒绝/重新申请历史必须不可变且敏感操作审计失败时 fail closed。ServiceAccount 只允许直接角色授权，owner 必须通过受控批量投影校验，owner 不可用时拒绝凭据交换，初始密码和 Secret 只返回一次。用户删除必须使用完整、未过期并在提交前重验的跨 domain 依赖检查；任何来源不可用或存在阻塞项都不得删除，资源转移仍由目标 domain 完成。SystemAuthConfig 和 AuditLog 继续归 platform-management，Identity 不得维护重复配置、审计表或查询 API。LDAP/SSO、OAuth2/OIDC、MFA、PAT、角色继承/互斥和其他未发布能力保持禁用。
+
 ## spec-v1.12.1
 
 - commit: 261ef2aa56d1c7d141c1ebda8b7d04b3371fb5bf
