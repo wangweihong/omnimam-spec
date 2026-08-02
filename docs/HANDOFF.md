@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-提交已收敛的 `identity` 与 `platform-management` Spec 变更。状态：已提交；两领域 S1/S2 仍为未 Release 草稿，不能作为正式实现、合并或验收依据。
+发布已提交的 `identity` 与 `platform-management` Spec 变更。状态：Release 记录已补齐，正在创建发布 commit、tag 并推送；发布完成后两领域 S1/S2 才可作为正式实现、合并或验收依据。
 
 ## 本次工作完成
 
@@ -13,7 +13,7 @@
 
 ## 当前进行中
 
-- 无实现工作进行中；本次 Identity/Platform 目标文件已提交。
+- 发布 `spec-v1.11.0`：基于 Spec commit `1939166284c94e68bab731aeaddd8bba01ed9384` 创建 Release commit 和 annotated tag，并推送 `master` 与 tag。
 - 归档目录与设计图属于工作区已有无关改动，仍保留未提交：`archive/`、`设计图/`、`skills/archive/`。
 
 ## 文件变化
@@ -31,7 +31,7 @@
 - Identity 保留 44 个 OpenAPI operation、15 张设计态表、42 个错误码、12 个权限和 7 个可靠事件。
 - Platform Management 定义 7 个 OpenAPI operation、3 张设计态表、9 个错误码、6 个权限和 2 个可靠事件；Platform Overview 不新增表或领域事件。
 - 跨 domain 只通过稳定 ID、受控内部接口、权限裁剪摘要或可靠事件协作；`schema.sql` 仅为设计态 Schema，不是 migration。
-- 两领域新增/迁移内容尚未登记新的正式 Release；必须由用户确认后才能作为正式实现依据。
+- 两领域新增/迁移内容登记为 `spec-v1.11.0`，用户已确认发布；发布 tag 推送完成后才正式生效。
 
 ## API、Schema、依赖与配置变化
 
@@ -51,12 +51,12 @@
 ## 待办、问题与风险
 
 - 用户需要评审 Identity JWT 验签/密钥轮换、服务凭据交换、撤销查询、审计写入边界及 ResourceAccessGrant 接入方式。
-- 用户需要评审 Platform Overview 元数据来源、SystemAuthConfig 和 AuditLog 写入边界，再决定是否登记 Release。
+- 用户后续仍可评审 Platform Overview 元数据来源、SystemAuthConfig 和 AuditLog 写入边界；如需改变已发布语义，必须新增变更并重新 Release。
 - 当前工作区仍有未纳入本次提交的归档删除/新增内容与设计图，提交后应继续单独处理或明确丢弃。
 
 ## 推荐下一步
 
-读取本 handoff，等待用户评审两领域 S1/S2，并在确认后决定是否登记 Release。
+读取本 handoff，核对 `spec-v1.11.0` 发布状态；如需修改已发布语义，创建新的 Spec 变更并重新 Release。
 
 Next Prompt:
 

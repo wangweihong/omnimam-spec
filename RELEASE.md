@@ -1,5 +1,41 @@
 # Release Records
 
+## spec-v1.11.0
+
+- commit: 1939166284c94e68bab731aeaddd8bba01ed9384
+- status: released
+- confirmed_by: user（2026-08-02 明确要求“发布” Identity 与 Platform Management S1/S2）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+  - platform-management
+- S1:
+  - 00_product/domains/identity/product-spec.md
+  - 00_product/domains/platform-management/product-spec.md
+  - 00_product/glossary.md
+- S2:
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/identity/errors.yaml
+  - 01_contracts/domains/identity/permissions.yaml
+  - 01_contracts/domains/identity/events.yaml
+  - 01_contracts/domains/identity/module-contract.md
+  - 01_contracts/domains/platform-management/openapi.yaml
+  - 01_contracts/domains/platform-management/schema.sql
+  - 01_contracts/domains/platform-management/errors.yaml
+  - 01_contracts/domains/platform-management/permissions.yaml
+  - 01_contracts/domains/platform-management/events.yaml
+  - 01_contracts/domains/platform-management/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/identity.md
+- context:
+  - domains/identity/context.md
+  - domains/platform-management/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: Identity 仅允许实现当前已发布的本地认证、JWT/Refresh Token、会话、用户、RBAC、PrincipalContext、ResourceAccessGrant、ServiceAccount 和脱敏审计协作；密码必须使用 Argon2id PHC 哈希，在线状态按有效会话活动时间派生，presence heartbeat 不得延长 Token 或会话期限。Platform Management 仅允许实现只读 PlatformOverview、SystemAuthConfig 和脱敏 AuditLog；跨 domain 统计、通用 Credential CRUD、维护模式和其他延期入口保持禁用。Identity 不得拥有 SystemAuthConfig/AuditLog 的私有表或管理 API，Platform 不得读取 Identity 私有表；跨 domain 只能通过稳定 ID、受控内部接口、权限裁剪摘要和可靠事件协作。LDAP/SSO、OAuth2/OIDC、MFA、PAT、角色继承/互斥及其他 S1/S2 未发布能力保持禁用。
+
 ## spec-v1.10.0
 
 - commit: 28ceccbb623dea1387719958f953416585b83bd6
