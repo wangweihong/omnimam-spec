@@ -2,7 +2,7 @@
 
 ## 当前目标与状态
 
-发布已提交的 `identity` 与 `platform-management` Spec 变更。状态：Release 记录已补齐，正在创建发布 commit、tag 并推送；发布完成后两领域 S1/S2 才可作为正式实现、合并或验收依据。
+发布已提交的 `identity` 与 `platform-management` Spec 变更。状态：已完成；`spec-v1.11.0` 的 Release commit、annotated tag 和远端推送均成功，两领域 S1/S2 可按 Release 门禁作为正式实现、合并或验收依据。
 
 ## 本次工作完成
 
@@ -13,7 +13,7 @@
 
 ## 当前进行中
 
-- 发布 `spec-v1.11.0`：基于 Spec commit `1939166284c94e68bab731aeaddd8bba01ed9384` 创建 Release commit 和 annotated tag，并推送 `master` 与 tag。
+- `spec-v1.11.0` 已发布：Spec commit 为 `1939166284c94e68bab731aeaddd8bba01ed9384`，Release commit 为 `9268135`，annotated tag 为 `spec-v1.11.0`；`master` 与 tag 已推送到 `origin`。
 - 归档目录与设计图属于工作区已有无关改动，仍保留未提交：`archive/`、`设计图/`、`skills/archive/`。
 
 ## 文件变化
@@ -31,7 +31,7 @@
 - Identity 保留 44 个 OpenAPI operation、15 张设计态表、42 个错误码、12 个权限和 7 个可靠事件。
 - Platform Management 定义 7 个 OpenAPI operation、3 张设计态表、9 个错误码、6 个权限和 2 个可靠事件；Platform Overview 不新增表或领域事件。
 - 跨 domain 只通过稳定 ID、受控内部接口、权限裁剪摘要或可靠事件协作；`schema.sql` 仅为设计态 Schema，不是 migration。
-- 两领域新增/迁移内容登记为 `spec-v1.11.0`，用户已确认发布；发布 tag 推送完成后才正式生效。
+- 两领域新增/迁移内容登记为 `spec-v1.11.0`，用户已确认发布，`allowed_as_formal_implementation_basis: true`。
 
 ## API、Schema、依赖与配置变化
 
@@ -56,7 +56,7 @@
 
 ## 推荐下一步
 
-读取本 handoff，核对 `spec-v1.11.0` 发布状态；如需修改已发布语义，创建新的 Spec 变更并重新 Release。
+读取本 handoff，核对 `spec-v1.11.0` 与远端状态；如需修改已发布语义，创建新的 Spec 变更并重新 Release。
 
 Next Prompt:
 
