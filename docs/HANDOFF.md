@@ -4,7 +4,7 @@
 
 目标：分析 `platform-management` 领域，补充缺失的 S1/S2 规格并修复内部及跨层不一致。
 
-状态：发布进行中。用户已明确确认发布为 `spec-v1.13.0`；`RELEASE.md` 和 CHANGELOG 已更新，下一步创建发布提交与 tag。
+状态：完成并已发布。Platform Management/Identity 协同规格已登记为 `spec-v1.13.0`，允许作为正式实现依据。
 
 ## 本次完成
 
@@ -16,10 +16,11 @@
 - Identity 可靠事件移除 `platform-audit` 消费者；Identity S1/模块合同明确敏感审计通过受控同步接口确认，失败时回滚、撤销或补偿。
 - 新增 `02_architecture/domains/platform-management.md`，同步 Platform Domain Context、Identity 架构参考和 CHANGELOG。
 - 用户已于 2026-08-03 明确要求“发布”；`RELEASE.md` 已登记 `spec-v1.13.0`，正式规格基线为 `b942bb8cc405314ec1f87170a3f63d8ed4bc5dad`。
+- 已创建发布提交 `56907857c38992c16ae272b20aff957aae366490` 和 annotated tag `spec-v1.13.0`。
 
 ## 当前进行中
 
-创建 `spec-v1.13.0` 发布提交与 tag。
+无。
 
 ## 文件变化
 
@@ -56,22 +57,21 @@
 - 6 个 Platform 权限、2 个 Platform 事件和 8 个 Identity 事件的 S1 引用有效。
 - 3 张 Platform 设计态表均包含通用资源字段，关键单例、JSON、时间、幂等和指纹约束存在。
 - Markdown/Mermaid 围栏平衡，`git diff --check` 通过。
+- `RELEASE.md` 中 `spec-v1.13.0` 引用的 14 个 S1/S2、架构和 Context 文件均存在；annotated tag 已校验指向发布提交 `56907857c38992c16ae272b20aff957aae366490`。
 
 ## 待办事项
 
-- 创建 `spec-v1.13.0` 发布提交与 tag，并在完成后刷新本 HANDOFF。
 - 正式实现前验证服务主体到 `source_domain/source_module` 的登记、Token 撤销、委托链校验，以及每类敏感操作审计失败后的回滚/撤销/补偿测试。
 
 ## 已知问题与风险
 
 - 当前环境没有 `mmdc`，Mermaid 已做围栏和人工语法复核，但未执行渲染器校验。
 - 本任务只修改规格，没有运行后端构建、数据库执行或实现测试。
-- 发布提交与 `spec-v1.13.0` tag 尚未创建；创建前不得宣称发布流程完成。
 - 工作区仍有用户自己的 `skills/archive/s1-origin-2.md`、`skills/archive/s1-origin.md` 删除及未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`；本任务未修改或恢复这些内容。
 
 ## 推荐下一步
 
-创建并校验 `spec-v1.13.0` 发布提交与 tag；随后由实现仓库按服务主体、幂等和补偿门禁落地。
+由实现仓库以 `spec-v1.13.0` 为正式依据，先完成服务主体登记、幂等冲突和敏感操作审计失败补偿测试，再落地 Platform/Identity 协同实现。
 
 Next Prompt:
 
