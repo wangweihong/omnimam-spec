@@ -3,15 +3,15 @@
 ## 当前发布任务（spec-v1.15.2，2026-08-04）
 
 - 当前目标：提交 Identity/Platform 默认管理员角色授权修复，登记 `spec-v1.15.2`，创建 annotated tag 并推送 `master` 与标签。
-- 状态：进行中；规格内容与定向验证已完成，准备创建规格提交。
+- 状态：进行中；规格提交 `868326b6b877011295a333ff1c9c3d21b48c5632` 已创建，`RELEASE.md` 已登记 `spec-v1.15.2`，准备创建发布提交。
 - 已完成：明确各 domain `default_roles` 必须由 Identity 物化和对账为内置角色 `RolePermissionGrant`；固化 `ADMIN`/`SUPER_ADMIN` 的 Identity 管理和 `platform.*` 权限基线；同步 S1、S2、Context、Schema 注释与 CHANGELOG。
-- 当前进行中：创建规格提交、更新 `RELEASE.md`、创建发布提交和标签并推送。
+- 当前进行中：创建发布提交、annotated tag 并推送。
 - 文件变化：`00_product/domains/identity/product-spec.md`、`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/identity/module-contract.md`、`01_contracts/domains/identity/schema.sql`、`domains/identity/context.md`、`domains/platform-management/context.md`、`CHANGELOG.md`、`docs/HANDOFF.md`；后续增加 `RELEASE.md`。
 - 关键决定：版本为 `spec-v1.15.2`；不新增权限码或 API，不纳入未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`。
 - 验证：目标权限 YAML 可解析，角色矩阵逐项断言通过，目标文件 `git diff --check` 通过；本仓库无对应实现 package，不运行全仓测试。
-- 未完成事项：规格提交、Release 记录、tag 与远端推送。
+- 未完成事项：发布提交、tag 与远端推送。
 - 风险：实现侧仍需执行一次现有数据库默认角色授权补偿同步，并正确失效授权缓存。
-- 下一步：提交当前规格变更并以该提交哈希登记 `spec-v1.15.2`。
+- 下一步：提交 `RELEASE.md` 与发布交接，创建 `spec-v1.15.2` 标签并推送。
 
 ## 当前权限修复任务（默认管理员角色授权，2026-08-04）
 

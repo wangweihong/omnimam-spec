@@ -1,5 +1,27 @@
 # Release Records
 
+## spec-v1.15.2
+
+- commit: 868326b6b877011295a333ff1c9c3d21b48c5632
+- status: released
+- confirmed_by: user（2026-08-04 请求“补充缺失权限，补充结束提交代码并发布一个小版本推送到远端”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+  - platform-management
+- S1:
+  - 00_product/domains/identity/product-spec.md
+  - 00_product/domains/platform-management/product-spec.md
+- S2:
+  - 01_contracts/domains/identity/permissions.yaml
+  - 01_contracts/domains/identity/module-contract.md
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/platform-management/permissions.yaml
+- context:
+  - domains/identity/context.md
+  - domains/platform-management/context.md
+- implementation_gate: 各 domain ACTIVE 权限的 `default_roles` 必须由 Identity 聚合并幂等物化为内置角色 `RolePermissionGrant`，不能只登记 `PermissionDefinition`。`ADMIN` 必须获得 Identity 用户/注册/组/服务账号读取管理权限以及 `platform.overview.read`、`platform.auth_config.read`、`platform.audit.read`；`SUPER_ADMIN` 额外获得 `identity.role.manage`、`identity.service_account.manage`、`platform.auth_config.manage`。现有数据库必须执行一次受控补偿对账，并递增受影响主体 `authorization_version`、失效权限缓存。
+
 ## spec-v1.15.1
 
 - commit: 7d290e80d8f47334d9e3f52b8372c638df22c5ba
