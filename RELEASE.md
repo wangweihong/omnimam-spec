@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.14.2
+
+- commit: 102a4477672f05b223e3bcff19b7df61e9cdc8e8
+- status: released
+- confirmed_by: user（2026-08-03 请求继续实现 OPAQUE 密码认证方案）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+- S1:
+  - 00_product/domains/identity/product-spec.md
+- S2:
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/identity/errors.yaml
+  - 01_contracts/domains/identity/module-contract.md
+- implementation_gate: OpenAPI YAML is validated; Identity clients must use only the OPAQUE two-step operations and the administrator registration/reset operations.
+
 ## spec-v1.14.1
 
 - commit: 8190bfcec6da343ab833b0fddcc716f21ff00cc4
