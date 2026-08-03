@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Identity 认证迁移到 RFC 9807 OPAQUE：新增注册、登录和改密二阶段 API，使用一次性 exchange 与 base64url 消息；用户只保存 OPAQUE registration record，移除原始密码和 Argon2id PHC 字段契约。
+
+## Unreleased
+
 - 补全 Platform Management S1：定义结构化 PasswordPolicy/LoginFailurePolicy、SystemAuthConfig 单例与 `resource_version` 乐观并发、配置/AuditLog/Outbox 原子提交，以及认证配置页面冲突恢复语义。
 - 补齐跨 domain AuditLog 合同：覆盖 Identity 登录、Token、密码、授权、服务账号和跨 owner 敏感操作，新增 `occurred_at`、来源服务主体校验、来源域复合幂等、内容冲突、detail 大小/嵌套限制和完整查询过滤；Identity 可靠事件不再重复充当平台审计写入通道。
 - Platform OpenAPI 升级为 `0.2.0-draft`，修正错误响应 `value` 类型和 500 响应，结构化认证策略 DTO，新增审计查询参数与 `ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT`；overview 错误区间扩展为 `230600-230799`。

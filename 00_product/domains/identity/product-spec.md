@@ -283,7 +283,7 @@ Token
 | email                | string   | 邮箱，全局唯一                                |
 | normalizedEmail      | string   | 标准化邮箱                                  |
 | phone                | string   | 手机号，可选                                 |
-| passwordHash         | string   | Argon2id PHC 格式的不可逆密码哈希，不是明文或可逆密文       |
+| opaqueRegistrationRecord | string | OPAQUE registration record 的 base64url 编码；只作为服务端验证材料保存 |
 | status               | enum     | ACTIVE、PENDING、REJECTED、DISABLED、LOCKED、DELETED |
 | firstLoginRequired   | boolean  | 是否需要首次登录引导                             |
 | failedLoginCount     | integer  | 连续登录失败次数                               |
@@ -321,27 +321,23 @@ DELETED
 
 当前阶段所有用户均使用本地密码，不单独拆分外部登录身份模型。
 
-### 5.1.1 密码凭据安全
+### 5.1.1 OPAQUE 密码凭据安全
 
-用户密码采用 Argon2id 进行不可逆哈希，当前基线参数为：
+本地密码认证采用 OPAQUE（RFC 9807），不采用“前端哈希后提交”或“前端加密、后端解密”。固定配置为：
 
 ```text
-algorithm: Argon2id
-version: 19
-memory: 65536 KiB
-iterations: 3
-parallelism: 1
-output: 32 bytes
-salt: 每个密码凭据独立生成的密码学安全随机值，至少 16 bytes
+Web: @serenity-kit/opaque@1.1.0
+Go: github.com/bytemare/opaque@v0.18.0
+OPRF/AKE: Ristretto255/SHA-512
+KSF: Argon2id, t=3, m=65536 KiB, p=4
+context: omnimam/identity/opaque/v1
 ```
 
-`passwordHash` 保存完整 PHC 字符串，其中包含算法、参数、salt 和哈希结果。系统不得保存用户密码明文，也不得使用可逆加密代替密码哈希。密码哈希、明文密码和密码确认值不得出现在 API 响应、事件、审计日志或跨 domain 摘要中。
+服务端只保存 OPAQUE `registration_record`，以及稳定部署密钥生成的 setup。服务端 setup 是部署密钥，变更会使已有 registration record 无法验证；部署必须先完成数据清理和新 schema 初始化。原始密码只在浏览器输入和 OPAQUE 计算期间短暂存在，禁止进入 HTTP 请求、日志、审计、事件、响应、数据库或跨 domain 摘要。HTTPS 仍必须强制启用；OPAQUE 不替代 TLS。
 
-用户注册、管理员设置初始密码、首次登录修改密码和普通密码修改均必须按当前密码策略生成新的 Argon2id 哈希。用户成功登录时，如果已存哈希参数低于当前策略，系统应在密码校验成功后按当前策略重新哈希并替换旧值；重新哈希失败时不得降低为明文或可逆密文存储。
+注册、登录和改密均使用显式二阶段 exchange。协议消息使用 base64url 编码，exchange 只允许一次提交且短期过期。密码复杂度由 Web 在输入层校验；服务端只校验 OPAQUE 消息合法性、大小、exchange 状态和账号元数据，不接收 `password`、`old_password`、`new_password` 或确认密码字段。
 
-当前 `ARGON2ID_V1` 算法和参数由产品版本固定，管理员只能调整密码复杂度、登录失败保护和在线窗口等策略，不能通过认证配置切换算法或降低哈希参数。
-
-修改密码会递增 `securityVersion`，并使原有会话和 Token 失效。管理员不能读取原密码或现有密码哈希。
+登录开始阶段对未知用户使用 fake registration record，并按与真实用户一致的流程完成协议计算，避免通过响应时间或协议错误枚举用户。只有 OPAQUE KE3 校验成功后，Identity 才执行账号状态、锁定、审计、会话和 Token 逻辑。
 
 ## 5.1.2 SystemAuthConfig（事实源迁移至 platform-management）
 
@@ -672,11 +668,13 @@ sequenceDiagram
     participant IAM as IAM Service
 
     U->>FE: 输入用户名、邮箱和密码
-    FE->>IAM: 提交注册请求
+    FE->>FE: 校验密码策略并生成 registration_request
+    FE->>IAM: register/start(registration_request, 账号元数据)
+    IAM-->>FE: exchange_id + registration_response
+    FE->>FE: 生成 registration_record 并清理协议状态
+    FE->>IAM: register/finish(exchange_id, registration_record)
 
-    IAM->>IAM: 校验用户名唯一性
-    IAM->>IAM: 校验邮箱唯一性
-    IAM->>IAM: 校验密码策略
+    IAM->>IAM: 校验账号元数据和 OPAQUE 消息
 
     alt 校验失败
         IAM-->>FE: 返回注册错误
@@ -718,7 +716,7 @@ User.status = PENDING
 
 拒绝时，Identity 将申请标记为 `REJECTED`、保存拒绝原因并将 User 置为 `REJECTED`。拒绝不删除用户、凭据历史或审计事实，不分配角色，也不允许登录。相同决策的重复请求返回当前决策结果；对已决申请提交相反决策返回稳定冲突错误。
 
-被拒绝的申请人可以使用相同的标准化用户名和邮箱重新提交注册。重新申请会更新密码哈希，创建更高 `attemptNo` 的新申请并将 User 恢复为 `PENDING`；旧申请保持不可变。用户名或邮箱只匹配其中一项、账号不是 `REJECTED`，或仍有待审批申请时，继续按用户名/邮箱冲突处理。
+被拒绝的申请人可以使用相同的标准化用户名和邮箱重新提交注册。重新申请会替换 registration record，创建更高 `attemptNo` 的新申请并将 User 恢复为 `PENDING`；旧申请保持不可变。用户名或邮箱只匹配其中一项、账号不是 `REJECTED`，或仍有待审批申请时，继续按用户名/邮箱冲突处理。
 
 审批、拒绝和重新申请都属于敏感操作；平台审计写入不可用时必须 fail closed。审批完成后的页面状态可以通过可靠事件或重新查询刷新，不依赖前端推断。
 
@@ -726,7 +724,7 @@ User.status = PENDING
 
 ## 6.2 管理员创建用户
 
-管理员创建用户时：
+管理员创建用户时，管理员在受信任的 Web 客户端输入或生成初始密码，Web 使用与自主注册相同的 registration start/finish 流程提交 registration record。服务端不生成、不接收、不返回初始密码；创建成功后只返回用户元数据和 `firstLoginRequired=true`。遗失初始密码只能重新提交新的 registration 流程。
 
 1. 输入用户名、邮箱、显示名称；
 2. 系统生成一次性初始密码；
@@ -804,8 +802,8 @@ flowchart TD
 flowchart TD
     A["首次登录认证成功"] --> B["创建受限会话"]
     B --> C["用户修改初始密码"]
-    C --> D["校验密码策略"]
-    D --> E["保存新密码"]
+    C --> D["启动 change-password OPAQUE exchange"]
+    D --> E["验证旧密码并保存新 registration record"]
     E --> F["firstLoginRequired = false"]
     F --> G["增加 securityVersion"]
     G --> H["撤销受限会话"]
@@ -914,9 +912,7 @@ sequenceDiagram
 用户修改密码必须输入：
 
 ```text
-原密码
-新密码
-确认新密码
+旧密码和新密码只在浏览器内存中用于 OPAQUE 计算；请求只包含 `ke1`、`ke3` 和新的 `registration_record`
 ```
 
 修改成功后：
@@ -1508,12 +1504,15 @@ USER
 ## 19.1 认证
 
 ```text
-POST /api/v1/iam/auth/register
-POST /api/v1/iam/auth/login
+POST /api/v1/iam/auth/register/start
+POST /api/v1/iam/auth/register/finish
+POST /api/v1/iam/auth/login/start
+POST /api/v1/iam/auth/login/finish
 POST /api/v1/iam/auth/refresh
 POST /api/v1/iam/auth/logout
 POST /api/v1/iam/auth/logout-all
-POST /api/v1/iam/auth/change-password
+POST /api/v1/iam/auth/change-password/start
+POST /api/v1/iam/auth/change-password/finish
 POST /api/v1/iam/auth/presence/heartbeat
 GET  /api/v1/iam/auth/me
 PUT  /api/v1/iam/auth/me
@@ -1533,7 +1532,8 @@ PUT    /api/v1/iam/admin/users/{id}
 POST   /api/v1/iam/admin/users/{id}/disable
 POST   /api/v1/iam/admin/users/{id}/enable
 POST   /api/v1/iam/admin/users/{id}/unlock
-POST   /api/v1/iam/admin/users/{id}/reset-initial-password
+POST   /api/v1/iam/admin/users/{id}/reset-initial-password/start
+POST   /api/v1/iam/admin/users/{id}/reset-initial-password/finish
 PUT    /api/v1/iam/admin/users/{id}/roles
 GET    /api/v1/iam/admin/users/{id}/deletion-dependencies
 DELETE /api/v1/iam/admin/users/{id}?dependency_check_id={check_id}
@@ -1617,6 +1617,10 @@ POST /api/v1/iam/internal/principal/check
 | refresh_token_reused             | 检测到 Refresh Token 重用 |
 | password_policy_failed           | 密码不符合安全策略            |
 | old_password_invalid             | 原密码错误                |
+| password_protocol_unsupported    | 请求使用了不支持的旧密码协议 |
+| password_protocol_invalid        | OPAQUE 消息或 exchange 无效 |
+| password_exchange_expired        | OPAQUE exchange 已过期 |
+| password_exchange_replayed       | OPAQUE exchange 已被使用 |
 | username_already_exists          | 用户名已存在               |
 | email_already_exists             | 邮箱已存在                |
 | permission_denied                | 缺少操作权限               |
@@ -1714,7 +1718,7 @@ idempotencyKey
 * 已决申请的相同决策幂等，相反决策被稳定拒绝；
 * 登录失败达到阈值后触发临时锁定；
 * 只有正式会话创建成功后才更新最后登录时间；登录成功同时更新当前会话最后活动时间。
-* 用户密码只以当前 Argon2id 策略生成的 PHC 哈希保存，密码明文和可逆密文不得持久化。
+* 用户只通过 OPAQUE 完成注册、登录和改密；数据库只保存 registration record，密码明文、前端哈希、可逆密文和原始密码字段不得持久化或出现在服务端边界。
 
 ## 22.2 Token
 
@@ -1836,7 +1840,7 @@ flowchart TB
 | `BR-IAM-018` | 当前版本不提供企业/租户、LDAP/SSO、OAuth2/OIDC、MFA、可信设备、动态组、复杂 ABAC 和 PAT。 | 文档头部、3.2、5.12、16、23 |
 | `BR-IAM-019` | 其他 domain 只通过 PrincipalContext、受控授权结果、稳定 ID、一跳摘要、不可变快照或可靠事件协作，不读取 Identity 私有表。 | 2.2、12、13.1、23 |
 | `BR-IAM-020` | Identity API 使用 `/api/v1/iam` 和 HTTP 200 业务结果；业务错误通过稳定 code/value 表达，业务资源不可见不得用 404 泄露存在性。 | 19、20、24.2 |
-| `BR-IAM-021` | 用户密码使用 Argon2id 不可逆哈希并以包含参数、salt 和结果的 PHC 字符串保存；登录或改密时按当前策略升级哈希，绝不保存明文或可逆密文。 | 5.1、7、9.5、17、22.1、22.2 |
+| `BR-IAM-021` | 用户密码使用固定 OPAQUE 配置完成注册、登录和改密；服务端只保存 registration record，绝不接收或保存明文、前端哈希或可逆密文。 | 5.1、7、9.5、17、22.1、22.2 |
 | `BR-IAM-022` | 用户在线状态由 ACTIVE 用户的有效 AuthSession 和最近 `lastActiveAt` 派生；默认窗口为 300 秒，多设备任一会话在线即在线，撤销或过期会话不参与判断。 | 5.1、5.10、9.6、22.2、22.4 |
 | `BR-IAM-023` | ADMIN_APPROVAL 注册必须创建不可变 RegistrationApplication 历史；待审批不创建角色、会话或 Token，批准分配默认角色，拒绝须有原因并允许同一身份重新申请。 | 5.14、6.1、18.1、18.3、22.1 |
 | `BR-IAM-024` | 登录、Refresh 和独立查询返回同一版本化授权投影，包含有效角色来源、去重权限码和会话限制；角色仅用于展示解释，后端继续实时按权限码鉴权。 | 2.5、7、9.3、10.3、22.3 |

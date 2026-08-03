@@ -21,30 +21,58 @@ tags:
   - {name: principal, description: 受控服务间 PrincipalContext 授权检查。}
 
 paths:
-  /api/v1/iam/auth/register:
+  /api/v1/iam/auth/register/start:
     post:
       tags: [auth]
-      summary: 用户自主注册
-      operationId: register_user
+      summary: 开始 OPAQUE 注册
+      operationId: register_start
       security: []
       x-authorization: anonymous
       x-s1-refs: {user_stories: [US-IAM-001, US-IAM-015], business_rules: [BR-IAM-001, BR-IAM-002, BR-IAM-003, BR-IAM-016, BR-IAM-021, BR-IAM-023]}
-      x-error-codes: [ERR_IDENTITY_USERNAME_ALREADY_EXISTS, ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_PASSWORD_POLICY_FAILED, ERR_IDENTITY_USER_CREATE_INVALID, ERR_IDENTITY_REGISTRATION_STATE_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterRequest'}}}}
+      x-error-codes: [ERR_IDENTITY_USERNAME_ALREADY_EXISTS, ERR_IDENTITY_EMAIL_ALREADY_EXISTS, ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_REGISTRATION_STATE_INVALID]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterStartRequest'}}}}
+      responses:
+        '200': {description: OPAQUE registration response 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/OpaqueRegistrationStartResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/register/finish:
+    post:
+      tags: [auth]
+      summary: 完成 OPAQUE 注册
+      operationId: register_finish
+      security: []
+      x-authorization: anonymous
+      x-s1-refs: {user_stories: [US-IAM-001, US-IAM-015], business_rules: [BR-IAM-002, BR-IAM-021, BR-IAM-023]}
+      x-error-codes: [ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED, ERR_IDENTITY_PASSWORD_EXCHANGE_REPLAYED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterFinishRequest'}}}}
       responses:
         '200': {description: OPEN 注册后的认证结果、ADMIN_APPROVAL 待审批结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuthResponse'}, {$ref: '#/components/schemas/PendingRegistrationResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
 
-  /api/v1/iam/auth/login:
+  /api/v1/iam/auth/login/start:
     post:
       tags: [auth]
-      summary: 用户登录
-      operationId: login_user
+      summary: 开始 OPAQUE 登录
+      operationId: login_start
       security: []
       x-authorization: anonymous
       x-s1-refs: {user_stories: [US-IAM-001, US-IAM-003, US-IAM-016, US-IAM-020], business_rules: [BR-IAM-003, BR-IAM-004, BR-IAM-005, BR-IAM-015, BR-IAM-021, BR-IAM-024]}
-      x-error-codes: [ERR_IDENTITY_INVALID_CREDENTIALS, ERR_IDENTITY_ACCOUNT_PENDING, ERR_IDENTITY_ACCOUNT_REJECTED, ERR_IDENTITY_ACCOUNT_DISABLED, ERR_IDENTITY_ACCOUNT_LOCKED, ERR_IDENTITY_FIRST_LOGIN_REQUIRED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      x-error-codes: [ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginStartRequest'}}}}
+      responses:
+        '200': {description: OPAQUE KE2 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/OpaqueLoginStartResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/login/finish:
+    post:
+      tags: [auth]
+      summary: 完成 OPAQUE 登录
+      operationId: login_finish
+      security: []
+      x-authorization: anonymous
+      x-s1-refs: {user_stories: [US-IAM-001, US-IAM-003, US-IAM-016, US-IAM-020], business_rules: [BR-IAM-003, BR-IAM-004, BR-IAM-005, BR-IAM-015, BR-IAM-021, BR-IAM-024]}
+      x-error-codes: [ERR_IDENTITY_INVALID_CREDENTIALS, ERR_IDENTITY_ACCOUNT_PENDING, ERR_IDENTITY_ACCOUNT_REJECTED, ERR_IDENTITY_ACCOUNT_DISABLED, ERR_IDENTITY_ACCOUNT_LOCKED, ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED, ERR_IDENTITY_PASSWORD_EXCHANGE_REPLAYED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginFinishRequest'}}}}
       responses:
         '200': {description: 登录结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuthResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -99,15 +127,28 @@ paths:
         '200': {description: 全部登出结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
 
-  /api/v1/iam/auth/change-password:
+  /api/v1/iam/auth/change-password/start:
     post:
       tags: [auth]
-      summary: 修改当前密码
-      operationId: change_password
+      summary: 开始 OPAQUE 改密
+      operationId: change_password_start
       x-permission: identity.auth.session
       x-s1-refs: {user_stories: [US-IAM-003, US-IAM-004], business_rules: [BR-IAM-004, BR-IAM-007, BR-IAM-015, BR-IAM-016, BR-IAM-021]}
-      x-error-codes: [ERR_IDENTITY_OLD_PASSWORD_INVALID, ERR_IDENTITY_PASSWORD_POLICY_FAILED, ERR_IDENTITY_FIRST_LOGIN_REQUIRED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordRequest'}}}}
+      x-error-codes: [ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED, ERR_IDENTITY_TOKEN_REVOKED]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordStartRequest'}}}}
+      responses:
+        '200': {description: OPAQUE KE2 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/OpaqueLoginStartResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+
+  /api/v1/iam/auth/change-password/finish:
+    post:
+      tags: [auth]
+      summary: 完成 OPAQUE 改密
+      operationId: change_password_finish
+      x-permission: identity.auth.session
+      x-s1-refs: {user_stories: [US-IAM-003, US-IAM-004], business_rules: [BR-IAM-004, BR-IAM-007, BR-IAM-015, BR-IAM-016, BR-IAM-021]}
+      x-error-codes: [ERR_IDENTITY_OLD_PASSWORD_INVALID, ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID, ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED, ERR_IDENTITY_PASSWORD_EXCHANGE_REPLAYED, ERR_IDENTITY_FIRST_LOGIN_REQUIRED, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordFinishRequest'}}}}
       responses:
         '200': {description: 密码修改结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ActionResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
@@ -826,38 +867,58 @@ components:
       properties:
         success: {type: boolean}
         message: {type: string}
-    RegisterRequest:
+    RegisterStartRequest:
       type: object
-      required: [username, email, password]
+      required: [username, email, registration_request]
       additionalProperties: false
       properties:
         username: {type: string, minLength: 1}
         email: {type: string, format: email}
-        password: {type: string, minLength: 1}
         display_name: {type: string}
-    LoginRequest:
+        registration_request: {$ref: '#/components/schemas/OpaqueMessage'}
+    RegisterFinishRequest:
       type: object
-      required: [login, password]
+      required: [exchange_id, registration_record]
+      additionalProperties: false
+      properties:
+        exchange_id: {type: string}
+        registration_record: {$ref: '#/components/schemas/OpaqueMessage'}
+    LoginStartRequest:
+      type: object
+      required: [login, ke1]
       additionalProperties: false
       properties:
         login: {type: string}
-        password: {type: string}
+        ke1: {$ref: '#/components/schemas/OpaqueMessage'}
         client_id: {type: string, default: omnimam-web}
         device_info: {type: string}
+    LoginFinishRequest:
+      type: object
+      required: [exchange_id, ke3]
+      additionalProperties: false
+      properties:
+        exchange_id: {type: string}
+        ke3: {$ref: '#/components/schemas/OpaqueMessage'}
     RefreshRequest:
       type: object
       required: [refresh_token]
       additionalProperties: false
       properties:
         refresh_token: {type: string}
-    ChangePasswordRequest:
+    ChangePasswordStartRequest:
       type: object
-      required: [old_password, new_password, confirm_password]
+      required: [ke1]
       additionalProperties: false
       properties:
-        old_password: {type: string}
-        new_password: {type: string}
-        confirm_password: {type: string}
+        ke1: {$ref: '#/components/schemas/OpaqueMessage'}
+    ChangePasswordFinishRequest:
+      type: object
+      required: [exchange_id, ke3, registration_record]
+      additionalProperties: false
+      properties:
+        exchange_id: {type: string}
+        ke3: {$ref: '#/components/schemas/OpaqueMessage'}
+        registration_record: {$ref: '#/components/schemas/OpaqueMessage'}
     UserSelfUpdateRequest:
       type: object
       additionalProperties: false
@@ -875,6 +936,7 @@ components:
         email: {type: string, format: email}
         display_name: {type: string}
         role_grants: {type: array, items: {$ref: '#/components/schemas/RoleGrantItem'}}
+        registration_record: {$ref: '#/components/schemas/OpaqueMessage'}
     UserAdminUpdateRequest:
       type: object
       additionalProperties: false
@@ -885,17 +947,34 @@ components:
         phone: {type: string}
     AdminUserCreatedResponse:
       type: object
-      required: [user, initial_password]
+      required: [user, first_login_required]
       properties:
         user: {$ref: '#/components/schemas/User'}
-        initial_password: {type: string, description: 只在管理员创建成功时返回一次，关闭后不能再次读取。}
+        first_login_required: {type: boolean, enum: [true]}
     InitialPasswordResponse:
       type: object
-      required: [user_id, initial_password, first_login_required]
+      required: [user_id, first_login_required]
       properties:
         user_id: {type: string}
-        initial_password: {type: string, description: 仅本次成功响应返回一次。}
         first_login_required: {type: boolean, enum: [true]}
+    OpaqueMessage:
+      type: string
+      format: byte
+      description: OPAQUE 二进制消息的 base64url 编码；禁止包含原始密码。
+      minLength: 1
+      maxLength: 16384
+    OpaqueRegistrationStartResponse:
+      type: object
+      required: [exchange_id, registration_response]
+      properties:
+        exchange_id: {type: string}
+        registration_response: {$ref: '#/components/schemas/OpaqueMessage'}
+    OpaqueLoginStartResponse:
+      type: object
+      required: [exchange_id, ke2]
+      properties:
+        exchange_id: {type: string}
+        ke2: {$ref: '#/components/schemas/OpaqueMessage'}
     User:
       type: object
       required: [id, username, display_name, status, first_login_required, security_version, authorization_version, created_at, updated_at]

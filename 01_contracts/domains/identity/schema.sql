@@ -2,8 +2,9 @@
 -- Cross-domain resource IDs and principal owner IDs intentionally have no
 -- foreign keys to business-domain tables.
 
--- password_hash stores the complete Argon2id PHC string; plaintext passwords,
--- reversible ciphertext, and raw password input are never persisted.
+-- opaque_registration_record stores only the OPAQUE record in base64url form;
+-- plaintext passwords, client hashes, reversible ciphertext, and raw password
+-- input are never persisted.
 -- s1_refs: US-IAM-001, US-IAM-002; BR-IAM-001, BR-IAM-002, BR-IAM-003, BR-IAM-017, BR-IAM-021
 CREATE TABLE identity_users (
   id TEXT PRIMARY KEY,
@@ -21,7 +22,7 @@ CREATE TABLE identity_users (
   email TEXT,
   normalized_email TEXT,
   phone TEXT,
-  password_hash TEXT NOT NULL,
+  opaque_registration_record TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'PENDING', 'REJECTED', 'DISABLED', 'LOCKED', 'DELETED')),
   first_login_required BOOLEAN NOT NULL DEFAULT FALSE,
   failed_login_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_login_count >= 0),
@@ -45,6 +46,35 @@ CREATE INDEX idx_identity_users_status
   ON identity_users (status, updated_at DESC);
 CREATE INDEX idx_identity_users_display_name
   ON identity_users (display_name);
+
+-- Short-lived, one-time OPAQUE protocol state. It contains no password or
+-- client secret; server output is stored only to complete the matching finish.
+-- s1_refs: US-IAM-001, US-IAM-003; BR-IAM-003, BR-IAM-007, BR-IAM-021
+CREATE TABLE identity_opaque_exchanges (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+
+  exchange_type TEXT NOT NULL CHECK (exchange_type IN ('REGISTER', 'LOGIN', 'CHANGE_PASSWORD', 'ADMIN_REGISTER', 'ADMIN_RESET')),
+  user_id TEXT,
+  user_identifier TEXT NOT NULL,
+  server_output TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+
+  CONSTRAINT fk_identity_opaque_exchange_user FOREIGN KEY (user_id) REFERENCES identity_users(id),
+  CONSTRAINT chk_identity_opaque_exchange_expiry CHECK (expires_at > created_at),
+  CONSTRAINT chk_identity_opaque_exchange_version CHECK (resource_version >= 0)
+);
+
+CREATE INDEX idx_identity_opaque_exchanges_expiry
+  ON identity_opaque_exchanges (expires_at);
+CREATE INDEX idx_identity_opaque_exchanges_user
+  ON identity_opaque_exchanges (user_id, exchange_type, created_at DESC);
 
 -- Registration decisions are immutable; a rejected user may submit a new attempt.
 -- s1_refs: US-IAM-001, US-IAM-015; BR-IAM-002, BR-IAM-023

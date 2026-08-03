@@ -143,6 +143,58 @@
   related_rules: [BR-IAM-004, BR-IAM-007]
   related_user_stories: [US-IAM-003]
 
+- code: ERR_IDENTITY_PASSWORD_PROTOCOL_UNSUPPORTED
+  value: 220215
+  http: 200
+  cn: 不支持旧的单阶段密码协议，请使用 OPAQUE 二阶段接口。
+  en: The legacy single-stage password protocol is unsupported; use the OPAQUE two-step API.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-020, BR-IAM-021]
+  related_user_stories: [US-IAM-001, US-IAM-003]
+
+- code: ERR_IDENTITY_PASSWORD_PROTOCOL_INVALID
+  value: 220216
+  http: 200
+  cn: OPAQUE 消息或交换状态无效。
+  en: The OPAQUE message or exchange state is invalid.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-021]
+  related_user_stories: [US-IAM-001, US-IAM-003]
+
+- code: ERR_IDENTITY_PASSWORD_EXCHANGE_EXPIRED
+  value: 220217
+  http: 200
+  cn: OPAQUE 交换已过期。
+  en: The OPAQUE exchange has expired.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-IAM-021]
+  related_user_stories: [US-IAM-001, US-IAM-003]
+
+- code: ERR_IDENTITY_PASSWORD_EXCHANGE_REPLAYED
+  value: 220218
+  http: 200
+  cn: OPAQUE 交换已被提交，不能重复使用。
+  en: The OPAQUE exchange has already been consumed.
+  owning_domain: identity
+  owning_module: authn
+  range: 220200-220399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-IAM-021]
+  related_user_stories: [US-IAM-001, US-IAM-003]
+
 - code: ERR_IDENTITY_SESSION_NOT_VISIBLE
   value: 220211
   http: 200

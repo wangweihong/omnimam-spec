@@ -12,7 +12,7 @@
 
 | 模块 | 负责 | 不负责 |
 | --- | --- | --- |
-| authn | 本地注册、Argon2id 密码校验、首次登录、Access/Refresh Token 签发和刷新、ServiceAccount 短期 Token 交换 | LDAP/OIDC/MFA、业务资源授权 |
+| authn | 本地 OPAQUE 注册/登录/改密、首次登录、Access/Refresh Token 签发和刷新、ServiceAccount 短期 Token 交换 | LDAP/OIDC/MFA、业务资源授权 |
 | session | AuthSession、TokenCredential、RefreshToken 生命周期、撤销和当前会话在线心跳 | 用户角色、业务资源状态 |
 | user | User 资料、状态、RegistrationApplication、注册审批、管理员创建和删除依赖检查协调 | 业务资源删除、业务资源 owner 转移 |
 | rbac | Role、PermissionDefinition、用户/组角色关系和有效权限缓存 | 业务 domain 的资源可见性 |
@@ -48,9 +48,10 @@ permission_results:
 
 密码与在线状态规则：
 
-- User.password_hash 必须是 Argon2id v=19 的完整 PHC 字符串；当前基线为 `m=65536,t=3,p=1`、32 字节输出和至少 16 字节独立随机 salt。
-- `ARGON2ID_V1` 是当前固定的 password_hash_policy；管理员可调整普通密码策略和在线窗口，但不能通过认证配置 API 切换算法或降低哈希参数。
-- 密码明文、可逆密文、密码哈希和原始 Secret 不得出现在响应、事件、审计或 PrincipalContext；登录成功后可按当前策略透明升级旧 Argon2id 参数。
+- User.opaque_registration_record 必须是固定 OPAQUE 配置生成的 registration record base64url 编码；Web 使用 `@serenity-kit/opaque@1.1.0`，Go 使用 `github.com/bytemare/opaque@v0.18.0`，套件为 Ristretto255/SHA-512，KSF 为 Argon2id `t=3,m=65536,p=4`，context 为 `omnimam/identity/opaque/v1`。
+- 服务端 setup 是稳定部署密钥配置；setup 变更会使全部 registration record 失效，不能在运行中静默轮换。
+- 密码明文、前端哈希、可逆密文、registration exchange 原始密码字段和原始 Secret 不得出现在请求、响应、事件、审计或 PrincipalContext。
+- 注册、登录、改密和管理员初始密码操作必须通过短期一次性 `identity_opaque_exchanges` 完成；未知用户登录必须使用 fake record；finish 必须原子消费 exchange，过期或重复提交失败。
 - 用户 `online` 是派生字段：`User.status = ACTIVE` 且存在 `AuthSession.status = ACTIVE`、未过期并满足 `last_active_at >= now - online_presence_window_seconds` 时为 true，默认窗口为 300 秒。
 - presence heartbeat 只能更新当前 AuthSession.last_active_at，不改变会话或 Token 的 expires_at，不产生可靠领域事件；撤销、过期或禁用用户的会话不参与在线判定。
 
@@ -134,7 +135,15 @@ owner 批量投影固定返回 `owner_type`、`owner_id`、`display_name` 和 `s
 
 相关 S1：BR-IAM-006、BR-IAM-007、BR-IAM-014、BR-IAM-015、BR-IAM-016、BR-IAM-023、BR-IAM-025、BR-IAM-026、BR-IAM-027、BR-IAM-028；US-IAM-004、US-IAM-008、US-IAM-009、US-IAM-015、US-IAM-016、US-IAM-017、US-IAM-018。
 
-## 6. 事件与恢复
+## 6. 认证协议与交换状态
+
+- `register/start` 校验账号元数据并处理 registration request，返回 `exchange_id` 和 registration response；`register/finish` 只接收匹配 exchange 与 registration record。
+- `login/start` 只接收登录标识和 KE1，返回 `exchange_id` 与 KE2；`login/finish` 只接收匹配 exchange 与 KE3，KE3 校验成功后才创建会话。
+- `change-password/start` 使用当前用户 registration record 处理 KE1；`change-password/finish` 同时校验 KE3 和新的 registration record，成功后递增 security_version 并撤销旧会话。
+- 管理员创建用户和重置初始密码使用相同 registration start/finish 语义；服务端不生成、接收或返回初始密码。
+- 所有消息均为 base64url，单条消息和请求体有大小上限；旧的 `password`、`old_password`、`new_password`、`confirm_password` 单阶段请求统一返回 `ERR_IDENTITY_PASSWORD_PROTOCOL_UNSUPPORTED`。
+
+## 7. 事件与恢复
 
 - Identity 可靠事件必须在对应事实持久化后写入 Outbox，事件携带 event_id、聚合 ID、aggregate_version、时间、主体和最小非敏感 payload。
 - 消费者按 event_id 去重、按同一聚合 aggregate_version 单调处理；不同聚合版本不可比较。
