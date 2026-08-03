@@ -7,6 +7,7 @@ notification.inbox.read:
   description: 查询当前登录用户的通知列表、筛选结果和未读计数。
   frontend_usage: 控制顶部铃铛、通知下拉面板和通知中心页面。
   backend_enforcement: 强制 recipient_user_id=当前认证用户；禁止请求指定其他用户，不可见源资源只保留最小历史摘要并隐藏导航。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-NOTIFY-001, BR-NOTIFY-012, BR-NOTIFY-013, BR-NOTIFY-022]
   related_user_stories: [US-NOTIFY-001, US-NOTIFY-004, US-NOTIFY-005]
 
@@ -19,6 +20,7 @@ notification.inbox.manage:
   description: 修改当前登录用户通知的收件箱状态并维护未读计数。
   frontend_usage: 控制单条/批量已读、标记未读、全部已读、归档和取消归档入口。
   backend_enforcement: 每项先校验 recipient_user_id；状态、计数与 outbox 原子提交，批量单项失败相互隔离且不改变 attention_status。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-NOTIFY-008, BR-NOTIFY-012, BR-NOTIFY-017, BR-NOTIFY-022]
   related_user_stories: [US-NOTIFY-002]
 
@@ -31,6 +33,7 @@ notification.preference.read:
   description: 查询当前用户显式偏好、默认值、强制主题和渠道能力。
   frontend_usage: 控制通知设置页面的基础站内偏好和禁用态渠道说明。
   backend_enforcement: 强制 user_id=当前认证用户；主题目录只返回非敏感产品元数据，不返回规则表达式或内部源事件载荷。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-NOTIFY-011, BR-NOTIFY-012, BR-NOTIFY-014, BR-NOTIFY-015, BR-NOTIFY-020]
   related_user_stories: [US-NOTIFY-003]
 
@@ -43,6 +46,7 @@ notification.preference.manage:
   description: 整体替换当前用户的基础站内通知偏好。
   frontend_usage: 保存分类或主题级站内开关、最低严重程度和重复合并设置。
   backend_enforcement: 强制 user_id=当前认证用户；整体校验 category/topic 唯一与归属，拒绝关闭 mandatory topic，拒绝写入未启用渠道字段。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-NOTIFY-011, BR-NOTIFY-012, BR-NOTIFY-014, BR-NOTIFY-015, BR-NOTIFY-020]
   related_user_stories: [US-NOTIFY-003]
 
@@ -55,6 +59,7 @@ notification.admin.receive:
   description: 成为已契约管理员级通知主题的候选接收者。
   frontend_usage: 不直接控制管理动作；决定管理员通知是否出现在当前用户收件箱。
   backend_enforcement: 同时校验内置角色和主题要求的通知权限；不得向普通用户扩散基础设施通知或敏感失败摘要。
+  default_roles: [ADMIN, SUPER_ADMIN]
   related_rules: [BR-NOTIFY-010, BR-NOTIFY-011, BR-NOTIFY-012, BR-NOTIFY-019]
   related_user_stories: [US-NOTIFY-006]
 

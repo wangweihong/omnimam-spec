@@ -254,7 +254,7 @@ classDiagram
 - **BR-AICHAT-20** 后台完成提醒是应用内提醒，不依赖浏览器系统通知权限。
 - **BR-AICHAT-21** 同一话题同一时间只允许一个 active generation，避免竞态写入消息流。
 - **BR-AICHAT-22** 输入为空且没有图片附件时，不允许发送。
-- **BR-AICHAT-23** 当前特性暂不引入 `ai_chat.read`、`ai_chat.write`、`ai_chat.manage` 等独立业务权限；访问依赖系统基础登录态和当前用户个人数据隔离。
+- **BR-AICHAT-23** AI Chat API 必须声明并校验已登记的 `ai_chat.*` 权限码。`USER`、`ADMIN`、`SUPER_ADMIN` 默认获得对应的基础工作区、话题、消息、生成、助手、快捷短语和翻译权限；权限只控制操作入口，不扩大 Topic、Message、Assistant、QuickPhrase、GenerationRun 或 MessageTranslation 的 owner_user_id、作用域和可见性边界。跨用户代管能力如需开放，必须另行登记显式管理权限。
 - **BR-AICHAT-24** 新话题或无当前模型上下文需要默认聊天模型时，必须读取 `model-management` 中当前用户的 `assistant.default` 默认模型配置。
 - **BR-AICHAT-25** Topic、Assistant 和助手级 QuickPhrase 响应必须保留 assistant/model ID，并同时返回当前用户权限边界内的一跳可读摘要。模型摘要由 model-management 受控批量只读能力提供；Message 的 `model_snapshot`/`assistant_snapshot` 已是历史展示事实，父消息和 Generation 引用由当前 Topic 响应上下文解析，不再递归展开。
 
@@ -306,7 +306,7 @@ stateDiagram-v2
 
 - 页面默认选中最近或置顶优先的话题，并加载对应消息。
 - 如果加载失败，需要有错误提示和可恢复入口。
-- 当前特性不引入独立业务权限，访问依赖系统基础登录态和当前用户个人数据隔离。
+- 页面入口和 API 操作使用已登记的 `ai_chat.*` 权限码；管理员和超级管理员可进入同一聊天工作区，但仍按当前主体个人数据边界读取和修改资源。
 - 模型列表只读取 `model-management` 中当前用户自己的模型设置，AI 聊天不创建、同步、保存或删除模型。
 - 新话题没有当前模型上下文时，默认模型来自 `model-management` 中当前用户的 `assistant.default` 配置。
 

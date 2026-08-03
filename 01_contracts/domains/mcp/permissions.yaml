@@ -7,7 +7,7 @@ mcp.protocol.access:
   description: 使用 `POST /mcp` 发送经过认证的 MCP `2026-07-28` 请求。
   frontend_usage: 控制是否允许为当前用户配置或启用 OmniMAM MCP Server。
   backend_enforcement: 每个请求必须重新校验 Identity JWT；本权限只允许进入协议端点，不替代 Tool 对应领域权限。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-MCP-002, BR-MCP-003, BR-MCP-016]
   related_user_stories: [US-MCP-007]
 
@@ -20,7 +20,7 @@ mcp.discovery.read:
   description: 调用 `server/discover`、`tools/list`、`resources/list` 和 `resources/templates/list`。
   frontend_usage: 控制 Agent 是否可发现 MCP Server、当前可见 Tool 和 Resource Template。
   backend_enforcement: 同时要求 mcp.protocol.access；Tool 集合必须按请求 JWT 和目标领域权限过滤，不得从历史连接继承。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-MCP-002, BR-MCP-004, BR-MCP-016]
   related_user_stories: [US-MCP-001, US-MCP-005, US-MCP-007]
 
@@ -33,7 +33,7 @@ mcp.resource.read:
   description: 通过受支持的 `omnimam://` URI 读取权限裁剪的一跳资源投影。
   frontend_usage: 控制 Agent Resource 读取能力。
   backend_enforcement: 同时要求 mcp.protocol.access 和目标领域读取权限；每次读取重新校验对象可见性，禁止永久 URL、私有表和递归摘要。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-MCP-014, BR-MCP-016]
   related_user_stories: [US-MCP-003, US-MCP-005, US-MCP-007]
 
@@ -46,7 +46,7 @@ mcp.task.read:
   description: 读取当前主体拥有的 MCP Task 及其 ApplicationRun/AtomicTask 投影。
   frontend_usage: 控制支持 Tasks 扩展的 Agent 查询长任务状态。
   backend_enforcement: 同时要求 mcp.protocol.access、已协商 Tasks 扩展和 ApplicationRun 可见性；过期映射不得用于越权恢复源对象。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-MCP-009, BR-MCP-010, BR-MCP-011, BR-MCP-012, BR-MCP-016]
   related_user_stories: [US-MCP-003, US-MCP-004]
 
@@ -59,7 +59,7 @@ mcp.task.cancel:
   description: 通过 MCP Task 请求协作式取消其 ApplicationRun 绑定的 AtomicTask。
   frontend_usage: 控制支持 Tasks 扩展的 Agent 取消入口。
   backend_enforcement: 同时要求 mcp.task.read、ApplicationRun 操作权和 task.atomic.operate；只转发取消请求，不提前写入最终 CANCELED。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-MCP-012, BR-MCP-013, BR-MCP-016]
   related_user_stories: [US-MCP-003, US-MCP-004]
 

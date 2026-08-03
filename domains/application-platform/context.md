@@ -17,6 +17,7 @@
 
 - Application 是上层用户和画布使用的稳定入口，Provider 参数不得泄漏为业务语义。
 - ApplicationVersion 发布后不可变；Canvas 节点固定引用明确的已发布版本。
+- 管理员跨 owner 代管 ComfyUIWorkflow 必须同时拥有具体操作权限与 `aiapp.comfyui_workflow.manage_all`；创建或修改 global Application 必须拥有 `aiapp.application.manage_global`，不得仅按角色名授权。
 - RuntimeFormSchema 按应用版本、能力、权限与运行时可用性派生。
 - ProviderCapability 从只读目录加载；管理员手工导入、编辑和热加载旧方案已废弃。
 - EngineInstance 表达真实连接环境；凭证与内部配置不得进入普通摘要。

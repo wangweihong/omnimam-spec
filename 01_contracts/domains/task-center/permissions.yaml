@@ -4,6 +4,7 @@ task.atomic.operate:
   resource: atomic_task, task_attempt
   action: create, read, read_attempt_logs, download_attempt_logs, cancel, retry
   subject: ordinary_user, business_service, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 创建、查询、取消和手动重试 AtomicTask，并查看 Attempt 历史与脱敏执行日志。
   frontend_usage: 控制任务详情、取消、重试、Attempt 历史和执行日志入口。
   backend_enforcement: 按 project_id、namespace、created_by 和业务授权校验；日志读取必须先校验 AtomicTask 可见性和 Attempt 归属，不得暴露运行时地址；手动重试必须创建新 AtomicTask。
@@ -16,6 +17,7 @@ task.group.operate:
   resource: task_group, dag_task_group
   action: create, read, read_events, read_timeline, cancel, retry
   subject: ordinary_user, business_developer, business_service, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 创建和操作串并行 TaskGroup 与 DAGTaskGroup，查看子任务、节点执行投影、事件、时间线和汇总。
   frontend_usage: 控制组合任务列表、DAG 运行工作台、节点状态、事件/时间线、取消和重跑入口。
   backend_enforcement: 校验租户边界、functionRef 白名单、节点和边限制；事件只返回规范化白名单，时间线不得暴露运行时 payload；重跑必须创建新组合资源。
@@ -28,6 +30,7 @@ task.schedule.manage:
   resource: task_schedule, task_schedule_execution, schedule_reconcile_state
   action: create, read, update, pause, resume, run, delete
   subject: business_developer, system_admin
+  default_roles: [ADMIN, SUPER_ADMIN]
   description: 管理 MATERIALIZED 周期/单次计划并立即执行 ACTIVE/PAUSED 计划，管理员可查看、运行并受限调整 SYSTEM RECONCILE 计划。
   frontend_usage: 控制 Schedule 列表、执行模式筛选、详情、暂停、恢复、立即执行、运行参数编辑和轻量历史；SYSTEM 计划隐藏删除且立即执行仅对系统管理员可见。
   backend_enforcement: 创建 API 只接受 MATERIALIZED；校验目标模板、六段 cron、显式时区、run_at 和租户边界。立即执行要求计划内幂等键并复用活动轮次锁，不修改未来触发。SYSTEM RECONCILE 只允许管理员暂停、恢复、立即执行和编辑 cron、时区及安全运行参数，禁止创建、删除或更换 reconcile_ref。
@@ -52,6 +55,7 @@ task.operation.admin:
   resource: atomic_task, task_group, dag_task_group, task_schedule, runtime_projection
   action: inspect_all, reconcile, read_health
   subject: system_admin, ops_user
+  default_roles: [ADMIN, SUPER_ADMIN]
   description: 跨项目查看异常任务、计划执行、权限裁剪的 executor 摘要和运行时投影健康。
   frontend_usage: 控制内部运维诊断入口；不提供 Conductor 原生 UI 权限。
   backend_enforcement: 必须校验运维身份，诊断操作不得改写业务结果或绕过租户审计。

@@ -410,7 +410,7 @@ copy_enabled: false
 preset_enabled: false
 ```
 
-普通用户创建 Application 时 `visibility` 默认为 `private`，只能管理本人私有 Application。只有管理员或超级管理员可以创建或修改 `global` Application。`run_enabled` 控制终端用户和 Open API 是否允许直接运行；其他开关分别控制画布引用、复制和预设创建，不得用 `enabled` 同时表达这些独立语义。
+普通用户创建 Application 时 `visibility` 默认为 `private`，只能管理本人私有 Application。只有拥有显式 `aiapp.application.manage_global` 权限的管理员或超级管理员可以创建或修改 `global` Application；不得仅按角色名绕过权限码校验。`run_enabled` 控制终端用户和 Open API 是否允许直接运行；其他开关分别控制画布引用、复制和预设创建，不得用 `enabled` 同时表达这些独立语义。
 
 Application 不直接保存完整参数契约和底层执行配置。
 
@@ -861,7 +861,7 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 
 候选输入分为 `exposable`、`fixed_only`、`connection`、`hidden`、`unsupported`。节点、候选项和依赖是请求时计算结果，不是可独立编辑或持久化的业务资源；切换 EngineInstance 后必须重新查询。
 
-工作流始终属于一个用户，不存在 global 工作流，也不允许跨用户共享或转换。普通用户只能访问本人工作流；管理员和超级管理员可以代管任意用户工作流，但所有代管读取和操作必须同时记录操作者与资源所有者。
+工作流始终属于一个用户，不存在 global 工作流，也不允许跨用户共享或转换。普通用户只能访问本人工作流；管理员和超级管理员只有同时拥有具体操作权限与显式 `aiapp.comfyui_workflow.manage_all` 时才可代管任意用户工作流，所有代管读取和操作必须同时记录操作者与资源所有者。
 
 导入后源文件和来源类型不可修改；普通 Workflow 只有显式转换成功时才新增不可变 API Workflow 执行事实。名称和描述可通过资源版本并发控制修改。工作流不提供归档、恢复或 lifecycle 状态；已经发布的归档/恢复接口废弃且不得继续作为新实现依据。
 
@@ -2015,14 +2015,14 @@ CapabilityCorrectionRequired
 16. `BR-AIAPP-145`：模板、RuntimeFormSchema 和 ApplicationRun 必须使用 `provider_capability` 或 `comfyui_workflow` 联合能力来源；ComfyUI 分支不得要求 ProviderCapability 字段。
 17. `BR-AIAPP-146`：RuntimeFormSchema 的 fields 统一为数组，并必须返回兼容 Engine、系统修正和未解决违规；存在 violations 时不得提交运行。
 18. `BR-AIAPP-147`：ApplicationTemplateVersion 和 ApplicationVersion 通过显式校验与发布动作形成不可变版本；ApplicationVersion 使用同一应用内唯一的语义版本字符串并引用已发布模板版本。
-19. `BR-AIAPP-148`：Application 必须独立保存能力分类、private/global 可见性和运行、画布、复制、预设开关；global 仅管理员可设置。
+19. `BR-AIAPP-148`：Application 必须独立保存能力分类、private/global 可见性和运行、画布、复制、预设开关；global 仅拥有 `aiapp.application.manage_global` 的管理员可设置，不得仅按角色名授权。
 20. `BR-AIAPP-149`：ApplicationRun 先保存不可变快照，再以幂等方式创建并绑定 AtomicTask；创建失败保留可恢复状态，不得伪造执行状态或重复创建 AtomicTask。
 21. `BR-AIAPP-150`：ApplicationRun 输出通过 asset-library 幂等形成 Artifact 并可登记为 Asset；登记失败独立记录且不得改变 AtomicTask 终态。
 23. `BR-AIAPP-152`：ApplicationNode 固定引用已发布 ApplicationVersion；Canvas、运行视图和 DAG 编译归 workflow-canvas 所有，application-platform 不复制其版本或执行状态。
 24. `BR-AIAPP-153`：ComfyUI API Workflow 必须先导入为当前用户私有且不带版本树的 ComfyUIWorkflow；普通 Workflow 可选且仅用于展示，每次重新导入都创建独立资源；checksum 使用 RFC 8785 规范化 JSON 的 SHA-256 且重复提示仅限 owner 范围。
 25. `BR-AIAPP-154`（deprecated，由 `BR-AIAPP-169`、`BR-AIAPP-171` 替代）：旧规则要求导入时把来源实例 object_info 快照保存到工作流。
 26. `BR-AIAPP-155`（deprecated，由 `BR-AIAPP-171` 替代）：旧规则定义工作流归档和恢复生命周期。
-27. `BR-AIAPP-156`：工作流不存在 global 或跨用户共享语义；普通用户只能访问本人资源，管理员代管必须记录操作者与所有者。
+27. `BR-AIAPP-156`：工作流不存在 global 或跨用户共享语义；普通用户只能访问本人资源，管理员代管必须同时拥有具体操作权限与 `aiapp.comfyui_workflow.manage_all`，并记录操作者与所有者。
 28. `BR-AIAPP-157`（deprecated，由 `BR-AIAPP-172` 替代）：旧规则要求每次校验直接读取上游 object_info 并保存独立快照。
 29. `BR-AIAPP-158`（deprecated，由 `BR-AIAPP-191` 替代）：旧规则把 active 生命周期和历史 compatible 记录作为转换权威条件。
 30. `BR-AIAPP-159`（deprecated，由 `BR-AIAPP-190`、`BR-AIAPP-192` 替代）：旧规则限制一个工作流最多成功转换一次并在工作流上固定单一转换关系。

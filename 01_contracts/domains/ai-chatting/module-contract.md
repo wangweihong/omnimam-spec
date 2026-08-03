@@ -48,7 +48,7 @@
 ## 数据归属与权限边界
 
 - Topic、Assistant、Message、QuickPhrase、GenerationRun、MessageTranslation 均按 ownerUserId 或所属 Topic 的 ownerUserId 隔离。
-- 当前 S2 不引入独立 `ai_chat.*` 业务权限；访问依赖登录态和当前用户个人数据隔离。
+- S2 使用 `ai_chat.*` 业务权限控制工作区、话题、消息、生成、助手、快捷短语和翻译操作。`USER`、`ADMIN`、`SUPER_ADMIN` 默认获得对应基础权限，但权限判定之后仍必须按 owner_user_id、作用域和 Topic 归属裁剪资源；本轮不提供跨用户代管权限。
 
 ## 事件边界
 

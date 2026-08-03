@@ -19,6 +19,7 @@ paths:
     get:
       tags: [topics]
       operationId: listChatTopics
+      x-permission: ai_chat.topic.read
       summary: 查询当前用户话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
@@ -37,6 +38,7 @@ paths:
     post:
       tags: [topics]
       operationId: createChatTopic
+      x-permission: ai_chat.topic.manage
       summary: 创建话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-02]
@@ -58,6 +60,7 @@ paths:
     get:
       tags: [topics]
       operationId: getChatTopic
+      x-permission: ai_chat.topic.read
       summary: 查询话题详情
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
@@ -74,6 +77,7 @@ paths:
     patch:
       tags: [topics]
       operationId: updateChatTopic
+      x-permission: ai_chat.topic.manage
       summary: 更新话题
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
@@ -96,6 +100,7 @@ paths:
     delete:
       tags: [topics]
       operationId: deleteChatTopic
+      x-permission: ai_chat.topic.manage
       summary: 删除话题
       x-s1-refs:
         user_stories: [US-AICHAT-01]
@@ -113,6 +118,7 @@ paths:
     get:
       tags: [messages]
       operationId: listChatMessages
+      x-permission: ai_chat.message.read
       summary: 查询话题消息
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-05]
@@ -129,6 +135,7 @@ paths:
     post:
       tags: [messages]
       operationId: sendChatMessage
+      x-permission: ai_chat.message.send
       summary: 发送消息并创建生成任务
       x-s1-refs:
         user_stories: [US-AICHAT-02, US-AICHAT-08]
@@ -152,6 +159,7 @@ paths:
     post:
       tags: [generations]
       operationId: regenerateAssistantMessage
+      x-permission: ai_chat.generation.operate
       summary: 重新生成助手回复
       x-s1-refs:
         user_stories: [US-AICHAT-03]
@@ -169,6 +177,7 @@ paths:
     post:
       tags: [generations]
       operationId: editAndRegenerateMessage
+      x-permission: ai_chat.generation.operate
       summary: 编辑用户消息并重新生成
       x-s1-refs:
         user_stories: [US-AICHAT-03]
@@ -192,6 +201,7 @@ paths:
     get:
       tags: [generations]
       operationId: streamGenerationEvents
+      x-permission: ai_chat.generation.operate
       summary: 订阅生成增量事件
       x-s1-refs:
         user_stories: [US-AICHAT-02, US-AICHAT-04]
@@ -209,6 +219,7 @@ paths:
     post:
       tags: [generations]
       operationId: stopGeneration
+      x-permission: ai_chat.generation.operate
       summary: 停止生成
       x-s1-refs:
         user_stories: [US-AICHAT-03]
@@ -226,6 +237,7 @@ paths:
     get:
       tags: [assistants]
       operationId: listAssistants
+      x-permission: ai_chat.assistant.read
       summary: 查询助手
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
@@ -242,6 +254,7 @@ paths:
     post:
       tags: [assistants]
       operationId: createAssistant
+      x-permission: ai_chat.assistant.manage
       summary: 创建助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
@@ -263,6 +276,7 @@ paths:
     patch:
       tags: [assistants]
       operationId: updateAssistant
+      x-permission: ai_chat.assistant.manage
       summary: 更新助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
@@ -285,6 +299,7 @@ paths:
     delete:
       tags: [assistants]
       operationId: deleteAssistant
+      x-permission: ai_chat.assistant.manage
       summary: 删除助手
       x-s1-refs:
         user_stories: [US-AICHAT-06]
@@ -302,6 +317,7 @@ paths:
     get:
       tags: [quick-phrases]
       operationId: listQuickPhrases
+      x-permission: ai_chat.quick_phrase.read
       summary: 查询快捷短语
       x-s1-refs:
         user_stories: [US-AICHAT-01, US-AICHAT-06]
@@ -316,6 +332,7 @@ paths:
     post:
       tags: [quick-phrases]
       operationId: createQuickPhrase
+      x-permission: ai_chat.quick_phrase.manage
       summary: 创建快捷短语
       x-s1-refs:
         user_stories: [US-AICHAT-06]
@@ -337,6 +354,7 @@ paths:
     post:
       tags: [translations]
       operationId: translateChatContent
+      x-permission: ai_chat.translation.create
       summary: 翻译聊天内容
       x-s1-refs:
         user_stories: [US-AICHAT-09]

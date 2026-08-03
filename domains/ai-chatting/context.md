@@ -18,6 +18,7 @@
 ## 3. 核心规则
 
 - Topic、消息、助手和快捷短语按 owner 与可见性隔离，不得跨用户泄漏。
+- AI Chat API 使用已登记的 `ai_chat.*` 权限码；`USER`、`ADMIN`、`SUPER_ADMIN` 默认获得对应基础操作权限，但权限不扩大 owner、作用域或 Topic 可见性边界。
 - 发送消息必须固定所用模型、助手、上下文和输入快照，历史不能被后续配置改写。
 - token/delta/done/failed/interrupted 流属于聊天请求协议，不进入通用 SSE UserEvent 历史。
 - 停止、重生成和编辑后重生成保留原消息与分支追溯，不覆盖既有历史。

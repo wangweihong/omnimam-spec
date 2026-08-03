@@ -4,8 +4,8 @@ aiapp.comfyui_workflow.read:
   action: read
   description: 查看 ComfyUI 工作流、按目标实例当前目录派生的解析结果和兼容性校验历史。
   frontend_usage: 控制工作流列表、详情、节点、输入输出候选、依赖和校验记录入口。
-  backend_enforcement: 普通用户只能读取本人资源；节点、候选项和依赖必须按请求中的可见实例当前目录计算；管理员和超级管理员可代管读取，但必须记录操作者与资源所有者。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 本权限只读取本人资源；跨 owner 代管还必须拥有 aiapp.comfyui_workflow.manage_all，并记录操作者与资源所有者。节点、候选项和依赖必须按请求中的可见实例当前目录计算。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-171, BR-AIAPP-172, BR-AIAPP-176]
   related_user_stories: [US-AIAPP-044, US-AIAPP-045]
 
@@ -16,10 +16,22 @@ aiapp.comfyui_workflow.manage:
   action: manage
   description: 导入工作流并修改名称和描述元数据。
   frontend_usage: 控制工作流导入和名称描述编辑；不提供归档或恢复入口。
-  backend_enforcement: 不允许覆盖工作流内容或来源实例，不提供 lifecycle 动作；普通用户仅管理本人资源，管理员代管必须审计操作者与所有者。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: 不允许覆盖工作流内容或来源实例，不提供 lifecycle 动作；本权限仅管理本人资源，跨 owner 代管还必须拥有 aiapp.comfyui_workflow.manage_all 并审计操作者与所有者。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-176]
   related_user_stories: [US-AIAPP-044]
+
+
+aiapp.comfyui_workflow.manage_all:
+  module: comfyui-workflow
+  resource: comfyui_workflow, comfyui_workflow_validation, comfyui_workflow_test_run
+  action: manage_all
+  description: 跨 owner 代管任意用户的 ComfyUI 工作流、校验和试运行。
+  frontend_usage: 控制管理员按稳定资源 ID 进入其他用户工作流及相关代管动作；不提供普通用户跨用户列表。
+  backend_enforcement: 必须与具体 read/manage/validate/convert/test 权限同时校验；只在 target_owner_user_id 与当前主体不同时要求，并记录 principal、owner、目标、动作和结果。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-156, BR-IAM-013]
+  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-046, US-AIAPP-048]
 
 
 aiapp.comfyui_workflow.validate:
@@ -29,7 +41,7 @@ aiapp.comfyui_workflow.validate:
   description: 针对指定 ComfyUI EngineInstance 当前目录创建不含目录正文的不可变兼容性校验。
   frontend_usage: 控制实例兼容性校验操作。
   backend_enforcement: 目标必须为 comfyui 实例且当前目录未过期；不得保存 object_info 正文、提交 prompt 或覆盖历史校验。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-156, BR-AIAPP-172, BR-AIAPP-176]
   related_user_stories: [US-AIAPP-045]
 
@@ -41,7 +53,7 @@ aiapp.comfyui_workflow.convert:
   description: 将已验证工作流一次性转换为新应用模板及首个草稿版本。
   frontend_usage: 控制工作流转换入口和模板映射提交。
   backend_enforcement: 同时要求 aiapp.application.manage；验证所有权、API ready、compatible 历史、对应实例当前目录、一次性约束、幂等键和事务原子性。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-156, BR-AIAPP-159, BR-AIAPP-160, BR-AIAPP-173, BR-AIAPP-174, BR-AIAPP-176]
   related_user_stories: [US-AIAPP-046]
 
@@ -53,7 +65,7 @@ aiapp.comfyui_workflow.test:
   description: 在健康 ComfyUI EngineInstance 上试运行本人可见的 ready API Workflow。
   frontend_usage: 控制试运行、取消、历史、任务步骤和临时预览入口。
   backend_enforcement: 普通用户只能测试本人工作流；创建 DAG 前必须即时兼容校验，预览只按服务端 output ID 代理读取。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-166, BR-AIAPP-167, BR-AIAPP-168]
   related_user_stories: [US-AIAPP-048]
 
@@ -65,7 +77,7 @@ aiapp.application.read:
   description: 查看当前用户有权访问的 Application、版本和公开契约。
   frontend_usage: 控制应用列表、详情和画布应用选择。
   backend_enforcement: 返回本人 private Application 和允许访问的 global Application；按 run_enabled 等能力开关过滤入口，不暴露执行凭证。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-142, BR-AIAPP-147, BR-AIAPP-148]
   related_user_stories: [US-AIAPP-042, US-AIAPP-043]
 
@@ -76,10 +88,22 @@ aiapp.application.manage:
   action: manage
   description: 管理应用模板版本、Application 元数据和不可变语义版本。
   frontend_usage: 控制模板创建、应用创建和版本发布；ComfyUI 首版入口由工作流转换权限单独控制。
-  backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 首版必须来自原子转换，后续版本使用模板版本机制；已发布版本不可原地修改；只有管理员可设置 global visibility。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 首版必须来自原子转换，后续版本使用模板版本机制；已发布版本不可原地修改；设置或修改 global visibility 还必须拥有 aiapp.application.manage_global。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148, BR-AIAPP-159, BR-AIAPP-174]
   related_user_stories: [US-AIAPP-042, US-AIAPP-046]
+
+
+aiapp.application.manage_global:
+  module: application
+  resource: application
+  action: manage_global
+  description: 创建或修改 global Application 的可见性和公开能力开关。
+  frontend_usage: 控制 global visibility 及其运行、画布、复制和预设能力开关的管理员入口。
+  backend_enforcement: 必须与 aiapp.application.manage 同时校验；普通 owner 管理权限不得设置或修改 global Application，所有变更必须记录审计上下文。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-AIAPP-148, BR-IAM-009, BR-IAM-013]
+  related_user_stories: [US-AIAPP-042]
 
 
 aiapp.application.run:
@@ -89,6 +113,6 @@ aiapp.application.run:
   description: 解析 RuntimeFormSchema、提交运行并查看本人可见的 ApplicationRun。
   frontend_usage: 控制应用运行表单、提交和运行详情。
   backend_enforcement: 按联合能力来源重新校验模板版本、Binding/Engine、输入和用户访问权后保存 ApplicationRun 快照，再幂等创建 AtomicTask；允许查看 Artifact 登记状态。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-149, BR-AIAPP-150]
   related_user_stories: [US-AIAPP-043]

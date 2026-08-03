@@ -5,7 +5,7 @@ aiapp.provider_capability.read:
   description: 查看 ProviderCapability 只读目录、模型、Operation、Variant 和公开可用状态。
   frontend_usage: 控制平台能力目录、应用参数来源和能力状态展示。
   backend_enforcement: 不返回来源文件路径、完整加载失败详情或任何能力写入口。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139]
   related_user_stories: [US-AIAPP-039, US-AIAPP-040]
 
@@ -29,7 +29,7 @@ aiapp.engine_instance.read:
   description: 只读查看可用于应用运行、ComfyUI 工作流导入和兼容性校验的 EngineInstance 基础状态及当前 ComfyUI object_info。
   frontend_usage: 控制工作流来源实例、目标实例选择器和当前 object_info 只读入口。
   backend_enforcement: 允许返回可见 ComfyUI 实例当前目录、版本、刷新时间和 stale，但不返回 auth_config、凭证或内部连接详情；其他资源响应不得重复内嵌目录正文。
-  default_roles: [REGULAR_USER, ADMIN, SUPER_ADMIN]
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AIAPP-140, BR-AIAPP-162, BR-AIAPP-169, BR-AIAPP-175, BR-AIAPP-176]
   related_user_stories: [US-AIAPP-041, US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
 

@@ -51,9 +51,10 @@
 
 - ProviderCapability、EngineInstance 和 Binding 权限码由 `modelgateway/permissions.yaml` 定义；Application Platform 调用 Gateway 时必须传递当前主体并接受同等权限裁剪。
 - Application 和 Run 执行本领域 S2 权限码；任何 Gateway 能力有效性都不能替代用户权限校验。
-- ComfyUI 工作流没有 global 可见性；普通用户只能访问本人资源。管理员和超级管理员可以代管，但每次代管操作必须记录 actor_user_id 与 owner_user_id。
+- OpenAPI 的 `x-conditional-permissions` 表示在基础 `x-permission` 之外按资源上下文追加校验：`cross_owner` 在目标 owner 与当前主体不同时要求对应权限，`global_visibility` 在创建 global Application 或修改 global 可见性及公开能力开关时要求对应权限；实现不得按角色名替代条件权限校验。
+- ComfyUI 工作流没有 global 可见性；普通用户只能访问本人资源。管理员和超级管理员只有同时拥有具体操作权限与 `aiapp.comfyui_workflow.manage_all` 才可代管，每次代管操作必须记录 actor_user_id 与 owner_user_id。
 - 跨所有者代管读取或操作必须向 identity 审计能力写入 action、actor_user_id、owner_user_id、workflow_id、结果和时间；审计记录不由工作流表替代。
-- 工作流读取、管理、校验和转换分别执行专属权限；转换还必须同时通过 `aiapp.application.manage`。
+- 工作流读取、管理、校验和转换分别执行专属权限；转换还必须同时通过 `aiapp.application.manage`。创建或修改 global Application 还必须同时通过 `aiapp.application.manage_global`。
 - 工作流试运行、取消和预览执行 `aiapp.comfyui_workflow.test`；预览不得接受客户端上游定位信息。
 
 ## 5. 跨域与事件边界

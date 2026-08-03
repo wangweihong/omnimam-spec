@@ -76,6 +76,7 @@ paths:
       operationId: get_comfyui_workflow
       summary: 查询 ComfyUI 工作流详情
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186]
@@ -94,6 +95,7 @@ paths:
       operationId: update_comfyui_workflow_metadata
       summary: 修改 ComfyUI 工作流名称或描述
       x-permission: aiapp.comfyui_workflow.manage
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186]
@@ -119,6 +121,7 @@ paths:
       operationId: list_comfyui_workflow_nodes
       summary: 查询工作流节点解析结果
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
@@ -147,6 +150,7 @@ paths:
       operationId: list_comfyui_workflow_input_candidates
       summary: 查询工作流输入候选
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
@@ -173,6 +177,7 @@ paths:
       operationId: list_comfyui_workflow_output_candidates
       summary: 查询工作流输出候选
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
@@ -199,6 +204,7 @@ paths:
       operationId: list_comfyui_workflow_dependencies
       summary: 查询工作流运行依赖
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-044]
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
@@ -225,6 +231,7 @@ paths:
       operationId: list_comfyui_workflow_validations
       summary: 查询工作流兼容性校验历史
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-045]
         business_rules: [BR-AIAPP-156, BR-AIAPP-172]
@@ -249,6 +256,7 @@ paths:
       summary: 对目标 ComfyUI 实例执行兼容性校验
       description: 读取目标实例当前 object_info 并保存不含目录正文或 checksum 的不可变结果，不提交 /prompt。
       x-permission: aiapp.comfyui_workflow.validate
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-045]
         business_rules: [BR-AIAPP-156, BR-AIAPP-172, BR-AIAPP-187]
@@ -274,6 +282,7 @@ paths:
       operationId: get_comfyui_workflow_validation
       summary: 查询兼容性校验详情
       x-permission: aiapp.comfyui_workflow.read
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs:
         user_stories: [US-AIAPP-045]
         business_rules: [BR-AIAPP-156, BR-AIAPP-172]
@@ -294,6 +303,7 @@ paths:
       operationId: convert_comfyui_workflow_to_application_template
       summary: 转换为新的应用模板首个草稿版本
       x-permission: aiapp.comfyui_workflow.convert
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-additional-permissions: [aiapp.application.manage]
       x-s1-refs:
         user_stories: [US-AIAPP-046]
@@ -320,6 +330,7 @@ paths:
       operationId: convert_comfyui_workflow_to_api
       summary: 将普通 Workflow 显式转换为 API Workflow
       x-permission: aiapp.comfyui_workflow.manage
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-047], business_rules: [BR-AIAPP-164, BR-AIAPP-165, BR-AIAPP-187]}
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
@@ -339,6 +350,7 @@ paths:
       operationId: list_comfyui_workflow_test_runs
       summary: 查询工作流试运行历史
       x-permission: aiapp.comfyui_workflow.test
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-166, BR-AIAPP-168]}
       parameters:
         - {$ref: '#/components/parameters/workflow_id'}
@@ -358,6 +370,7 @@ paths:
       operationId: create_comfyui_workflow_test_run
       summary: 创建 ComfyUI Workflow 试运行
       x-permission: aiapp.comfyui_workflow.test
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-166, BR-AIAPP-167, BR-AIAPP-168]}
       parameters: [{$ref: '#/components/parameters/workflow_id'}]
       requestBody:
@@ -377,6 +390,7 @@ paths:
       operationId: get_comfyui_workflow_test_run
       summary: 查询试运行及任务中心投影
       x-permission: aiapp.comfyui_workflow.test
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-166, BR-AIAPP-168]}
       parameters: [{$ref: '#/components/parameters/test_run_id'}]
       responses:
@@ -393,6 +407,7 @@ paths:
       operationId: cancel_comfyui_workflow_test_run
       summary: 取消试运行 DAG
       x-permission: aiapp.comfyui_workflow.test
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-166]}
       parameters: [{$ref: '#/components/parameters/test_run_id'}]
       responses:
@@ -409,6 +424,7 @@ paths:
       operationId: get_comfyui_workflow_test_output_content
       summary: 代理读取临时试运行输出
       x-permission: aiapp.comfyui_workflow.test
+      x-conditional-permissions: {cross_owner: aiapp.comfyui_workflow.manage_all}
       x-s1-refs: {user_stories: [US-AIAPP-048], business_rules: [BR-AIAPP-168]}
       parameters: [{$ref: '#/components/parameters/test_run_id'}, {$ref: '#/components/parameters/output_id'}]
       responses:
@@ -599,6 +615,7 @@ paths:
       operationId: create_application
       summary: 创建应用
       x-permission: aiapp.application.manage
+      x-conditional-permissions: {global_visibility: aiapp.application.manage_global}
       x-s1-refs:
         user_stories: [US-AIAPP-042]
         business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-148]
@@ -641,6 +658,7 @@ paths:
       operationId: update_application
       summary: 更新应用元数据和能力开关
       x-permission: aiapp.application.manage
+      x-conditional-permissions: {global_visibility: aiapp.application.manage_global}
       x-s1-refs:
         user_stories: [US-AIAPP-042]
         business_rules: [BR-AIAPP-142, BR-AIAPP-148]

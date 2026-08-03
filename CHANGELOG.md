@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- 完成跨领域权限基线复核：为 `model-management` 4 个权限补充 `USER/ADMIN/SUPER_ADMIN` 默认角色并给全部 16 个 OpenAPI operation 增加 `x-permission`；为 notification-center 收件箱/偏好/管理员接收权限和 SSE 流/历史权限补充默认角色。
+- 将 agent、appstudio、mcp、modelgateway 权限中的无效 `REGULAR_USER` 统一为 Identity 内置角色 `USER`。
+- Application Platform 新增 `aiapp.comfyui_workflow.manage_all` 与 `aiapp.application.manage_global`，跨 owner 工作流代管和 global Application 变更必须在基础操作权限之外执行条件权限校验，不再按角色名隐式放行；同步 S1、OpenAPI 和 Domain Context。
+
+- 补充素材库用户级权限的默认角色映射：`asset.*` 素材、上传、Collection、标签、引用、Artifact 浏览/登记/删除和 Representation 读取权限默认授予 `USER`、`ADMIN`、`SUPER_ADMIN`；保留 owner 隔离，不新增平台管理员共享素材语义；StorageBackend/Blob 检查继续仅限管理员，Artifact 创建和 Representation 写入继续仅限受信服务/Worker。
+
+- 补齐 `workflow-canvas`、`application-platform`、`task-center` 的管理员/超级管理员默认权限映射，统一使用 Identity 已定义的 `USER`、`ADMIN`、`SUPER_ADMIN` 角色；新增 AI Chat 的 `ai_chat.*` 权限码、OpenAPI 权限标注及 owner 边界说明，允许管理员和超级管理员进入并操作自身聊天工作区，并同步 AI Chat Domain Context。
+
 - Identity 认证迁移到 RFC 9807 OPAQUE：新增注册、登录和改密二阶段 API，使用一次性 exchange 与 base64url 消息；用户只保存 OPAQUE registration record，移除原始密码和 Argon2id PHC 字段契约。
 
 ## Unreleased

@@ -4,6 +4,7 @@ workflow.node_definition.read:
   resource: node_definition
   action: read
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 浏览当前 project、namespace 和主体有权使用的节点定义固定版本。
   frontend_usage: 控制节点目录、节点详情和交互编辑器入口。
   backend_enforcement: 按 availability_scope、project、namespace、弃用状态和引用能力裁剪；不返回内部 handler、Worker、Provider endpoint 或凭证。
@@ -16,6 +17,7 @@ workflow.node_definition.manage:
   resource: node_definition
   action: register, deprecate
   subject: authorized_admin, system_admin
+  default_roles: [ADMIN, SUPER_ADMIN]
   description: 注册新的不可变节点定义版本或阻止其被新画布引用。
   frontend_usage: 仅管理员节点能力管理界面使用。
   backend_enforcement: 禁止原地改写历史定义版本；renderer、functionRef 和 ApplicationVersion 必须来自受控注册表。
@@ -28,6 +30,7 @@ workflow.canvas.read:
   resource: canvas, canvas_version
   action: read
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 读取可见 Canvas 草稿和不可变版本历史。
   frontend_usage: 控制画布列表、编辑器只读态和版本历史入口。
   backend_enforcement: 校验 owner、project、namespace、visibility；关联摘要不可见时仅保留原始 ID。
@@ -40,6 +43,7 @@ workflow.canvas.edit:
   resource: canvas
   action: create, update, validate
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 创建 Canvas，并按 expected_draft_revision 更新或预检草稿。
   frontend_usage: 控制新建、编辑、自动保存和草稿校验入口。
   backend_enforcement: 校验 project、namespace、owner、revision、NodeDefinition 和外部资源引用；禁止任意运行时配置。
@@ -52,6 +56,7 @@ workflow.canvas.publish:
   resource: canvas_version
   action: publish
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 原子校验并发布不可变 CanvasVersion。
   frontend_usage: 控制发布入口和发布错误展示。
   backend_enforcement: 在事务边界重新校验 revision、图、引用、权限、输入映射、无环和规模，并幂等注册内容寻址 workflow definition。
@@ -64,6 +69,7 @@ workflow.canvas.delete:
   resource: canvas
   action: delete
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 软删除 Canvas，保留版本、运行和跨域历史事实。
   frontend_usage: 控制画布删除入口。
   backend_enforcement: 仅软删除可管理的 Canvas；不得级联删除 CanvasVersion、CanvasRun、Task 或 Artifact。
@@ -76,6 +82,7 @@ workflow.run.create:
   resource: canvas_run, canvas_flow_run, canvas_node_run
   action: validate, create
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 预检并幂等创建固定版本 CanvasRun。
   frontend_usage: 控制运行节点、上游链、下游链、指定流和全部流的入口。
   backend_enforcement: 校验固定版本、scope、输入闭包、复用资格、配额和所有引用；只向 Task Center 创建一个 DAGTaskGroup。
@@ -88,6 +95,7 @@ workflow.run.read:
   resource: canvas_run, canvas_flow_run, canvas_node_run, task_binding, output_binding
   action: read
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 读取运行、流、节点、任务绑定和输出绑定事实快照。
   frontend_usage: 控制运行历史、节点进度、错误、任务追溯和渐进制品展示。
   backend_enforcement: 按 project、namespace、created_by 和 visibility 过滤；Task 与 Artifact 摘要由事实源批量裁剪，不允许跨表穿透或 N+1。
@@ -100,6 +108,7 @@ workflow.run.cancel:
   resource: canvas_run
   action: cancel
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 幂等请求 Task Center 取消整个 CanvasRun 的唯一 DAGTaskGroup。
   frontend_usage: 控制首期“取消所有运行”入口。
   backend_enforcement: 校验调用方和运行范围；不覆盖已终态 AtomicTask，不在 Canvas 内本地取消任务。
@@ -112,6 +121,7 @@ workflow.run.retry:
   resource: canvas_run
   action: retry_failed, retry_node, retry_from_node, retry_flow, rerun_all
   subject: ordinary_user, business_developer, system_admin
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 按明确意图创建新的 CanvasRun 并保留原运行历史。
   frontend_usage: 控制所有用户手动重跑入口。
   backend_enforcement: 默认固定原版本和输入，重新校验引用和复用；不得重开原 AtomicTask 或 TaskAttempt。

@@ -22,6 +22,7 @@ paths:
       tags: [model-providers]
       summary: 查询当前用户模型提供商
       operationId: listModelProviders
+      x-permission: MODEL_CONFIG_READ
       x-s1-refs:
         user_stories: [US-USER-MODEL-01]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-04]
@@ -53,6 +54,7 @@ paths:
       tags: [model-providers]
       summary: 创建模型提供商
       operationId: createModelProvider
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-02]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-03, BR-USER-MODEL-05]
@@ -74,6 +76,7 @@ paths:
       tags: [model-providers]
       summary: 检测未保存的提供商配置
       operationId: testUnsavedModelProvider
+      x-permission: MODEL_HEALTH_TEST
       x-s1-refs:
         user_stories: [US-USER-MODEL-05]
         business_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
@@ -95,6 +98,7 @@ paths:
       tags: [model-providers]
       summary: 查询模型提供商详情
       operationId: getModelProvider
+      x-permission: MODEL_CONFIG_READ
       x-s1-refs:
         user_stories: [US-USER-MODEL-01]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-04]
@@ -111,6 +115,7 @@ paths:
       tags: [model-providers]
       summary: 更新模型提供商
       operationId: updateModelProvider
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-03]
         business_rules: [BR-USER-MODEL-03, BR-USER-MODEL-05, BR-USER-MODEL-06]
@@ -133,6 +138,7 @@ paths:
       tags: [model-providers]
       summary: 删除模型提供商
       operationId: deleteModelProvider
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-04]
         business_rules: [BR-USER-MODEL-07]
@@ -150,6 +156,7 @@ paths:
       tags: [model-providers]
       summary: 检测已保存模型提供商
       operationId: testModelProvider
+      x-permission: MODEL_HEALTH_TEST
       x-s1-refs:
         user_stories: [US-USER-MODEL-05]
         business_rules: [BR-USER-MODEL-08, BR-USER-MODEL-09]
@@ -167,6 +174,7 @@ paths:
       tags: [provider-models]
       summary: 查询提供商模型列表
       operationId: listProviderModels
+      x-permission: MODEL_CONFIG_READ
       x-s1-refs:
         user_stories: [US-USER-MODEL-09]
         business_rules: [BR-USER-MODEL-02, BR-USER-MODEL-12, BR-USER-MODEL-15]
@@ -199,6 +207,7 @@ paths:
       tags: [provider-models]
       summary: 手动创建提供商模型
       operationId: createProviderModel
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-07]
         business_rules: [BR-USER-MODEL-11, BR-USER-MODEL-12]
@@ -222,6 +231,7 @@ paths:
       tags: [provider-models]
       summary: 同步提供商模型清单
       operationId: syncProviderModels
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-06]
         business_rules: [BR-USER-MODEL-10, BR-USER-MODEL-12]
@@ -239,6 +249,7 @@ paths:
       tags: [provider-models]
       summary: 更新提供商模型
       operationId: updateProviderModel
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-08]
         business_rules: [BR-USER-MODEL-12, BR-USER-MODEL-13, BR-USER-MODEL-14]
@@ -261,6 +272,7 @@ paths:
       tags: [provider-models]
       summary: 删除提供商模型
       operationId: deleteProviderModel
+      x-permission: MODEL_CONFIG_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-11]
         business_rules: [BR-USER-MODEL-22]
@@ -278,6 +290,7 @@ paths:
       tags: [provider-models]
       summary: 检测单个提供商模型
       operationId: testProviderModel
+      x-permission: MODEL_HEALTH_TEST
       x-s1-refs:
         user_stories: [US-USER-MODEL-10]
         business_rules: [BR-USER-MODEL-19]
@@ -295,6 +308,7 @@ paths:
       tags: [default-models]
       summary: 查询指定用途默认模型
       operationId: getDefaultModel
+      x-permission: MODEL_CONFIG_READ
       x-s1-refs:
         user_stories: [US-USER-MODEL-12, US-USER-MODEL-13]
         business_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-26]
@@ -311,6 +325,7 @@ paths:
       tags: [default-models]
       summary: 保存指定用途默认模型
       operationId: saveDefaultModel
+      x-permission: MODEL_DEFAULT_WRITE
       x-s1-refs:
         user_stories: [US-USER-MODEL-12]
         business_rules: [BR-USER-MODEL-23, BR-USER-MODEL-24, BR-USER-MODEL-25]
@@ -334,6 +349,7 @@ paths:
       tags: [model-options]
       summary: 查询下游可用模型选项
       operationId: listModelOptions
+      x-permission: MODEL_CONFIG_READ
       x-s1-refs:
         user_stories: [US-USER-MODEL-13]
         business_rules: [BR-USER-MODEL-24, BR-USER-MODEL-26, BR-USER-MODEL-27]

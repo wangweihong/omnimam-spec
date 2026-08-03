@@ -1,8 +1,129 @@
-permissions: []
-notes:
-  module: ai-chatting
-  description: 当前 S1/S2 不引入 ai_chat.read、ai_chat.write、ai_chat.manage 等独立业务权限。
-  frontend_usage: 页面入口、按钮和资源显示依赖系统基础登录态以及当前用户个人数据隔离。
-  backend_enforcement: 后端必须校验 ownerUserId；不得跨用户读取或修改 Topic、Assistant、Message、QuickPhrase、GenerationRun、MessageTranslation。
-  related_user_stories: [US-AICHAT-01]
-  related_rules: [BR-AICHAT-02, BR-AICHAT-23]
+ai_chat.topic.read:
+  domain: ai-chatting
+  module: topic
+  resource: topic
+  action: read, list
+  subject: authenticated_user
+  description: 进入 AI 聊天工作区并读取当前主体可见的话题。
+  frontend_usage: 控制 AI 聊天导航、话题列表、历史和话题详情入口。
+  backend_enforcement: 必须校验当前主体拥有该权限，并按 owner_user_id 和资源可见性裁剪；权限本身不扩大跨用户读取范围。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-01, US-AICHAT-05]
+  related_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-23]
+
+ai_chat.topic.manage:
+  domain: ai-chatting
+  module: topic
+  resource: topic
+  action: create, update, delete
+  subject: authenticated_user
+  description: 创建、更新和删除当前主体的话题。
+  frontend_usage: 控制新建、重命名、置顶和删除话题入口。
+  backend_enforcement: 仅允许操作当前主体拥有的话题；删除保留消息和生成历史所需的审计关联，不得操作其他主体资源。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-01, US-AICHAT-05]
+  related_rules: [BR-AICHAT-01, BR-AICHAT-02, BR-AICHAT-08, BR-AICHAT-23]
+
+ai_chat.message.read:
+  domain: ai-chatting
+  module: message
+  resource: message
+  action: read, list
+  subject: authenticated_user
+  description: 读取当前主体话题中的消息和历史分支关系。
+  frontend_usage: 控制消息历史、分支和翻译展示入口。
+  backend_enforcement: 必须通过所属 Topic 校验 owner_user_id 和可见性；不得仅凭 message_id 越权读取。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-01, US-AICHAT-05]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-03, BR-AICHAT-23]
+
+ai_chat.message.send:
+  domain: ai-chatting
+  module: message
+  resource: message, generation_run
+  action: create
+  subject: authenticated_user
+  description: 在当前主体话题中发送消息并创建 GenerationRun。
+  frontend_usage: 控制发送、图片附件和斜杠命令入口。
+  backend_enforcement: 校验 Topic 所有权、输入、图片限制、模型 capability/健康状态和同话题 active generation；权限不替代业务校验。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-02, US-AICHAT-07, US-AICHAT-08]
+  related_rules: [BR-AICHAT-03, BR-AICHAT-14, BR-AICHAT-15, BR-AICHAT-16, BR-AICHAT-17, BR-AICHAT-18, BR-AICHAT-21, BR-AICHAT-22, BR-AICHAT-23]
+
+ai_chat.generation.operate:
+  domain: ai-chatting
+  module: generation
+  resource: generation_run
+  action: stream, stop, regenerate, edit_regenerate
+  subject: authenticated_user
+  description: 订阅、停止或重新生成当前主体消息对应的 GenerationRun。
+  frontend_usage: 控制生成流、停止、重新生成和编辑后重生成入口。
+  backend_enforcement: 通过消息和 Topic 重新校验 owner_user_id、active generation、模型健康状态和历史分支关系；不得覆盖既有消息事实。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-02, US-AICHAT-03]
+  related_rules: [BR-AICHAT-04, BR-AICHAT-06, BR-AICHAT-07, BR-AICHAT-16, BR-AICHAT-21, BR-AICHAT-23]
+
+ai_chat.assistant.read:
+  domain: ai-chatting
+  module: assistant
+  resource: assistant
+  action: read, list
+  subject: authenticated_user
+  description: 读取系统助手和当前主体的用户助手。
+  frontend_usage: 控制助手列表、搜索和选择入口。
+  backend_enforcement: 系统助手可读；用户助手按 owner_user_id 过滤，建议模型仅返回非敏感的一跳摘要。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-01, US-AICHAT-06]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-23, BR-AICHAT-25]
+
+ai_chat.assistant.manage:
+  domain: ai-chatting
+  module: assistant
+  resource: assistant
+  action: create, update, delete
+  subject: authenticated_user
+  description: 创建、更新和删除当前主体的用户助手。
+  frontend_usage: 控制助手创建、编辑和删除入口。
+  backend_enforcement: 仅允许操作当前主体的非系统助手；系统助手不可删除，名称按当前主体唯一校验。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-06]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10, BR-AICHAT-23]
+
+ai_chat.quick_phrase.read:
+  domain: ai-chatting
+  module: quick-phrase
+  resource: quick_phrase
+  action: read, list
+  subject: authenticated_user
+  description: 读取全局和当前主体可见的助手级快捷短语。
+  frontend_usage: 控制快捷短语列表和输入区插入入口。
+  backend_enforcement: 全局短语和当前主体短语按作用域、assistant_id 与 owner_user_id 裁剪。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-01, US-AICHAT-06]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-11, BR-AICHAT-23]
+
+ai_chat.quick_phrase.manage:
+  domain: ai-chatting
+  module: quick-phrase
+  resource: quick_phrase
+  action: create
+  subject: authenticated_user
+  description: 创建当前主体范围内的快捷短语。
+  frontend_usage: 控制新增快捷短语入口。
+  backend_enforcement: 校验作用域、assistant_id 和 owner_user_id；不得通过创建动作修改全局系统短语。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-06]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-11, BR-AICHAT-23]
+
+ai_chat.translation.create:
+  domain: ai-chatting
+  module: translation
+  resource: message_translation
+  action: create
+  subject: authenticated_user
+  description: 翻译当前主体输入或消息并保存可追溯的派生展示结果。
+  frontend_usage: 控制输入区和消息翻译入口。
+  backend_enforcement: 必须校验消息所属 Topic、默认翻译模型存在且健康；不改写原消息事实，不允许跨用户翻译。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_user_stories: [US-AICHAT-09]
+  related_rules: [BR-AICHAT-02, BR-AICHAT-12, BR-AICHAT-13, BR-AICHAT-14, BR-AICHAT-23]
