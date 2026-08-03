@@ -1,5 +1,17 @@
 # OmniMAM Spec Handoff
 
+## 当前发布任务（spec-v1.15.1，2026-08-04）
+
+- 当前目标：提交 AppStudio 脚手架模板字段清理，并发布一个小版本。
+- 状态：已完成；规格提交 `7d290e8`，发布提交已完成，`spec-v1.15.1` 标签待创建并推送。
+- 已完成：`template_id`、`technology_stack` 已从 AppStudio OpenAPI 创建请求和设计态 Schema 移除；已更新 CHANGELOG；已通过定向 YAML 解析与 `git diff --check`。
+- 当前进行中：创建 `spec-v1.15.1` annotated tag，推送 `master` 与标签，并验证远端引用。
+- 文件变化：`01_contracts/domains/appstudio/openapi.yaml`、`01_contracts/domains/appstudio/schema.sql`、`CHANGELOG.md`、`docs/HANDOFF.md` 已包含在规格提交；`RELEASE.md` 将包含在发布提交。
+- 关键决定：本次只发布 AppStudio S2 清理，不新增模板实体、模板发现 API 或替代字段；S1 不变。
+- 验证：`yq` 解析 AppStudio OpenAPI 通过；目标文件无 `template_id`、`technology_stack`、`technology_profile`、`runtime_profile`；`git diff --check` 通过；无可运行的 AppStudio 实现测试。
+- 风险：用户已有未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 不纳入本次提交；历史 Release 元数据错位不在本次范围。
+- 下一步：创建并推送 `spec-v1.15.1` 标签，确认远端 `master` 与标签均指向本次发布。
+
 ## 当前清理任务（移除 AppStudio 脚手架模板残留，2026-08-04）
 
 - 当前目标：根据用户确认“并没有脚手架模板的任何设计”，从 AppStudio 当前 S2 清理 `template_id` 及其同一旧设计残留。

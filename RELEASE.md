@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.15.1
+
+- commit: 7d290e80d8f47334d9e3f52b8372c638df22c5ba
+- status: released
+- confirmed_by: user（2026-08-04 请求“提交代码并发布一个小版本”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+- S1: []
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+- context:
+  - domains/appstudio/context.md
+- implementation_gate: AppStudio 创建请求只接受 `name` 和可选 `description`；实现不得依赖 `template_id`、`technology_stack` 或任何脚手架模板/模板发现能力。
+
 ## spec-v1.15.0
 
 - commit: 0d5954609215da7bce01fe82b351e7d57e8018da
