@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 明确内置角色权限基线与物化责任：Identity 必须聚合各 domain `permissions.yaml` 的 `default_roles` 并幂等对账 `RolePermissionGrant`；固化 `ADMIN`/`SUPER_ADMIN` 的 Identity 用户、注册、角色、组、服务账号管理权限和 `platform.overview.read`、`platform.auth_config.read/manage`、`platform.audit.read` 基线，避免授权投影只返回少量 Identity 权限。
 - AppStudio 清理未被当前 S1 定义的脚手架模板残留：移除 `StudioApplicationCreateRequest` 和 `studio_applications` Schema 中的 `template_id`、`technology_stack`；不新增模板实体或模板发现接口。
 - 完成跨领域权限基线复核：为 `model-management` 4 个权限补充 `USER/ADMIN/SUPER_ADMIN` 默认角色并给全部 16 个 OpenAPI operation 增加 `x-permission`；为 notification-center 收件箱/偏好/管理员接收权限和 SSE 流/历史权限补充默认角色。
 - 将 agent、appstudio、mcp、modelgateway 权限中的无效 `REGULAR_USER` 统一为 Identity 内置角色 `USER`。

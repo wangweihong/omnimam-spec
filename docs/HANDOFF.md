@@ -1,5 +1,31 @@
 # OmniMAM Spec Handoff
 
+## 当前发布任务（spec-v1.15.2，2026-08-04）
+
+- 当前目标：提交 Identity/Platform 默认管理员角色授权修复，登记 `spec-v1.15.2`，创建 annotated tag 并推送 `master` 与标签。
+- 状态：进行中；规格内容与定向验证已完成，准备创建规格提交。
+- 已完成：明确各 domain `default_roles` 必须由 Identity 物化和对账为内置角色 `RolePermissionGrant`；固化 `ADMIN`/`SUPER_ADMIN` 的 Identity 管理和 `platform.*` 权限基线；同步 S1、S2、Context、Schema 注释与 CHANGELOG。
+- 当前进行中：创建规格提交、更新 `RELEASE.md`、创建发布提交和标签并推送。
+- 文件变化：`00_product/domains/identity/product-spec.md`、`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/identity/module-contract.md`、`01_contracts/domains/identity/schema.sql`、`domains/identity/context.md`、`domains/platform-management/context.md`、`CHANGELOG.md`、`docs/HANDOFF.md`；后续增加 `RELEASE.md`。
+- 关键决定：版本为 `spec-v1.15.2`；不新增权限码或 API，不纳入未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`。
+- 验证：目标权限 YAML 可解析，角色矩阵逐项断言通过，目标文件 `git diff --check` 通过；本仓库无对应实现 package，不运行全仓测试。
+- 未完成事项：规格提交、Release 记录、tag 与远端推送。
+- 风险：实现侧仍需执行一次现有数据库默认角色授权补偿同步，并正确失效授权缓存。
+- 下一步：提交当前规格变更并以该提交哈希登记 `spec-v1.15.2`。
+
+## 当前权限修复任务（默认管理员角色授权，2026-08-04）
+
+- 当前目标：修复内置 `ADMIN`/`SUPER_ADMIN` 角色未物化 Identity 管理权限与 `platform.*` 权限，导致 `/api/v1/iam/auth/permissions` 虽返回授权投影字段但缺少管理入口权限码的问题。
+- 状态：已完成规格修复；未发布，未修改 `RELEASE.md`。
+- 已完成：读取 Spec 工作流、Identity/Platform Domain Context、S1 权限语义、S2 权限与模块合同；确认平台路由要求 `platform.overview.read`、`platform.auth_config.read/manage`、`platform.audit.read`；已补充内置角色权限矩阵和 `default_roles -> RolePermissionGrant` 物化、移除、版本失效与失败回滚规则。
+- 当前进行中：无。
+- 文件变化：`00_product/domains/identity/product-spec.md`、`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/identity/module-contract.md`、`01_contracts/domains/identity/schema.sql`、`domains/identity/context.md`、`domains/platform-management/context.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 关键决定：不修改 `/api/v1/iam/auth/permissions` 响应结构，不新增权限码；以各 domain `permissions.yaml` 的 `default_roles` 为内置角色授权事实输入，由 Identity 幂等物化并对账 `RolePermissionGrant`。
+- 验证：Identity 与 Platform 权限 YAML 可解析；逐项断言 `identity.user/manage`、注册审批、角色、组、服务账号及四个 `platform.*` 权限的 `default_roles` 与新增矩阵一致；S1/S2 引用文本已核对；目标文件 `git diff --check` 通过。首轮 `yq` 数组整体比较因表达式语法返回假阴性，改用逐项 `join` 断言后通过。未运行全仓测试，本仓库无对应实现 package。
+- 未完成事项：规格尚未发布；实现仓库仍需将权限目录同步与默认角色授权对账落地，并对现有数据库执行一次受控补偿同步。
+- 风险：实现若只登记 `PermissionDefinition` 而不执行默认角色授权对账，现象仍会复现；对账必须递增受影响主体 `authorization_version` 并失效旧缓存，否则 `/api/v1/iam/auth/permissions` 仍可能暂时返回旧投影。
+- 下一步：用户确认后登记新的 Spec Release；实现侧按 Identity 模块合同补齐默认角色 `RolePermissionGrant` 对账并验证 ADMIN/SUPER_ADMIN 的授权投影。
+
 ## 当前发布任务（spec-v1.15.1，2026-08-04）
 
 - 当前目标：提交 AppStudio 脚手架模板字段清理，并发布一个小版本。

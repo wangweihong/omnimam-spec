@@ -219,6 +219,9 @@ platform.audit.read
 * 审计日志默认只读。
 * 高风险操作必须写入审计日志。
 * 平台管理不自行判断用户角色，只判断 IAM 返回的权限结果。
+* `ADMIN` 默认获得 `platform.overview.read`、`platform.auth_config.read`、`platform.audit.read`。
+* `SUPER_ADMIN` 默认获得上述只读权限和 `platform.auth_config.manage`。
+* Platform 的 `permissions.yaml` 中 `default_roles` 必须由 Identity 物化为内置角色的 `RolePermissionGrant`；仅登记权限码而未建立默认角色授权不能视为初始化完成。
 
 ---
 

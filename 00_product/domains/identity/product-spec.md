@@ -1017,6 +1017,22 @@ USER 的 `effectiveRoles` 区分直接授权与用户组来源；同一角色通
 
 `FIRST_LOGIN_RESTRICTED` 明确只允许读取密码策略、修改密码、修改本人资料和退出；其他 `permissionCodes` 即使存在也不得在该会话中启用。授权变化必须递增受影响主体的 `authorizationVersion`；客户端看到更高版本后替换整个旧投影，不能合并。后端每次请求仍检查当前主体状态、凭据和权限，旧客户端投影不能扩大权限。
 
+## 10.4 内置角色权限基线
+
+各 domain 在 `permissions.yaml` 中声明的 `default_roles` 是内置角色权限基线，不是仅供文档展示的标签。Identity 完成权限目录登记后，必须将所有 ACTIVE 权限声明聚合并幂等物化为 `RolePermissionGrant`；新增权限、调整 `default_roles` 或权限废弃时必须重新对账。只登记 `PermissionDefinition`、但不创建对应角色授权，属于不完整初始化。
+
+当前与 Identity 和 Platform 管理入口直接相关的最小基线为：
+
+| 内置角色 | 必须包含的权限 |
+| --- | --- |
+| `USER` | `identity.auth.session`、`identity.user.read`、`identity.permission.read`、`identity.resource_grant.read` |
+| `ADMIN` | `USER` 基线，加 `identity.user.manage`、`identity.registration.review`、`identity.group.manage`、`identity.service_account.read`、`platform.overview.read`、`platform.auth_config.read`、`platform.audit.read` |
+| `SUPER_ADMIN` | `ADMIN` 基线，加 `identity.role.manage`、`identity.service_account.manage`、`platform.auth_config.manage` |
+
+上表只列出 Identity 与 Platform 的直接管理权限；其他业务 domain 的 `default_roles` 声明仍必须进入同一聚合与对账流程。`SUPER_ADMIN` 不得通过角色名获得隐式全权限，其最终 `permissionCodes` 仍来自已登记的 `RolePermissionGrant`。
+
+对账发现权限码未登记、内置角色缺失或授权写入失败时必须失败并报告，不得返回一个看似有效但缺少基线权限的授权投影。对账成功后，所有受影响角色的用户和服务主体必须递增 `authorizationVersion`，使登录、Refresh 和 `GET /api/v1/iam/auth/permissions` 返回更新后的去重权限码和 `allowedActions`。
+
 ---
 
 ## 11. 权限缓存
@@ -1828,7 +1844,7 @@ flowchart TB
 | `BR-IAM-006` | Refresh Token 必须轮换；重用旧 Refresh Token 时撤销整个 AuthSession 和该会话凭据并记录审计。 | 5.11、9.3、21、22.2 |
 | `BR-IAM-007` | 当前登出、全局登出、密码修改、用户禁用必须撤销相应会话和凭据；旧凭据不得继续访问。 | 9.4、9.5、14.1、22.2 |
 | `BR-IAM-008` | 有效角色只来自用户直接角色和静态用户组角色，并过滤禁用、未生效或过期授权；当前不支持角色继承和互斥。 | 3.2、5.2、5.6-5.8、10 |
-| `BR-IAM-009` | 权限定义由各模块登记，Identity 只允许管理员分配已登记权限；后端必须按权限码判定，不得硬编码角色名称。 | 2.4、10、13、22.3 |
+| `BR-IAM-009` | 权限定义由各模块登记；各 domain 的 `default_roles` 必须由 Identity 聚合并物化为内置角色的 RolePermissionGrant，管理员只能分配已登记权限；后端必须按权限码判定，不得硬编码角色名称。 | 2.4、10、13、22.3 |
 | `BR-IAM-010` | PrincipalContext 区分 USER 与 SERVICE_ACCOUNT，并可携带受控 `actor_user_id`；客户端不得伪造委托用户。 | 5.13、13.1、15、23 |
 | `BR-IAM-011` | 资源 domain 拥有 owner、created_by、visibility、project、namespace 和资源状态；owner 不得由客户端直接指定。 | 2.2、12.1、13.1、22.4 |
 | `BR-IAM-012` | ResourceAccessGrant 只对声明接入共享的资源 domain 生效；Identity 不凭该记录证明资源存在、可见或状态有效。 | 5.9、12.2-12.3、19.4、22.4 |

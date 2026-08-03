@@ -124,6 +124,9 @@ owner 批量投影固定返回 `owner_type`、`owner_id`、`display_name` 和 `s
 ## 5. 一致性与安全
 
 - User、AuthSession、TokenCredential、RefreshToken、Role/Grant、ResourceAccessGrant 和 ServiceAccount 的事实在 Identity 内部原子提交；SystemAuthConfig 与 AuditLog 的事实在 platform-management 内部原子提交。
+- Identity 的权限目录同步必须聚合所有 domain 当前 `permissions.yaml` 中 ACTIVE 权限的 `default_roles`，并幂等对账内置 `USER`、`ADMIN`、`SUPER_ADMIN` 的 `identity_role_permission_grants`。权限定义登记与默认角色授权对账必须作为同一受控初始化/升级流程完成，不能只写 `identity_permission_definitions`。
+- Identity/Platform 管理基线固定为：`USER` 至少拥有 `identity.auth.session`、`identity.user.read`、`identity.permission.read`、`identity.resource_grant.read`；`ADMIN` 额外拥有 `identity.user.manage`、`identity.registration.review`、`identity.group.manage`、`identity.service_account.read`、`platform.overview.read`、`platform.auth_config.read`、`platform.audit.read`；`SUPER_ADMIN` 额外拥有 `identity.role.manage`、`identity.service_account.manage`、`platform.auth_config.manage`。
+- 默认角色授权对账必须校验权限码已登记且角色为 ACTIVE；新增缺失授权、删除已从 `default_roles` 移除的基线授权，并对实际受影响主体递增 `authorization_version`、失效权限缓存和发布 `identity.authorization.changed`。任一权限码、角色或写入异常都必须使本次对账失败，不得发布部分基线。
 - 需要通知其他模块的变化先写 Identity Outbox，再异步投递 events.yaml 中的可靠事件。
 - 授权变化递增 authorization_version；密码、用户禁用和凭据轮换递增 security_version/credential_version 并撤销受影响凭据。
 - RegistrationApplication 决策与 User 状态、默认 USER 角色和 authorization_version 在 Identity 内原子提交；相同决策幂等，相反决策不能覆盖历史。

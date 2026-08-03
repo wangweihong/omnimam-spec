@@ -150,6 +150,8 @@ CREATE TABLE identity_permission_definitions (
 );
 
 -- Association table; general resource metadata does not apply.
+-- Built-in role grants are reconciled from ACTIVE cross-domain permissions.yaml default_roles;
+-- this design schema does not define migration seed data.
 -- s1_refs: US-IAM-005; BR-IAM-009
 CREATE TABLE identity_role_permission_grants (
   role_id TEXT NOT NULL REFERENCES identity_roles(id),

@@ -20,6 +20,7 @@
 - 登录、密码、Token、授权、服务账号、跨 owner 和认证配置等敏感操作无法写入审计时必须 fail closed。
 - 审计记录不得包含密码、完整 Token、Secret、凭据哈希、原始请求 payload 或大型业务正文。
 - 跨 domain 业务统计不属于当前阶段；后续只能使用事实源提供的权限裁剪、一跳、批量摘要，并标明来源可用性和时间。
+- `ADMIN` 默认拥有平台概览、认证配置读取和审计读取权限；`SUPER_ADMIN` 额外拥有认证配置管理权限。Platform 只声明 `default_roles`，由 Identity 物化和对账实际 `RolePermissionGrant`。
 
 ## 4. 跨域边界
 
