@@ -1,8 +1,26 @@
 # Release Records
 
+## spec-v1.14.0
+
+- commit: 4047f8326e4f2b1365990c9487e0ad3cb4b9f505
+- status: released
+- confirmed_by: user（2026-08-03 请求实现 OPAQUE 密码认证方案）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+- S1:
+  - 00_product/domains/identity/product-spec.md
+- S2:
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/identity/errors.yaml
+  - 01_contracts/domains/identity/module-contract.md
+  - 01_contracts/error-code-index.md
+- implementation_gate: Web and Server must use RFC 9807 OPAQUE with the pinned implementations and configuration. Only OPAQUE messages and account metadata may cross the Identity API; exchange state is short-lived, one-time and password-free. HTTPS remains mandatory and the OPAQUE setup is a stable deployment secret.
+
 ## spec-v1.13.0
 
-- commit: b942bb8cc405314ec1f87170a3f63d8ed4bc5dad
+- commit: 56907857c38992c16ae272b20aff957aae366490
 - status: released
 - confirmed_by: user（2026-08-03 明确要求“发布”）
 - allowed_as_formal_implementation_basis: true
