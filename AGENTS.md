@@ -170,3 +170,20 @@ Next Prompt:
 
 Read docs/HANDOFF.md, verify the current implementation, and continue with the next outstanding task. Do not repeat completed work.
 ```
+# Task Constraints
+
+
+【任务范围】
+不再递归扫描整个 ssot-spec 或整个仓库。
+只允许读取：当前任务指定的 SSOT 入口文件；
+入口文件直接引用的规范；
+当前目标模块的源码；
+当前目标模块直接相关的测试。
+
+不读取历史版本、归档目录、生成产物和无关模块。
+
+【验证约束】
+只运行目标 package 或目标模块测试。
+不运行全仓库测试。
+同一失败测试最多修复并重试 2 次。
+禁止为了消除无关测试失败而修改其他模块。
