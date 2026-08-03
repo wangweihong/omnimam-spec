@@ -12,8 +12,6 @@ CREATE TABLE studio_applications (
   resource_version INTEGER NOT NULL DEFAULT 0,
   owner_user_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'ARCHIVED', 'ERROR')),
-  template_id TEXT,
-  technology_stack TEXT,
   default_workspace_id TEXT,
   current_version_id TEXT
 );

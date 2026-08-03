@@ -1,5 +1,30 @@
 # OmniMAM Spec Handoff
 
+## 当前清理任务（移除 AppStudio 脚手架模板残留，2026-08-04）
+
+- 当前目标：根据用户确认“并没有脚手架模板的任何设计”，从 AppStudio 当前 S2 清理 `template_id` 及其同一旧设计残留。
+- 状态：已完成；已重新读取 `skills/spec-workflow/SKILL.md`、`skills/spec-workflow/S2.md` 和现有交接，确认 S1 当前创建语义没有模板对象或模板输入。
+- 已完成：从 AppStudio OpenAPI 创建请求和设计态 Schema 首表移除 `template_id`、`technology_stack`；未新增模板实体、发现 API 或替代字段。
+- 当前进行中：无。
+- 文件变化：`01_contracts/domains/appstudio/openapi.yaml`、`01_contracts/domains/appstudio/schema.sql`、`CHANGELOG.md`、`docs/HANDOFF.md`；保留用户已有未跟踪文件不动。
+- 关键决策：不新增 `StudioTemplate` 或发现 API；按当前 S1 直接删除无事实依据的模板字段及其旧技术栈字段，避免继续暗示脚手架能力。
+- 验证：AppStudio OpenAPI 使用 `yq` 解析通过；目标域已无 `template_id`、`technology_stack`、`technology_profile`、`runtime_profile` 残留；`git diff --check` 通过；未运行全仓测试。
+- 风险：AppStudio S1/S2 的发布门禁和历史 tag 元数据仍有既有错位，本次不扩大范围处理。
+- 下一步：客户端或实现侧按新的 AppStudio 创建合同重新生成 DTO/客户端；本仓库不包含对应实现 package 或测试。
+
+## 当前分析任务（AppStudio template_id，2026-08-04）
+
+- 当前目标：分析 AppStudio 为什么同时出现 `template_id` 与“应用模板 ID”，并核对用户给出的历史提交与当前 SSOT/客户端不一致。
+- 状态：已完成分析；已读取 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`domains/appstudio/context.md` 与工作流规则，确认任务事实归属为 `appstudio`。
+- 已完成：核对当前 S1 第 5.1/6 节、S2 OpenAPI 创建 Schema、Schema 首表、模块合同，以及 `28ceccb`、`6da35fb`、`f1471d5`、`2f71a83`、`81cdf96` 的历史；确认旧版 `template_id` 的明确语义、重写后的 name-only 创建合同和当前残留字段。
+- 结论：`template_id` 最初是 AppStudio 初始化用的“平台受控生成应用模板 ID”，特意声明不同于 `application-platform.ApplicationTemplate`；`f1471d5` 重写后 S1 已不再定义模板选择，OpenAPI 和 Schema 的残留字段现已清理。模板发现接口从未在旧合同中定义，旧前端无法合法获得必填模板 ID。
+- 当前进行中：无。
+- 文件变化：仅更新本交接文件；未修改产品或契约事实源。
+- 关键决策：分析以当前 AppStudio S1/S2 和可验证 Git 历史为准；Web `appstudio-client.ts`、按钮逻辑和测试不在本仓库，用户提供的 Web 提交链路作为外部事实单独标注，不反向提升为 SSOT。
+- 验证：完成定向文本、Git 历史和 OpenAPI/Schema 结构核对；未运行测试（当前工作区没有 AppStudio 实现 package 或直接相关测试）。
+- 风险：`RELEASE.md` 当前记录的 `spec-v1.12.0` commit 为 `2f71a83`，但 annotated tag `spec-v1.12.0` 实际指向 `6da35fb`；发布记录与 tag 仍存在元数据错位。AppStudio S1/S2 当前 Context 标记为未 Release 草稿，不能据此作为正式实现依据。
+- 下一步：实现侧重新生成 AppStudio 客户端并移除旧的模板选择器/禁用保护假设；若未来重新引入模板能力，必须先新增独立 S1 决策和完整 S2 合同。
+
 ## 当前发布任务（spec-v1.15.0）
 
 - 当前目标：完成权限审计中的高置信修复，提交、登记 `spec-v1.15.0`、创建 annotated tag 并推送 `master` 与 tag。

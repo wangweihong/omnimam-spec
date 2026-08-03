@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- AppStudio 清理未被当前 S1 定义的脚手架模板残留：移除 `StudioApplicationCreateRequest` 和 `studio_applications` Schema 中的 `template_id`、`technology_stack`；不新增模板实体或模板发现接口。
 - 完成跨领域权限基线复核：为 `model-management` 4 个权限补充 `USER/ADMIN/SUPER_ADMIN` 默认角色并给全部 16 个 OpenAPI operation 增加 `x-permission`；为 notification-center 收件箱/偏好/管理员接收权限和 SSE 流/历史权限补充默认角色。
 - 将 agent、appstudio、mcp、modelgateway 权限中的无效 `REGULAR_USER` 统一为 Identity 内置角色 `USER`。
 - Application Platform 新增 `aiapp.comfyui_workflow.manage_all` 与 `aiapp.application.manage_global`，跨 owner 工作流代管和 global Application 变更必须在基础操作权限之外执行条件权限校验，不再按角色名隐式放行；同步 S1、OpenAPI 和 Domain Context。

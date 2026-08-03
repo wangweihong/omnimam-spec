@@ -342,7 +342,7 @@ components:
     StudioApplicationCreateRequest:
       type: object
       required: [name]
-      properties: {name: {type: string, minLength: 1, maxLength: 200}, description: {type: string, maxLength: 2000}, template_id: {type: string}, technology_stack: {type: string}}
+      properties: {name: {type: string, minLength: 1, maxLength: 200}, description: {type: string, maxLength: 2000}}
     StudioApplicationUpdateRequest:
       type: object
       properties: {name: {type: string, maxLength: 200}, description: {type: string, maxLength: 2000}, resource_version: {type: integer}}
