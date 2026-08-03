@@ -3,12 +3,12 @@
 ## 当前发布任务（spec-v1.15.0）
 
 - 当前目标：完成权限审计中的高置信修复，提交、登记 `spec-v1.15.0`、创建 annotated tag 并推送 `master` 与 tag。
-- 状态：规格提交 `0d5954609215da7bce01fe82b351e7d57e8018da` 已完成，目标校验通过，`RELEASE.md` 已登记；正在创建发布提交、tag 并推送。
+- 状态：已完成。规格提交为 `0d5954609215da7bce01fe82b351e7d57e8018da`，发布提交为 `1445e30d800c7ae4598bed42811c787bf7d39fbd`；annotated tag `spec-v1.15.0` 与 `master` 已推送到 `origin`。
 - 发布范围：AI Chat、Application Platform、Asset Library、Task Center、Workflow Canvas、Model Management、Notification Center、SSE、Agent、AppStudio、MCP、Model Gateway 的权限契约及必要 S1/Context；不包含用户未跟踪文件。
 - 已完成：补齐 Model Management/Notification/SSE 默认角色与 Model Management 16 个 OpenAPI 权限标注；统一 `REGULAR_USER -> USER`；新增 Application Platform 显式 `manage_all/global` 权限并同步 S1/OpenAPI/Context。
 - 验证结果：目标 YAML 均可解析；OpenAPI 直接和条件权限引用均能解析到定义；Model Management 16 个 operation 均有 `x-permission`；目标角色编码合法；`git diff --check` 通过。
-- 当前进行中：创建 `spec-v1.15.0` 发布提交与 annotated tag，并推送 `master` 与 tag。
-- 下一步：核对远端分支和 tag 指向，确认发布完成。
+- 当前进行中：无。
+- 下一步：实现仓库按 `spec-v1.15.0` 的权限码、默认角色、owner 边界和条件权限实施鉴权；优先补 Agent Runtime 日志 API，并单独评估聚合权限拆分。
 
 ## 本次权限审计复核（2026-08-03）
 
