@@ -1670,6 +1670,8 @@ Identity 管理的跨 owner 授权操作
 Identity 提交的审计上下文至少包含：
 
 ```text
+sourceDomain
+sourceModule
 principalType
 principalId
 actorUserId
@@ -1684,10 +1686,11 @@ traceId
 ipAddress
 userAgent
 detail
-createdAt
+occurredAt
+idempotencyKey
 ```
 
-平台管理负责 AuditLog 的持久化、查询、脱敏和可靠事件。Identity 不拥有审计表或审计查询 API；平台审计写入失败时，登录、密码、Token、授权、服务账号和跨 owner 等敏感操作必须 fail closed。
+平台管理负责 AuditLog 的持久化、查询、脱敏和可靠事件。Identity 不拥有审计表或审计查询 API；Identity 通过受控同步接口提交上述敏感操作，不能用 Identity 领域事件替代审计确认。平台审计写入失败时，登录、密码、Token、授权、服务账号和跨 owner 等敏感操作必须回滚、撤销或补偿，不得留下可用效果并显示为成功。
 
 审计上下文不得包含：
 

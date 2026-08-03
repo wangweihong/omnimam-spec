@@ -129,7 +129,7 @@ owner 批量投影固定返回 `owner_type`、`owner_id`、`display_name` 和 `s
 - ServiceAccount 轮换原子创建新凭据并撤销旧凭据及其 Token；禁用撤销全部凭据和 Token，重新启用不恢复旧凭据。
 - 登录成功、Refresh Token 成功轮换和 presence heartbeat 更新当前 AuthSession.last_active_at；在线状态按当前时间派生，不持久化为 User.status。
 - Refresh Token 重用必须在同一安全边界内撤销会话及其 Refresh Token，并写入脱敏审计。
-- platform-management 审计写入不可用时，登录、凭据、授权、跨 owner、服务账号和其他敏感操作 fail closed；普通只读查询不得写入 Secret。
+- Identity 通过 platform-management 受控同步接口提交敏感操作审计；Identity 可靠事件不作为 AuditLog 写入通道。审计不可用时，登录、凭据、授权、跨 owner、服务账号和其他敏感操作必须回滚、撤销或补偿，不得留下可用效果并显示为成功。
 - 所有响应和事件禁止密码、完整 Access/Refresh Token、client_secret、凭据哈希、内部签名材料、原始 payload 和私有存储地址。
 
 相关 S1：BR-IAM-006、BR-IAM-007、BR-IAM-014、BR-IAM-015、BR-IAM-016、BR-IAM-023、BR-IAM-025、BR-IAM-026、BR-IAM-027、BR-IAM-028；US-IAM-004、US-IAM-008、US-IAM-009、US-IAM-015、US-IAM-016、US-IAM-017、US-IAM-018。
@@ -150,7 +150,7 @@ owner 批量投影固定返回 `owner_type`、`owner_id`、`display_name` 和 `s
 - PrincipalContext 一次请求只返回当前需要的权限结果和最多一跳非敏感主体摘要。
 - ResourceAccessGrant 列表必须按 resource_type/resource_id 批量读取；不得因目标资源逐行调用形成 N+1。
 - 跨 domain 资源摘要由目标 domain 批量提供；Identity 不递归展开 Application、Task、Asset、Canvas、Agent 或 Workspace。
-- Identity 不提供审计列表；需要查询审计时调用 platform-management 的受控查询接口。Identity 提交的审计上下文固定字段、脱敏并限制大小，不得包含完整请求 payload。
+- Identity 不提供审计列表；需要查询审计时调用 platform-management 的受控查询接口。Identity 同步提交的审计上下文包含来源、主体、目标、结果、occurred_at 和来源域幂等键，固定字段、脱敏并限制大小，不得包含完整请求 payload。
 - 注册申请、用户删除检查、ServiceAccount 凭据历史均分页；owner 与删除依赖来源使用批量接口，禁止逐项跨 domain 调用形成 N+1。
 
 相关 S1：BR-IAM-012、BR-IAM-019；US-IAM-006、US-IAM-009。

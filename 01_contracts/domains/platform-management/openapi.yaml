@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Platform Management API
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: >-
     PlatformOverview, SystemAuthConfig and redacted AuditLog contracts. Business errors use HTTP 200 with stable code/value.
 servers:
@@ -42,7 +42,7 @@ paths:
       operationId: replace_platform_auth_config
       x-permission: platform.auth_config.manage
       x-s1-refs: {user_stories: [US-PLATFORM-001], business_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003, BR-PLATFORM-005]}
-      x-error-codes: [ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED, ERR_PLATFORM_AUTH_CONFIG_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      x-error-codes: [ERR_PLATFORM_AUTH_CONFIG_ACCESS_DENIED, ERR_PLATFORM_AUTH_CONFIG_INVALID, ERR_PLATFORM_AUTH_CONFIG_VERSION_CONFLICT, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SystemAuthConfigReplaceRequest'}}}}
       responses:
         '200': {description: 更新后的系统认证配置或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/SystemAuthConfig'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
@@ -59,12 +59,21 @@ paths:
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
+        - {$ref: '#/components/parameters/keyword'}
+        - {$ref: '#/components/parameters/search_fields'}
+        - {$ref: '#/components/parameters/sort_field'}
+        - {$ref: '#/components/parameters/sort_order'}
         - {name: source_domain, in: query, schema: {type: string}}
         - {name: source_module, in: query, schema: {type: string}}
         - {name: principal_type, in: query, schema: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}}
         - {name: principal_id, in: query, schema: {type: string}}
         - {name: action, in: query, schema: {type: string}}
+        - {name: target_type, in: query, schema: {type: string}}
+        - {name: target_id, in: query, schema: {type: string}}
+        - {name: request_id, in: query, schema: {type: string}}
         - {name: result, in: query, schema: {type: string, enum: [SUCCESS, FAILED, DENIED]}}
+        - {$ref: '#/components/parameters/occurred_after'}
+        - {$ref: '#/components/parameters/occurred_before'}
         - {$ref: '#/components/parameters/created_after'}
         - {$ref: '#/components/parameters/created_before'}
       responses:
@@ -89,6 +98,7 @@ paths:
       tags: [auth-config]
       summary: 供 Identity 读取当前认证配置
       operationId: read_system_auth_config_internal
+      security: [{serviceBearerAuth: []}]
       x-authorization: service_principal
       x-permission: platform.auth_config.read_internal
       x-s1-refs: {user_stories: [US-PLATFORM-002], business_rules: [BR-PLATFORM-001, BR-PLATFORM-003]}
@@ -102,10 +112,11 @@ paths:
       tags: [audit]
       summary: 供受控 domain 追加脱敏审计记录
       operationId: append_platform_audit_record_internal
+      security: [{serviceBearerAuth: []}]
       x-authorization: service_principal
       x-permission: platform.audit.record
       x-s1-refs: {user_stories: [US-PLATFORM-004], business_rules: [BR-PLATFORM-004, BR-PLATFORM-005, BR-PLATFORM-006, BR-PLATFORM-007]}
-      x-error-codes: [ERR_PLATFORM_AUDIT_RECORD_INVALID, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
+      x-error-codes: [ERR_PLATFORM_AUDIT_RECORD_INVALID, ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT, ERR_PLATFORM_AUDIT_WRITE_UNAVAILABLE]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AuditRecordRequest'}}}}
       responses:
         '200': {description: 追加后的审计记录摘要或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AuditLog'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
@@ -114,25 +125,41 @@ paths:
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    serviceBearerAuth: {type: http, scheme: bearer, bearerFormat: ServiceAccountJWT, description: 仅接受 Identity 签发且登记到对应来源 domain 的服务主体 Token。}
   parameters:
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
     page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, default: '', maxLength: 128}, description: 仅搜索 action、reason_code、request_id、target_type 和 target_id。}
+    search_fields: {name: search_fields, in: query, schema: {type: string, default: 'action,reason_code,request_id,target_type,target_id'}, description: 逗号分隔搜索字段，只允许 action、reason_code、request_id、target_type、target_id。}
+    sort_field: {name: sort_field, in: query, schema: {type: string, enum: [occurred_at, created_at, action, result, source_domain], default: occurred_at}}
+    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
+    occurred_after: {name: occurred_after, in: query, schema: {type: string, format: date-time}}
+    occurred_before: {name: occurred_before, in: query, schema: {type: string, format: date-time}}
     created_after: {name: created_after, in: query, schema: {type: string, format: date-time}}
     created_before: {name: created_before, in: query, schema: {type: string, format: date-time}}
     audit_log_id: {name: audit_log_id, in: path, required: true, schema: {type: string}}
   responses:
     UnexpectedError:
       description: 未预期服务器异常。
-      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/UnexpectedErrorResponse'}}}
   schemas:
     ErrorResponse:
       type: object
-      required: [code, value]
+      required: [code, value, message, messages, retryable]
       properties:
         code: {type: string}
-        value: {type: string}
+        value: {type: integer}
         message: {type: string}
-        details: {type: object, additionalProperties: true}
+        messages: {type: object, additionalProperties: {type: string}}
+        detail: {type: string, nullable: true}
+        causes: {type: array, items: {type: object, additionalProperties: true}}
+        retryable: {type: boolean}
+        data: {type: object, additionalProperties: true}
+    UnexpectedErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
     PlatformOverview:
       type: object
       required: [platform, recent_audit_logs]
@@ -141,6 +168,7 @@ components:
         recent_audit_logs:
           type: array
           maxItems: 10
+          description: 当前阶段只返回 action=platform.auth_config.update 的最近管理操作，按 occurred_at DESC、id DESC 排序。
           items: {$ref: '#/components/schemas/PlatformAuditLogSummary'}
     PlatformRuntimeMetadata:
       type: object
@@ -155,7 +183,7 @@ components:
         uptime_seconds: {type: integer, minimum: 0}
     PlatformAuditLogSummary:
       type: object
-      required: [id, source_domain, source_module, action, result, created_at]
+      required: [id, source_domain, source_module, action, result, occurred_at, created_at]
       properties:
         id: {type: string}
         source_domain: {type: string}
@@ -164,7 +192,20 @@ components:
         target_type: {type: string, nullable: true}
         target_id: {type: string, nullable: true}
         result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
+        occurred_at: {type: string, format: date-time}
         created_at: {type: string, format: date-time}
+    PasswordPolicy:
+      type: object
+      additionalProperties: false
+      required: [min_length, max_length, require_uppercase, require_lowercase, require_digit, require_special_character, disallow_username]
+      properties:
+        min_length: {type: integer, minimum: 8, maximum: 64}
+        max_length: {type: integer, minimum: 64, maximum: 256, description: 必须大于或等于 min_length。}
+        require_uppercase: {type: boolean}
+        require_lowercase: {type: boolean}
+        require_digit: {type: boolean}
+        require_special_character: {type: boolean}
+        disallow_username: {type: boolean}
     PasswordHashPolicy:
       type: object
       required: [algorithm, version, memory_kib, iterations, parallelism, output_bytes, salt_bytes]
@@ -176,19 +217,29 @@ components:
         parallelism: {type: integer, enum: [1]}
         output_bytes: {type: integer, enum: [32]}
         salt_bytes: {type: integer, minimum: 16}
+    LoginFailurePolicy:
+      type: object
+      additionalProperties: false
+      required: [max_failed_attempts, failure_window_seconds, lockout_duration_seconds]
+      properties:
+        max_failed_attempts: {type: integer, minimum: 3, maximum: 20}
+        failure_window_seconds: {type: integer, minimum: 60, maximum: 86400}
+        lockout_duration_seconds: {type: integer, minimum: 60, maximum: 86400}
     SystemAuthConfig:
       type: object
       required: [id, registration_mode, allow_registration, password_policy, password_hash_policy, login_failure_policy, online_presence_window_seconds, access_token_lifetime, refresh_token_lifetime, resource_version, updated_at]
       properties:
-        id: {type: string}
+        id: {type: string, enum: [default]}
         registration_mode: {type: string, enum: [OPEN, ADMIN_APPROVAL]}
-        allow_registration: {type: boolean, readOnly: true}
-        password_policy: {type: object, additionalProperties: true}
-        password_hash_policy: {$ref: '#/components/schemas/PasswordHashPolicy'}
-        login_failure_policy: {type: object, additionalProperties: true}
-        online_presence_window_seconds: {type: integer, minimum: 1}
-        access_token_lifetime: {type: integer, minimum: 1}
-        refresh_token_lifetime: {type: integer, minimum: 1}
+        allow_registration: {type: boolean, readOnly: true, description: registration_mode=OPEN 时为 true，否则为 false。}
+        password_policy: {$ref: '#/components/schemas/PasswordPolicy'}
+        password_hash_policy:
+          allOf: [{$ref: '#/components/schemas/PasswordHashPolicy'}]
+          readOnly: true
+        login_failure_policy: {$ref: '#/components/schemas/LoginFailurePolicy'}
+        online_presence_window_seconds: {type: integer, minimum: 30, maximum: 3600, default: 300}
+        access_token_lifetime: {type: integer, minimum: 300, maximum: 86400, description: Access Token 生命周期，单位为秒。}
+        refresh_token_lifetime: {type: integer, minimum: 3600, maximum: 31536000, description: Refresh Token 生命周期，单位为秒且必须大于 access_token_lifetime。}
         resource_version: {type: integer, minimum: 0}
         updated_at: {type: string, format: date-time}
     SystemAuthConfigReplaceRequest:
@@ -197,55 +248,58 @@ components:
       required: [registration_mode, password_policy, login_failure_policy, online_presence_window_seconds, access_token_lifetime, refresh_token_lifetime, resource_version]
       properties:
         registration_mode: {type: string, enum: [OPEN, ADMIN_APPROVAL]}
-        password_policy: {type: object, additionalProperties: true}
-        login_failure_policy: {type: object, additionalProperties: true}
-        online_presence_window_seconds: {type: integer, minimum: 1}
-        access_token_lifetime: {type: integer, minimum: 1}
-        refresh_token_lifetime: {type: integer, minimum: 1}
+        password_policy: {$ref: '#/components/schemas/PasswordPolicy'}
+        login_failure_policy: {$ref: '#/components/schemas/LoginFailurePolicy'}
+        online_presence_window_seconds: {type: integer, minimum: 30, maximum: 3600, default: 300}
+        access_token_lifetime: {type: integer, minimum: 300, maximum: 86400, description: 单位为秒。}
+        refresh_token_lifetime: {type: integer, minimum: 3600, maximum: 31536000, description: 单位为秒且必须大于 access_token_lifetime。}
         resource_version: {type: integer, minimum: 0}
     AuditRecordRequest:
       type: object
       additionalProperties: false
-      required: [source_domain, source_module, principal_type, action, result, idempotency_key]
+      required: [source_domain, source_module, principal_type, action, result, occurred_at, idempotency_key]
       properties:
-        source_domain: {type: string, minLength: 1}
-        source_module: {type: string, minLength: 1}
+        source_domain: {type: string, minLength: 1, maxLength: 64, pattern: '^[a-z][a-z0-9-]*$', description: 必须匹配已认证服务主体登记的来源 domain。}
+        source_module: {type: string, minLength: 1, maxLength: 64, pattern: '^[a-z][a-z0-9_-]*$', description: 必须匹配来源 domain 登记模块。}
         principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}
-        principal_id: {type: string, nullable: true}
-        actor_user_id: {type: string, nullable: true}
-        action: {type: string, minLength: 1}
-        target_type: {type: string, nullable: true}
-        target_id: {type: string, nullable: true}
-        owner_user_id: {type: string, nullable: true}
+        principal_id: {type: string, maxLength: 128, nullable: true}
+        actor_user_id: {type: string, maxLength: 128, nullable: true}
+        action: {type: string, minLength: 3, maxLength: 128, pattern: '^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)+$'}
+        target_type: {type: string, maxLength: 128, nullable: true}
+        target_id: {type: string, maxLength: 256, nullable: true}
+        owner_user_id: {type: string, maxLength: 128, nullable: true}
         result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
-        reason_code: {type: string, nullable: true}
-        request_id: {type: string, nullable: true}
-        trace_id: {type: string, nullable: true}
-        ip_address: {type: string, nullable: true}
-        user_agent: {type: string, nullable: true}
-        detail: {type: object, additionalProperties: true, nullable: true}
-        idempotency_key: {type: string, minLength: 1}
+        reason_code: {type: string, maxLength: 128, nullable: true}
+        request_id: {type: string, maxLength: 128, nullable: true}
+        trace_id: {type: string, maxLength: 128, nullable: true}
+        ip_address: {type: string, maxLength: 64, nullable: true}
+        user_agent: {type: string, maxLength: 512, nullable: true}
+        detail: {type: object, maxProperties: 32, additionalProperties: true, nullable: true, description: UTF-8 JSON 编码最多 16 KiB、最多 4 层；禁止凭据、Token、原始请求和大型正文。}
+        occurred_at: {type: string, format: date-time, description: 来源操作发生时间，最多允许比平台可信时间晚 5 分钟。}
+        idempotency_key: {type: string, minLength: 1, maxLength: 256, description: 在 source_domain + source_module 内唯一。}
     AuditLog:
       type: object
-      required: [id, source_domain, source_module, principal_type, action, result, created_at]
+      required: [id, source_domain, source_module, principal_type, action, result, idempotency_key, occurred_at, created_at]
       properties:
         id: {type: string}
         source_domain: {type: string}
         source_module: {type: string}
         principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, ANONYMOUS]}
-        principal_id: {type: string, nullable: true}
-        actor_user_id: {type: string, nullable: true}
+        principal_id: {type: string, nullable: true, description: 保留审计时稳定主体 ID，不展开当前用户摘要，避免历史事实被可变用户资料改写。}
+        actor_user_id: {type: string, nullable: true, description: 受控委托用户稳定 ID，不展开跨域摘要。}
         action: {type: string}
         target_type: {type: string, nullable: true}
-        target_id: {type: string, nullable: true}
-        owner_user_id: {type: string, nullable: true}
+        target_id: {type: string, nullable: true, description: 历史目标引用；详情不自动读取目标 domain，目标删除或不可见时仍保留原 ID。}
+        owner_user_id: {type: string, nullable: true, description: 操作发生时的 owner 快照 ID，不展开当前用户摘要。}
         result: {type: string, enum: [SUCCESS, FAILED, DENIED]}
         reason_code: {type: string, nullable: true}
         request_id: {type: string, nullable: true}
         trace_id: {type: string, nullable: true}
         ip_address: {type: string, nullable: true}
         user_agent: {type: string, nullable: true}
-        detail: {type: object, additionalProperties: true, nullable: true}
+        detail: {type: object, maxProperties: 32, additionalProperties: true, nullable: true}
+        idempotency_key: {type: string}
+        occurred_at: {type: string, format: date-time}
         created_at: {type: string, format: date-time}
     AuditLogListResponse:
       type: object

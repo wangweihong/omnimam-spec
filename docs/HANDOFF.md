@@ -2,22 +2,19 @@
 
 ## 当前目标与状态
 
-目标：提交补全后的 Identity S1/S2，整合远端 `spec-v1.12.1`，发布 `spec-v1.12.2` 并推送远端。
+目标：分析 `platform-management` 领域，补充缺失的 S1/S2 规格并修复内部及跨层不一致。
 
-状态：完成。Identity 规格提交、Release 记录、release commit 和 annotated tag 已创建；`master` 与 `spec-v1.12.2` 已通过 SSH 推送远端并核对。
+状态：完成。Platform Management S1/S2、Identity 消费侧、Domain Context、领域架构和 CHANGELOG 已同步，验证通过；未修改 `RELEASE.md`。
 
 ## 本次完成
 
-- 补全 Identity S1：版本化当前主体授权投影、注册审批/拒绝/重新申请、Service Account 直接角色与凭据生命周期、跨域用户删除依赖检查，以及页面状态、动作和恢复语义。
-- 同步 Identity OpenAPI、设计态 Schema、错误、权限、事件、模块合同、Domain Context、领域架构、Global Context、Context Map 和 CHANGELOG。
-- 新增 `BR-IAM-023..030`、`US-IAM-015..020`；Identity OpenAPI 升级为 `0.2.0-draft`。
-- fetch 并整合远端 `spec-v1.12.1`；保留 Workflow Canvas/Task Center 的 Release、Changelog 和 handoff 事实。
-- 创建 Identity 规格提交 `a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5`（`spec: complete identity authorization and lifecycle contracts`）。
-- 在 `RELEASE.md` 登记 `spec-v1.12.2`，Release 内容 commit 指向 `a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5`。
-- 创建 release commit `f2f74f4fd3fec443d50dba3996515fea939666ee`（`release: publish spec-v1.12.2`）。
-- 创建 annotated tag `spec-v1.12.2`；远端 tag object 为 `56002dd61dd414dd73b18a9037f090af706a7fc8`，peel 到 release commit `f2f74f4fd3fec443d50dba3996515fea939666ee`。
-- 已 atomic push `master` 和 `spec-v1.12.2`；首次推送后远端 `master` 为 `f2f74f4fd3fec443d50dba3996515fea939666ee`。
-- 用户已有 `skills/archive/s1-origin-2.md`、`skills/archive/s1-origin.md` 删除及未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 均未纳入本次提交。
+- Platform S1 升级为 v1.1.0：补齐结构化 PasswordPolicy/LoginFailurePolicy、生命周期范围、SystemAuthConfig 单例与 `resource_version` 乐观并发、配置/AuditLog/Outbox 原子提交和页面冲突恢复。
+- 补齐 AuditLog：覆盖 Identity 登录、Token、密码、授权、服务账号和跨 owner 敏感操作；新增 `occurred_at`、来源服务主体校验、来源域复合幂等、内容冲突、detail 大小/嵌套限制和完整查询语义。
+- 修正 S1 路由数量、分页示例、最近审计摘要范围和缺失的认证配置页面；移除 Go 结构体与后端目录等过度实现化内容。
+- Platform OpenAPI 升级为 `0.2.0-draft`；修正业务错误 `value` 类型和 500 响应，结构化认证配置 DTO，补齐审计过滤、服务主体鉴权、版本冲突和幂等冲突声明。
+- 同步 Schema、错误码、权限、事件和模块合同；新增 `ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT`，overview 区间扩展为 `230600-230799`。
+- Identity 可靠事件移除 `platform-audit` 消费者；Identity S1/模块合同明确敏感审计通过受控同步接口确认，失败时回滚、撤销或补偿。
+- 新增 `02_architecture/domains/platform-management.md`，同步 Platform Domain Context、Identity 架构参考和 CHANGELOG。
 
 ## 当前进行中
 
@@ -25,50 +22,55 @@
 
 ## 文件变化
 
-- S1：`00_product/domains/identity/product-spec.md`。
-- S2：`01_contracts/domains/identity/openapi.yaml`、`schema.sql`、`errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md`。
-- 架构与 Context：`02_architecture/domains/identity.md`、`domains/identity/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`。
-- 维护与发布：`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
-- 未新增正式 migration、实现代码、运行时配置、依赖或 CI/CD 文件。
+- Platform S1/S2：`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/platform-management/` 全部 6 个文件。
+- 跨域同步：`00_product/domains/identity/product-spec.md`、`01_contracts/domains/identity/events.yaml`、`01_contracts/domains/identity/module-contract.md`、`02_architecture/domains/identity.md`。
+- 架构与 Context：新增 `02_architecture/domains/platform-management.md`，修改 `domains/platform-management/context.md`。
+- 全局维护：`01_contracts/error-code-index.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 未修改 `RELEASE.md`，未新增正式 migration、实现代码、运行时配置、依赖或 CI/CD 文件。
 
 ## 关键设计决定
 
-- 登录、Refresh 和独立授权查询返回同一版本化授权投影；角色只用于展示解释，后端继续按当前权限码实时鉴权，角色与完整权限不写入 JWT。
-- `ADMIN_APPROVAL` 在批准前不分配角色、不创建会话或 Token；审批、拒绝和重新申请历史不可变。
-- Service Account 只通过直接角色授权；owner 不可用时凭据交换 fail closed；初始密码和 Secret 只返回一次。
-- 用户删除必须使用完整、未过期并在提交前重验的跨域依赖检查；资源转移和来源事实仍由目标 domain 拥有。
-- `SystemAuthConfig` 与 `AuditLog` 继续归 `platform-management`，Identity 不维护重复事实或管理 API。
+- SystemAuthConfig 仅有 `id=default` 单例，使用完整替换和 `resource_version` 防止并发覆盖。
+- 配置新版本、`platform.auth_config.update` AuditLog 和配置变更 Outbox 在 Platform 边界内原子提交。
+- 配置变更事件只提示版本失效；Identity 必须重新读取完整配置，不能从事件拼装策略。
+- 敏感跨域操作必须同步确认 AuditLog；Identity 领域事件不再承担平台审计写入。
+- AuditLog 同时保存来源 `occurred_at` 和平台 `created_at`；允许最多 5 分钟未来时钟偏差。
+- 审计幂等作用域为 `source_domain + source_module + idempotency_key`，使用规范化内容 SHA-256 区分相同重试和内容冲突。
+- PlatformOverview 只展示最近 10 条 `platform.auth_config.update` 摘要，不混入 Identity 高频认证审计或跨 domain 统计。
 
 ## API、Schema、依赖与配置变化
 
-- Identity OpenAPI 当前包含 57 个 operation，新增注册审批、初始密码重置、用户/服务账号直接角色、删除依赖检查、共享目录、Service Account Token/凭据历史与撤销合同。
-- Identity 设计态 Schema 当前包含 19 张表，新增注册申请、服务账号角色和用户删除检查表。
-- Identity 当前包含 52 个错误、13 个权限和 8 个可靠事件。
+- Platform OpenAPI 当前有 7 个 operation，全部使用 `/api/v1`、唯一 operationId、授权声明和 S1 追溯。
+- Platform 当前有 10 个错误码、6 个权限码、2 个事件和 3 张设计态表。
+- Schema 新增生命周期范围、JSON object、16 KiB detail、审计不可变元数据、来源域复合幂等、内容指纹和查询索引约束。
+- `platform.audit.recorded` 第一阶段没有强制消费者；后续消费者必须先在对应 S1/S2 登记。
 - 未新增依赖或运行时配置。
 
 ## 验证结果
 
-- Identity OpenAPI、errors、permissions、events 均通过 `yq` 解析。
-- 57 个 operationId 唯一且路径均使用 `/api/v1`；307 个本地 `$ref` 可解析；所有 operation 均有授权声明和 S1 追溯。
-- 11 个列表 operation 均包含 `page_num/page_size`；请求合同未发现直接字符串或 ID 数组。
-- 全仓 15 个错误文件共识别 354 个 code/value，未发现全局重复；Identity 错误均落在登记区间。
-- 19 个 `CREATE TABLE` 与闭合数量一致；Release 登记路径存在；`git diff --check` 通过。
-- 远端 `spec-v1.12.2` annotated tag 已核对并 peel 到 release commit。
+- Platform OpenAPI、errors、permissions、events 和 Identity events 均通过 `yq` 解析。
+- 7 个 OpenAPI operationId 唯一；所有本地 `$ref`、S1 引用和 `x-error-codes` 可解析；审计列表通用及业务参数完整。
+- 全仓识别 355 个错误码，code/value 无重复；Platform 10 个错误均落在已登记区间并可追溯。
+- 72 个错误码区间无重叠；Platform overview 区间已预留 200 个值。
+- 6 个 Platform 权限、2 个 Platform 事件和 8 个 Identity 事件的 S1 引用有效。
+- 3 张 Platform 设计态表均包含通用资源字段，关键单例、JSON、时间、幂等和指纹约束存在。
+- Markdown/Mermaid 围栏平衡，`git diff --check` 通过。
 
 ## 待办事项
 
-- 在依赖本 Spec 的实现仓库中将 SSOT/submodule 版本同步到 `spec-v1.12.2`。
-- 各资源 domain 在正式实现用户删除与 Service Account owner 投影前，需登记对应受控批量提供方合同；未登记或不可用时保持 fail closed。
+- 由用户评审本轮跨域审计写入方式，并决定是否发布新的 coordinated spec 版本。
+- 正式实现前验证服务主体到 `source_domain/source_module` 的登记、Token 撤销、委托链校验，以及每类敏感操作审计失败后的回滚/撤销/补偿测试。
 
 ## 已知问题与风险
 
-- 当前环境没有 `mmdc`，Mermaid 已完成图文和围栏检查，但未执行渲染器语法验证。
-- 本任务只修改和发布规格，没有运行后端构建或实现测试。
-- 工作区仍有用户自己的归档删除和未跟踪资料，后续任务不得误提交或恢复。
+- 当前环境没有 `mmdc`，Mermaid 已做围栏和人工语法复核，但未执行渲染器校验。
+- 本任务只修改规格，没有运行后端构建、数据库执行或实现测试。
+- 本轮修改了已在 `spec-v1.12.2` 发布过的 Identity S1/S2 文件；这些新改动必须经过新的 Release 才能成为正式实现依据。
+- 工作区仍有用户自己的 `skills/archive/s1-origin-2.md`、`skills/archive/s1-origin.md` 删除及未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`；本任务未修改或恢复这些内容。
 
 ## 推荐下一步
 
-在实现仓库中将 SSOT/submodule 固定到 `spec-v1.12.2`，同步版本记录，并按 Identity implementation gate 开始实现或验收。
+评审 Platform/Identity 的同步审计与 fail-closed 合同；确认后在 `RELEASE.md` 登记新的 coordinated spec 版本，再由实现仓库按服务主体、幂等和补偿门禁落地。
 
 Next Prompt:
 

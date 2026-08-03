@@ -1,8 +1,8 @@
 # OmniMAM 平台管理功能设计
 
 > 文档状态：S1
-> 文档版本：v1.0.0
-> 修订日期：2026-08-02
+> 文档版本：v1.1.0
+> 修订日期：2026-08-03
 > 当前范围：系统概览（基础信息与审计摘要）、系统认证配置、平台审计日志
 > 后端归属：`omni-apiserver`
 > 前端模块：平台管理（Platform Management）
@@ -122,7 +122,7 @@ Identity 通过平台管理获取：
 /platform/maintenance
 ```
 
-前四个路由进入实际功能页面。
+前三个路由进入实际功能页面。
 
 后四个路由统一使用 `ComingSoonPage`，根据路由显示对应模块说明。
 
@@ -317,7 +317,7 @@ distributed
 
 * 系统认证配置修改
 
-默认展示最近 10 条。
+当前只筛选 `action=platform.auth_config.update`，默认按 `occurred_at DESC, id DESC` 展示最近 10 条。Identity 登录、Token 和权限等高频审计仍可在审计日志页面查询，但不进入第一阶段概览摘要。
 
 数据直接来自审计日志，不维护独立事件表。
 
@@ -383,6 +383,21 @@ GET /api/v1/platform/overview
 system_auth:
   registration_mode: ADMIN_APPROVAL
   allow_registration: false
+  password_policy:
+    min_length: 12
+    max_length: 128
+    require_uppercase: true
+    require_lowercase: true
+    require_digit: true
+    require_special_character: false
+    disallow_username: true
+  login_failure_policy:
+    max_failed_attempts: 5
+    failure_window_seconds: 900
+    lockout_duration_seconds: 900
+  online_presence_window_seconds: 300
+  access_token_lifetime: 900
+  refresh_token_lifetime: 2592000
 ```
 
 字段说明：
@@ -391,6 +406,11 @@ system_auth:
 | --------------------------- | ------- | ---------- |
 | `system_auth.registration_mode` | ENUM | `OPEN` 或 `ADMIN_APPROVAL` |
 | `system_auth.allow_registration` | BOOLEAN | 由 `registration_mode` 派生的兼容展示值；`OPEN` 时为 true |
+| `system_auth.password_policy` | OBJECT | 密码长度、字符要求和用户名排除规则 |
+| `system_auth.login_failure_policy` | OBJECT | 连续失败计数窗口、锁定阈值和锁定时长 |
+| `system_auth.online_presence_window_seconds` | INTEGER | 在线状态判定窗口，单位为秒 |
+| `system_auth.access_token_lifetime` | INTEGER | Access Token 生命周期，单位为秒 |
+| `system_auth.refresh_token_lifetime` | INTEGER | Refresh Token 生命周期，单位为秒 |
 
 用户注册和认证逻辑仍由 Identity 执行。
 
@@ -409,9 +429,34 @@ login_failure_policy
 online_presence_window_seconds: 默认 300
 access_token_lifetime
 refresh_token_lifetime
+resource_version: 乐观并发版本
 ```
 
-平台管理负责读取、校验、版本化和审计配置变更。Identity 负责在注册、登录、改密、Token 签发和在线状态判定时读取同一份生效配置。
+`password_policy` 当前固定包含：
+
+```text
+min_length: 8..64
+max_length: 64..256，且不得小于 min_length
+require_uppercase: boolean
+require_lowercase: boolean
+require_digit: boolean
+require_special_character: boolean
+disallow_username: boolean
+```
+
+`login_failure_policy` 当前固定包含：
+
+```text
+max_failed_attempts: 3..20
+failure_window_seconds: 60..86400
+lockout_duration_seconds: 60..86400
+```
+
+`online_presence_window_seconds` 取值为 `30..3600`；`access_token_lifetime` 取值为 `300..86400`；`refresh_token_lifetime` 取值为 `3600..31536000`，且必须大于 `access_token_lifetime`。上述生命周期字段的单位均为秒。
+
+第一阶段使用单例配置 `id=default`。管理端完整替换配置时必须携带读取到的 `resource_version`；版本已变化时返回版本冲突且不覆盖新版本。成功更新后版本递增，配置、脱敏 AuditLog 和配置变更 Outbox 在平台管理边界内原子提交；任一步失败都不得改变当前生效版本。
+
+平台管理负责读取、校验、版本化和审计配置变更。Identity 负责在注册、登录、改密、Token 签发和在线状态判定时读取同一份生效配置。`password_hash_policy` 固定返回当前 `ARGON2ID_V1` 基线，但不接受客户端写入。
 
 Identity 不得复制 `SystemAuthConfig` 到自己的私有表，也不得缓存超过配置版本允许的时间。配置更新成功后通过可靠事件通知 Identity；事件延迟期间，认证入口以平台管理当前版本读取结果为准。
 
@@ -445,7 +490,7 @@ Identity 不得复制 `SystemAuthConfig` 到自己的私有表，也不得缓存
 
 ## 9.2 当前记录范围
 
-当前阶段至少记录以下事件：
+当前阶段至少记录以下操作：
 
 ### 系统认证配置
 
@@ -453,21 +498,24 @@ Identity 不得复制 `SystemAuthConfig` 到自己的私有表，也不得缓存
 platform.auth_config.update
 ```
 
-### Identity 事件
+### Identity 敏感操作
 
-Identity 内部产生的以下脱敏事件和受控审计写入可以被平台审计统一查询：
+Identity 的以下敏感操作必须通过受控审计写入进入平台审计：
 
 ```text
-iam.user.create
-iam.user.enable
-iam.user.disable
-iam.role.create
-iam.role.update
-iam.permission.assign
-iam.permission.revoke
+注册提交、批准和拒绝
+登录成功、登录失败和账号锁定
+Token 刷新、Refresh Token 重用、单会话登出和全部设备登出
+修改密码和初始密码重新生成
+用户创建、启用、禁用和删除
+角色分配、角色权限修改和用户组成员变化
+资源共享、共享撤销、权限拒绝和跨 owner 授权操作
+服务账号创建、启用、禁用、凭据轮换和凭据撤销
 ```
 
-Identity 只提供脱敏来源上下文；AuditLog 的追加、存储、查询和可靠事件均由平台管理负责，平台管理不得回查 Identity 私有表补齐字段。
+`action` 使用来源 domain 登记的稳定点分标识，例如 `iam.auth.login`、`iam.token.refresh`、`iam.service_account.credential_rotate`。Platform 校验来源服务主体与 `source_domain/source_module` 的登记关系，但不替代来源 domain 定义动作语义。
+
+Identity 只提供脱敏来源上下文；AuditLog 的追加、存储、查询和可靠事件均由平台管理负责，平台管理不得回查 Identity 私有表补齐字段。敏感操作必须同步确认 AuditLog 已追加；来源可靠事件只可补偿非敏感诊断记录，不能替代 fail-closed 写入。
 
 ---
 
@@ -489,9 +537,10 @@ platform_audit_logs
   "principal_type": "USER",
   "principal_id": "user_01",
   "actor_user_id": null,
-  "action": "platform.auth_config.update",
-  "target_type": "system_auth_config",
-  "target_id": "default",
+  "action": "iam.user.disable",
+  "target_type": "user",
+  "target_id": "user_02",
+  "owner_user_id": "user_02",
   "result": "SUCCESS",
   "request_id": "req_01",
   "trace_id": "trace_01",
@@ -505,6 +554,7 @@ platform_audit_logs
       "status": "DISABLED"
     }
   },
+  "occurred_at": "2026-08-02T13:59:59+08:00",
   "created_at": "2026-08-02T14:00:00+08:00"
 }
 ```
@@ -533,7 +583,8 @@ platform_audit_logs
 | `user_agent`    | TEXT      |  否 | 客户端 User-Agent |
 | `detail`        | JSON      |  否 | 有界脱敏详情         |
 | `idempotency_key` | VARCHAR | 是 | 来源操作幂等键       |
-| `created_at`    | TIMESTAMP |  是 | 审计记录创建时间      |
+| `occurred_at`   | TIMESTAMP |  是 | 来源操作发生时间      |
+| `created_at`    | TIMESTAMP |  是 | 平台接收并创建审计记录的时间 |
 
 操作结果：
 
@@ -551,8 +602,10 @@ DENIED
 * 管理操作失败时，根据操作类型写入失败事件。
 * 权限拒绝由来源 domain 通过平台审计边界记录。
 * 审计写入是平台管理的追加操作，不得由客户端直接提交。
-* 登录、密码、Token、授权、服务账号、跨 owner 和认证配置操作的审计写入失败时，调用方必须 fail closed。
+* 平台认证配置变更与其 AuditLog、Outbox 必须在平台管理边界内原子提交。
+* 登录、密码、Token、授权、服务账号和跨 owner 操作必须在返回成功前确认 AuditLog 已追加；追加失败时不得留下可用会话、凭据或授权效果，来源 domain 必须回滚、撤销或补偿后返回稳定错误。
 * 非敏感诊断事件可以通过可靠事件异步补偿，但不得伪造已写入的 AuditLog。
+* 幂等键以 `source_domain + source_module + idempotency_key` 为作用域；同一作用域和相同内容重复提交返回原记录，不得重复追加；内容不同则返回稳定幂等冲突错误。
 * 审计日志只能追加，不能通过业务接口修改。
 * 第一阶段不提供审计日志删除接口。
 * 后续数据归档应通过系统维护模块处理。
@@ -576,7 +629,7 @@ DENIED
 * 系统主密钥
 * 完整数据库连接字符串
 
-敏感字段统一替换：
+允许展示的业务字段必须在来源 domain 白名单中；命中禁止字段时整条记录被拒绝，不得仅依赖字符串替换后继续保存。面向管理员展示的非敏感遮罩值可以统一为：
 
 ```json
 {
@@ -599,41 +652,22 @@ DENIED
 }
 ```
 
-不得记录密码、Token、Secret 或其他敏感值。
+不得记录密码、Token、Secret 或其他敏感值。`detail` 的 UTF-8 JSON 编码不得超过 16 KiB，嵌套深度不得超过 4 层；超限或包含禁止字段时返回审计记录无效错误。
 
 ---
 
 ## 9.7 审计上下文
 
-建议通过请求上下文统一传递：
+来源 domain 提交的审计上下文分为四组：
 
-```go
-type AuditContext struct {
-	RequestID    string
-	OperatorID   string
-	OperatorName string
-	SourceIP     string
-	UserAgent    string
-}
+```text
+来源：source_domain、source_module、idempotency_key、occurred_at
+主体：principal_type、principal_id、actor_user_id
+目标与结果：action、target_type、target_id、owner_user_id、result、reason_code
+链路与最小详情：request_id、trace_id、ip_address、user_agent、detail
 ```
 
-业务 Service 在执行管理操作时提交审计事件：
-
-```go
-type AuditEvent struct {
-	Module       string
-	Action       string
-	ResourceType string
-	ResourceID   string
-	ResourceName string
-	Result       string
-	Changes      any
-	ErrorCode    string
-	ErrorMessage string
-}
-```
-
-审计组件不负责推断业务变更内容，具体业务 Service 负责提供明确的 `changes`。
+Platform 根据已认证服务主体校验来源登记和委托链；调用方不能用请求字段伪造其他 domain 或主体。审计模块不回查来源私有表，也不推断业务变更内容；来源 domain 只提交完成审计所需的明确、最小、脱敏事实。`occurred_at` 最多允许比平台可信时间晚 5 分钟，`created_at` 始终由平台管理生成。
 
 ---
 
@@ -653,10 +687,12 @@ type AuditEvent struct {
 * Request ID
 * 关键词
 
+开始/结束时间默认筛选 `occurred_at`；`created_after/created_before` 可用于按平台接收时间诊断延迟。关键词只在 `action`、`reason_code`、`request_id`、`target_type` 和 `target_id` 等已索引非敏感字段中搜索，不扫描 `detail`。
+
 默认排序：
 
 ```text
-created_at DESC
+occurred_at DESC, id DESC
 ```
 
 ---
@@ -692,17 +728,16 @@ GET /api/v1/platform/audit-logs/{id}
       "source_module": "authn",
       "principal_type": "USER",
       "principal_id": "user_01",
-      "action": "platform.auth_config.update",
-      "target_type": "system_auth_config",
-      "target_id": "default",
+      "action": "iam.user.disable",
+      "target_type": "user",
+      "target_id": "user_02",
       "result": "SUCCESS",
       "request_id": "req_01",
       "ip_address": "192.168.1.20",
+      "occurred_at": "2026-08-02T13:59:59+08:00",
       "created_at": "2026-08-02T14:00:00+08:00"
     }
   ],
-  "page": 1,
-  "page_size": 20,
   "total": 1
 }
 ```
@@ -742,37 +777,13 @@ flowchart TB
 
 ## 11.1 SystemAuthConfig 管理
 
-系统管理员通过 Platform API 读取或完整替换 `SystemAuthConfig`。Platform 在保存前校验注册模式、密码策略、登录失败保护、在线窗口和 Token 生命周期，成功后追加脱敏审计记录并发布配置变更事件。Identity 通过受控内部接口读取当前生效版本并执行认证策略。
+系统管理员通过 Platform API 读取或完整替换 `SystemAuthConfig`。Platform 在保存前校验 `resource_version`、注册模式、密码策略、登录失败保护、在线窗口和 Token 生命周期。校验通过后，配置新版本、脱敏 AuditLog 和配置变更 Outbox 原子提交；成功响应返回新版本。Identity 收到变更提示后重新读取完整配置，不从事件 payload 拼装部分策略。
 
-# 12. 后端代码组织
+# 12. 后端模块边界
 
 当前平台管理作为 `omni-apiserver` 内部领域实现。
 
-建议目录：
-
-```text
-internal/platformadmin
-├── overview
-│   ├── handler.go
-│   ├── service.go
-│   └── dto.go
-├── auth-config
-│   ├── handler.go
-│   ├── service.go
-│   ├── repository.go
-│   ├── model.go
-│   └── dto.go
-├── audit
-│   ├── handler.go
-│   ├── service.go
-│   ├── repository.go
-│   ├── sanitizer.go
-│   ├── middleware.go
-│   ├── model.go
-│   └── dto.go
-└── placeholder
-    └── handler.go
-```
+实现必须维持 `overview`、`auth-config` 和 `audit` 三个职责边界：Overview 只组合运行元数据与审计摘要；Auth Config 拥有配置校验和版本提交；Audit 拥有来源校验、脱敏、幂等追加、查询和 Outbox。具体代码目录、Handler、Service 和 Repository 组织由实现仓库决定，不属于 S1 产品事实。
 
 ---
 
@@ -789,7 +800,13 @@ internal/platformadmin
 
 ---
 
-## 13.2 审计日志
+## 13.2 系统认证配置
+
+页面展示当前配置版本和全部可写策略，`allow_registration` 与固定密码哈希基线只读。保存使用完整替换和当前 `resource_version`；版本冲突时保留用户输入，重新加载最新配置后由管理员决定是否再次提交，不得静默覆盖。
+
+---
+
+## 13.3 审计日志
 
 审计日志页面包含：
 
@@ -818,12 +835,14 @@ internal/platformadmin
 
 ---
 
-# 14. 错误码建议
+# 14. 关键失败结果
 
-```text
-AUDIT_LOG_NOT_FOUND
-PLATFORM_PERMISSION_DENIED
-```
+* 无权读取概览、认证配置或审计记录时返回不泄露额外事实的稳定业务错误。
+* 认证配置字段非法时返回配置无效；`resource_version` 过期时返回版本冲突且不覆盖当前配置。
+* 审计记录不存在与当前主体不可见使用同一结果。
+* 审计查询时间范围、排序或筛选条件非法时返回查询无效。
+* 审计内容含禁止字段、超出大小/嵌套限制或来源身份不匹配时返回记录无效。
+* 同一来源幂等键对应不同内容时返回幂等冲突；平台审计边界不可用时返回可重试错误。
 
 ---
 
@@ -887,6 +906,7 @@ maintenance
 * 能通过平台管理读取和完整替换 `SystemAuthConfig`。
 * `allow_registration` 与 `registration_mode` 保持一致。
 * 能校验密码策略、登录失败策略、在线窗口和 Token 生命周期。
+* 使用 `resource_version` 阻止并发覆盖；配置、审计与 Outbox 任一提交失败都不改变当前生效版本。
 * Identity 使用平台当前生效版本执行注册、登录、改密、Token 和在线状态策略。
 
 ## 17.3 审计日志
@@ -894,6 +914,7 @@ maintenance
 * 能记录认证、凭据、授权和服务主体等跨 domain 管理操作。
 * 能记录 SUCCESS、FAILED 和 DENIED 结果。
 * 能按条件分页查询。
+* 能区分来源操作发生时间和平台记录创建时间，同一来源幂等重试不会重复追加。
 * 审计日志中不存在明文 Secret、密码、完整 Token 或原始请求正文。
 * 审计日志不提供修改和删除接口。
 
@@ -970,11 +991,11 @@ Identity 负责：
 | --- | --- |
 | `BR-PLATFORM-001` | `SystemAuthConfig` 的事实、版本和管理接口归平台管理；Identity 只负责认证执行和策略消费。 |
 | `BR-PLATFORM-002` | `allow_registration` 是 `registration_mode` 的兼容派生值；`OPEN` 为 true，`ADMIN_APPROVAL` 为 false，客户端不得绕过 `registration_mode` 修改派生语义。 |
-| `BR-PLATFORM-003` | `SystemAuthConfig` 的密码哈希算法基线不可由管理接口切换或降低；密码策略、登录失败保护、在线窗口和 Token 生命周期必须经过平台认证配置校验。 |
+| `BR-PLATFORM-003` | `SystemAuthConfig` 的密码哈希算法基线不可由管理接口切换或降低；密码策略、登录失败保护、在线窗口和 Token 生命周期必须使用结构化约束校验。 |
 | `BR-PLATFORM-004` | `AuditLog` 的存储、追加、脱敏、查询和可靠事件归平台管理；任何 domain 不得直接写入平台审计表。 |
 | `BR-PLATFORM-005` | 登录、密码、Token、授权、服务账号、跨 owner 和认证配置等敏感操作无法追加审计时必须 fail closed。 |
 | `BR-PLATFORM-006` | AuditLog 只保存最小脱敏上下文，不保存密码、完整 Token、凭据、原始请求 payload 或大型业务正文。 |
-| `BR-PLATFORM-007` | Identity 和其他 domain 通过受控内部审计写入接口提交记录；平台管理不读取其他 domain 私有表拼装审计事实。 |
+| `BR-PLATFORM-007` | Identity 和其他 domain 通过受控内部审计写入接口提交记录；平台管理校验来源身份、发生时间和来源域幂等键，不读取其他 domain 私有表拼装审计事实。 |
 | `BR-PLATFORM-008` | 系统概览当前只提供只读平台运行/部署元数据和最近 10 条脱敏审计摘要，不复制或聚合其他 domain 的业务统计事实。 |
 | `BR-PLATFORM-009` | 系统概览的运行元数据或审计读取边界不可用时返回稳定错误；无记录使用空列表，不得返回模拟数据或伪造成功状态。 |
 
@@ -990,11 +1011,12 @@ Identity 负责：
 
 ## 20.3 验收标准
 
-- 平台管理可以读取和完整替换 `SystemAuthConfig`；非法生命周期、策略或注册模式被拒绝。
+- 平台管理可以读取和完整替换 `SystemAuthConfig`；非法生命周期、策略或注册模式被拒绝，过期 `resource_version` 不会覆盖当前版本。
 - `allow_registration` 与 `registration_mode` 的返回值一致，Identity 注册流程使用平台当前生效配置。
 - Identity 不再拥有 `SystemAuthConfig` 或 `AuditLog` 表、API、权限码和查询事实。
-- 平台审计查询支持按 domain、module、principal、action、result 和时间范围分页过滤。
+- 平台审计查询支持按 domain、module、principal、action、target、request、result 和发生时间范围分页过滤。
 - 审计记录追加失败时，Identity 的敏感操作不会成功返回。
+- 同一来源幂等键的相同记录重试返回原记录，不同内容返回幂等冲突。
 - 审计 API、事件和详情均不暴露密码、完整 Token、Secret 或原始请求正文。
 - 系统概览只返回平台运行/部署元数据和最近 10 条脱敏审计摘要，不返回素材、应用、模型、任务或通知统计。
 - 系统概览无审计记录时返回空列表；运行元数据或审计读取边界不可用时返回稳定错误，不返回模拟数据。

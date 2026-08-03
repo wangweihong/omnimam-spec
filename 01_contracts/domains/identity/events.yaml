@@ -1,6 +1,6 @@
 identity.user.created:
   producer: identity.user
-  consumers: [platform-audit, notification-service, admin-projection]
+  consumers: [notification-service, admin-projection]
   trigger_condition: 用户注册成功或管理员创建用户并完成 User 持久化后。
   payload:
     event_id: string
@@ -22,7 +22,7 @@ identity.user.created:
 
 identity.user.status_changed:
   producer: identity.user
-  consumers: [platform-audit, notification-service, principal-cache]
+  consumers: [notification-service, principal-cache]
   trigger_condition: User 因注册批准/拒绝、禁用、恢复、解锁或逻辑删除发生状态变化并提交后。
   payload:
     event_id: string
@@ -45,7 +45,7 @@ identity.user.status_changed:
 
 identity.registration.reviewed:
   producer: identity.user
-  consumers: [platform-audit, notification-service, admin-projection]
+  consumers: [notification-service, admin-projection]
   trigger_condition: RegistrationApplication 被批准或拒绝并与 User 状态原子提交后。
   payload:
     event_id: string
@@ -70,7 +70,7 @@ identity.registration.reviewed:
 
 identity.auth.session_created:
   producer: identity.session
-  consumers: [platform-audit, security-monitor]
+  consumers: [security-monitor]
   trigger_condition: 登录或 Refresh Token 轮换创建有效 AuthSession/TokenCredential 后。
   payload:
     event_id: string
@@ -88,13 +88,13 @@ identity.auth.session_created:
     user_agent: string|null
   idempotency_key: identity.auth.session_created:{session_id}:{aggregate_version}
   retry_policy: 持久化 Outbox 重试；安全监控按 event_id 去重。
-  failure_policy: 审计/监控投递失败不改变已经创建的会话，但受控操作必须记录本地审计待补偿状态。
+  failure_policy: 安全监控事件投递失败不改变已经创建的会话；会话对调用方可用前必须已通过 platform-management 同步审计确认，不能依赖本事件补偿审计。
   related_rules: [BR-IAM-005, BR-IAM-015]
   related_user_stories: [US-IAM-001, US-IAM-004, US-IAM-009]
 
 identity.auth.session_revoked:
   producer: identity.session
-  consumers: [platform-audit, principal-cache, security-monitor]
+  consumers: [principal-cache, security-monitor]
   trigger_condition: 局部登出、全局登出、密码修改、Token 重用、用户禁用或服务凭据撤销导致会话失效后。
   payload:
     event_id: string
@@ -118,7 +118,7 @@ identity.auth.session_revoked:
 
 identity.authorization.changed:
   producer: identity.rbac
-  consumers: [principal-cache, platform-audit, security-monitor]
+  consumers: [principal-cache, security-monitor]
   trigger_condition: 角色权限、用户/服务账号直接角色、用户组成员或用户组角色变化影响某个主体并提交后；每个受影响主体独立发布失效通知。
   payload:
     event_id: string
@@ -143,7 +143,7 @@ identity.authorization.changed:
 
 identity.resource_grant.changed:
   producer: identity.resource-access
-  consumers: [platform-audit, principal-cache, resource-domain-projection]
+  consumers: [principal-cache, resource-domain-projection]
   trigger_condition: 已接入资源 domain 的 ResourceAccessGrant 创建、修改、过期或撤销并提交后。
   payload:
     event_id: string
@@ -169,7 +169,7 @@ identity.resource_grant.changed:
 
 identity.service_account.changed:
   producer: identity.service-account
-  consumers: [platform-audit, principal-cache, security-monitor]
+  consumers: [principal-cache, security-monitor]
   trigger_condition: ServiceAccount 创建、状态变化、权限变化或凭据轮换/撤销并提交后。
   payload:
     event_id: string

@@ -14,7 +14,9 @@
 
 - `SystemAuthConfig` 的事实、版本和管理 API 归平台管理；Identity 只读取当前生效版本并执行认证策略。
 - `allow_registration` 是 `registration_mode` 的只读兼容派生值；客户端不得绕过注册模式写入冲突语义。
+- `SystemAuthConfig` 使用结构化策略和 `resource_version` 乐观并发；配置、审计和 Outbox 在平台管理边界内原子提交。
 - `AuditLog` 只允许平台管理追加，其他 domain 通过受控内部接口提交脱敏上下文；任何 domain 不得写平台审计表。
+- AuditLog 区分来源 `occurred_at` 与平台 `created_at`，幂等作用域为来源 domain/module/key；Identity 可靠事件不替代同步审计确认。
 - 登录、密码、Token、授权、服务账号、跨 owner 和认证配置等敏感操作无法写入审计时必须 fail closed。
 - 审计记录不得包含密码、完整 Token、Secret、凭据哈希、原始请求 payload 或大型业务正文。
 - 跨 domain 业务统计不属于当前阶段；后续只能使用事实源提供的权限裁剪、一跳、批量摘要，并标明来源可用性和时间。
@@ -37,6 +39,7 @@
 | `01_contracts/domains/platform-management/permissions.yaml` | S2 | 概览、认证配置和审计权限码 |
 | `01_contracts/domains/platform-management/events.yaml` | S2 | 配置变更与审计记录可靠事件 |
 | `01_contracts/domains/platform-management/module-contract.md` | S2 | Identity 配置消费和审计写入边界 |
+| `02_architecture/domains/platform-management.md` | 参考 | 模块关系、认证配置链路和同步审计边界 |
 
 ## 6. 常见任务定位
 

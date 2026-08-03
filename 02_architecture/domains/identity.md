@@ -79,5 +79,5 @@ sequenceDiagram
 - `01_contracts/domains/identity/schema.sql`：用户、角色、权限、授权、会话、Token、服务主体和 Outbox 设计态 schema。
 - `01_contracts/domains/identity/errors.yaml`：认证失败、权限拒绝、Token 失效、资源授权和服务主体错误码。
 - `01_contracts/domains/identity/permissions.yaml`：Identity 权限码与后端校验边界。
-- `01_contracts/domains/identity/events.yaml`：用户、会话、授权、资源共享和服务主体可靠事件，供 platform-audit 消费。
+- `01_contracts/domains/identity/events.yaml`：用户、会话、授权、资源共享和服务主体可靠事件；平台审计通过受控同步接口写入，不消费这些事件替代 fail-closed 确认。
 - `01_contracts/domains/identity/module-contract.md`：PrincipalContext、跨 domain 协作、平台配置消费、审计写入、查询预算和安全一致性。

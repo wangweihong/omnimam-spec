@@ -32,7 +32,7 @@ platform.auth_config.manage:
   subject: system_admin
   description: 整体替换平台系统认证配置。
   frontend_usage: 平台认证策略保存。
-  backend_enforcement: 校验 registration_mode、密码策略、登录失败策略、在线窗口和 Token 生命周期；变更必须追加 AuditLog。
+  backend_enforcement: 校验 resource_version、registration_mode、结构化密码/登录失败策略、在线窗口和 Token 生命周期；配置、AuditLog 和 Outbox 原子提交。
   default_roles: [SUPER_ADMIN]
   related_rules: [BR-PLATFORM-001, BR-PLATFORM-002, BR-PLATFORM-003, BR-PLATFORM-005]
   related_user_stories: [US-PLATFORM-001]
@@ -57,7 +57,7 @@ platform.audit.read:
   subject: system_admin
   description: 分页查询跨 domain 脱敏平台审计记录。
   frontend_usage: 平台审计日志页面。
-  backend_enforcement: 按管理员审计范围过滤；不得返回密码、完整 Token、Secret、未脱敏 payload 或大型业务正文。
+  backend_enforcement: 按管理员审计范围和 occurred_at 查询条件过滤；不得返回密码、完整 Token、Secret、未脱敏 payload 或大型业务正文。
   default_roles: [ADMIN, SUPER_ADMIN]
   related_rules: [BR-PLATFORM-004, BR-PLATFORM-006]
   related_user_stories: [US-PLATFORM-003]
@@ -70,6 +70,6 @@ platform.audit.record:
   subject: service_principal
   description: 供受控 domain 追加脱敏审计上下文。
   frontend_usage: 不向前端暴露。
-  backend_enforcement: 只允许登记的服务主体；服务端校验 source_domain、主体委托链、敏感字段脱敏和幂等键；写入失败返回稳定边界错误。
+  backend_enforcement: 只允许登记的服务主体；服务端校验 source_domain/source_module、主体委托链、occurred_at、敏感字段、大小限制和来源域幂等键；不同内容复用幂等键必须拒绝。
   related_rules: [BR-PLATFORM-004, BR-PLATFORM-005, BR-PLATFORM-006, BR-PLATFORM-007]
   related_user_stories: [US-PLATFORM-004]

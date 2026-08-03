@@ -5,7 +5,7 @@
   en: The current principal cannot read the platform overview.
   owning_domain: platform-management
   owning_module: overview
-  range: 230600-230699
+  range: 230600-230799
   retryable: false
   deprecated: false
   related_rules: [BR-PLATFORM-008]
@@ -18,7 +18,7 @@
   en: The platform overview is temporarily unavailable.
   owning_domain: platform-management
   owning_module: overview
-  range: 230600-230699
+  range: 230600-230799
   retryable: true
   deprecated: false
   related_rules: [BR-PLATFORM-009]
@@ -114,3 +114,16 @@
   deprecated: false
   related_rules: [BR-PLATFORM-005, BR-PLATFORM-007]
   related_user_stories: [US-PLATFORM-002, US-PLATFORM-004]
+
+- code: ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT
+  value: 230404
+  http: 200
+  cn: 同一来源审计幂等键已用于不同内容。
+  en: The source audit idempotency key is already associated with different content.
+  owning_domain: platform-management
+  owning_module: audit
+  range: 230400-230599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-PLATFORM-004, BR-PLATFORM-007]
+  related_user_stories: [US-PLATFORM-004]

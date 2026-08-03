@@ -97,7 +97,7 @@
 | 221200-221299 | identity | principal | PrincipalContext 和跨域主体错误 |
 | 230200-230399 | platform-management | auth-config | SystemAuthConfig、注册策略和配置版本错误 |
 | 230400-230599 | platform-management | audit | AuditLog 查询、追加、脱敏和可用性错误 |
-| 230600-230699 | platform-management | overview | 平台系统概览访问和可用性错误 |
+| 230600-230799 | platform-management | overview | 平台系统概览访问和可用性错误 |
 
 ## 3. 分配规则
 
