@@ -366,7 +366,6 @@ paths:
       responses:
         '200': {description: 用户元数据和首次登录标记；不返回初始密码。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/AdminUserCreatedResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-        '500': {$ref: '#/components/responses/UnexpectedError'}
 
   /api/v1/iam/admin/users/{user_id}/roles:
     put:
