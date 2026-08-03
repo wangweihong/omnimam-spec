@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.14.1
+
+- commit: 8190bfcec6da343ab833b0fddcc716f21ff00cc4
+- status: released
+- confirmed_by: user（2026-08-03 请求继续实现 OPAQUE 密码认证方案）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - identity
+- S1:
+  - 00_product/domains/identity/product-spec.md
+- S2:
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/schema.sql
+  - 01_contracts/domains/identity/errors.yaml
+  - 01_contracts/domains/identity/module-contract.md
+- implementation_gate: OPAQUE change-password start includes both old-password KE1 and new-password registration request; administrator registration and initial-password reset use the same two-step registration semantics. No raw password field is accepted or returned.
+
 ## spec-v1.14.0
 
 - commit: 4047f8326e4f2b1365990c9487e0ad3cb4b9f505
