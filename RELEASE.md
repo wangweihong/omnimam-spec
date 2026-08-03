@@ -1,5 +1,50 @@
 # Release Records
 
+## spec-v1.15.0
+
+- commit: 0d5954609215da7bce01fe82b351e7d57e8018da
+- status: released
+- confirmed_by: user（2026-08-03 明确要求“提交，发布release并且推送”及“直接发布推送”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - ai-chatting
+  - application-platform
+  - appstudio
+  - asset-library
+  - mcp
+  - model-management
+  - modelgateway
+  - notification-center
+  - sse
+  - task-center
+  - workflow-canvas
+- S1:
+  - 00_product/domains/ai-chatting/product-spec.md
+  - 00_product/domains/application-platform/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/ai-chatting/module-contract.md
+  - 01_contracts/domains/ai-chatting/openapi.yaml
+  - 01_contracts/domains/ai-chatting/permissions.yaml
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/application-platform/openapi.yaml
+  - 01_contracts/domains/application-platform/permissions.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/mcp/permissions.yaml
+  - 01_contracts/domains/model-management/openapi.yaml
+  - 01_contracts/domains/model-management/permissions.yaml
+  - 01_contracts/domains/modelgateway/permissions.yaml
+  - 01_contracts/domains/notification-center/permissions.yaml
+  - 01_contracts/domains/sse/permissions.yaml
+  - 01_contracts/domains/task-center/permissions.yaml
+  - 01_contracts/domains/workflow-canvas/permissions.yaml
+- context:
+  - domains/ai-chatting/context.md
+  - domains/application-platform/context.md
+- implementation_gate: 面向用户的权限默认角色只允许使用 Identity 内置 `USER`、`ADMIN`、`SUPER_ADMIN`；管理员默认权限不得绕过 owner、scope、visibility、状态或资源引用校验。Application Platform 跨 owner 工作流操作必须同时校验具体操作权限与 `aiapp.comfyui_workflow.manage_all`，global Application 变更必须同时校验 `aiapp.application.manage_global`，禁止按角色名隐式放行。内部服务权限继续只授予受信服务主体。
+
 ## spec-v1.14.2
 
 - commit: 102a4477672f05b223e3bcff19b7df61e9cdc8e8
