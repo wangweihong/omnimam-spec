@@ -5,7 +5,7 @@
 - 补全 Platform Management S1：定义结构化 PasswordPolicy/LoginFailurePolicy、SystemAuthConfig 单例与 `resource_version` 乐观并发、配置/AuditLog/Outbox 原子提交，以及认证配置页面冲突恢复语义。
 - 补齐跨 domain AuditLog 合同：覆盖 Identity 登录、Token、密码、授权、服务账号和跨 owner 敏感操作，新增 `occurred_at`、来源服务主体校验、来源域复合幂等、内容冲突、detail 大小/嵌套限制和完整查询过滤；Identity 可靠事件不再重复充当平台审计写入通道。
 - Platform OpenAPI 升级为 `0.2.0-draft`，修正错误响应 `value` 类型和 500 响应，结构化认证策略 DTO，新增审计查询参数与 `ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT`；overview 错误区间扩展为 `230600-230799`。
-- 同步 Platform Schema、权限、事件、模块合同和 Domain Context，并新增 `02_architecture/domains/platform-management.md`；本轮未修改 `RELEASE.md`，当前草稿仍不得作为正式实现依据。
+- 同步 Platform Schema、权限、事件、模块合同和 Domain Context，并新增 `02_architecture/domains/platform-management.md`；Platform/Identity 协同规格已由用户确认为 `spec-v1.13.0` Release，允许作为正式实现依据。
 - 补全 Identity S1 用户投影与管理闭环：登录/Refresh/独立查询统一返回带 `authorizationVersion`、直接/用户组角色来源、权限码和会话限制的当前主体授权投影；补充客户端失效刷新与后端实时鉴权边界。
 - 新增 `RegistrationApplication` 审批、拒绝和重新申请语义；ADMIN_APPROVAL 在批准前不创建角色、会话或 Token，并补齐待审批管理、一次性初始密码、会话、资料、RBAC、共享和在线状态页面的动作、失败与恢复结果。
 - 补全 ServiceAccount 直接角色、owner 受控摘要、Token 交换、凭据状态/到期/最后使用/轮换历史及一次性 Secret；补充用户删除跨域依赖聚合、短期检查快照、来源不可用 fail closed 和目标 domain 资源转移边界。

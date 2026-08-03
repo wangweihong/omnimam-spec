@@ -4,7 +4,7 @@
 
 目标：分析 `platform-management` 领域，补充缺失的 S1/S2 规格并修复内部及跨层不一致。
 
-状态：完成。Platform Management S1/S2、Identity 消费侧、Domain Context、领域架构和 CHANGELOG 已同步，验证通过；未修改 `RELEASE.md`。
+状态：发布进行中。用户已明确确认发布为 `spec-v1.13.0`；`RELEASE.md` 和 CHANGELOG 已更新，下一步创建发布提交与 tag。
 
 ## 本次完成
 
@@ -15,18 +15,19 @@
 - 同步 Schema、错误码、权限、事件和模块合同；新增 `ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT`，overview 区间扩展为 `230600-230799`。
 - Identity 可靠事件移除 `platform-audit` 消费者；Identity S1/模块合同明确敏感审计通过受控同步接口确认，失败时回滚、撤销或补偿。
 - 新增 `02_architecture/domains/platform-management.md`，同步 Platform Domain Context、Identity 架构参考和 CHANGELOG。
+- 用户已于 2026-08-03 明确要求“发布”；`RELEASE.md` 已登记 `spec-v1.13.0`，正式规格基线为 `b942bb8cc405314ec1f87170a3f63d8ed4bc5dad`。
 
 ## 当前进行中
 
-无。
+创建 `spec-v1.13.0` 发布提交与 tag。
 
 ## 文件变化
 
 - Platform S1/S2：`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/platform-management/` 全部 6 个文件。
 - 跨域同步：`00_product/domains/identity/product-spec.md`、`01_contracts/domains/identity/events.yaml`、`01_contracts/domains/identity/module-contract.md`、`02_architecture/domains/identity.md`。
 - 架构与 Context：新增 `02_architecture/domains/platform-management.md`，修改 `domains/platform-management/context.md`。
-- 全局维护：`01_contracts/error-code-index.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 未修改 `RELEASE.md`，未新增正式 migration、实现代码、运行时配置、依赖或 CI/CD 文件。
+- 全局维护：`01_contracts/error-code-index.md`、`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
+- 未新增正式 migration、实现代码、运行时配置、依赖或 CI/CD 文件。
 
 ## 关键设计决定
 
@@ -58,19 +59,19 @@
 
 ## 待办事项
 
-- 由用户评审本轮跨域审计写入方式，并决定是否发布新的 coordinated spec 版本。
+- 创建 `spec-v1.13.0` 发布提交与 tag，并在完成后刷新本 HANDOFF。
 - 正式实现前验证服务主体到 `source_domain/source_module` 的登记、Token 撤销、委托链校验，以及每类敏感操作审计失败后的回滚/撤销/补偿测试。
 
 ## 已知问题与风险
 
 - 当前环境没有 `mmdc`，Mermaid 已做围栏和人工语法复核，但未执行渲染器校验。
 - 本任务只修改规格，没有运行后端构建、数据库执行或实现测试。
-- 本轮修改了已在 `spec-v1.12.2` 发布过的 Identity S1/S2 文件；这些新改动必须经过新的 Release 才能成为正式实现依据。
+- 发布提交与 `spec-v1.13.0` tag 尚未创建；创建前不得宣称发布流程完成。
 - 工作区仍有用户自己的 `skills/archive/s1-origin-2.md`、`skills/archive/s1-origin.md` 删除及未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`；本任务未修改或恢复这些内容。
 
 ## 推荐下一步
 
-评审 Platform/Identity 的同步审计与 fail-closed 合同；确认后在 `RELEASE.md` 登记新的 coordinated spec 版本，再由实现仓库按服务主体、幂等和补偿门禁落地。
+创建并校验 `spec-v1.13.0` 发布提交与 tag；随后由实现仓库按服务主体、幂等和补偿门禁落地。
 
 Next Prompt:
 

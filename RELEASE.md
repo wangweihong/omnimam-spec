@@ -1,5 +1,34 @@
 # Release Records
 
+## spec-v1.13.0
+
+- commit: b942bb8cc405314ec1f87170a3f63d8ed4bc5dad
+- status: released
+- confirmed_by: user（2026-08-03 明确要求“发布”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - platform-management
+  - identity
+- S1:
+  - 00_product/domains/platform-management/product-spec.md
+  - 00_product/domains/identity/product-spec.md
+- S2:
+  - 01_contracts/domains/platform-management/openapi.yaml
+  - 01_contracts/domains/platform-management/schema.sql
+  - 01_contracts/domains/platform-management/errors.yaml
+  - 01_contracts/domains/platform-management/permissions.yaml
+  - 01_contracts/domains/platform-management/events.yaml
+  - 01_contracts/domains/platform-management/module-contract.md
+  - 01_contracts/domains/identity/events.yaml
+  - 01_contracts/domains/identity/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/platform-management.md
+  - 02_architecture/domains/identity.md
+- context:
+  - domains/platform-management/context.md
+- implementation_gate: SystemAuthConfig 仅允许 `id=default` 单例并使用 `resource_version` 乐观并发；配置新版本、`platform.auth_config.update` AuditLog 和 Outbox 必须在 Platform 边界内原子提交，配置变更事件只提示版本失效，Identity 必须重新读取完整配置。Identity 登录、Token、密码、授权、服务账号和跨 owner 敏感操作必须通过受控同步接口确认 AuditLog，审计失败时必须回滚、撤销或补偿，不得留下可用效果并返回成功；Identity 领域事件不得重复承担平台审计写入。审计来源必须绑定已登记服务主体，幂等范围固定为 `source_domain + source_module + idempotency_key`，相同 key 的规范化内容指纹不一致必须拒绝。Platform 不得读取 Identity 私有表，Identity 不得维护重复的 SystemAuthConfig、AuditLog 或平台审计查询 API；PlatformOverview 仅展示最近 10 条 `platform.auth_config.update`，不得扩展为 Identity 高频审计或跨 domain 统计。
+
 ## spec-v1.12.2
 
 - commit: a56f84d60f14fe6251dcac9c1e1d2b2faa432bd5
