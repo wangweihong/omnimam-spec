@@ -274,6 +274,7 @@ CREATE TABLE appstudio_outbox (
   aggregate_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   payload_json TEXT NOT NULL,
+  -- 跨事件类型全局唯一；events.yaml 中的键必须使用 event_type 前缀形成全限定键。
   idempotency_key TEXT NOT NULL UNIQUE,
   delivery_status TEXT NOT NULL CHECK (delivery_status IN ('PENDING', 'DELIVERED', 'FAILED')),
   next_attempt_at TIMESTAMPTZ,

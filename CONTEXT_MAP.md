@@ -30,7 +30,7 @@
 
 `modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
 
-`agent` 和 `appstudio` 当前仍保留未 Release 的 S1/S2 草稿；`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 已同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Workspace 关键词在这两个领域仅用于定位后端 canonical 事实，不代表公共资源、页面或用户输入。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 和 AppStudio 不能作为正式实现、合并或验收依据；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
+`agent` 和 `appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 应同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Workspace 关键词在这两个领域仅用于定位后端 canonical 事实，不代表公共资源、页面或用户输入。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 和 AppStudio 可按 `spec-v1.16.0` 门禁使用；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
 
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 

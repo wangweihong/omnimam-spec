@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 修复 AppStudio Outbox 幂等键冲突：七类领域事件统一使用 `<event_type>:<domain_key_components>` 全限定键，保留 `appstudio_outbox.idempotency_key` 单列全局唯一约束；不新增 migration、不改写历史 Outbox，旧键只随既有事件保留。
 - 将 Agent/AppStudio Workspace 内化为后端事实：用户侧 Agent 创建固定为 Platform Agent，后端原子创建 AgentWorkspace 和默认 Session；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建。Agent 公共 DTO、Workspace Binding API、`agent.workspace.read` 和用户可见 Workspace 错误已移除。
 - AppStudio 公共契约改为 StudioApplication 级 Source/Revision：删除 `/api/v1/studio-workspaces/*` 与公开 StudioWorkspace DTO，源码、搜索、ChangeSet、恢复、Snapshot 和 Preview 均以 `studio_application_id` 寻址，公共字段使用 `source_revision`，权限改为 `appstudio.source.read/write`。
 - 内部 Agent/AppStudio Schema 继续保留 Workspace 表、字段、Revision 和固定 Binding 约束，不创建 migration；同步 S1、Domain Context、全局导航及 Agent/AppStudio 架构参考，并由用户确认为 `spec-v1.16.0` Release。

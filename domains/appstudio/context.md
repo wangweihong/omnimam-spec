@@ -43,9 +43,9 @@
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
 | `00_product/domains/appstudio/product-spec.md` | S1 | 源码、构建、发布和生成应用运行产品语义 |
-| `01_contracts/domains/appstudio/openapi.yaml` | S2 Draft | StudioApplication、应用级 Source/Revision、Build、Preview、Release 和 Runtime API |
-| `01_contracts/domains/appstudio/schema.sql` | S2 Draft | AppStudio 设计态 Schema |
-| `01_contracts/domains/appstudio/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Draft | 错误、权限、事件和模块边界 |
+| `01_contracts/domains/appstudio/openapi.yaml` | S2 | StudioApplication、应用级 Source/Revision、Build、Preview、Release 和 Runtime API |
+| `01_contracts/domains/appstudio/schema.sql` | S2 | AppStudio 设计态 Schema |
+| `01_contracts/domains/appstudio/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 | 错误、权限、事件和模块边界 |
 Context 只负责导航，Task Center 的任务执行契约和 infrastructure 的运行层合同必须按跨域任务继续读取。
 
 ## 7. 常见任务定位
@@ -59,7 +59,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-AppStudio S1/S2 均为未 Release 草稿，不能作为正式实现、合并或验收依据。当前 S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；当前事件幂等键修复在 `spec-v1.16.1` 发布前仍不可作为正式实现依据。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

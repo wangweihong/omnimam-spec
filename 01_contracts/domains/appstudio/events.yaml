@@ -10,7 +10,7 @@ studio_application_lifecycle_changed:
     to_status: string
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: studio_application_id:resource_version
+  idempotency_key: studio_application_lifecycle_changed:studio_application_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按版本幂等。
   failure_policy: 事件失败不回滚应用、内部源码上下文或历史事实；通知和 SSE 不得补充 Workspace 字段。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010, R-STUDIO-022]
@@ -28,7 +28,7 @@ studio_source_revision_changed:
     agent_invocation_id: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: studio_application_id:current_revision
+  idempotency_key: studio_source_revision_changed:studio_application_id:current_revision
   retry_policy: appstudio outbox 重试，消费者按 StudioApplication/Revision 幂等。
   failure_policy: 不重复应用 ChangeSet；事件可从 Revision 事实重放。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
@@ -46,7 +46,7 @@ studio_source_snapshot_created:
     created_by: string
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: source_snapshot_id:resource_version
+  idempotency_key: studio_source_snapshot_created:source_snapshot_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按 Snapshot ID/digest 幂等。
   failure_policy: 失败或不完整 Snapshot 不发布该事件。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-011]
@@ -67,7 +67,7 @@ studio_build_projection_changed:
     error_code: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: studio_build_id:resource_version
+  idempotency_key: studio_build_projection_changed:studio_build_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按 Build 版本幂等。
   failure_policy: 不反向修改 Task Center 或 Artifact；可对账重放。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
@@ -86,7 +86,7 @@ studio_preview_runtime_status_changed:
     error_code: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: preview_runtime_id:resource_version
+  idempotency_key: studio_preview_runtime_status_changed:preview_runtime_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 Preview 版本幂等。
   failure_policy: Preview 事件失败不得创建正式 Snapshot、Artifact 或 Release；通知和 SSE 不得投影内部 Workspace 字段。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024]
@@ -111,7 +111,7 @@ studio_release_status_changed:
     error_code: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: studio_release_id:resource_version
+  idempotency_key: studio_release_status_changed:studio_release_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 Release 版本幂等。
   failure_policy: 事件失败不重新部署或切换入口；Release 事实可重放。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-018, R-STUDIO-023, R-STUDIO-024]
@@ -134,7 +134,7 @@ studio_runtime_instance_status_changed:
     error_code: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: runtime_instance_id:resource_version
+  idempotency_key: studio_runtime_instance_status_changed:runtime_instance_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 RuntimeInstance 版本幂等。
   failure_policy: 事件失败不执行第二次入口切换；RuntimeInstance 事实可重放，旧健康实例不得受影响。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024]
