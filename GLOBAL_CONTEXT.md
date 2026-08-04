@@ -27,8 +27,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `workflow-canvas` | 管理画布草稿、不可变版本、节点与边、编译和运行投影。 |
 | `notification-center` | 消费可靠领域事件并维护用户通知、计数、偏好与聚合。 |
 | `sse` | 将已持久业务事实投影为当前用户可短期重放的实时事件。 |
-| `agent` | 管理 Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime。 |
-| `appstudio` | 管理生成式 Web/BFF 应用的源码、构建、发布和运行实例。 |
+| `agent` | 管理 Agent、Session、Invocation、Memory、内部 Workspace 固定绑定和 AgentRuntime；用户侧只管理 Platform Agent。 |
+| `appstudio` | 管理生成式 Web/BFF 应用的源码、Revision、构建、发布和运行实例；内部维护唯一默认 StudioWorkspace。 |
 | `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载和运行状态对账。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
@@ -54,13 +54,13 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `ApplicationNode` | 固定引用已发布 ApplicationVersion 的画布节点；归 workflow-canvas。 |
 | `Notification` | 面向用户的事件投影、已读状态和处理入口；归 notification-center。 |
 | `UserEvent` | 业务事实的短期实时提示与恢复游标；归 sse。 |
-| `Agent` | 持久化 platform/coding 智能代理；归 agent。 |
+| `Agent` | 持久化 platform/coding 智能代理；公共管理只覆盖 Platform Agent，Coding Agent 由 AppStudio 内部创建；归 agent。 |
 | `AgentInvocation` | AgentSession 中的一轮交互；异步执行时保存 AtomicTask 业务投影；归 agent。 |
-| `AgentWorkspace` | Platform Agent 的持久化工作区；归 agent。 |
+| `AgentWorkspace` | Platform Agent 的后端持久化与固定绑定事实，不作为公共资源；归 agent。 |
 | `AgentRuntime` | 按需运行 Hermes/OpenCode 的执行实例；归 agent。 |
 | `StudioApplication` | Agent 辅助开发的生成式 Web/BFF 应用身份；归 appstudio，独立于 AI 能力 Application。 |
 | `StudioApplicationVersion` | 固定 StudioSourceSnapshot 的生成应用版本；归 appstudio。 |
-| `StudioWorkspace` | StudioApplication 的可编辑源码与 Revision 事实；归 appstudio。 |
+| `StudioWorkspace` | StudioApplication 唯一默认编辑上下文的后端 canonical 事实；公共投影为应用级源码和 Revision；归 appstudio。 |
 | `StudioSourceSnapshot` | 供正式构建使用的不可变源码版本；归 appstudio。 |
 | `StudioBuild` | Snapshot 到 Build Artifact 的业务投影；归 appstudio，执行状态引用 task-center。 |
 | `RuntimeConfig` | StudioApplicationVersion 按环境使用的公开配置和 Secret/Integration 引用；归 appstudio。 |
@@ -72,7 +72,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行、重试、取消和 Task Worker 分发归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`；用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行、重试、取消和 Task Worker 分发归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -84,7 +84,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - notification-center 消费已登记的可靠 source event，不从低层任务终态猜测上层 Application、Asset 或 Canvas 结果。
 - sse 只发送变化提示；客户端仍通过各事实源 REST API 重查完整状态。AI Chat token/delta 流属于 ai-chatting 请求协议，不进入通用 UserEvent 历史。
 - mcp 使用固定 Tool 和 Resource URI 向受权 Agent 投影领域事实；Capability 只读发现，异步执行只通过已发布 Application 创建 ApplicationRun，并将其 AtomicTask 映射为 MCP Task。
-- Agent 创建时固定一个与类型匹配的 Workspace，Session、Invocation 和 Runtime 不得切换；Platform Agent 使用 agent 所有的 AgentWorkspace，Coding Agent 固定引用 appstudio 的一个 StudioWorkspace，所有源码写入通过当前 Invocation 的短期 Tool 授权和带 `base_revision` 的 ChangeSet 完成。
+- 用户侧 `CreateAgent` 固定创建 Platform Agent，并由后端原子创建 AgentWorkspace、默认 Session 和固定 Binding；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建并固定引用唯一默认 StudioWorkspace。Session、Invocation 和 Runtime 不得切换内部绑定，所有源码写入通过当前 Invocation 的短期 Tool 授权和带 `base_revision` 的 ChangeSet 完成。
+- `CreateStudioApplication` 不接受 Workspace 输入；后端创建 Repository、唯一默认编辑上下文、Coding Agent 和 Session。用户只通过 StudioApplication 级 Source/Revision、Snapshot 和 Preview 接口操作源码。
 - 纯 CHAT 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；其他 Invocation 和所有 Runtime 生命周期操作必须关联 AtomicTask。
 - agent 和 appstudio 的所有 Infra-backed 操作都通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Task Worker 只回写稳定运行引用和小型结果，不拥有来源领域状态。
 - Task Center 使用版本化只读 Function Registry 校验第一阶段七个 Agent/AppStudio Infra-backed functionRef，并在 AtomicTask 创建时固定合同 version/digest；调用方不能覆盖执行模式、能力或 Infra 映射，registry 升级不能改写历史任务。

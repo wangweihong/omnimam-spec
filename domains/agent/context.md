@@ -2,20 +2,22 @@
 
 ## 1. 领域职责
 
-`agent` 管理持久化 Agent、交互 Session、Invocation、消息、记忆、Platform Agent 使用的 AgentWorkspace，以及运行 Hermes/OpenCode 的 AgentRuntime。Coding Agent 可以固定引用 AppStudio 的 StudioWorkspace，但不拥有生成应用的源码、构建、发布或运行事实。
+`agent` 管理持久化 Agent、交互 Session、Invocation、消息、记忆、Platform Agent 使用的内部 AgentWorkspace，以及运行 Hermes/OpenCode 的 AgentRuntime。用户侧只创建和管理 Platform Agent；Coding Agent 由 AppStudio 通过内部模块语义创建，可以固定引用 StudioWorkspace，但不拥有生成应用的源码、构建、发布或运行事实。
 
 ## 2. 核心对象
 
-- `Agent`：持久化智能代理，类型为 platform 或 coding，并固定引用一个 Workspace。
+- `Agent`：持久化智能代理；公共 Agent 管理只投影 platform，内部还支持 AppStudio 创建的 coding，并固定引用一个后端 Workspace。
 - `AgentSession`、`AgentInvocation`、`AgentMessage`、`AgentMemory`：持续交互、单轮执行、原始消息和可恢复记忆事实。
-- `AgentWorkspace`：Platform Agent 的独立持久化工作区。
+- `AgentWorkspace`：Platform Agent 的独立持久化工作区，由后端自动创建和绑定，不是用户侧资源。
 - `AgentRuntime`：按需运行 Hermes/OpenCode 的 Agent 执行实例。
 - `AgentRuntimeProvider`：创建、恢复和检查 AgentRuntime 的系统注册组件。
 
 ## 3. 核心规则
 
-- `workspace_type=agent` 只用于 Platform Agent；`workspace_type=studio` 只用于 Coding Agent。
-- Agent 创建时固定 `kind/workspace_type/workspace_id`：Platform Agent 使用 AgentWorkspace，Coding Agent 使用已存在且受权的 StudioWorkspace；Session 和 Invocation 不得切换。
+- `workspace_type=agent` 只用于 Platform Agent；`workspace_type=studio` 只用于 Coding Agent；两者均是后端内部事实。
+- 用户创建请求固定产生 Platform Agent，不接收 `kind/workspace_type/workspace_id`；后端原子创建 AgentWorkspace、Agent、默认 Session 和固定 Binding。
+- Coding Agent 只能由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建；用户侧 Agent 页面、公共 API、通知和 SSE 不展示 Coding Agent 的 Workspace 或 Binding。
+- Agent 创建后内部 Workspace 固定；Session 和 Invocation 不得切换。
 - 多个 Coding Agent 可以引用同一 StudioWorkspace，但写入必须经过 AppStudio ChangeSet 和 `base_revision` 校验。
 - Coding Agent 不直接挂载 AppStudio 存储，只使用当前 AgentInvocation 的受控 Workspace Tool 授权；Runtime 挂载请求必须经 Task Center、Task Worker 和 Infra Adapter。
 - Agent 删除、挂起或 Runtime 重建不得改写 StudioWorkspace、StudioBuild、StudioRelease 或 StudioRuntimeInstance。
@@ -28,13 +30,13 @@
 
 ## 5. 上游与下游
 
-上游是用户、AppStudio 和受权平台入口创建 Agent 或发起 Invocation。下游包括 AgentRuntimeProvider、Task Center/Task Worker、AppStudio Workspace Tool、infrastructure，以及消费可靠 Agent 事件的 notification-center 和 sse。
+上游是用户创建 Platform Agent、AppStudio 内部创建 Coding Agent，以及受权平台入口发起 Invocation。下游包括 AgentRuntimeProvider、Task Center/Task Worker、AppStudio Workspace Tool、infrastructure，以及消费不含 Workspace 字段的可靠 Agent 事件的 notification-center 和 sse。
 
 ## 6. 正式事实源
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/agent/product-spec.md` | S1 | Agent、Session、Memory、Workspace 引用和 AgentRuntime 产品语义 |
+| `00_product/domains/agent/product-spec.md` | S1 | Agent、Session、Memory、内部 Workspace 绑定和 AgentRuntime 产品语义 |
 | `01_contracts/domains/agent/openapi.yaml` | S2 Draft | Agent、Session、Invocation、Memory 和 Runtime API |
 | `01_contracts/domains/agent/schema.sql` | S2 Draft | Agent 领域设计态 Schema |
 | `01_contracts/domains/agent/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Draft | 错误、权限、事件和模块边界 |
@@ -45,7 +47,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 | 任务 | 首先读取 | 继续读取条件 |
 | --- | --- | --- |
 | Agent/Session/Invocation/Memory | Agent S1 | 涉及任务执行再读 task-center Context |
-| Platform Agent Workspace | Agent S1 | 涉及 Artifact 再读 asset-library Context |
+| Platform Agent 初始化 | Agent S1 | 涉及内部 Workspace 持久化再读 Agent S2 |
 | Coding Agent 修改源码 | Agent S1 | 必须继续读 appstudio Context |
 | AgentRuntime/Provider | Agent S1 | 涉及周期调度再读 task-center Context |
 

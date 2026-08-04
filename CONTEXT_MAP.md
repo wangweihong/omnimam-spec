@@ -23,14 +23,14 @@
 | `workflow-canvas` | `domains/workflow-canvas/context.md` | 画布结构、版本、编译和运行 | Canvas、节点、边、部分执行 |
 | `notification-center` | `domains/notification-center/context.md` | 通知收件箱、偏好、聚合 | 完成、失败、待处理通知 |
 | `sse` | `domains/sse/context.md` | 用户级实时事件投影 | EventSource、断线恢复、重同步 |
-| `agent` | `domains/agent/context.md` | Agent、Session、Memory、AgentWorkspace 与 AgentRuntime | Platform Agent、Coding Agent、Hermes、OpenCode |
-| `appstudio` | `domains/appstudio/context.md` | 生成应用源码、构建、发布与运行 | StudioApplication、StudioWorkspace、StudioBuild、StudioRelease |
+| `agent` | `domains/agent/context.md` | Agent、Session、Memory、内部 Workspace 绑定与 AgentRuntime | Platform Agent、Coding Agent、Hermes、OpenCode |
+| `appstudio` | `domains/appstudio/context.md` | 生成应用源码、Revision、构建、发布与运行 | StudioApplication、Source、Revision、StudioBuild、StudioRelease |
 | `infrastructure` | `domains/infrastructure/context.md` | 第一阶段单机 Docker 运行层与受控挂载 | InfraRuntime、Docker Job/Service、RuntimeMount、Task Worker、Workspace 挂载 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 
 `modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
 
-`agent` 和 `appstudio` 当前仍保留未 Release 的 S1/S2 草稿；`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 已同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 和 AppStudio 不能作为正式实现、合并或验收依据；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
+`agent` 和 `appstudio` 当前仍保留未 Release 的 S1/S2 草稿；`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 已同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Workspace 关键词在这两个领域仅用于定位后端 canonical 事实，不代表公共资源、页面或用户输入。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 和 AppStudio 不能作为正式实现、合并或验收依据；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
 
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 
@@ -55,8 +55,8 @@
 | Topic、Message、Assistant、QuickPhrase、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 model-management |
 | MCP、server/discover、Streamable HTTP、stdio Proxy、MCP Tool、MCP Resource、MCP Task | `domains/mcp/context.md` | 调用应用再读 application-platform；任务映射再读 task-center |
 | AgentSession、AgentInvocation、AgentMemory、Hermes、OpenCode、AgentRuntime | `domains/agent/context.md` | Coding Agent 修改源码再读 appstudio |
-| AgentWorkspace、workspace_type、AgentRuntimeProvider | `domains/agent/context.md` | 周期执行再读 task-center |
-| StudioApplication、StudioApplicationVersion、StudioWorkspace、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改再读 agent |
+| AgentWorkspace、workspace_type、AgentRuntimeProvider（后端内部） | `domains/agent/context.md` | 周期执行再读 task-center |
+| StudioApplication、Source、Revision、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改或内部 StudioWorkspace 绑定再读 agent |
 | StudioBuild、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行再读 task-center；Artifact 再读 asset-library |
 | InfraRuntime、Docker Job、Docker Service、RuntimeMount、DockerRuntimeProvider、Task Worker 调用 Infra | `domains/infrastructure/context.md` | 必须继续读 task-center；涉及 AgentWorkspace 读 agent，涉及 StudioWorkspace/Revision/Snapshot/Artifact 读 appstudio |
 

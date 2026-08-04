@@ -3,7 +3,8 @@ info:
   title: OmniMAM Agent API
   version: 1.0.0-draft
   description: >-
-    Agent、Session、Invocation、Memory、Workspace Binding 与 AgentRuntime 的实现契约。
+    用户管理的 Platform Agent、Session、Invocation、Memory 与 AgentRuntime 的公共实现契约。
+    Workspace Binding 和 AppStudio Coding Agent 创建属于内部模块合同，不通过本 OpenAPI 暴露。
     本文件只按当前 Agent S1 生成；旧版 S2 不属于本契约输入。
 servers:
   - url: /
@@ -31,33 +32,33 @@ paths:
     get:
       tags: [agents]
       operationId: list_agents
-      summary: 查询当前主体可见 Agent
+      summary: 查询当前主体可见的 Platform Agent
       x-permission: agent.read
       x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {$ref: '#/components/parameters/keyword'}, {name: statuses, in: query, schema: {type: string}, description: Agent 状态，逗号分隔。}]
       responses:
-        '200': {description: Agent 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentListResponse'}}}}
+        '200': {description: 用户管理的 Platform Agent 列表，不包含 AppStudio 管理的 Coding Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/AgentListResponse'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     post:
       tags: [agents]
       operationId: create_agent
-      summary: 创建 Agent
+      summary: 创建 Platform Agent
       x-permission: agent.manage
       x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-010, R-AGENT-014, R-AGENT-016], source_sections: ['10 创建 Agent']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AgentCreateRequest'}}}}
       responses:
-        '200': {description: 创建后的 Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
+        '200': {description: 后端已自动创建并绑定内部 AgentWorkspace 的 Platform Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
   /api/v1/agents/{agent_id}:
     parameters: [{$ref: '#/components/parameters/agent_id'}]
     get:
       tags: [agents]
       operationId: get_agent
-      summary: 获取 Agent
+      summary: 获取 Platform Agent
       x-permission: agent.read
       x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-001, R-AGENT-017], source_sections: ['8.1 Agent', '23 权限模型']}
       responses:
-        '200': {description: Agent。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
+        '200': {description: 用户可见的 Platform Agent，不返回内部 Workspace Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/Agent'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
     patch:
       tags: [agents]
@@ -323,15 +324,6 @@ paths:
       responses:
         '200': {description: 删除结果。, content: {application/json: {schema: {$ref: '#/components/schemas/OperationResult'}}}}
         '500': {$ref: '#/components/responses/UnexpectedError'}
-  /api/v1/agents/{agent_id}/workspace-binding:
-    get:
-      tags: [agents]
-      operationId: get_agent_workspace_binding
-      summary: 查询 Agent 固定 Workspace Binding
-      x-permission: agent.workspace.read
-      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-010, R-AGENT-017], source_sections: ['18 Workspace']}
-      parameters: [{$ref: '#/components/parameters/agent_id'}]
-      responses: {'200': {description: 创建 Agent 时固定且不可切换的 Workspace Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/WorkspaceBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/agents/{agent_id}/model-bindings:
     get:
       tags: [agents]
@@ -405,16 +397,14 @@ components:
         description: {type: string}
     Agent:
       type: object
-      required: [id, name, agent_profile_id, kind, workspace_type, workspace_id, status, disabled, resource_version, created_at, updated_at]
+      required: [id, name, agent_profile_id, kind, status, disabled, resource_version, created_at, updated_at]
       properties:
         id: {type: string}
         name: {type: string}
         description: {type: string}
         agent_profile_id: {type: string}
         agent_profile_revision: {type: string}
-        kind: {type: string, enum: [platform, coding]}
-        workspace_type: {type: string, enum: [agent, studio]}
-        workspace_id: {type: string}
+        kind: {type: string, enum: [platform], readOnly: true, description: 公共 Agent 管理接口只投影 Platform Agent。}
         status: {type: string, enum: [CREATING, READY, STARTING, RUNNING, IDLE, SUSPENDED, ERROR, DISABLED, DELETING]}
         disabled: {type: boolean}
         resource_version: {type: integer}
@@ -423,15 +413,12 @@ components:
         last_active_at: {type: string, format: date-time, nullable: true}
     AgentCreateRequest:
       type: object
-      required: [name, agent_profile_id, kind, workspace_type, workspace_id]
+      required: [name, agent_profile_id]
       properties:
         name: {type: string, minLength: 1, maxLength: 200}
         description: {type: string, maxLength: 2000}
         agent_profile_id: {type: string}
         agent_profile_revision: {type: string}
-        kind: {type: string, enum: [platform, coding]}
-        workspace_type: {type: string, enum: [agent, studio]}
-        workspace_id: {type: string}
         model_binding: {$ref: '#/components/schemas/ModelBindingInput'}
         runtime_policy: {type: object, additionalProperties: false}
     AgentUpdateRequest:
@@ -577,21 +564,6 @@ components:
       type: object
       required: [total, items]
       properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/AgentInvocation'}}}
-    WorkspaceBinding:
-      type: object
-      required: [id, agent_id, workspace_type, workspace_id, access_mode]
-      properties:
-        id: {type: string}
-        agent_id: {type: string}
-        workspace_type: {type: string, enum: [agent, studio]}
-        workspace_id: {type: string}
-        access_mode: {type: string, enum: [READ_ONLY, READ_WRITE]}
-        authorization_summary:
-          type: object
-          additionalProperties: false
-          properties:
-            source: {type: string, enum: [agent, appstudio]}
-            validated_at: {type: string, format: date-time, nullable: true}
     ModelBinding:
       allOf: [{$ref: '#/components/schemas/ModelBindingInput'}, {type: object, properties: {id: {type: string}, status: {type: string}, is_primary: {type: boolean}}}]
     SkillBinding:

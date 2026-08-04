@@ -2,20 +2,18 @@
 agent_lifecycle_changed:
   producer: agent-service
   consumers: [notification-center, sse, audit-service]
-  trigger_condition: Agent 创建或 status、disabled、固定 Workspace 引用发生已持久化单调变化。
+  trigger_condition: 用户可见 Platform Agent 创建或 status、disabled 发生已持久化单调变化。
   payload:
     agent_id: string
     owner_user_id: string
     kind: string
-    workspace_type: string
-    workspace_id: string
     from_status: string|null
     to_status: string
     resource_version: integer
     occurred_at: string(date-time)
   idempotency_key: agent_id:resource_version
   retry_policy: agent outbox 持续重试，消费者按 agent_id/resource_version 幂等。
-  failure_policy: 事件失败不回滚 Agent；可从 Agent 事实重放。
+  failure_policy: 事件失败不回滚 Agent；可从 Agent 事实重放；通知、SSE 和公共响应不得补充内部 Workspace 字段。
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-010, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
 agent_session_status_changed:

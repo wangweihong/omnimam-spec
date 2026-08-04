@@ -36,17 +36,17 @@
   deprecated: false
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-018]
   related_user_stories: [US-AGENT-001]
-- code: ERR_AGENT_WORKSPACE_BINDING_INVALID
+- code: ERR_AGENT_INITIALIZATION_FAILED
   value: 200203
   http: 200
-  cn: Agent Workspace 绑定不符合类型或授权规则。
-  en: The Agent workspace binding violates workspace type or authorization rules.
+  cn: Agent 初始化失败，请稍后重试。
+  en: Agent initialization failed. Please retry later.
   owning_domain: agent
   owning_module: agent-core
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [BR-AGENT-001, R-AGENT-010, R-AGENT-017]
+  related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-010, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_ACCESS_DENIED
   value: 201000

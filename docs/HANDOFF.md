@@ -2,59 +2,73 @@
 
 ## 当前目标与状态
 
-- 当前目标：发布 Infrastructure 状态同步并推送到远端。
-- 状态：已完成。`spec-v1.15.3` release commit、annotated tag 和远端推送均已完成。
+- 当前目标：将 Agent/AppStudio 的 Workspace 内化为后端事实，用户侧不选择、不导航也不传递 Workspace ID。
+- 状态：发布中。Agent/AppStudio Workspace 后端内化规格已完成并通过定向校验；用户已确认发布，目标版本为 `spec-v1.16.0`，正在创建规格提交、Release 记录、tag 并推送 `master`。
 
 ## 本次已完成
 
-- 读取了 Spec 工作流、全局上下文、任务导航和 Infrastructure Domain Context。
-- 核对了 `RELEASE.md` 的 `spec-v1.12.0` 记录：包含 Infrastructure S1、全套 S2、架构参考和 Context，状态为 `released`，且允许作为正式实现依据。
-- 核对了 release commit `2f71a836006d5f35f48144fa03d1176232ea70c6` 到当前 HEAD：Infrastructure S1/S2 文件没有后续变更。
-- 已同步 `domains/infrastructure/context.md`、S1 文档和 S2 文档头部的发布状态。
-- 已确认未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 与本次发布无关，不纳入提交。
-- 已完成规格提交：`58d2d622`（`spec: sync infrastructure release metadata`）。
-- 已完成 release commit：`0c93e518f64d11b466e2fef7dae47f20ac3150b0`（`release: publish infrastructure status spec`）。
-- 已创建并推送 annotated tag：`spec-v1.15.3`。
-- 已推送：`origin/master` 与 `origin/spec-v1.15.3`。
+- 已读取 `skills/spec-workflow/SKILL.md`、`S1.md`、`S2.md`，并按最小上下文核对 Agent/AppStudio S1、S2 和跨域边界。
+- 用户已于 2026-08-04 明确请求“提交发布并推送到远端”，确认将本次 Agent/AppStudio Workspace 后端内化规格发布为 `spec-v1.16.0` 并允许作为正式实现依据。
+- 已确认 Agent/AppStudio 均为未 Release 草稿，本次直接替换当前公共契约，不保留 Workspace 公共 API 兼容层，不修改 `RELEASE.md`。
+- 已确认内部 Workspace、固定 Binding、Revision、ChangeSet、Snapshot 和 Runtime 安全规则继续保留。
+- 已修改 Agent S1：用户创建固定为 Platform Agent，后端原子创建 AgentWorkspace；Coding Agent 仅允许 AppStudio 通过内部模块语义创建，页面、公共错误和 SSE 不投影 Workspace。
+- 已修改 Agent OpenAPI：创建请求和公共 DTO 删除 Workspace 字段，删除公共 Workspace Binding 路径及 DTO，列表和详情限定为用户管理的 Platform Agent。
+- 已完成 Agent S2：公共错误改为初始化语义，删除 `agent.workspace.read`，公共事件移除 Workspace 字段，内部合同新增 `CreateCodingAgentForStudio`，Schema 仅补内部事实边界说明。
+- 已更新 Agent Domain Context，明确 Platform/Coding Agent 的创建入口和 Workspace 后端内化边界。
+- 已完成 AppStudio S2：公共接口改为 StudioApplication 级 Source/Revision、Snapshot 和 Preview 寻址，删除公开 StudioWorkspace 路径/DTO，权限改为 `appstudio.source.read/write`；内部 Schema、事件和模块协作继续保留 Workspace canonical 引用。
+- 已更新 AppStudio Domain Context，明确用户只感知应用、源码和 Revision，Workspace 仅作为后端默认编辑上下文和固定绑定事实。
+- 已收口 AppStudio S1：创建、源码访问、Preview、Hotfix、Secret、错误和验收均使用应用级 Source/Revision 语义；Hotfix 不再创建第二个 Workspace。
+- 已新增 Agent/AppStudio 领域架构参考，并更新全局架构、Global Context、Context Map 和 Changelog；未修改 `RELEASE.md`。
+- 已同步 Infrastructure 架构参考：Preview 使用应用级源码 Revision，Workspace ID 不进入用户或公共 API，内部由 AppStudio 解析受控 `source_ref`。
+- 定向校验发现并修复 AppStudio `create_studio_build` 与 `create_studio_release` 漏声明 `studio_application_id` 路径参数；非失败式全路径诊断确认无其他同类遗漏。
+- 8 个目标 YAML 均已通过 PyYAML 解析；Agent OpenAPI 的 34 个 operation、133 个本地引用和 34 个权限引用，以及 AppStudio OpenAPI 的 33 个 operation、143 个本地引用和 33 个权限引用均通过一致性检查。
+- 定向断言已确认 Agent 公共创建请求、DTO 和 API 不暴露 Workspace；AppStudio 无 `/api/v1/studio-workspaces`、公开 `StudioWorkspace`、`workspace_id/workspace_revision`，且存在应用级 `StudioSourceState`；两个领域的内部 Schema 继续保留 Workspace 事实。
+- `git diff --check` 已通过。
 
 ## 当前进行中
 
-- 无。
+- 发布前定向验证已重新通过，正在创建 Workspace 后端内化规格提交。
+- 规格提交后将以其完整 commit ID 更新 `RELEASE.md`，创建 `spec-v1.16.0` Release 提交和 tag，最后更新本 Handoff 并推送 `master` 与 tag。
 
 ## 文件变化
 
-- 已修改：`docs/HANDOFF.md`、`domains/infrastructure/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`00_product/domains/infrastructure/product-spec.md`、`01_contracts/domains/infrastructure/` 下 6 个 S2 文件。
-- 已提交：`CHANGELOG.md`、`RELEASE.md` 和 `docs/HANDOFF.md`。
-- 未修改：`RELEASE.md` 和 Infrastructure 产品语义、S2 契约语义；S1/S2 仅更新发布状态元数据和对应 Draft 文案。
+- 已修改：`docs/HANDOFF.md`、`00_product/domains/agent/product-spec.md`、`01_contracts/domains/agent/` 下全部 S2 文件、`domains/agent/context.md`。
+- 已修改：`00_product/domains/appstudio/product-spec.md`、`01_contracts/domains/appstudio/` 下全部 S2 文件、`domains/appstudio/context.md`。
+- 已新增：`02_architecture/domains/agent.md`、`02_architecture/domains/appstudio.md`。
+- 已修改：`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`02_architecture/global-architecture.md`、`02_architecture/domains/infrastructure.md`、`CHANGELOG.md`。
+- 不修改：`RELEASE.md`、实际 migration、正式前后端实现代码和无关领域。
 
 ## 关键决定
 
-- 发布判断以 `RELEASE.md` 为准：Infrastructure 不是“未发布”，而是历史上已在 `spec-v1.12.0` 发布。
-- Context、S1 和 S2 当前状态已与 `RELEASE.md` 的 `spec-v1.12.0` 正式发布记录统一。
-- 保留既有 `spec-v1.12.0` 发布记录，不创建新的 release；本次只同步已发布状态，不改变产品语义、API、Schema、错误码、权限码、事件或模块边界。
-- 本次新 release 版本采用 `spec-v1.15.3`；先提交规格同步内容，再以 release commit 登记前一个提交的 hash，遵循仓库现有惯例。
-- `spec-v1.15.3` 只覆盖 Infrastructure 的 S1、6 个 S2 和 Context 状态同步，未扩大 domain 范围。
+- 用户侧 Agent 页面只创建和管理 Platform Agent；`CreateAgent` 不接收 `kind/workspace_type/workspace_id`。
+- Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 语义创建，内部输入可以携带稳定 StudioApplication/StudioWorkspace 引用，前端不可调用。
+- AppStudio 创建时后端自动创建唯一默认编辑上下文；用户只感知应用、源码和 Revision。
+- Workspace 继续是后端 canonical 对象，设计态 Schema 不删除相关表或字段。
 
 ## API、Schema、依赖或配置变化
 
-- 无。
+- 已删除 Agent 公共 Workspace Binding 查询和 DTO；`AgentCreateRequest` 不再接收 `kind/workspace_type/workspace_id`，公共 `Agent` DTO 不返回 Workspace 字段。
+- AppStudio 已删除 `/api/v1/studio-workspaces/*` 公共路径，改为 `/api/v1/studio-applications/{studio_application_id}/source*` 和应用级 Preview 路径。
+- AppStudio 公共 DTO 已将 `workspace_id/workspace_revision` 改为 `studio_application_id/source_revision`；内部设计态 Schema 保留原字段。
+- 不新增依赖，不创建 migration。
 
 ## 验证与风险
 
-- 已完成定向核对：`RELEASE.md`、Infrastructure Context、S1 product spec、S2 OpenAPI/schema/errors/permissions/events/module-contract，以及 release commit 后的文件变更记录。
-- 已通过：Infrastructure OpenAPI、错误、权限和事件 YAML 解析；`git diff --check`；Draft/未 Release 状态定向检索。
-- 未运行实现测试；本任务仅修改 Spec 状态元数据，不涉及实现代码。
-- 已消除：Infrastructure Context、GLOBAL_CONTEXT、CONTEXT_MAP 和 S1/S2 文件头部的错误未发布标记。
-- 已验证：release commit、tag、远端 `master` 和 tag 均已推送成功。
+- 已执行：PyYAML 解析 Agent/AppStudio 的 `openapi.yaml`、`errors.yaml`、`permissions.yaml` 和 `events.yaml`，全部成功。
+- 已执行：两个 OpenAPI 的 operationId 唯一性、本地 `$ref`、路径参数和权限引用一致性检查，全部通过。
+- 已执行：公共 Workspace 暴露断言、`StudioSourceState` 存在断言、内部 Workspace Schema 保留断言和 `git diff --check`，全部通过。
+- 按任务约束未运行全仓测试；本次为规格变更，无目标实现 package 测试。
+- 风险：发布流程尚未完成；在 `RELEASE.md`、`spec-v1.16.0` tag 和远端推送完成前，本次规格仍不能视为已正式发布。
 
 ## 未完成事项
 
-- 本次请求无未完成事项。
-- `agent` 和 `appstudio` 仍是未 Release 草稿，不属于本次范围。
+- 创建 Workspace 后端内化规格提交并取得 commit ID。
+- 更新 `RELEASE.md`，创建并标记 `spec-v1.16.0`。
+- 更新最终 Handoff，推送 `master` 和 `spec-v1.16.0` 到 `origin`。
 
 ## 推荐下一步
 
-- 后续 Infrastructure 产品语义或 S2 契约变更时，先修改对应事实源，再创建新的 release 版本并同步 Context。
+- 只暂存本任务文件并创建 Workspace 后端内化规格提交，记录其完整 commit ID。
 
 Next Prompt:
 

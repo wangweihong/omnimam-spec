@@ -215,6 +215,12 @@ kind=coding   -> workspaceType=studio -> StudioWorkspace
 
 `AgentWorkspace` 是 Platform Agent 的持久化工作区，由 Agent Service 拥有。`StudioWorkspace` 是 AppStudio 的源码事实，必须在创建 Coding Agent 前存在，并由 AppStudio 校验当前主体是否有权绑定。
 
+Workspace 是后端内部运行与持久化事实，不是用户侧资源。用户创建、查看或管理 Agent 时不得选择、输入、查看或切换 `workspaceType/workspaceId`：
+
+* 用户通过 Agent 页面创建的 Agent 固定为 Platform Agent，由 Agent Service 自动创建并绑定 AgentWorkspace。
+* Coding Agent 只能由 AppStudio 通过受控内部模块接口创建，用户不得在 Agent 页面独立创建。
+* 用户侧 Agent 列表、详情、创建和编辑页面不展示 Workspace 类型、ID、Binding 或授权摘要。
+
 多个 Coding Agent 可以引用同一个 StudioWorkspace，但这不授予 Runtime 直接挂载或修改 AppStudio 私有存储的权限。Coding Agent 只能使用与 Principal、Agent、Session、Invocation、StudioWorkspace、允许动作和过期时间绑定的短期 Workspace Tool 授权；所有写入必须由 AppStudio 形成带 `base_revision` 的原子 `StudioChangeSet`。
 
 Agent 删除或 Runtime 删除时，不自动删除 AgentWorkspace 或 StudioWorkspace。需要更换 Workspace 时必须创建新的 Agent，不能修改既有 Agent 的固定绑定。
@@ -718,7 +724,7 @@ erDiagram
 
 ## 8.1 Agent
 
-字段：
+内部 canonical 字段：
 
 ```text
 id
@@ -739,6 +745,8 @@ lastActiveAt
 ```
 
 `kind` 只允许 `platform` 或 `coding`。`workspaceType` 必须分别为 `agent` 或 `studio`，`workspaceId` 创建后不可变。AgentProfile 可以决定 Runtime 和工具能力，但不得改变 Agent 的业务类型或 Workspace 归属。
+
+用户侧 Agent DTO 不返回 `workspaceType/workspaceId`。公共 Agent 管理接口只覆盖 Platform Agent；AppStudio 创建的 Coding Agent 由 AppStudio 页面和接口提供状态投影，不进入用户侧 Agent 创建、列表和详情流程。
 
 ---
 
@@ -1132,20 +1140,19 @@ stateDiagram-v2
 
 # 10. 创建 Agent
 
-## 10.1 创建输入
+## 10.1 用户创建输入
 
 ```text
 name
 description
 agentProfileId
-kind
 modelBinding
-workspaceType
-workspaceId
 skillBindings
 mcpBindings
 runtimePolicy
 ```
+
+用户创建接口固定创建 Platform Agent，不接受 `kind`、`workspaceType` 或 `workspaceId`。Agent Service 必须在同一创建流程中自动创建并绑定 AgentWorkspace；Workspace 创建或绑定失败时整体失败，不得产生可用但未绑定的 Agent。
 
 ---
 
@@ -1157,7 +1164,6 @@ sequenceDiagram
     participant AS as Agent Service
     participant MM as model-management
     participant MG as modelgateway
-    participant ST as AppStudio
     participant TC as Task Center
 
     U->>AS: CreateAgent
@@ -1169,14 +1175,7 @@ sequenceDiagram
     AS->>MG: 校验模型访问能力
     MG-->>AS: ModelAccessSpec 摘要
 
-    alt kind=platform
-        AS->>AS: 创建并绑定 AgentWorkspace
-    else kind=coding
-        AS->>ST: 校验 StudioWorkspace 与当前主体授权
-        ST-->>AS: 返回稳定 Workspace 引用与授权摘要
-    end
-
-    AS->>AS: 原子创建 Agent、默认 Session 与固定 Binding
+    AS->>AS: 原子创建 Platform Agent、AgentWorkspace、默认 Session 与固定 Binding
     AS-->>U: Agent READY
 ```
 
@@ -1188,6 +1187,12 @@ sequenceDiagram
 * 用户发送第一条消息。
 * AppStudio 启动 Coding Agent。
 * 配置了自动预热策略。
+
+## 10.3 AppStudio 内部创建 Coding Agent
+
+AppStudio 创建 StudioApplication 时，通过非前端的 `CreateCodingAgentForStudio` 模块语义请求 Agent Service 创建 Coding Agent。该内部请求携带稳定的 StudioApplication、StudioWorkspace 和授权上下文；Agent Service 校验调用方身份、Workspace 类型与授权后，原子创建 Coding Agent、默认 Session 和固定 Binding。
+
+该模块语义不得暴露为用户可调用的 HTTP 接口，不得允许前端传递或替换 StudioWorkspace ID。创建失败时不得留下没有固定 Workspace 的 Coding Agent；失败结果返回 AppStudio，由 AppStudio 按其创建恢复规则处理。
 
 ---
 
@@ -2154,13 +2159,13 @@ ValidateAgentModelBinding
 
 ---
 
-## 26.8 WorkspaceBinding
+## 26.8 内部 WorkspaceBinding
 
 ```text
-GetAgentWorkspaceBinding
+CreateCodingAgentForStudio
 ```
 
-固定 Workspace 只能在创建 Agent 时建立并完成校验；不提供对既有 Agent 的绑定、解绑、重新校验或切换接口。
+固定 Workspace 只能由 Agent Service 在创建时建立并完成校验；不提供用户侧查询、绑定、解绑、重新校验或切换接口。`CreateCodingAgentForStudio` 仅供 AppStudio 受信模块调用。
 
 ---
 
@@ -2340,15 +2345,13 @@ AGENT_MODEL_CREDENTIAL_UNAVAILABLE
 
 ---
 
-## 29.4 Workspace
+## 29.4 Agent 初始化
 
 ```text
-AGENT_WORKSPACE_REQUIRED
-AGENT_WORKSPACE_NOT_FOUND
-AGENT_WORKSPACE_ACCESS_DENIED
-AGENT_WORKSPACE_BIND_FAILED
-AGENT_WORKSPACE_UNAVAILABLE
+AGENT_INITIALIZATION_FAILED
 ```
+
+Workspace 创建、类型、授权或固定绑定失败统一映射为用户可理解的 Agent 初始化失败。Workspace 细节只允许出现在内部诊断和受控模块错误中，不得进入公共 API、通知或 SSE 投影。
 
 ---
 
@@ -2606,22 +2609,22 @@ flowchart LR
 
 最终边界为：
 
-> Agent Service 决定运行哪个 Agent、使用哪个模型、Workspace 和工具；Task Center 统一承接运行任务；Task Worker 通过 Infra Adapter 调用 Infra Service；Infra Service 决定该 Agent Runtime 如何运行；Agent Runtime 自行完成模型调用和 Agent Loop。
+> Agent Service 决定运行哪个 Agent、使用哪个模型、内部 Workspace 和工具；Task Center 统一承接运行任务；Task Worker 通过 Infra Adapter 调用 Infra Service；Infra Service 决定该 Agent Runtime 如何运行；Agent Runtime 自行完成模型调用和 Agent Loop。用户只管理 Agent，不感知内部 Workspace。
 
 ## 34. S2 追溯锚点
 
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
-- `US-AGENT-001`：用户可以管理持久化 Agent、固定 Workspace、会话交互、记忆和受控 Runtime 生命周期。
+- `US-AGENT-001`：用户可以管理持久化 Platform Agent、会话交互、记忆和受控 Runtime 生命周期，而无需选择或管理内部 Workspace；Coding Agent 由 AppStudio 创建和投影。
 - `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding 和 Runtime Binding 的事实归属与生命周期必须遵守本 S1 第 3、8、9、18、19、20、21、23、24、28 节及 `R-AGENT-001..020`。
 
 验收标准：
 
-- `AC-AGENT-001-01`：创建 Platform Agent 时系统创建或绑定一个 AgentWorkspace；创建 Coding Agent 时必须校验一个已存在的 StudioWorkspace，类型与 Workspace 不匹配则整体拒绝。
-- `AC-AGENT-001-02`：Agent 创建后，任何 Session、Invocation、恢复或 Runtime 重建都不能修改其 `workspaceType/workspaceId`；更换 Workspace 必须新建 Agent。
+- `AC-AGENT-001-01`：用户创建 Agent 时请求不得包含 `kind/workspaceType/workspaceId`；系统固定创建 Platform Agent，并原子创建和绑定 AgentWorkspace，任一步失败均不得产生可用 Agent。
+- `AC-AGENT-001-02`：Coding Agent 只能由 AppStudio 通过 `CreateCodingAgentForStudio` 内部语义创建；用户侧 Agent 页面和公共 API 不得创建 Coding Agent 或查询 Workspace Binding。
 - `AC-AGENT-001-03`：Coding Agent 源码读写必须携带绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的 Tool 授权；授权不匹配或过期时不得执行。
 - `AC-AGENT-001-04`：Coding Agent 写入必须由 AppStudio 原子应用带 `base_revision` 的 ChangeSet；Revision 冲突时不自动覆盖、不隐式合并、不部分应用。
 - `AC-AGENT-001-05`：CODING、TOOL_OPERATION、BACKGROUND_OPERATION 以及 Runtime 启停恢复 Invocation 必须关联 AtomicTask；Agent 不复制 TaskAttempt、重试、超时或取消状态机。
 - `AC-AGENT-001-06`：纯 CHAT Invocation 可以不创建 AtomicTask；一旦需要启动 Runtime、执行工具或进入后台，必须先持久化并绑定 AtomicTask。
-- `AC-AGENT-001-07`：Runtime 删除、挂起或异常重建后，Agent、Session、Message、Memory 和固定 Workspace 引用保持不变。
-- `AC-AGENT-001-08`：所有 Infra-backed 操作只能走 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`，Agent API、事件和日志不得暴露 Provider 私有信息、宿主路径或明文 Secret。
+- `AC-AGENT-001-07`：Runtime 删除、挂起或异常重建后，Agent、Session、Message、Memory 和内部固定 Workspace 引用保持不变。
+- `AC-AGENT-001-08`：所有 Infra-backed 操作只能走 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Agent 公共 API、通知、SSE 和用户日志不得暴露 Workspace ID、Provider 私有信息、宿主路径或明文 Secret。

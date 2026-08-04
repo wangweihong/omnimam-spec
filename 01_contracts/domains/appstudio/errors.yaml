@@ -24,49 +24,49 @@
   deprecated: false
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-014]
   related_user_stories: [US-APPSTUDIO-001]
-- code: ERR_APPSTUDIO_WORKSPACE_NOT_VISIBLE
+- code: ERR_APPSTUDIO_SOURCE_NOT_VISIBLE
   value: 210400
   http: 200
-  cn: StudioWorkspace 不存在或当前主体不可见。
-  en: The StudioWorkspace does not exist or is not visible to the current principal.
+  cn: 应用源码不存在或当前主体不可见。
+  en: The application source does not exist or is not visible to the current principal.
   owning_domain: appstudio
-  owning_module: workspace
+  owning_module: source
   range: 210400-210599
   retryable: false
   deprecated: false
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-002, R-STUDIO-010]
   related_user_stories: [US-APPSTUDIO-001]
-- code: ERR_APPSTUDIO_WORKSPACE_REVISION_CONFLICT
+- code: ERR_APPSTUDIO_SOURCE_REVISION_CONFLICT
   value: 210401
   http: 200
-  cn: Workspace 当前 Revision 与 base_revision 冲突。
-  en: The Workspace current Revision conflicts with base_revision.
+  cn: 应用源码当前 Revision 与 base_revision 冲突。
+  en: The application source Revision conflicts with base_revision.
   owning_domain: appstudio
-  owning_module: workspace
+  owning_module: source
   range: 210400-210599
   retryable: false
   deprecated: false
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-022]
   related_user_stories: [US-APPSTUDIO-001]
-- code: ERR_APPSTUDIO_WORKSPACE_CHANGE_REJECTED
+- code: ERR_APPSTUDIO_SOURCE_CHANGE_REJECTED
   value: 210402
   http: 200
   cn: ChangeSet 未通过路径、依赖或安全校验。
   en: The ChangeSet failed path, dependency, or security validation.
   owning_domain: appstudio
-  owning_module: workspace
+  owning_module: source
   range: 210400-210599
   retryable: false
   deprecated: false
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-010, R-STUDIO-022]
   related_user_stories: [US-APPSTUDIO-001]
-- code: ERR_APPSTUDIO_WORKSPACE_TOOL_GRANT_INVALID
+- code: ERR_APPSTUDIO_SOURCE_ACCESS_INVALID
   value: 210403
   http: 200
-  cn: Workspace Tool 授权已过期、范围不匹配或不允许当前操作。
-  en: The Workspace Tool grant is expired, scope-mismatched, or does not allow the operation.
+  cn: 源码访问授权已过期、范围不匹配或不允许当前操作。
+  en: The source access grant is expired, scope-mismatched, or does not allow the operation.
   owning_domain: appstudio
-  owning_module: workspace
+  owning_module: source
   range: 210400-210599
   retryable: false
   deprecated: false

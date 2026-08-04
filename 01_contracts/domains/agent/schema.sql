@@ -1,5 +1,6 @@
 -- Agent S2 design schema, v1.0.0-draft. This is not a migration.
 -- 当前 Agent S1 使用 US-AGENT-001/BR-AGENT-001 锚点映射既有 R-AGENT-* 规则。
+-- workspace_type/workspace_id 与 agent_workspace_bindings 是后端 canonical 事实；公共 API、页面、通知和 SSE 不得暴露或要求用户传入这些字段。
 
 -- s1_refs: R-AGENT-001, R-AGENT-010, R-AGENT-017; source: 8.1 Agent, 23 权限模型.
 CREATE TABLE agents (
@@ -127,7 +128,7 @@ CREATE TABLE agent_model_bindings (
   UNIQUE (agent_id, purpose, name)
 );
 
--- s1_refs: R-AGENT-010, R-AGENT-017; source: 8.7 AgentWorkspaceBinding, 18 Workspace.
+-- s1_refs: R-AGENT-010, R-AGENT-017; source: 8.7 AgentWorkspaceBinding, 18 Workspace. Internal-only; no public Workspace Binding API.
 CREATE TABLE agent_workspace_bindings (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',

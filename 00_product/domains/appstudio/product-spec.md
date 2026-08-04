@@ -96,7 +96,7 @@ AppStudio 不直接管理 Coding Agent Runtime。
 AppStudio
     ↓ 创建或恢复 Coding Agent
 Agent Service
-    ↓ 解析 AgentProfile、模型、Workspace、Skills、MCP
+    ↓ 解析 AgentProfile、模型、内部 Workspace、Skills、MCP
 Task Center
     ↓ 分发已注册 functionRef
 Task Worker
@@ -234,7 +234,7 @@ Agent Service → Task Center → Task Worker → Infra Adapter → Infra Servic
 
 用途：
 
-* 运行当前 Workspace 中的开发代码。
+* 运行应用当前源码 Revision 中的开发代码。
 * 提供临时访问地址。
 * 支持重启或热更新。
 
@@ -298,7 +298,7 @@ flowchart TB
     subgraph STUDIO["AppStudio"]
         APPLICATION[StudioApplication]
         REPOSITORY[StudioSourceRepository]
-        WORKSPACE[StudioWorkspace / Revision / ChangeSet]
+        WORKSPACE[内部 StudioWorkspace / Revision / ChangeSet]
         SNAPSHOT[StudioSourceSnapshot]
         VERSION[StudioApplicationVersion]
         PREVIEW[StudioPreviewRuntime]
@@ -366,7 +366,7 @@ AppStudio 负责：
 
 * StudioApplication 与 StudioApplicationVersion。
 * StudioSourceRepository。
-* StudioWorkspace、SourceFile、Revision 和 StudioChangeSet。
+* 内部 StudioWorkspace、SourceFile、Revision 和 StudioChangeSet。
 * StudioSourceSnapshot。
 * StudioPreviewRuntime。
 * StudioBuild。
@@ -401,7 +401,7 @@ Agent Service 负责：
 * AgentInvocation。
 * AgentMemory。
 * AgentModelBinding。
-* Agent 的固定 StudioWorkspace 引用。
+* Agent 的内部固定 StudioWorkspace 引用。
 * AgentSkillBinding。
 * AgentMCPBinding。
 * AgentRuntimeBinding。
@@ -423,7 +423,7 @@ AppStudio 不直接调用 Coding Agent Runtime Endpoint。
 
 ## 4.3 Source Repository 与 StudioWorkspace
 
-AppStudio 拥有逻辑源码仓库、StudioWorkspace、文件索引、单调 Revision、StudioChangeSet 和不可变 StudioSourceSnapshot。底层存储 Provider 只实现存取，不形成第二个 Workspace 事实领域。
+AppStudio 拥有逻辑源码仓库、内部默认 StudioWorkspace、文件索引、单调 Revision、StudioChangeSet 和不可变 StudioSourceSnapshot。底层存储 Provider 只实现存取，不形成第二个 Workspace 事实领域。用户语义只使用“源码”“代码版本”和“Revision”，不以 Workspace 作为导航层。
 
 Workspace 生命周期独立于：
 
@@ -439,7 +439,7 @@ Workspace 生命周期独立于：
 * Coding Agent 访问 StudioWorkspace 只能通过 AppStudio Workspace Tool 和受控授权；Agent/Infra 不得直接读取 AppStudio 私有存储。
 * 所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；只在当前 Revision 等于 `base_revision` 时原子应用并生成下一个 Revision。
 * Revision 冲突、路径越权、操作无效或安全校验失败时，整个 ChangeSet 拒绝，不自动覆盖、不隐式合并、不部分应用。
-* Preview Runtime 只能挂载启动时授权的当前 Workspace Revision；源代码默认只读，临时写入使用隔离临时卷。
+* Preview Runtime 只能挂载启动时授权的当前源码 Revision；源代码默认只读，临时写入使用隔离临时卷。
 * Build 只能只读挂载固定 StudioSourceSnapshot，不得读取持续变化的 Workspace。
 * Production Runtime 只能只读挂载固定 Artifact digest，禁止挂载可写 Workspace、Revision 或 Snapshot。
 * Agent 删除不自动删除 Workspace。
@@ -646,7 +646,7 @@ erDiagram
 
 ## 5.1 StudioApplication
 
-字段：
+内部 canonical 字段：
 
 ```text
 id
@@ -660,6 +660,8 @@ createdAt
 updatedAt
 lastActivityAt
 ```
+
+`defaultWorkspaceId` 仅用于后端内部绑定；StudioApplication 公共 DTO、页面和导航不返回 Workspace ID。
 
 状态：
 
@@ -683,7 +685,7 @@ StudioApplication 状态只表示应用身份是否可编辑和可管理，不�
 ```text
 id
 studioApplicationId
-defaultWorkspaceId
+defaultWorkspaceId（内部默认源码上下文）
 status
 createdAt
 updatedAt
@@ -702,7 +704,7 @@ AppStudio 不创建第二套 Conversation。AgentSession、AgentMessage、AgentI
 
 ---
 
-## 5.3 StudioWorkspace
+## 5.3 内部 StudioWorkspace
 
 字段：
 
@@ -716,13 +718,13 @@ createdAt
 updatedAt
 ```
 
-每个 StudioApplication 至少有一个默认 StudioWorkspace。当前 S1 不支持多人实时协作，但允许多个 Coding Agent 固定引用同一 Workspace；所有写入仍按 Revision 串行提交。
+每个 StudioApplication 由后端自动创建唯一默认 StudioWorkspace。当前 S1 不支持多人实时协作，但允许多个 Coding Agent 固定引用同一 Workspace；所有写入仍按 Revision 串行提交。用户只看到应用级源码状态，不创建、选择或切换 Workspace。
 
 ---
 
 ## 5.4 StudioWorkspaceRevision 与 StudioChangeSet
 
-`StudioWorkspaceRevision` 是 Workspace 每次成功原子变更后的单调版本：
+`StudioWorkspaceRevision` 是内部源码上下文每次成功原子变更后的单调版本；公共投影称为应用 `source_revision`：
 
 ```text
 workspaceId
@@ -732,7 +734,7 @@ contentDigest
 createdAt
 ```
 
-`StudioChangeSet` 表示一次完整源码写入：
+`StudioChangeSet` 表示一次完整源码写入，公共接口通过 `studio_application_id` 寻址内部 Workspace：
 
 ```text
 id
@@ -755,7 +757,7 @@ createdAt
 
 ## 5.5 StudioSourceSnapshot
 
-字段：
+内部 canonical 字段：
 
 ```text
 id
@@ -811,7 +813,7 @@ FAILED
 EXPIRED
 ```
 
-StudioPreviewRuntime 是 AppStudio 对 Infra Runtime 的业务投影。
+StudioPreviewRuntime 是 AppStudio 对 Infra Runtime 的业务投影。公共 Preview DTO 使用 `studioApplicationId/sourceRevision`，不返回内部 Workspace ID。
 
 ---
 
@@ -978,12 +980,12 @@ codingModelSelection
 ```text
 StudioApplication
 StudioSourceRepository
-StudioWorkspace(revision=0)
+内部默认 StudioWorkspace(revision=0)
 Coding Agent
 AgentSession
 ```
 
-其中源码对象归 AppStudio；Coding Agent 和 AgentSession 由 Agent Service 创建。Coding Agent 必须以 `kind=coding`、`workspaceType=studio` 固定绑定新建的 StudioWorkspace。
+其中源码对象归 AppStudio；Coding Agent 和 AgentSession 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent。前端不得调用或替换该内部 Workspace 引用。
 
 ---
 
@@ -1017,9 +1019,9 @@ sequenceDiagram
     participant AS as Agent Service
 
     U->>ST: CreateStudioApplication
-    ST->>ST: 原子创建 Application / Repository / Workspace(revision=0)
+    ST->>ST: 原子创建 Application / Repository / 默认源码上下文(revision=0)
 
-    ST->>AS: Create Coding Agent(workspaceType=studio, workspaceId)
+    ST->>AS: CreateCodingAgentForStudio(内部 Application/Workspace 引用)
     AS-->>ST: agentId
 
     ST->>AS: Create AgentSession
@@ -1029,7 +1031,7 @@ sequenceDiagram
     ST-->>U: StudioApplication READY
 ```
 
-创建时默认不强制立即启动 Agent Runtime。Agent 创建失败时 StudioApplication 进入 `ERROR`，已创建的 Repository/Workspace 保留以支持幂等重试；不得留下没有固定 Workspace 的 Coding Agent。
+创建时默认不强制立即启动 Agent Runtime。Coding Agent 创建失败时 StudioApplication 进入 `ERROR`，已创建的 Repository/内部源码上下文保留并允许使用同一幂等请求重试；不得留下没有固定内部 Workspace 的 Coding Agent。
 
 ---
 
@@ -1052,7 +1054,7 @@ studioApplicationContext
 ```text
 AssetReference
 ArtifactReference
-WorkspaceFileReference
+SourceFileReference
 BuildLogReference
 PreviewLogReference
 ```
@@ -1128,7 +1130,7 @@ validationSummary
 
 默认允许：
 
-* 通过短期 Workspace Tool 授权读取当前 Revision。
+* 通过短期 Source Tool 授权读取当前 Revision。
 * 提交带 `base_revision` 和幂等键的原子 ChangeSet。
 * 在 ChangeSet 内创建、修改、移动和删除受权文件。
 * 执行受控开发命令。
@@ -1143,7 +1145,7 @@ validationSummary
 * 操作 Docker Socket。
 * 操作 Kubernetes API。
 * 获取宿主机 Shell。
-* 访问其他用户 Workspace。
+* 访问其他用户的应用源码。
 * 直接挂载 StudioWorkspace 或读取 AppStudio 私有存储。
 * 绕过 ChangeSet 写文件、自动覆盖 Revision 冲突或部分应用操作。
 * 读取明文 Secret。
@@ -1238,17 +1240,17 @@ RuntimeProfile 的具体镜像、命令和 Provider 实现归 Infra Service 所�
 
 ## 9.1 定位
 
-Preview 用于运行启动时授权的当前 Workspace Revision，不直接跟随后续未授权变更。
+Preview 用于运行启动时授权的当前源码 Revision，不直接跟随后续未授权变更。
 
 特点：
 
 * 临时 Service。
-* 挂载当前 Workspace Revision。
+* 挂载启动时固定的源码 Revision。
 * 支持重启。
 * 重启或显式切换 Revision 时创建新的 Preview Task，不隐式跟随后续源码变化。
 * 不创建 Release。
 * 不作为正式生产服务。
-* 删除 Preview 不影响 Workspace。
+* 删除 Preview 不影响应用源码。
 * 可以通过 IP 加端口访问。
 
 ---
@@ -1266,7 +1268,7 @@ sequenceDiagram
     participant SS as StudioSource
 
     U->>ST: StartPreview
-    ST->>ST: 固定 workspaceId + currentRevision
+    ST->>ST: 固定应用 currentRevision（内部绑定默认 Workspace）
     ST->>TC: 创建 Preview Task(revision sourceRef)
     TC->>TW: 分发 appstudio.preview.ensure
     TW->>INFRA: CreateService(appstudio.preview)
@@ -1666,7 +1668,7 @@ flowchart LR
 ```text
 当前 Release
     ↓
-从目标 StudioSourceSnapshot 创建受控 Hotfix Workspace 或恢复 ChangeSet
+从目标 StudioSourceSnapshot 恢复为新的源码 Revision 或 ChangeSet
     ↓
 Coding Agent 修改
     ↓
@@ -1796,7 +1798,7 @@ StudioApplication Runtime 使用独立 Service Identity。
 
 Preview Runtime 只能访问：
 
-* 当前应用启动时固定的 Workspace Revision。
+* 当前应用启动时固定的源码 Revision。
 * 当前应用开发配置。
 * 当前用户显式授权的模型或素材。
 * 开发环境专用 Secret。
@@ -1838,7 +1840,7 @@ RuntimeConfig 更新必须整体替换并校验 `resourceVersion`。已创建 Re
 
 禁止：
 
-* Secret 写入 Workspace。
+* Secret 写入应用源码。
 * Secret 写入代码。
 * Secret 写入 Build Artifact。
 * Secret 写入 Release。
@@ -1912,7 +1914,7 @@ SecretRef
 * MCP。
 * 挂起和恢复。
 
-Agent 详细配置跳转 Agent Service 页面管理。
+Agent 面板不渲染 Workspace 名称、类型、ID 或绑定状态，也不提供相关跳转、选择或编辑入口。
 
 ---
 
@@ -1996,19 +1998,18 @@ ReplaceStudioAgent
 
 ---
 
-## 20.3 Workspace
+## 20.3 源码与 Revision
 
 ```text
-GetStudioWorkspace
 ListSourceFiles
 GetSourceFile
 ApplyStudioChangeSet
-ListWorkspaceRevisions
+ListSourceRevisions
 CreateStudioSourceSnapshot
 GetStudioSourceSnapshot
 ListStudioSourceSnapshots
-RestoreWorkspaceRevisionAsChangeSet
-GetWorkspaceDiff
+RestoreSourceRevisionAsChangeSet
+GetSourceDiff
 ```
 
 ---
@@ -2158,14 +2159,14 @@ AppStudio 只消费必要事件并更新业务投影。
 * AgentProfile 不可用。
 * Coding 模型失效。
 * CredentialRef 不可用。
-* Workspace 不可访问。
+* 应用源码或 Revision 不可访问。
 * Agent Runtime 启动失败。
 * AgentInvocation 失败。
 
 处理：
 
-* 保留 Workspace。
-* 保留 Repository、Workspace、Revision、ChangeSet 和 Snapshot。
+* 保留内部源码上下文。
+* 保留 Repository、源码 Revision、ChangeSet 和 Snapshot。
 * 允许更换模型。
 * 允许恢复或替换 Coding Agent。
 
@@ -2180,9 +2181,9 @@ AppStudio 只消费必要事件并更新业务投影。
 * 健康检查失败。
 * 端口未监听。
 * 环境配置缺失。
-* Workspace 内容无效。
+* 应用源码内容无效。
 
-Preview 失败不修改 Workspace。
+Preview 失败不修改应用源码。
 
 ---
 
@@ -2240,17 +2241,17 @@ APPSTUDIO_AGENT_INVOCATION_FAILED
 APPSTUDIO_AGENT_MODEL_INVALID
 ```
 
-## 23.3 Workspace
+## 23.3 Source/Revision
 
 ```text
-APPSTUDIO_WORKSPACE_NOT_FOUND
-APPSTUDIO_WORKSPACE_ACCESS_DENIED
-APPSTUDIO_WORKSPACE_REVISION_CONFLICT
+APPSTUDIO_SOURCE_NOT_FOUND
+APPSTUDIO_SOURCE_ACCESS_DENIED
+APPSTUDIO_SOURCE_REVISION_CONFLICT
 APPSTUDIO_CHANGESET_INVALID
 APPSTUDIO_CHANGESET_NOT_ATOMIC
-APPSTUDIO_WORKSPACE_TOOL_GRANT_INVALID
-APPSTUDIO_WORKSPACE_SNAPSHOT_FAILED
-APPSTUDIO_WORKSPACE_SNAPSHOT_NOT_FOUND
+APPSTUDIO_SOURCE_ACCESS_INVALID
+APPSTUDIO_SOURCE_SNAPSHOT_FAILED
+APPSTUDIO_SOURCE_SNAPSHOT_NOT_FOUND
 ```
 
 ## 23.4 Preview
@@ -2587,20 +2588,20 @@ flowchart LR
 
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
-- `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Workspace、Snapshot、Build、Preview、Release 和 Runtime。
+- `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Revision、Snapshot、Build、Preview、Release 和 Runtime；Workspace 仅是后端内部事实。
 - `BR-APPSTUDIO-001`：StudioApplication、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、7、9、10、11、12、15、16、17、18、21、22、26 节及 `R-STUDIO-001..024`。
 
 验收标准：
 
-- `AC-APPSTUDIO-001-01`：创建 StudioApplication 时必须原子创建 Repository 和默认 Workspace；默认 Coding Agent 必须固定引用该 Workspace，不能产生未绑定 Workspace 的 Agent。
+- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace 输入；后端必须原子创建 Repository 和唯一默认源码上下文，并通过内部 `CreateCodingAgentForStudio` 创建固定绑定的 Coding Agent 和 Session；Coding Agent 失败时应用进入 `ERROR`，源码事实保留并允许幂等重试。
 - `AC-APPSTUDIO-001-02`：所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；Revision 冲突、越权或校验失败时不覆盖、不隐式合并、不部分应用。
-- `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、Workspace、动作和有效期的短期 Tool 授权。
-- `AC-APPSTUDIO-001-04`：Preview 固定启动时的 Workspace Revision，后续源码变化不会隐式改变正在运行的 Preview。
-- `AC-APPSTUDIO-001-05`：Build 只读取 `READY` 的 StudioSourceSnapshot；当前 Workspace 的后续 Revision 不影响进行中或历史 Build。
+- `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、内部 Workspace、动作和有效期的短期 Tool 授权；用户侧不接触 Workspace 字段。
+- `AC-APPSTUDIO-001-04`：Preview 固定启动时的应用源码 Revision，后续源码变化不会隐式改变正在运行的 Preview。
+- `AC-APPSTUDIO-001-05`：Build 只读取 `READY` 的 StudioSourceSnapshot；源码上下文的后续 Revision 不影响进行中或历史 Build。
 - `AC-APPSTUDIO-001-06`：AtomicTask 成功但 Artifact 未 READY、登记失败或 digest 不一致时，StudioBuild 不得进入 `SUCCEEDED`。
 - `AC-APPSTUDIO-001-07`：StudioRelease 必须固定 Build、Version、RuntimeConfig、Environment、Artifact ID 和 digest，后续可变配置不得改写历史 Release。
 - `AC-APPSTUDIO-001-08`：新 RuntimeInstance 只有健康后才能切换当前入口；部署或健康检查失败时旧健康实例和入口保持不变。
 - `AC-APPSTUDIO-001-09`：回滚创建新的 StudioRelease 和 RuntimeInstance，并复用目标历史内容；旧 Release 不被修改或重新激活。
 - `AC-APPSTUDIO-001-10`：Preview、Build、发布、升级和回滚只能走 Task Center、Task Worker、Infra Adapter 和 Infra Service，AppStudio 与 StudioDeploymentProvider 不得直接调用 Infra。
-- `AC-APPSTUDIO-001-11`：Production 只读使用固定 Artifact digest，携带 Workspace、Revision 或 Snapshot 挂载的请求必须拒绝。
+- `AC-APPSTUDIO-001-11`：Production 只读使用固定 Artifact digest，携带内部 Workspace、Revision 或 Snapshot 挂载的请求必须拒绝；公共 API 不接受 Workspace ID。
 - `AC-APPSTUDIO-001-12`：第一阶段只允许 Infrastructure 的单机 Docker 能力；Kubernetes、Edge、Local Process、多节点和跨 Provider 参数必须保持禁用。

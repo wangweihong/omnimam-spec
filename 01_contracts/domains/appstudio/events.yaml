@@ -2,27 +2,25 @@
 studio_application_lifecycle_changed:
   producer: appstudio-application-service
   consumers: [notification-center, sse, audit-service]
-  trigger_condition: StudioApplication 创建或状态、元数据、默认 Workspace 引用发生已持久化变化。
+  trigger_condition: StudioApplication 创建或状态、元数据发生已持久化变化。
   payload:
     studio_application_id: string
     owner_user_id: string
-    workspace_id: string
     from_status: string|null
     to_status: string
     resource_version: integer
     occurred_at: string(date-time)
   idempotency_key: studio_application_id:resource_version
   retry_policy: appstudio outbox 重试，消费者按版本幂等。
-  failure_policy: 事件失败不回滚应用、Workspace 或历史事实。
+  failure_policy: 事件失败不回滚应用、内部源码上下文或历史事实；通知和 SSE 不得补充 Workspace 字段。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010, R-STUDIO-022]
   related_user_stories: [US-APPSTUDIO-001]
-studio_workspace_revision_changed:
+studio_source_revision_changed:
   producer: appstudio-source-service
   consumers: [agent, sse, audit-service]
-  trigger_condition: ChangeSet 原子成功、历史恢复或初始化产生新的 Workspace Revision。
+  trigger_condition: ChangeSet 原子成功、历史恢复或初始化产生新的应用源码 Revision。
   payload:
     studio_application_id: string
-    workspace_id: string
     previous_revision: integer|null
     current_revision: integer
     change_set_id: string|null
@@ -30,8 +28,8 @@ studio_workspace_revision_changed:
     agent_invocation_id: string|null
     resource_version: integer
     occurred_at: string(date-time)
-  idempotency_key: workspace_id:current_revision
-  retry_policy: appstudio outbox 重试，消费者按 Workspace/Revision 幂等。
+  idempotency_key: studio_application_id:current_revision
+  retry_policy: appstudio outbox 重试，消费者按 StudioApplication/Revision 幂等。
   failure_policy: 不重复应用 ChangeSet；事件可从 Revision 事实重放。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-003, R-STUDIO-010, R-STUDIO-022]
   related_user_stories: [US-APPSTUDIO-001]
@@ -41,9 +39,8 @@ studio_source_snapshot_created:
   trigger_condition: READY Snapshot 的 digest 和 manifest 摘要已完整持久化。
   payload:
     studio_application_id: string
-    workspace_id: string
     source_snapshot_id: string
-    workspace_revision: integer
+    source_revision: integer
     content_digest: string
     manifest_digest: string
     created_by: string
@@ -82,8 +79,7 @@ studio_preview_runtime_status_changed:
   payload:
     preview_runtime_id: string
     studio_application_id: string
-    workspace_id: string
-    workspace_revision: integer
+    source_revision: integer
     from_status: string|null
     to_status: string
     diagnostics_summary: object
@@ -92,7 +88,7 @@ studio_preview_runtime_status_changed:
     occurred_at: string(date-time)
   idempotency_key: preview_runtime_id:resource_version
   retry_policy: appstudio outbox 重试；消费者按 Preview 版本幂等。
-  failure_policy: Preview 事件失败不得创建正式 Snapshot、Artifact 或 Release。
+  failure_policy: Preview 事件失败不得创建正式 Snapshot、Artifact 或 Release；通知和 SSE 不得投影内部 Workspace 字段。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-010, R-STUDIO-023, R-STUDIO-024]
   related_user_stories: [US-APPSTUDIO-001]
 studio_release_status_changed:

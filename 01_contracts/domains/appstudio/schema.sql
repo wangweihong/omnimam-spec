@@ -1,5 +1,6 @@
 -- AppStudio S2 design schema, v1.0.0-draft. This is not a migration.
 -- 源码正文和存储定位属于 Source Service 私有边界；本 schema 只保存索引、摘要和业务引用。
+-- StudioWorkspace、default_workspace_id、workspace_id 与 workspace_revision 是后端 canonical 事实；公共 API、页面、通知和 SSE 只投影 StudioApplication/Source/Revision，不得暴露或要求用户传入这些字段。
 
 -- s1_refs: R-STUDIO-001, R-STUDIO-010, R-STUDIO-022; source: 2.1, 6 StudioApplication 创建, 16 Agent 与 StudioApplication 生命周期.
 CREATE TABLE studio_applications (
@@ -33,7 +34,7 @@ CREATE TABLE studio_source_repositories (
   current_revision INTEGER NOT NULL DEFAULT 0
 );
 
--- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.3 StudioWorkspace, 7 Coding Agent 开发.
+-- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.3 StudioWorkspace, 7 Coding Agent 开发. Internal default editing context; no public Workspace resource API.
 CREATE TABLE studio_workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

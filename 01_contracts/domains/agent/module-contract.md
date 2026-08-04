@@ -4,16 +4,16 @@
 
 ## 1. 追溯状态
 
-当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..08` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守固定 Workspace、分类后的 Invocation/AtomicTask 和 Workspace Tool 授权语义。
+当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..08` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、分类后的 Invocation/AtomicTask 和 Workspace Tool 授权语义。
 
 ## 2. 模块边界
 
 | 模块 | 拥有 | 不拥有 |
 | --- | --- | --- |
-| agent-core | Agent、AgentProfile 可用性投影、类型、状态和固定 Workspace 引用 | Docker、StudioWorkspace 内容、Session 事实 |
+| agent-core | Agent、AgentProfile 可用性投影、类型、状态和内部固定 Workspace 引用 | Docker、StudioWorkspace 内容、Session 事实 |
 | interaction | AgentSession、AgentMessage、AgentInvocation、Runtime Adapter 调用编排 | AtomicTask 状态、InfraRuntime、LLM Provider 协议 |
 | memory | AgentMemory 的 scope、类型、正文和生命周期 | 向量数据库、跨用户共享记忆、Runtime 文件中的长期记忆 |
-| workspace | AgentWorkspace Binding、授权摘要和挂载意图 | StudioWorkspace 私表、宿主路径、物理存储 |
+| workspace | 内部 AgentWorkspace、固定 Binding、授权摘要和挂载意图 | StudioWorkspace 私表、宿主路径、物理存储、公共 Workspace 页面或 API |
 | runtime | AgentRuntimeBinding、AgentRuntimeProvider 状态投影和恢复 | InfraRuntime 运行状态、Docker Provider、业务 Task 状态 |
 | access | Agent 所有权、主体范围和权限组合 | Identity 用户/角色生命周期 |
 | event-outbox | Agent 可靠事件、重试和重放 | Notification 收件箱、SSE 历史事实 |
@@ -21,8 +21,10 @@
 ## 3. 输入与输出
 
 - 外部输入必须带可信 Principal；请求中的 `user_id` 不参与授权决策。
-- Coding Agent 创建时固定 `workspace_type=studio` 和 `workspace_id`；Session/Invocation 不得切换。
-- Platform Agent 只允许 `workspace_type=agent`。多个 Coding Agent 可引用同一 StudioWorkspace，但写入由 AppStudio ChangeSet 和 `base_revision` 校验。
+- 公共 `CreateAgent` 只创建 Platform Agent，不接受 `kind`、`workspace_type` 或 `workspace_id`。Agent Service 必须在同一业务事务中创建 AgentWorkspace、Agent、默认 Session 和唯一 Binding；任一步失败均不得产生可用 Agent。
+- 公共 Agent 列表、详情、创建、更新、权限、错误、事件和 SSE 不得返回 Workspace 类型、ID、Binding 或授权摘要，也不得包含 AppStudio 管理的 Coding Agent。
+- `CreateCodingAgentForStudio` 是仅供 AppStudio 受信模块调用的内部模块语义，不是公共 HTTP API。输入必须包含稳定 `studio_application_id`、内部 `studio_workspace_id`、调用主体和幂等键；Agent Service 校验调用方、Workspace 类型和授权后创建 Coding Agent、默认 Session 与唯一 Binding。
+- Coding Agent 创建时内部固定 `workspace_type=studio` 和 `workspace_id`；Platform Agent 内部固定 `workspace_type=agent`。Session/Invocation 不得切换；多个 Coding Agent 可引用同一 StudioWorkspace，但写入由 AppStudio ChangeSet 和 `base_revision` 校验。
 - Agent 创建事务必须同时写入 `agents.workspace_type/workspace_id` 和唯一 `agent_workspace_bindings`，两处类型与 ID 必须一致；既有 Agent 不提供修改或重建 Binding 的写接口。
 - Runtime 创建、启动、挂起、恢复、停止和删除只能通过 Task Center 的已注册 `functionRef`；Task Worker 再调用唯一 Infra Adapter。
 - Agent Runtime 创建/启动/恢复只使用 `agent.runtime.ensure`，挂起/停止/删除只使用 `agent.runtime.stop`；arguments、结果、能力和策略必须符合 Task Center `function-registry.yaml` 固定版本，Agent 不提交 Infra DTO。
@@ -35,13 +37,14 @@
 | --- | --- | --- |
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
 | infrastructure | 通过 Task Center 间接创建/操作受控 Runtime | 直接调用 Infra Service、Docker Socket 或 Provider API |
-| appstudio | 校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool | 读取 AppStudio 私表、创建第二套 Session/Invocation、绕过 ChangeSet |
+| appstudio | 调用内部 `CreateCodingAgentForStudio`、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 AppStudio 私表、创建第二套 Session/Invocation、绕过 ChangeSet |
 | model-management/modelgateway | 校验模型引用并生成 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
 
 ## 5. 一致性与安全
 
 - Agent、Session、Memory 与 Runtime 生命周期分离；删除、挂起或重建 Agent 不改写 StudioWorkspace、Build、Release 或 StudioRuntimeInstance。
+- Workspace 专属失败只允许出现在 Agent 与 AppStudio 的内部协作和诊断中；公共创建失败统一映射为 `ERR_AGENT_INITIALIZATION_FAILED`。
 - Invocation 状态是 Agent 业务投影，不从 Infra 状态猜测完成；Task Center 结果通过稳定 ID 和资源版本投影。
 - Runtime 恢复必须使用已有 `infra_runtime_id`、Task 幂等键和受控运行引用，禁止重启窗口重复创建 Docker Service。
 - API 列表使用 `total/items` 和统一分页；关联摘要最多一跳，目标不可见时保留 ID、摘要为 null。

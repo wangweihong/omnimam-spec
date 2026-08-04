@@ -6,7 +6,7 @@ agent.profile.read:
   action: read
   subject: owner, system_admin
   description: 查询只读 AgentProfile。
-  frontend_usage: 控制 Agent 类型和 Profile 选择器。
+  frontend_usage: 控制 Platform Agent 的 Profile 选择器。
   backend_enforcement: 只返回当前启用且允许使用的 Profile；不得返回 Provider Secret。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-005]
@@ -17,9 +17,9 @@ agent.read:
   resource: agent
   action: read
   subject: owner, system_admin
-  description: 查询 Agent 及其非敏感状态摘要。
+  description: 查询用户管理的 Platform Agent 及其非敏感状态摘要。
   frontend_usage: Agent 列表、详情和状态入口。
-  backend_enforcement: 按 owner_user_id 或显式管理员范围过滤；不存在与不可见统一处理。
+  backend_enforcement: 按 owner_user_id 或显式管理员范围过滤，只返回 Platform Agent；不存在与不可见统一处理，不投影内部 Workspace。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
@@ -29,9 +29,9 @@ agent.manage:
   resource: agent
   action: create, update, enable, disable, delete
   subject: owner, system_admin
-  description: 管理 Agent 配置和业务生命周期。
-  frontend_usage: Agent 创建、编辑、启停和删除。
-  backend_enforcement: 校验 Profile、类型、固定 Workspace、资源版本；不得删除 StudioWorkspace 或 AppStudio 事实。
+  description: 管理用户侧 Platform Agent 配置和业务生命周期。
+  frontend_usage: Platform Agent 创建、编辑、启停和删除。
+  backend_enforcement: 创建时固定 kind=platform 并原子建立内部 AgentWorkspace 和 Binding；前端不得创建 Coding Agent、传递 Workspace 引用或删除 AppStudio 事实。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-010, R-AGENT-011, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
@@ -70,18 +70,6 @@ agent.session.manage:
   backend_enforcement: 关闭/归档后拒绝新消息；历史 Message 和 Memory 继续保留。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-002]
-  related_user_stories: [US-AGENT-001]
-agent.workspace.read:
-  domain: agent
-  module: workspace
-  resource: agent_workspace_binding
-  action: read
-  subject: owner, system_admin
-  description: 查询 Agent 创建时固定的 Workspace Binding 摘要。
-  frontend_usage: Agent 详情中的 Workspace 类型、稳定引用和授权状态。
-  backend_enforcement: 只返回当前 Agent 的唯一固定 Binding；Coding Agent 不返回 StudioWorkspace 内容、物理路径、挂载路径或短期 Tool Token。
-  default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AGENT-001, R-AGENT-010, R-AGENT-011, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
 agent.memory.read:
   domain: agent

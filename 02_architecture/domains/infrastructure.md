@@ -32,12 +32,12 @@ Agent、AppStudio 及其内部 StudioDeploymentProvider 只能创建或更新 Ta
 ```text
 Platform Agent -> AgentWorkspace（按 Agent 授权挂载）
 Coding Agent   -> AppStudio Workspace Tool（不挂载 StudioWorkspace）
-Preview        -> 当前 Workspace Revision
+Preview        -> 应用启动时固定的源码 Revision（内部解析默认 StudioWorkspace）
 Build          -> 固定 StudioSourceSnapshot（只读）
 Production     -> 固定 Artifact digest（只读）
 ```
 
-Task Worker 只能使用来源领域生成的 `source_ref`，Infra 不解析业务私有表和宿主机路径。Production 请求即使携带 Workspace、Revision 或 Snapshot，也必须拒绝；它只能使用固定 Artifact。
+Task Worker 只能使用来源领域生成的 `source_ref`，Infra 不解析业务私有表和宿主机路径。用户和公共 API 不传递 Workspace ID；AppStudio 在后端把应用级源码 Revision 解析为受控 `source_ref`。Production 请求即使携带内部 Workspace、Revision 或 Snapshot，也必须拒绝；它只能使用固定 Artifact。
 
 Infra Job 只返回受控 output descriptor；Task Worker 使用来源任务 producer context 调用 Asset Library 登记 Artifact。Infra 不创建 Artifact ready 事实，也不把 Job 成功提升为 Build 成功。
 

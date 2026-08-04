@@ -19,9 +19,9 @@
 | `asset-library` | Artifact、用户素材、AssetVersion、Representation、存储、派生任务与周期补全 | 已有 S1/S2，部分普通素材 API 待补 |
 | `application-platform` | ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
 | `task-center` | AtomicTask、Group/DAG 编排、Schedule、运行时适配与状态投影 | 已有 S1/S2 |
-| `agent` | Agent、Session、AgentWorkspace、AgentRuntime 业务事实 | S1 Draft；旧 S2 已移除 |
-| `appstudio` | StudioApplication、StudioWorkspace、Revision、Snapshot、Build、Release 与 RuntimeInstance | S1 Draft；旧 S2 已移除 |
-| `infrastructure` | 第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载与 Provider 对账 | S1 Draft；S2 待建立 |
+| `agent` | Agent、Session、内部 Workspace 固定绑定与 AgentRuntime 业务事实 | S1/S2 Draft，Workspace 不作为公共资源 |
+| `appstudio` | StudioApplication、应用级源码/Revision、Snapshot、Build、Release 与 RuntimeInstance；内部维护默认 StudioWorkspace | S1/S2 Draft，Workspace 不作为公共资源 |
+| `infrastructure` | 第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载与 Provider 对账 | `spec-v1.12.0` released |
 | `workflow-canvas` | 无限画布草稿、不可变版本、DAG 编译和运行视图 | 已有 S1/S2 |
 | `sse` | 当前用户的短期可重放业务事件投影与 `text/event-stream` 网关 | 已有 S1/S2 草案 |
 | `notification-center` | 可靠源事件消费、通知规则、用户收件箱、偏好、聚合与 Notification Outbox | 已有 S1/S2，`spec-v1.8.0` released |
@@ -95,6 +95,8 @@ graph TD
 - `application-platform` 定义 ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 投影和 Artifact 引用，通过受控边界消费 Model Gateway。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `agent` 和 `appstudio` 的所有 Infra-backed 操作都先创建 AtomicTask，再由 Task Worker 通过 Infra Adapter 调用 `infrastructure`；两者不直接访问 Docker 或 Infra Service。
+- 用户创建 Agent 时只创建 Platform Agent，Agent 后端原子创建并固定绑定 AgentWorkspace；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建，公共 Agent API 不投影 Coding Agent 的 Workspace 绑定。
+- AppStudio 公共边界只使用 StudioApplication、Source 和 Revision；创建应用时后端建立 Repository、唯一默认 StudioWorkspace、Coding Agent 和 Session，公共 API、页面、通知与 SSE 均不返回或要求 Workspace ID。
 - `infrastructure` 只拥有 Docker Job/Service、InfraRuntime、Endpoint、挂载和 Provider 对账事实，不拥有 Agent、Studio、Workspace、Snapshot、Artifact 或任务状态。
 - `workflow-canvas` 发布不可变 CanvasVersion，并将多流、fan-out 和复合节点展平到唯一 task-center DAGTaskGroup；一个 CanvasNodeRun 可以映射零个、一个或多个 AtomicTask。
 - `asset-library` 是 Artifact、Asset、AssetVersion、Representation 和生成产物处理的事实源，供聊天、应用和画布能力引用。
@@ -114,7 +116,7 @@ flowchart LR
   Infra --> Docker["DockerRuntimeProvider"]
 ```
 
-Preview 使用当前 Workspace Revision，Build 使用固定 Snapshot，Production 使用固定 Artifact digest；Production 禁止挂载可写 Workspace。
+Preview 使用应用启动时固定的源码 Revision，Build 使用固定 Snapshot，Production 使用固定 Artifact digest；内部 Workspace 只承担持久化与固定绑定，Production 禁止挂载可写 Workspace。
 
 ## 4. 运行链路
 

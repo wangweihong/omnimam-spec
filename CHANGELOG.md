@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- 将 Agent/AppStudio Workspace 内化为后端事实：用户侧 Agent 创建固定为 Platform Agent，后端原子创建 AgentWorkspace 和默认 Session；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建。Agent 公共 DTO、Workspace Binding API、`agent.workspace.read` 和用户可见 Workspace 错误已移除。
+- AppStudio 公共契约改为 StudioApplication 级 Source/Revision：删除 `/api/v1/studio-workspaces/*` 与公开 StudioWorkspace DTO，源码、搜索、ChangeSet、恢复、Snapshot 和 Preview 均以 `studio_application_id` 寻址，公共字段使用 `source_revision`，权限改为 `appstudio.source.read/write`。
+- 内部 Agent/AppStudio Schema 继续保留 Workspace 表、字段、Revision 和固定 Binding 约束，不创建 migration；同步 S1、Domain Context、全局导航及 Agent/AppStudio 架构参考，并由用户确认为 `spec-v1.16.0` Release。
 - 对齐 Infrastructure 已由 `spec-v1.12.0` 发布的状态元数据：同步 Domain Context、全局上下文、导航、S1 和 6 个 S2 文件，后续以 `spec-v1.15.3` 记录本次正式状态变更。
 - 明确内置角色权限基线与物化责任：Identity 必须聚合各 domain `permissions.yaml` 的 `default_roles` 并幂等对账 `RolePermissionGrant`；固化 `ADMIN`/`SUPER_ADMIN` 的 Identity 用户、注册、角色、组、服务账号管理权限和 `platform.overview.read`、`platform.auth_config.read/manage`、`platform.audit.read` 基线，避免授权投影只返回少量 Identity 权限。
 - AppStudio 清理未被当前 S1 定义的脚手架模板残留：移除 `StudioApplicationCreateRequest` 和 `studio_applications` Schema 中的 `template_id`、`technology_stack`；不新增模板实体或模板发现接口。
