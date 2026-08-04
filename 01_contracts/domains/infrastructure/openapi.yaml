@@ -1,9 +1,10 @@
+# Infrastructure S2 API contract, released in spec-v1.12.0.
 openapi: 3.0.3
 info:
   title: OmniMAM Infrastructure API
-  version: 1.0.0-draft
+  version: 1.0.0
   description: >-
-    第一阶段单机 Docker 运行层契约。所有写操作只允许 Task Center Task Worker 的受信服务身份调用；
+    第一阶段单机 Docker 运行层契约，已随 spec-v1.12.0 发布。所有写操作只允许 Task Center Task Worker 的受信服务身份调用；
     业务领域不得直接调用本 API。Provider、宿主机路径、容器 ID 和明文 Secret 不进入普通响应。
 servers: [{url: /}]
 security: [{serviceBearerAuth: []}]

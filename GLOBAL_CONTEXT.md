@@ -102,13 +102,13 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
 - MCP v1 复用 Identity JWT/RBAC 和 PrincipalContext，不提供直接 Capability 执行、OAuth/PAT、交互式 Task 或直接 StorageBackend 上传；资源 owner/visibility 仍由目标 domain 定义。
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
-- `agent`、`appstudio` 和 `infrastructure` 当前均有未 Release 的 S1/S2 草稿；本轮 S2 只基于当前 S1 生成，不恢复旧版 Agent/AppStudio S2。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
+- `agent` 和 `appstudio` 当前仍有未 Release 的 S1/S2 草稿；`infrastructure` 的 S1/S2 已由 `spec-v1.12.0` 发布并允许作为正式实现依据。本轮 S2 只基于当前 S1 生成，不恢复旧版 Agent/AppStudio S2。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
 - Infrastructure 只返回 Runtime output descriptor，Artifact 登记由 Task Worker 使用来源任务 producer context 调用 asset-library；`USER_ACCESSIBLE` Endpoint 必须受权解析，`PUBLIC` 第一阶段默认禁用。
 
 ## 8. 非目标与延期范围
 
-本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而本次新增的 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent`、`appstudio` 和 `infrastructure` 当前 S1/S2 均为未 Release 草稿；各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而本次新增的 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 和 `appstudio` 当前 S1/S2 仍为未 Release 草稿，`infrastructure` S1/S2 已由 `spec-v1.12.0` 发布；未发布领域或各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 

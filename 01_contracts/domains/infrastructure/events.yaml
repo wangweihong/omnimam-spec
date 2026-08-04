@@ -1,4 +1,4 @@
-# Infrastructure 事件只表达运行层事实，不携带业务正文、凭证、宿主路径或 Provider 原始响应；追溯使用 US-INFRA-001/BR-INFRA-001。
+# Infrastructure S2 events, released in spec-v1.12.0。事件只表达运行层事实，不携带业务正文、凭证、宿主路径或 Provider 原始响应；追溯使用 US-INFRA-001/BR-INFRA-001。
 infra_runtime_status_changed:
   producer: infrastructure-runtime-service
   consumers: [task-center, agent, appstudio, operations-monitor, audit-service]

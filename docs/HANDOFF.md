@@ -1,152 +1,55 @@
 # OmniMAM Spec Handoff
 
-## 当前发布任务（spec-v1.15.2，2026-08-04）
+## 当前目标与状态
 
-- 当前目标：提交 Identity/Platform 默认管理员角色授权修复，登记 `spec-v1.15.2`，创建 annotated tag 并推送 `master` 与标签。
-- 状态：已完成；规格提交 `868326b6b877011295a333ff1c9c3d21b48c5632`，发布提交 `7eacab0`，annotated tag `spec-v1.15.2` 已创建并推送。
-- 已完成：明确各 domain `default_roles` 必须由 Identity 物化和对账为内置角色 `RolePermissionGrant`；固化 `ADMIN`/`SUPER_ADMIN` 的 Identity 管理和 `platform.*` 权限基线；同步 S1、S2、Context、Schema 注释与 CHANGELOG。
-- 当前进行中：无。
-- 文件变化：`00_product/domains/identity/product-spec.md`、`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/identity/module-contract.md`、`01_contracts/domains/identity/schema.sql`、`domains/identity/context.md`、`domains/platform-management/context.md`、`CHANGELOG.md`、`docs/HANDOFF.md`；后续增加 `RELEASE.md`。
-- 关键决定：版本为 `spec-v1.15.2`；不新增权限码或 API，不纳入未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`。
-- 验证：目标权限 YAML 可解析，角色矩阵逐项断言通过，目标文件 `git diff --check` 通过；本仓库无对应实现 package，不运行全仓测试。
-- 未完成事项：规格仓库无；实现仓库仍需执行默认角色授权补偿同步并验证授权投影。
-- 风险：实现侧仍需执行一次现有数据库默认角色授权补偿同步，并正确失效授权缓存。
-- 下一步：实现侧按 `spec-v1.15.2` 聚合全部 ACTIVE `default_roles`，补齐现有 `RolePermissionGrant`，递增 `authorization_version` 并验证 `/api/v1/iam/auth/permissions` 返回 ADMIN/SUPER_ADMIN 的完整权限码。
+- 当前目标：发布 Infrastructure 状态同步并推送到远端。
+- 状态：进行中。Context、S1 和 S2 已与既有 `spec-v1.12.0` 记录对齐，待创建 `spec-v1.15.3` release commit、tag 并推送。
 
-## 当前权限修复任务（默认管理员角色授权，2026-08-04）
+## 本次已完成
 
-- 当前目标：修复内置 `ADMIN`/`SUPER_ADMIN` 角色未物化 Identity 管理权限与 `platform.*` 权限，导致 `/api/v1/iam/auth/permissions` 虽返回授权投影字段但缺少管理入口权限码的问题。
-- 状态：已完成规格修复；未发布，未修改 `RELEASE.md`。
-- 已完成：读取 Spec 工作流、Identity/Platform Domain Context、S1 权限语义、S2 权限与模块合同；确认平台路由要求 `platform.overview.read`、`platform.auth_config.read/manage`、`platform.audit.read`；已补充内置角色权限矩阵和 `default_roles -> RolePermissionGrant` 物化、移除、版本失效与失败回滚规则。
-- 当前进行中：无。
-- 文件变化：`00_product/domains/identity/product-spec.md`、`00_product/domains/platform-management/product-spec.md`、`01_contracts/domains/identity/module-contract.md`、`01_contracts/domains/identity/schema.sql`、`domains/identity/context.md`、`domains/platform-management/context.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 关键决定：不修改 `/api/v1/iam/auth/permissions` 响应结构，不新增权限码；以各 domain `permissions.yaml` 的 `default_roles` 为内置角色授权事实输入，由 Identity 幂等物化并对账 `RolePermissionGrant`。
-- 验证：Identity 与 Platform 权限 YAML 可解析；逐项断言 `identity.user/manage`、注册审批、角色、组、服务账号及四个 `platform.*` 权限的 `default_roles` 与新增矩阵一致；S1/S2 引用文本已核对；目标文件 `git diff --check` 通过。首轮 `yq` 数组整体比较因表达式语法返回假阴性，改用逐项 `join` 断言后通过。未运行全仓测试，本仓库无对应实现 package。
-- 未完成事项：规格尚未发布；实现仓库仍需将权限目录同步与默认角色授权对账落地，并对现有数据库执行一次受控补偿同步。
-- 风险：实现若只登记 `PermissionDefinition` 而不执行默认角色授权对账，现象仍会复现；对账必须递增受影响主体 `authorization_version` 并失效旧缓存，否则 `/api/v1/iam/auth/permissions` 仍可能暂时返回旧投影。
-- 下一步：用户确认后登记新的 Spec Release；实现侧按 Identity 模块合同补齐默认角色 `RolePermissionGrant` 对账并验证 ADMIN/SUPER_ADMIN 的授权投影。
+- 读取了 Spec 工作流、全局上下文、任务导航和 Infrastructure Domain Context。
+- 核对了 `RELEASE.md` 的 `spec-v1.12.0` 记录：包含 Infrastructure S1、全套 S2、架构参考和 Context，状态为 `released`，且允许作为正式实现依据。
+- 核对了 release commit `2f71a836006d5f35f48144fa03d1176232ea70c6` 到当前 HEAD：Infrastructure S1/S2 文件没有后续变更。
+- 已同步 `domains/infrastructure/context.md`、S1 文档和 S2 文档头部的发布状态。
+- 已确认未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 与本次发布无关，不纳入提交。
 
-## 当前发布任务（spec-v1.15.1，2026-08-04）
+## 当前进行中
 
-- 当前目标：提交 AppStudio 脚手架模板字段清理，并发布一个小版本。
-- 状态：已完成；规格提交 `7d290e8`，发布提交 `2d15f36`，`spec-v1.15.1` 标签已创建并推送。
-- 已完成：`template_id`、`technology_stack` 已从 AppStudio OpenAPI 创建请求和设计态 Schema 移除；已更新 CHANGELOG；已通过定向 YAML 解析与 `git diff --check`。
-- 当前进行中：无。
-- 文件变化：`01_contracts/domains/appstudio/openapi.yaml`、`01_contracts/domains/appstudio/schema.sql`、`CHANGELOG.md`、`docs/HANDOFF.md` 已包含在规格提交；`RELEASE.md` 和发布交接已包含在发布提交 `2d15f36`。
-- 关键决定：本次只发布 AppStudio S2 清理，不新增模板实体、模板发现 API 或替代字段；S1 不变。
-- 验证：`yq` 解析 AppStudio OpenAPI 通过；目标文件无 `template_id`、`technology_stack`、`technology_profile`、`runtime_profile`；`git diff --check` 通过；无可运行的 AppStudio 实现测试。
-- 风险：用户已有未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 不纳入本次提交；历史 Release 元数据错位不在本次范围。
-- 下一步：实现侧按 `spec-v1.15.1` 重新生成 AppStudio 客户端，移除旧模板选择器和禁用保护假设。
-
-## 当前清理任务（移除 AppStudio 脚手架模板残留，2026-08-04）
-
-- 当前目标：根据用户确认“并没有脚手架模板的任何设计”，从 AppStudio 当前 S2 清理 `template_id` 及其同一旧设计残留。
-- 状态：已完成；已重新读取 `skills/spec-workflow/SKILL.md`、`skills/spec-workflow/S2.md` 和现有交接，确认 S1 当前创建语义没有模板对象或模板输入。
-- 已完成：从 AppStudio OpenAPI 创建请求和设计态 Schema 首表移除 `template_id`、`technology_stack`；未新增模板实体、发现 API 或替代字段。
-- 当前进行中：无。
-- 文件变化：`01_contracts/domains/appstudio/openapi.yaml`、`01_contracts/domains/appstudio/schema.sql`、`CHANGELOG.md`、`docs/HANDOFF.md`；保留用户已有未跟踪文件不动。
-- 关键决策：不新增 `StudioTemplate` 或发现 API；按当前 S1 直接删除无事实依据的模板字段及其旧技术栈字段，避免继续暗示脚手架能力。
-- 验证：AppStudio OpenAPI 使用 `yq` 解析通过；目标域已无 `template_id`、`technology_stack`、`technology_profile`、`runtime_profile` 残留；`git diff --check` 通过；未运行全仓测试。
-- 风险：AppStudio S1/S2 的发布门禁和历史 tag 元数据仍有既有错位，本次不扩大范围处理。
-- 下一步：客户端或实现侧按新的 AppStudio 创建合同重新生成 DTO/客户端；本仓库不包含对应实现 package 或测试。
-
-## 当前分析任务（AppStudio template_id，2026-08-04）
-
-- 当前目标：分析 AppStudio 为什么同时出现 `template_id` 与“应用模板 ID”，并核对用户给出的历史提交与当前 SSOT/客户端不一致。
-- 状态：已完成分析；已读取 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`domains/appstudio/context.md` 与工作流规则，确认任务事实归属为 `appstudio`。
-- 已完成：核对当前 S1 第 5.1/6 节、S2 OpenAPI 创建 Schema、Schema 首表、模块合同，以及 `28ceccb`、`6da35fb`、`f1471d5`、`2f71a83`、`81cdf96` 的历史；确认旧版 `template_id` 的明确语义、重写后的 name-only 创建合同和当前残留字段。
-- 结论：`template_id` 最初是 AppStudio 初始化用的“平台受控生成应用模板 ID”，特意声明不同于 `application-platform.ApplicationTemplate`；`f1471d5` 重写后 S1 已不再定义模板选择，OpenAPI 和 Schema 的残留字段现已清理。模板发现接口从未在旧合同中定义，旧前端无法合法获得必填模板 ID。
-- 当前进行中：无。
-- 文件变化：仅更新本交接文件；未修改产品或契约事实源。
-- 关键决策：分析以当前 AppStudio S1/S2 和可验证 Git 历史为准；Web `appstudio-client.ts`、按钮逻辑和测试不在本仓库，用户提供的 Web 提交链路作为外部事实单独标注，不反向提升为 SSOT。
-- 验证：完成定向文本、Git 历史和 OpenAPI/Schema 结构核对；未运行测试（当前工作区没有 AppStudio 实现 package 或直接相关测试）。
-- 风险：`RELEASE.md` 当前记录的 `spec-v1.12.0` commit 为 `2f71a83`，但 annotated tag `spec-v1.12.0` 实际指向 `6da35fb`；发布记录与 tag 仍存在元数据错位。AppStudio S1/S2 当前 Context 标记为未 Release 草稿，不能据此作为正式实现依据。
-- 下一步：实现侧重新生成 AppStudio 客户端并移除旧的模板选择器/禁用保护假设；若未来重新引入模板能力，必须先新增独立 S1 决策和完整 S2 合同。
-
-## 当前发布任务（spec-v1.15.0）
-
-- 当前目标：完成权限审计中的高置信修复，提交、登记 `spec-v1.15.0`、创建 annotated tag 并推送 `master` 与 tag。
-- 状态：已完成。规格提交为 `0d5954609215da7bce01fe82b351e7d57e8018da`，发布提交为 `1445e30d800c7ae4598bed42811c787bf7d39fbd`；annotated tag `spec-v1.15.0` 与 `master` 已推送到 `origin`。
-- 发布范围：AI Chat、Application Platform、Asset Library、Task Center、Workflow Canvas、Model Management、Notification Center、SSE、Agent、AppStudio、MCP、Model Gateway 的权限契约及必要 S1/Context；不包含用户未跟踪文件。
-- 已完成：补齐 Model Management/Notification/SSE 默认角色与 Model Management 16 个 OpenAPI 权限标注；统一 `REGULAR_USER -> USER`；新增 Application Platform 显式 `manage_all/global` 权限并同步 S1/OpenAPI/Context。
-- 验证结果：目标 YAML 均可解析；OpenAPI 直接和条件权限引用均能解析到定义；Model Management 16 个 operation 均有 `x-permission`；目标角色编码合法；`git diff --check` 通过。
-- 当前进行中：无。
-- 下一步：实现仓库按 `spec-v1.15.0` 的权限码、默认角色、owner 边界和条件权限实施鉴权；优先补 Agent Runtime 日志 API，并单独评估聚合权限拆分。
-
-## 本次权限审计复核（2026-08-03）
-
-- 当前目标：排查仍缺少管理员/超级管理员权限或权限契约不完整的模块。
-- 状态：审计完成；本次只读取权限契约、OpenAPI 标注、Identity 角色事实和相关 Context，未修改业务权限。
-- 明确缺口：`model-management` 4 个用户权限没有 `default_roles`，其 OpenAPI 16 个 operation 均缺少 `x-permission`；`notification-center` 4 个用户收件箱/偏好权限及 `notification.admin.receive` 没有默认角色；`sse` 2 个用户流权限没有默认角色。
-- 跨 owner 缺口：`application-platform` 明确允许管理员代管任意用户工作流和管理 global Application，但只复用普通用户的 `aiapp.comfyui_workflow.read/manage`、`aiapp.application.manage`；这与 Identity `BR-IAM-009/013` 要求“不得硬编码角色、跨 owner 必须显式 manage_all 权限”不一致。`agent`、`appstudio` 的 `system_admin` 跨 owner 语义也需要明确为仅受权范围，或补独立 `manage_all` 权限。
-- 角色不一致：`agent`、`appstudio`、`mcp`、`modelgateway` 使用未在 Identity 内置角色中定义的 `REGULAR_USER`；`infrastructure` 使用未在 Identity 角色事实中登记的 `SERVICE_TASK_CENTER`，需确认其是否为 ServiceAccount 角色映射而非普通角色。
-- 接口引用结论：`agent.runtime.logs.read` 有 S1 `GetAgentRuntimeLogs` 依据，但 Agent OpenAPI 缺少对应 operation；`task.operation.admin` 已用于 TaskAttempt `executor` 字段级裁剪和模块合同，不是遗漏接口。Identity 的认证/换证 operation 不需要普通业务权限，其他未直接引用项均为内部服务或接收者规则。
-- 权限粒度风险：`task.atomic.operate`、`task.group.operate`、`task.schedule.manage` 将读、创建、取消、重试、日志或系统计划管理合并，限制了自定义最小权限角色；`aiapp.application.manage` 混合 owner 管理与 global 管理；`asset.delete` 混合软删除、恢复和不可逆清理。当前内置角色可工作，但后续自定义角色难以最小授权。
-- 已确认正常：15 个全局领域均存在权限文件；`asset-library`、`ai-chatting`、`workflow-canvas` 的 owner 权限边界清晰；`platform-management`、`modelgateway` 的管理员专用动作有独立权限；MCP 非直接权限通过 `x-delegated-permissions` 引用；内部服务权限未授给普通用户。
-- 下一步：若用户要求修复，优先补 `model-management`、`notification-center`、`sse`，随后拆出 Application Platform `manage_all/global` 权限并统一 `REGULAR_USER`；最后补 Agent Runtime 日志 API和评估高风险聚合权限拆分。
-
-## 上一任务检查点（素材库权限，2026-08-03）
-
-- 当前目标：补充 `asset-library` 素材库的管理员/超级管理员默认权限，同时保持素材 owner 隔离和服务主体权限边界。
-- 状态：完成；权限补充为未发布草稿，未修改 `RELEASE.md`。
-- 已完成：14 个用户级素材权限默认授予 `USER`、`ADMIN`、`SUPER_ADMIN`；StorageBackend/Blob 检查继续仅限 `ADMIN`、`SUPER_ADMIN`；Artifact 创建和 Representation 写入继续无默认角色，保留受信服务/Worker 边界。
-- 关键决定：管理员和超级管理员可以使用自己的素材、上传、Collection、标签、引用、Artifact 和 Representation 读取能力，但不获得跨用户素材访问或平台管理员共享素材语义。
-- 文件变化：`01_contracts/domains/asset-library/permissions.yaml`、`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 验证结果：Asset 权限 YAML/OpenAPI 可解析；53 个 operation 的 `x-permission` 引用全部已登记；默认角色仅为 `USER`、`ADMIN`、`SUPER_ADMIN`；所有权限 BR/US 追溯有效；服务权限/存储权限边界符合预期；`git diff --check` 通过。
-- 下一步：等待用户确认是否与前一轮权限补充一起登记新的 `RELEASE.md` 版本；发布前不得作为正式实现依据。
-- 风险：BR-USER-ASSET-03、BR-USER-ASSET-33 禁止跨用户管理员共享素材；实现侧不得根据角色名称增加隐式绕过。
-
-## 上一任务目标与状态
-
-- 目标：补充管理员/超级管理员在 `workflow-canvas`、`application-platform`、`ai-chatting`、`task-center` 的缺失权限，并保持 Identity 角色语义与各域权限契约一致。
-- 状态：完成；本次变更仍是未发布草稿，未修改 `RELEASE.md`。
-
-## 上一任务完成
-
-- 画布：为 9 个面向用户/管理员的权限补充 `default_roles`；NodeDefinition 管理仅授予 `ADMIN`、`SUPER_ADMIN`。
-- 应用平台：8 个权限统一使用 Identity 已定义的 `USER`、`ADMIN`、`SUPER_ADMIN`，移除无效的 `REGULAR_USER`。
-- 任务中心：为 AtomicTask、TaskGroup、Schedule 和运维诊断权限补充管理员/超级管理员默认授权；内部 runtime/projection 权限仍仅服务主体可用。
-- AI Chat：新增 10 个 `ai_chat.*` 权限，覆盖工作区、话题、消息、生成、助手、快捷短语和翻译；18 个 OpenAPI operation 全部增加 `x-permission`。
-- AI Chat S1 与模块契约：将独立权限和默认角色写入产品语义，并明确权限不扩大 owner、scope、Topic 归属或可见性；本轮不新增跨用户代管权限。
-- 文档：更新 `CHANGELOG.md` 与本交接文件。
+- 更新 `CHANGELOG.md`，提交状态同步变更；登记 `spec-v1.15.3`；创建 tag；推送 `master` 和 tag。
 
 ## 文件变化
 
-- `00_product/domains/ai-chatting/product-spec.md`
-- `01_contracts/domains/ai-chatting/{permissions.yaml,openapi.yaml,module-contract.md}`
-- `01_contracts/domains/application-platform/permissions.yaml`
-- `01_contracts/domains/task-center/permissions.yaml`
-- `01_contracts/domains/workflow-canvas/permissions.yaml`
-- `domains/ai-chatting/context.md`
-- `CHANGELOG.md`
-- `docs/HANDOFF.md`
+- 已修改：`docs/HANDOFF.md`、`domains/infrastructure/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`00_product/domains/infrastructure/product-spec.md`、`01_contracts/domains/infrastructure/` 下 6 个 S2 文件。
+- 待修改：`CHANGELOG.md`、`RELEASE.md`。
+- 未修改：`RELEASE.md` 和 Infrastructure 产品语义、S2 契约语义；S1/S2 仅更新发布状态元数据和对应 Draft 文案。
 
-## 关键设计决定
+## 关键决定
 
-- 默认角色只使用 `USER`、`ADMIN`、`SUPER_ADMIN`，与 Identity S1/S2 的内置角色一致。
-- 管理员权限只控制已登记操作入口；各业务域仍必须执行 owner、project、namespace、visibility、状态、版本和资源引用校验。
-- AI Chat 的资源继续按当前主体个人数据隔离；跨用户代管若未来需要，必须新增显式管理权限和对应 S1 语义。
-- 未新增 API 路径、Schema、错误码、事件、依赖或运行时配置；未修改正式实现代码和 migration。
+- 发布判断以 `RELEASE.md` 为准：Infrastructure 不是“未发布”，而是历史上已在 `spec-v1.12.0` 发布。
+- Context、S1 和 S2 当前状态已与 `RELEASE.md` 的 `spec-v1.12.0` 正式发布记录统一。
+- 保留既有 `spec-v1.12.0` 发布记录，不创建新的 release；本次只同步已发布状态，不改变产品语义、API、Schema、错误码、权限码、事件或模块边界。
+- 本次新 release 版本采用 `spec-v1.15.3`；先提交规格同步内容，再以 release commit 登记前一个提交的 hash，遵循仓库现有惯例。
 
-## 验证结果
+## API、Schema、依赖或配置变化
 
-- `yq` 解析四个目标权限 YAML 和 AI Chat OpenAPI：通过。
-- 目标默认角色校验：仅 `USER`、`ADMIN`、`SUPER_ADMIN`。
-- AI Chat 权限引用校验：18 个 operation 均有 `x-permission`，且引用的 10 个权限键均已登记。
-- AI Chat S1 追溯校验：10 个权限的 `related_rules`、`related_user_stories` 均存在。
-- 旧 `REGULAR_USER` 和废弃 `ai_chat.read/write/manage` 在目标文件中已清理。
-- `git diff --check`：通过。
-- 未运行全仓库测试；本次无目标实现 package 测试可运行。
+- 无。
 
-## 未完成事项与风险
+## 验证与风险
 
-- 本次权限补充尚未进入 `RELEASE.md`，在用户确认发布前不得作为正式实现依据。
-- 实现侧需要按权限码实时鉴权，不得根据角色名称增加隐式绕过。
-- 工作区存在用户自己的未跟踪 `archive/`、`docs/identity_fix.md`、`设计图/`，本次未修改。
+- 已完成定向核对：`RELEASE.md`、Infrastructure Context、S1 product spec、S2 OpenAPI/schema/errors/permissions/events/module-contract，以及 release commit 后的文件变更记录。
+- 已通过：Infrastructure OpenAPI、错误、权限和事件 YAML 解析；`git diff --check`；Draft/未 Release 状态定向检索。
+- 未运行实现测试；本任务仅修改 Spec 状态元数据，不涉及实现代码。
+- 已消除：Infrastructure Context、GLOBAL_CONTEXT、CONTEXT_MAP 和 S1/S2 文件头部的错误未发布标记。
+- 待验证：release record、commit、tag、远端 `master` 和 tag 是否均已推送成功。
+
+## 未完成事项
+
+- 发布提交、tag 和远端推送尚未完成。
+- `agent` 和 `appstudio` 仍是未 Release 草稿，不属于本次范围。
 
 ## 推荐下一步
 
-由用户确认是否修复本次审计发现的 `model-management`、`notification-center`、`sse` 和角色编码缺口；修复后再更新 `RELEASE.md`，登记所有相关 S1/S2 文件并发布。
+- 下一步：仅 stage 本次相关文件，提交 `spec: sync infrastructure release metadata`，然后登记并发布 `spec-v1.15.3`。
 
 Next Prompt:
 

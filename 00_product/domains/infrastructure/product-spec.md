@@ -1,7 +1,9 @@
 # OmniMAM Infra Service 功能设计文档
 
-> 文档状态：S1 Draft
-> 文档版本：v1.1-draft
+> 文档状态：S1 Released
+> 文档版本：v1.1
+> 发布版本：spec-v1.12.0
+> 发布 commit：2f71a836006d5f35f48144fa03d1176232ea70c6
 > 修订日期：2026-08-03
 > 适用范围：第一阶段单机 Docker 计算节点、Job、Service、资源、网络、挂载与运行凭证管理
 
@@ -10,7 +12,7 @@
 * 当前版本只实现 `DockerRuntimeProvider` 和受控的单机 Docker 节点。
 * 当前版本保留 Job/Service、RuntimeProfile、资源、挂载、Secret、Endpoint、日志、超时、幂等和 Docker 对账语义。
 * Kubernetes、Edge、Local Process、多节点调度和 Edge Node Agent 迁移到下一版本规划，不属于本版实现范围。
-* 本文件仍是 S1 Draft，未形成 S2、架构参考或 Release，不得作为正式实现依据。
+* 本文件为 S1 正式事实源，已随 `spec-v1.12.0` 发布，可作为正式实现依据。
 
 ---
 
@@ -1056,7 +1058,7 @@ Docker 细节不能泄漏到上层领域接口。
 
 ## 10.3 KubernetesRuntimeProvider（下一版本规划）
 
-以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+以下内容不属于 `v1.1` 实现范围，迁移到下一版本：
 
 后续负责：
 
@@ -1076,7 +1078,7 @@ Docker 细节不能泄漏到上层领域接口。
 
 ## 10.4 EdgeRuntimeProvider（下一版本规划）
 
-以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+以下内容不属于 `v1.1` 实现范围，迁移到下一版本：
 
 负责与 Edge Node Agent 通信：
 
@@ -1096,7 +1098,7 @@ Edge Node Agent 主动连接平台，平台不要求用户设备暴露入站管�
 
 ## 10.5 LocalProcessRuntimeProvider（下一版本规划）
 
-以下内容不属于 `v1.1-draft` 实现范围，迁移到下一版本：
+以下内容不属于 `v1.1` 实现范围，迁移到下一版本：
 
 只允许执行平台预先注册的受控程序。
 
@@ -1745,7 +1747,7 @@ RuntimeProfile 内的 Runner 将标准化命令转换为受控程序参数。
 
 # 22. Edge Node Agent（下一版本规划）
 
-本章不属于 `v1.1-draft` 实现范围，整体迁移到下一版本。
+本章不属于 `v1.1` 实现范围，整体迁移到下一版本。
 
 ## 22.1 定位
 

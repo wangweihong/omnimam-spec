@@ -19,13 +19,13 @@
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/infrastructure/product-spec.md` | S1 Draft | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
-| `02_architecture/domains/infrastructure.md` | 参考 | Task Worker、Infra Adapter、Docker Provider 和挂载边界 |
-| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Draft | InfraRuntime、Endpoint、Node、Profile 和输出 API |
-| `01_contracts/domains/infrastructure/schema.sql` | S2 Draft | Infrastructure 设计态 Schema |
-| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Draft | 错误、权限、事件和模块边界 |
+| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.12.0`) | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
+| `02_architecture/domains/infrastructure.md` | 参考（`spec-v1.12.0`） | Task Worker、Infra Adapter、Docker Provider 和挂载边界 |
+| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.12.0`) | InfraRuntime、Endpoint、Node、Profile 和输出 API |
+| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.12.0`) | Infrastructure 设计态 Schema |
+| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.12.0`) | 错误、权限、事件和模块边界 |
 
-Infrastructure S1/S2 均为未 Release 草稿，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯。未完成用户确认和 Release 前，本文档及 S1/S2 只能用于草稿讨论、实现评估和上下文导航。
+Infrastructure S1/S2 已由 `spec-v1.12.0` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。后续修改必须通过新的 Release 记录后才能成为新的正式依据。
 
 ## 4. 直接依赖
 
