@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：将 Agent/AppStudio 的 Workspace 内化为后端事实，用户侧不选择、不导航也不传递 Workspace ID。
-- 状态：发布收尾中。Agent/AppStudio Workspace 后端内化规格已提交为 `61bcc52b9286cdca807e42b710e4a06670667546`，Release 提交为 `7c4ef77766aecf8b092161a879c905085a4bf7da`，annotated tag `spec-v1.16.0` 已创建；正在提交最终 Handoff 并推送 `master` 与 tag。
+- 状态：已完成并发布。Agent/AppStudio Workspace 后端内化规格提交为 `61bcc52b9286cdca807e42b710e4a06670667546`，Release 提交为 `7c4ef77766aecf8b092161a879c905085a4bf7da`；`master` 与 annotated tag `spec-v1.16.0` 已推送到 `origin` 并核对远端引用。
 
 ## 本次已完成
 
@@ -26,10 +26,11 @@
 - `git diff --check` 已通过。
 - 已创建 Workspace 后端内化规格提交 `61bcc52b9286cdca807e42b710e4a06670667546`；提交仅包含 24 个本任务文件，无关未跟踪内容未暂存。
 - 已更新 `RELEASE.md` 并创建 Release 提交 `7c4ef77766aecf8b092161a879c905085a4bf7da`；已在该提交上创建 annotated tag `spec-v1.16.0`。
+- 已推送 `master` 和 `spec-v1.16.0`；远端 tag 解引用为 Release 提交 `7c4ef77766aecf8b092161a879c905085a4bf7da`。
 
 ## 当前进行中
 
-- 正在创建最终 Handoff 提交，随后推送 `master` 与 `spec-v1.16.0` 到 `origin`。
+- 无。
 
 ## 文件变化
 
@@ -60,15 +61,15 @@
 - 已执行：两个 OpenAPI 的 operationId 唯一性、本地 `$ref`、路径参数和权限引用一致性检查，全部通过。
 - 已执行：公共 Workspace 暴露断言、`StudioSourceState` 存在断言、内部 Workspace Schema 保留断言和 `git diff --check`，全部通过。
 - 按任务约束未运行全仓测试；本次为规格变更，无目标实现 package 测试。
-- 风险：本地 Release 记录和 tag 已完成，但远端推送尚未完成；必须确认 `origin/master` 和远端 `spec-v1.16.0` 均更新成功。
+- 发布阻塞风险：无。无关未跟踪内容 `archive/`、`docs/identity_fix.md` 和 `设计图/` 未纳入本次提交或发布。
 
 ## 未完成事项
 
-- 提交最终 Handoff，推送 `master` 和 `spec-v1.16.0` 到 `origin`，并核对远端引用。
+- 无当前任务内未完成事项。
 
 ## 推荐下一步
 
-- 提交本文件，然后推送 `master` 和 `spec-v1.16.0` 到 `origin`；使用 `git ls-remote` 核对远端分支与 tag。
+- 正式前后端实现应以 `spec-v1.16.0` 的 S1/S2 和 implementation gate 为依据，公共产品层不得重新引入 Workspace 选择、导航或 ID 传递。
 
 Next Prompt:
 
