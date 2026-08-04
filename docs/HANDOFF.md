@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：将 Agent/AppStudio 的 Workspace 内化为后端事实，用户侧不选择、不导航也不传递 Workspace ID。
-- 状态：发布中。Agent/AppStudio Workspace 后端内化规格已完成并通过定向校验；用户已确认发布，目标版本为 `spec-v1.16.0`，正在创建规格提交、Release 记录、tag 并推送 `master`。
+- 状态：发布中。Agent/AppStudio Workspace 后端内化规格已通过定向校验并提交为 `61bcc52b9286cdca807e42b710e4a06670667546`；`spec-v1.16.0` Release 记录正在创建，随后将创建 tag 并推送 `master`。
 
 ## 本次已完成
 
@@ -24,14 +24,16 @@
 - 8 个目标 YAML 均已通过 PyYAML 解析；Agent OpenAPI 的 34 个 operation、133 个本地引用和 34 个权限引用，以及 AppStudio OpenAPI 的 33 个 operation、143 个本地引用和 33 个权限引用均通过一致性检查。
 - 定向断言已确认 Agent 公共创建请求、DTO 和 API 不暴露 Workspace；AppStudio 无 `/api/v1/studio-workspaces`、公开 `StudioWorkspace`、`workspace_id/workspace_revision`，且存在应用级 `StudioSourceState`；两个领域的内部 Schema 继续保留 Workspace 事实。
 - `git diff --check` 已通过。
+- 已创建 Workspace 后端内化规格提交 `61bcc52b9286cdca807e42b710e4a06670667546`；提交仅包含 24 个本任务文件，无关未跟踪内容未暂存。
 
 ## 当前进行中
 
-- 发布前定向验证已重新通过，正在创建 Workspace 后端内化规格提交。
-- 规格提交后将以其完整 commit ID 更新 `RELEASE.md`，创建 `spec-v1.16.0` Release 提交和 tag，最后更新本 Handoff 并推送 `master` 与 tag。
+- 正在以规格提交完整 SHA 更新 `RELEASE.md`，随后创建 `spec-v1.16.0` Release 提交和 tag。
+- Release tag 创建后将更新最终 Handoff，并推送 `master` 与 `spec-v1.16.0` 到 `origin`。
 
 ## 文件变化
 
+- 发布阶段新增修改：`RELEASE.md`、`docs/HANDOFF.md`。
 - 已修改：`docs/HANDOFF.md`、`00_product/domains/agent/product-spec.md`、`01_contracts/domains/agent/` 下全部 S2 文件、`domains/agent/context.md`。
 - 已修改：`00_product/domains/appstudio/product-spec.md`、`01_contracts/domains/appstudio/` 下全部 S2 文件、`domains/appstudio/context.md`。
 - 已新增：`02_architecture/domains/agent.md`、`02_architecture/domains/appstudio.md`。
@@ -62,13 +64,12 @@
 
 ## 未完成事项
 
-- 创建 Workspace 后端内化规格提交并取得 commit ID。
 - 更新 `RELEASE.md`，创建并标记 `spec-v1.16.0`。
 - 更新最终 Handoff，推送 `master` 和 `spec-v1.16.0` 到 `origin`。
 
 ## 推荐下一步
 
-- 只暂存本任务文件并创建 Workspace 后端内化规格提交，记录其完整 commit ID。
+- 校验并提交 `RELEASE.md` 与当前 Handoff，然后创建 `spec-v1.16.0` tag。
 
 Next Prompt:
 

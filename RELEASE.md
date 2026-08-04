@@ -1,5 +1,42 @@
 # Release Records
 
+## spec-v1.16.0
+
+- commit: 61bcc52b9286cdca807e42b710e4a06670667546
+- status: released
+- confirmed_by: user（2026-08-04 请求“提交发布并推送到远端”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/agent/events.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/events.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+- architecture:
+  - 02_architecture/domains/agent.md
+  - 02_architecture/domains/appstudio.md
+  - 02_architecture/domains/infrastructure.md
+  - 02_architecture/global-architecture.md
+- context:
+  - domains/agent/context.md
+  - domains/appstudio/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: Workspace 仅作为 Agent/AppStudio 后端 canonical 持久化、Revision、Runtime 和固定绑定事实；公共 API、页面、导航、通知、SSE 和用户可见错误不得要求、返回或展示 Workspace 类型、ID 或绑定状态。用户侧 Agent 只创建和管理 Platform Agent，后端必须原子创建并固定绑定 AgentWorkspace；Coding Agent 只能由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建。StudioApplication 创建不接受 Workspace 输入，后端必须创建唯一默认 StudioWorkspace、Coding Agent 和 Session；公共源码、Revision、ChangeSet、Snapshot 和 Preview 均按 StudioApplication 寻址。内部 Workspace 表、字段和约束继续保留，本版本不创建 migration。
+
 ## spec-v1.15.3
 
 - commit: 58d2d62b4337f5fdea5bad9736eb48630d666f33
