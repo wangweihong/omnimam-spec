@@ -1,5 +1,28 @@
 # Release Records
 
+## spec-v1.15.3
+
+- commit: 58d2d62b4337f5fdea5bad9736eb48630d666f33
+- status: released
+- confirmed_by: user（2026-08-04 请求“发布release并推送到远端”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - infrastructure
+- S1:
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/errors.yaml
+  - 01_contracts/domains/infrastructure/permissions.yaml
+  - 01_contracts/domains/infrastructure/events.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+- context:
+  - domains/infrastructure/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: 本版本仅同步 Infrastructure 已由 `spec-v1.12.0` 发布的状态元数据；产品语义、API、Schema、错误码、权限码、事件、模块边界和 Docker-only 第一阶段门禁保持不变。Infrastructure 可按 `spec-v1.12.0` 的实现门禁作为正式实现、合并和验收依据。
+
 ## spec-v1.15.2
 
 - commit: 868326b6b877011295a333ff1c9c3d21b48c5632
