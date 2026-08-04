@@ -2,8 +2,8 @@
 
 ## 当前目标与状态
 
-- 当前目标：修复 AppStudio Outbox 全局唯一键与事件幂等键之间的已发布冲突，发布 `spec-v1.16.1`，并为 Server 实现提供正式依据。
-- 状态：已完成并发布。契约修复提交为 `7ec33b70abbbe15b1295fb4fb5ae14423e49422d`，Release 提交为 `63defea97f45761acf300030cad1c00d6b83bb5a`；`master` 与 annotated tag `spec-v1.16.1` 已推送并核对远端引用。
+- 当前目标：修复 AppStudio Outbox 全局唯一键与事件幂等键冲突，发布 `spec-v1.16.1`，并完成 Server 对齐。
+- 状态：已完成。契约修复提交为 `7ec33b70abbbe15b1295fb4fb5ae14423e49422d`，Release 提交为 `63defea97f45761acf300030cad1c00d6b83bb5a`；`master` 与 annotated tag `spec-v1.16.1` 已推送，Server 已 pin 并通过定向验证。
 
 ## 本次已完成
 
@@ -20,10 +20,11 @@
 - 已编制 `spec-v1.16.1` Release 记录，覆盖 AppStudio `events.yaml`、`schema.sql` 和 `permissions.yaml`，并写明无 migration、无历史 Outbox 改写门禁。
 - 已创建 Release 提交 `63defea97f45761acf300030cad1c00d6b83bb5a`，在该提交上创建 annotated tag `spec-v1.16.1`。
 - 已推送 `master` 和 `spec-v1.16.1`；远端分支、远端 tag 解引用和本地 tag 均指向 Release 提交。
+- Server 已将 `ssot` 与 `SSOT_VERSION` pin 到 Release 提交，完成七类全限定键、初始化 Revision、payload 和 Identity 权限资源映射，并通过目标 package 测试。
 
 ## 当前进行中
 
-- 无 Spec 工作进行中；后续工作转到 Server pin 和实现。
+- 无 Spec 或本次 Server 对齐工作进行中。
 
 ## 文件变化
 
@@ -51,11 +52,12 @@
 
 ## 未完成事项
 
-- 使用 Release 提交更新 Server 的 `ssot` pin 和 `SSOT_VERSION`。
+- 本任务无未完成事项。
+- 独立后续风险：设计 `SourceContentStore` 的 `prepare/promote/discard` 生命周期、崩溃恢复和孤立目录回收。
 
 ## 推荐下一步
 
-- 在 Server 更新 `ssot` 和 `SSOT_VERSION` 到 `spec-v1.16.1` Release 提交，再实施事件与权限映射。
+- 在独立任务中设计跨存储原子性；不得通过数据库失败后直接删除 Revision 目录处理并发场景。
 
 Next Prompt:
 
