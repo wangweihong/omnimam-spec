@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.16.1
+
+- commit: 7ec33b70abbbe15b1295fb4fb5ae14423e49422d
+- status: released
+- confirmed_by: user（2026-08-04 请求完整实施 AppStudio Outbox 冲突修复方案，包括发布、tag 和推送）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+- S1: []
+- S2:
+  - 01_contracts/domains/appstudio/events.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/permissions.yaml
+- context:
+  - domains/appstudio/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: 所有新 AppStudio Outbox 事件的 `idempotency_key` 必须使用 `<event_type>:<domain_key_components>` 全限定格式，并继续满足 `appstudio_outbox.idempotency_key` 单列跨事件类型全局唯一约束。生命周期、Revision、Snapshot、Build、Preview、Release 和 RuntimeInstance 分别使用本版本 `events.yaml` 定义的领域组件；Revision 必须使用 `current_revision`。本版本不创建 migration、不新增数据库字段、不改写历史 Outbox；旧键只随既有事件保留，新旧键允许共存，消费者继续按事件行自身的幂等键处理。
+
 ## spec-v1.16.0
 
 - commit: 61bcc52b9286cdca807e42b710e4a06670667546
