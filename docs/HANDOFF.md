@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：修复 AppStudio Outbox 全局唯一键与事件幂等键之间的已发布冲突，发布 `spec-v1.16.1`，并为 Server 实现提供正式依据。
-- 状态：Release 记录编制中。契约修复提交为 `7ec33b70abbbe15b1295fb4fb5ae14423e49422d`，用户已明确要求发布、打 annotated tag 并推送。
+- 状态：已完成并发布。契约修复提交为 `7ec33b70abbbe15b1295fb4fb5ae14423e49422d`，Release 提交为 `63defea97f45761acf300030cad1c00d6b83bb5a`；`master` 与 annotated tag `spec-v1.16.1` 已推送并核对远端引用。
 
 ## 本次已完成
 
@@ -18,15 +18,18 @@
 - 已断言 `appstudio_outbox.idempotency_key TEXT NOT NULL UNIQUE` 仍仅出现一次，并通过 `git diff --check`。
 - 已创建契约修复提交 `7ec33b70abbbe15b1295fb4fb5ae14423e49422d`，仅包含本任务七个文件，无关未跟踪内容未暂存。
 - 已编制 `spec-v1.16.1` Release 记录，覆盖 AppStudio `events.yaml`、`schema.sql` 和 `permissions.yaml`，并写明无 migration、无历史 Outbox 改写门禁。
+- 已创建 Release 提交 `63defea97f45761acf300030cad1c00d6b83bb5a`，在该提交上创建 annotated tag `spec-v1.16.1`。
+- 已推送 `master` 和 `spec-v1.16.1`；远端分支、远端 tag 解引用和本地 tag 均指向 Release 提交。
 
 ## 当前进行中
 
-- 校验 Release 记录和 Context，创建 Release 提交、annotated tag 并推送。
+- 无 Spec 工作进行中；后续工作转到 Server pin 和实现。
 
 ## 文件变化
 
 - 已修改：`01_contracts/domains/appstudio/events.yaml`、`01_contracts/domains/appstudio/schema.sql`、`domains/appstudio/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
 - Release 阶段已修改：`RELEASE.md`、`docs/HANDOFF.md`、`domains/appstudio/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`。
+- 发布后仅追加更新本 Handoff，记录远端核验结果。
 - 不修改：S1、实际 migration、正式前后端实现代码和无关领域。
 
 ## 关键决定
@@ -48,12 +51,11 @@
 
 ## 未完成事项
 
-- 创建 Release 提交、annotated tag `spec-v1.16.1` 并推送。
 - 使用 Release 提交更新 Server 的 `ssot` pin 和 `SSOT_VERSION`。
 
 ## 推荐下一步
 
-- 校验 Release 记录与 Context，创建 Release 提交并打 annotated tag `spec-v1.16.1`。
+- 在 Server 更新 `ssot` 和 `SSOT_VERSION` 到 `spec-v1.16.1` Release 提交，再实施事件与权限映射。
 
 Next Prompt:
 
