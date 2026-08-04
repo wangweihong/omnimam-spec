@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：发布 Infrastructure 状态同步并推送到远端。
-- 状态：进行中。`spec-v1.15.3` 发布记录已准备，待创建 release commit、annotated tag 并推送。
+- 状态：已完成。`spec-v1.15.3` release commit、annotated tag 和远端推送均已完成。
 
 ## 本次已完成
 
@@ -13,15 +13,18 @@
 - 已同步 `domains/infrastructure/context.md`、S1 文档和 S2 文档头部的发布状态。
 - 已确认未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/` 与本次发布无关，不纳入提交。
 - 已完成规格提交：`58d2d622`（`spec: sync infrastructure release metadata`）。
+- 已完成 release commit：`0c93e518f64d11b466e2fef7dae47f20ac3150b0`（`release: publish infrastructure status spec`）。
+- 已创建并推送 annotated tag：`spec-v1.15.3`。
+- 已推送：`origin/master` 与 `origin/spec-v1.15.3`。
 
 ## 当前进行中
 
-- 暂存 `RELEASE.md` 和 handoff，创建 release commit；创建 annotated tag；推送 `master` 和 tag。
+- 无。
 
 ## 文件变化
 
 - 已修改：`docs/HANDOFF.md`、`domains/infrastructure/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`00_product/domains/infrastructure/product-spec.md`、`01_contracts/domains/infrastructure/` 下 6 个 S2 文件。
-- 已提交：`CHANGELOG.md`；已修改待提交：`RELEASE.md` 和本 handoff 的发布阶段信息。
+- 已提交：`CHANGELOG.md`、`RELEASE.md` 和 `docs/HANDOFF.md`。
 - 未修改：`RELEASE.md` 和 Infrastructure 产品语义、S2 契约语义；S1/S2 仅更新发布状态元数据和对应 Draft 文案。
 
 ## 关键决定
@@ -42,16 +45,16 @@
 - 已通过：Infrastructure OpenAPI、错误、权限和事件 YAML 解析；`git diff --check`；Draft/未 Release 状态定向检索。
 - 未运行实现测试；本任务仅修改 Spec 状态元数据，不涉及实现代码。
 - 已消除：Infrastructure Context、GLOBAL_CONTEXT、CONTEXT_MAP 和 S1/S2 文件头部的错误未发布标记。
-- 待验证：release commit、tag、远端 `master` 和 tag 是否均已推送成功。
+- 已验证：release commit、tag、远端 `master` 和 tag 均已推送成功。
 
 ## 未完成事项
 
-- release commit、tag 和远端推送尚未完成。
+- 本次请求无未完成事项。
 - `agent` 和 `appstudio` 仍是未 Release 草稿，不属于本次范围。
 
 ## 推荐下一步
 
-- 下一步：暂存 `RELEASE.md` 与 handoff，提交 release commit，创建 annotated tag 并推送。
+- 后续 Infrastructure 产品语义或 S2 契约变更时，先修改对应事实源，再创建新的 release 版本并同步 Context。
 
 Next Prompt:
 
