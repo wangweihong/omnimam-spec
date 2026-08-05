@@ -1,4 +1,4 @@
-# Infrastructure S2 error codes, v1.1.0-draft based on spec-v1.12.0.
+# Infrastructure S2 error codes, v1.2.0 released by spec-v1.17.2.
 # 当前 S1 通过 US-INFRA-001/BR-INFRA-001 锚点映射既有 R-INFRA-* 规则。
 - code: ERR_INFRA_REQUEST_INVALID
   value: 240200

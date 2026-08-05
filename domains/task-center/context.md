@@ -63,7 +63,7 @@
 
 ## 8. 当前状态
 
-`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。Infra-backed Function Registry 及本轮 `appstudio.build.execute@1.1` 输出交付合同仍是未 Release 草稿；具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
+`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。Infra-backed Function Registry 的 `appstudio.build.execute@1.1` 输出交付合同已由 `spec-v1.17.2` 发布；具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
 
 ## 9. 不在本领域定义的内容
 

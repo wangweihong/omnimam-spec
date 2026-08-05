@@ -1,18 +1,18 @@
 # OmniMAM Infra Service 功能设计文档
 
-> 文档状态：S1 Draft（基于 spec-v1.12.0 正式基线）
-> 文档版本：v1.2-draft
-> 正式基线：spec-v1.12.0
-> 发布 commit：2f71a836006d5f35f48144fa03d1176232ea70c6
+> 文档状态：S1 Released
+> 文档版本：v1.2
+> 正式基线：spec-v1.17.2
+> 发布 commit：64435e32db213bf4483d057039036375ee545183
 > 修订日期：2026-08-05
 > 适用范围：第一阶段单机 Docker 计算节点、Job、Service、资源、网络、挂载与运行凭证管理
 
-本次草稿修订将 Infra Service 收敛为第一阶段的 Docker 运行层：
+本次发布将 Infra Service 收敛为第一阶段的 Docker 运行层：
 
 * 当前版本只实现 `DockerRuntimeProvider` 和受控的单机 Docker 节点。
 * 当前版本保留 Job/Service、RuntimeProfile、资源、挂载、Secret、Endpoint、日志、超时、幂等和 Docker 对账语义。
 * Kubernetes、Edge、Local Process、多节点调度和 Edge Node Agent 迁移到下一版本规划，不属于本版实现范围。
-* `spec-v1.12.0` 仍是正式实现依据；本轮 Endpoint 解析与 RuntimeOutput 字节交付修订在新 Release 前仅为草稿。
+* Endpoint 解析与 RuntimeOutput 字节交付修订已由 `spec-v1.17.2` 发布，可按该版本 implementation gate 作为正式实现依据。
 
 ---
 

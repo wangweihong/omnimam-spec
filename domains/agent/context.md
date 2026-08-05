@@ -55,7 +55,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-Agent 当前完整 S1/S2 已由 `spec-v1.17.1` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯；本轮 AgentRuntimeAdapter 只读 Endpoint resolve 例外仍是待新 Release 草稿。
+Agent 当前完整 S1/S2 及 AgentRuntimeAdapter 只读 Endpoint resolve 例外已由 `spec-v1.17.2` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

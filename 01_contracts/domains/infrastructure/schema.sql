@@ -1,4 +1,4 @@
--- Infrastructure S2 design schema, v1.1.0-draft based on spec-v1.12.0. This is not a migration.
+-- Infrastructure S2 design schema, v1.2.0 released by spec-v1.17.2. This is not a migration.
 -- Infra 只保存运行层事实；Agent、AppStudio、Task Center 和 Artifact 业务事实不在本 schema 内。
 
 -- s1_refs: R-INFRA-003, R-INFRA-004, R-INFRA-005, R-INFRA-020, R-INFRA-021, R-INFRA-022; source: 7 RuntimeProfile, 10 Runtime Provider.

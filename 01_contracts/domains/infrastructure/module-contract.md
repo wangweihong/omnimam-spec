@@ -1,6 +1,6 @@
 # Infrastructure Module Contract
 
-> S2 状态：Draft，基于已发布 `spec-v1.12.0`；本轮修订须经新 Release 才能作为正式实现依据。
+> S2 状态：Released（`spec-v1.17.2`）
 
 产品语义以 `00_product/domains/infrastructure/product-spec.md` 为准。本合同只覆盖当前 S1 第一阶段单机 Docker 范围；Kubernetes、Edge、Local Process、多节点调度、自动扩缩容和跨 Provider 兼容不属于当前 S2。
 

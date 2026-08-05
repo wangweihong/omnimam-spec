@@ -60,7 +60,7 @@
 
 ## 8. 当前状态
 
-素材、上传、Artifact、Representation、组织、回收站和任务协作已有多次正式发布并正在实施；StudioBuild producer 与 AppStudio 摘要投影修订已由 `spec-v1.17.1` 发布。本轮接受 Task Worker 从 Infrastructure 受控流取得字节的模块合同仍是待新 Release 草稿。正文元数据可能仍标记 draft，具体可实施范围和门禁以 `RELEASE.md` 为准，不由 Context 提升未发布能力。
+素材、上传、Artifact、Representation、组织、回收站和任务协作已有多次正式发布并正在实施；StudioBuild producer 与 AppStudio 摘要投影修订已由 `spec-v1.17.1` 发布，接受 Task Worker 从 Infrastructure 受控流取得字节的模块合同已由 `spec-v1.17.2` 发布。正文元数据可能仍标记 draft，具体可实施范围和门禁以 `RELEASE.md` 为准，不由 Context 提升未发布能力。
 
 ## 9. 不在本领域定义的内容
 

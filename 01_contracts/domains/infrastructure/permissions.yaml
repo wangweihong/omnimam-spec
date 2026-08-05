@@ -1,4 +1,4 @@
-# Infrastructure S2 permissions draft based on spec-v1.12.0。Runtime 写操作只接受 Task Center；Endpoint resolve 另按受控服务身份授权。
+# Infrastructure S2 permissions released by spec-v1.17.2。Runtime 写操作只接受 Task Center；Endpoint resolve 另按受控服务身份授权。
 infra.runtime.read:
   domain: infrastructure
   module: runtime

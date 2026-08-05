@@ -1,8 +1,9 @@
 # OmniMAM Agent Service 功能设计文档
 
-> 文档状态：S1 Draft
-> 文档版本：v1.1-draft
-> 正式基线：spec-v1.17.1
+> 文档状态：S1 Released
+> 文档版本：v1.1
+> 正式基线：spec-v1.17.2
+> 发布 commit：64435e32db213bf4483d057039036375ee545183
 > 修订日期：2026-08-05
 > 适用范围：Agent 定义、会话、记忆、Skills、工具权限、Workspace 绑定、模型绑定及 Runtime 生命周期编排
 

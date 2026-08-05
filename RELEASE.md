@@ -1,5 +1,41 @@
 # Release Records
 
+## spec-v1.17.2
+
+- commit: 64435e32db213bf4483d057039036375ee545183
+- status: released
+- confirmed_by: user（2026-08-05 请求“发布并提交”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - infrastructure
+  - task-center
+  - asset-library
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/errors.yaml
+  - 01_contracts/domains/infrastructure/permissions.yaml
+  - 01_contracts/domains/infrastructure/events.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/task-center/function-registry.schema.yaml
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/asset-library/module-contract.md
+- architecture:
+  - 02_architecture/domains/infrastructure.md
+- context:
+  - domains/agent/context.md
+  - domains/infrastructure/context.md
+  - domains/task-center/context.md
+  - domains/asset-library/context.md
+  - GLOBAL_CONTEXT.md
+- implementation_gate: Runtime 生命周期创建、启动、停止、取消、删除与其他写操作仍必须经 `Task Center -> Task Worker -> Infra Adapter`；AgentRuntimeAdapter 只有在完成 Agent、Session、Invocation 与 Runtime Binding 校验后，才可用 Agent 工作负载身份调用只读 Endpoint resolve，并且短时 `base_url` 不得进入 Agent/Task 数据、普通摘要、事件或日志。Docker Service 只发布 RuntimeProfile Revision 声明的命名容器端口并绑定平台内部接口，映射建立且健康检查通过后 Endpoint 才能进入 READY。Docker Job 必须从受控输出根读取声明普通文件的实际字节，拒绝目录、符号链接逃逸和根外路径，计算大小与 SHA-256 并复制到 Infra staging 后生成非 bearer `infra-output://<output_id>`。Task Worker 仅可通过受控内容接口流式读取并双重校验大小/digest，再执行 Asset Library `create -> upload -> complete` 并幂等 attach；内容缺失、读取中断或完整性不一致不得产生 ready Artifact。`appstudio.build.execute@1.1` 为 ACTIVE，`1.0` 为 RETAINED 且历史 digest 不变。本版本不实现 Docker Provider 代码或数据库 migration，不引入 Gateway、公共域名或 PUBLIC Endpoint，也不自动把 Artifact 登记为长期 Asset。
+
 ## spec-v1.17.1
 
 - commit: ed413ea46a279de2a3c556d5f35a46c8485f3813

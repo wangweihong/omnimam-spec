@@ -1,6 +1,6 @@
 # Agent Module Contract
 
-产品语义以 `00_product/domains/agent/product-spec.md` 为准。本合同只覆盖当前 S1 草稿；旧版 S2 不属于输入。
+产品语义以 `00_product/domains/agent/product-spec.md` 为准。本合同覆盖 `spec-v1.17.2` 发布的当前 S1；旧版 S2 不属于输入。
 
 ## 1. 追溯状态
 
