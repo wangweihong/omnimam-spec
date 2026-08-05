@@ -2,12 +2,12 @@
 
 ## 1. 领域职责
 
-`application-platform` 将 Provider 能力与 ComfyUI 工作流封装为面向用户的稳定 Application。它拥有工作流、模板与应用版本、运行表单和 ApplicationRun 业务投影，并通过 `modelgateway` 选择真实执行实现。
+`application-platform` 将 Provider 能力与 ComfyUI 工作流封装为面向用户的稳定 Application。它拥有工作流、模板与应用版本、运行表单、ApplicationRun 编排和业务投影，并通过 `modelgateway` 的 `PlatformEngineTarget` 与 `ExecuteOperation` 选择并调用真实执行实现。
 
 ## 2. 核心对象
 
 - `CapabilityDefinition`、`ProviderCapability`、`ApplicationEngineType`、`ApplicationEngineInstance`、`EngineCapabilityBinding`、`EngineAdapter`、`OperationExecutor`：由 `modelgateway` 拥有，本领域通过受控边界消费。
-- `ApplicationExecutor`：编排 ApplicationRun 并调用 Model Gateway OperationExecutor 的应用执行职责。
+- `ApplicationExecutor`：编排 ApplicationRun，以不可变执行快照构造 `PlatformEngineTarget` 并调用 Model Gateway `ExecuteOperation`。
 - `ApplicationTemplate`、`Application`、`ApplicationVersion`：应用蓝图、稳定入口和不可变发布契约。
 - `RuntimeFormSchema`、`ApplicationRun`：临时运行表单和应用运行快照与状态投影。
 - `ApplicationNode` 引用关系：由画布拥有节点结构，本领域提供被固定引用的 ApplicationVersion。
@@ -22,6 +22,7 @@
 - ProviderCapability 从只读目录加载；管理员手工导入、编辑和热加载旧方案已废弃。
 - EngineInstance 表达真实连接环境；凭证与内部配置不得进入普通摘要。
 - ApplicationRun 保存不可变输入、版本、能力和执行快照，只单调投影 AtomicTask 状态。
+- Application Platform 只使用 `PlatformEngineTarget`，不构造 `UserModelTarget`，不维护 Provider 专用 HTTP 客户端或直接调用 OperationExecutor。
 - 无法保持应用语义兼容的工作流应创建新 Application，不能强行追加为新版本。
 - Artifact 只以受控 ID 和状态摘要关联，制品事实由 asset-library 维护。
 

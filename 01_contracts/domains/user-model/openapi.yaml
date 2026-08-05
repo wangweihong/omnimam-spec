@@ -1,13 +1,15 @@
 openapi: 3.0.3
 info:
-  title: OmniMAM Model Management API
-  version: 0.2.0
-  description: 用户模型管理 S2 API 契约，覆盖个人模型提供商、模型清单、连接检测、默认模型和下游模型选项。
+  title: OmniMAM User Model API
+  version: 0.3.0
+  description: User Model S2 API 契约。canonical 路由统一位于 /api/v1/user-model/，Provider 协议、发现、探测和执行委托 Model Gateway。
 servers:
   - url: /api/v1
 security:
   - bearer_auth: []
 tags:
+  - name: provider-types
+    description: Model Gateway Runtime Registry 提供的稳定只读 Provider Type 目录。
   - name: model-providers
     description: 当前用户模型提供商配置与连接检测。
   - name: provider-models
@@ -17,7 +19,23 @@ tags:
   - name: model-options
     description: 下游功能可读取的当前用户模型选项。
 paths:
-  /api/v1/model-providers:
+  /api/v1/user-model/provider-types:
+    get:
+      tags: [provider-types]
+      summary: 查询 Provider Type 目录
+      operationId: listProviderTypes
+      x-permission: MODEL_CONFIG_READ
+      x-s1-refs:
+        user_stories: [US-USER-MODEL-15]
+        business_rules: [BR-USER-MODEL-33, BR-USER-MODEL-34]
+      responses:
+        "200":
+          description: 可供用户选择的稳定 Provider Type；不包含 Adapter 或 Executor ID。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderTypeListResponse"
+  /api/v1/user-model/providers:
     get:
       tags: [model-providers]
       summary: 查询当前用户模型提供商
@@ -71,7 +89,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ModelProvider"
-  /api/v1/model-providers/test:
+  /api/v1/user-model/providers/test:
     post:
       tags: [model-providers]
       summary: 检测未保存的提供商配置
@@ -93,7 +111,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResult"
-  /api/v1/model-providers/{provider_id}:
+  /api/v1/user-model/providers/{provider_id}:
     get:
       tags: [model-providers]
       summary: 查询模型提供商详情
@@ -151,7 +169,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/model-providers/{provider_id}/test:
+  /api/v1/user-model/providers/{provider_id}/test:
     post:
       tags: [model-providers]
       summary: 检测已保存模型提供商
@@ -169,7 +187,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResult"
-  /api/v1/model-providers/{provider_id}/models:
+  /api/v1/user-model/providers/{provider_id}/models:
     get:
       tags: [provider-models]
       summary: 查询提供商模型列表
@@ -226,7 +244,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProviderModel"
-  /api/v1/model-providers/{provider_id}/models/sync:
+  /api/v1/user-model/providers/{provider_id}/models/sync:
     post:
       tags: [provider-models]
       summary: 同步提供商模型清单
@@ -244,7 +262,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ModelSyncResult"
-  /api/v1/provider-models/{model_id}:
+  /api/v1/user-model/models/{model_id}:
     patch:
       tags: [provider-models]
       summary: 更新提供商模型
@@ -285,7 +303,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
-  /api/v1/provider-models/{model_id}/test:
+  /api/v1/user-model/models/{model_id}/test:
     post:
       tags: [provider-models]
       summary: 检测单个提供商模型
@@ -303,7 +321,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResult"
-  /api/v1/default-models/{usage}:
+  /api/v1/user-model/defaults/{usage}:
     get:
       tags: [default-models]
       summary: 查询指定用途默认模型
@@ -344,7 +362,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DefaultModelConfig"
-  /api/v1/model-options:
+  /api/v1/user-model/options:
     get:
       tags: [model-options]
       summary: 查询下游可用模型选项
@@ -358,8 +376,9 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/DefaultUsage"
-        - name: capability
+        - name: capability_definition_id
           in: query
+          description: Gateway CapabilityDefinition 稳定 ID；不接受标签或 Executor ID。
           schema:
             type: string
         - name: sort_field
@@ -429,20 +448,40 @@ components:
     HealthStatus:
       type: string
       enum: [unknown, healthy, unhealthy]
+    CapabilityResolutionStatus:
+      type: string
+      enum: [unknown, resolved, unavailable, stale]
+    ProviderType:
+      type: object
+      required: [id, display_name, authentication_types, configuration_schema, supports_model_discovery, supports_model_probe]
+      properties:
+        id:
+          type: string
+          description: 稳定 provider_type；客户端保存此值，不保存 Adapter ID。
+        display_name: { type: string }
+        authentication_types:
+          type: array
+          items: { type: string }
+        configuration_schema:
+          type: object
+          additionalProperties: true
+        supports_model_discovery: { type: boolean }
+        supports_model_probe: { type: boolean }
     ModelProvider:
       type: object
-      required: [id, owner_user_id, name, provider_type, api_base_url, auth_type, enabled, created_at, updated_at]
+      required: [id, owner_user_id, name, provider_type, api_base_url, auth_type, enabled, config_version, created_at, updated_at]
       properties:
         id: { type: string }
         owner_user_id: { type: string }
         name: { type: string }
-        provider_type: { type: string }
+        provider_type: { type: string, description: 必须来自只读 ProviderType 目录；不接受 Adapter ID。 }
         api_base_url: { type: string, format: uri }
         auth_type: { type: string }
         api_key_ref: { type: string }
         enabled: { type: boolean }
         description: { type: string }
         extra_config: { type: object, additionalProperties: true }
+        config_version: { type: integer, minimum: 0, readOnly: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     ModelProviderCreateRequest:
@@ -450,7 +489,7 @@ components:
       required: [name, provider_type, api_base_url, auth_type, enabled]
       properties:
         name: { type: string }
-        provider_type: { type: string }
+        provider_type: { type: string, description: 稳定 ProviderType ID；不得提交 adapter_id。 }
         api_base_url: { type: string, format: uri }
         auth_type: { type: string }
         api_key_ref: { type: string }
@@ -461,7 +500,7 @@ components:
       type: object
       properties:
         name: { type: string }
-        provider_type: { type: string }
+        provider_type: { type: string, description: 稳定 ProviderType ID；不得提交 adapter_id。 }
         api_base_url: { type: string, format: uri }
         auth_type: { type: string }
         api_key_ref: { type: string }
@@ -473,7 +512,7 @@ components:
         - $ref: "#/components/schemas/ModelProviderCreateRequest"
     ProviderModel:
       type: object
-      required: [id, owner_user_id, provider_id, provider_name, model, display_name, capabilities, stream_supported, health_status, enabled, created_at, updated_at]
+      required: [id, owner_user_id, provider_id, provider_name, model, display_name, feature_labels, disabled_capability_definition_ids, capability_definition_ids, stream_supported, executable, capability_resolution_status, health_status, enabled, config_version, created_at, updated_at]
       properties:
         id: { type: string }
         owner_user_id: { type: string, description: 当前登录用户的数据隔离字段，客户端无需补查用户详情。 }
@@ -482,14 +521,39 @@ components:
         model: { type: string }
         display_name: { type: string }
         group: { type: string }
-        capabilities:
+        feature_labels:
           type: array
+          description: 用户维护的展示和筛选标签，不能扩张 Gateway 实际能力。
           items: { type: string }
-        stream_supported: { type: boolean }
+        disabled_capability_definition_ids:
+          type: array
+          description: 用户从 Gateway 已验证能力中关闭的 CapabilityDefinition ID。
+          items: { type: string }
+        capability_definition_ids:
+          type: array
+          readOnly: true
+          description: Gateway 派生的最终可执行能力。
+          items: { type: string }
+        stream_supported:
+          type: boolean
+          readOnly: true
+          description: Gateway 根据 Adapter 与 Operation 派生。
+        executable:
+          type: boolean
+          readOnly: true
+        unavailable_reason:
+          type: string
+          readOnly: true
+          description: 不可执行原因的安全摘要。
+        capability_resolution_status:
+          allOf:
+            - $ref: "#/components/schemas/CapabilityResolutionStatus"
+          readOnly: true
         health_status:
           $ref: "#/components/schemas/HealthStatus"
         unhealthy_reason: { type: string }
         enabled: { type: boolean }
+        config_version: { type: integer, minimum: 0, readOnly: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     ProviderModelCreateRequest:
@@ -499,20 +563,23 @@ components:
         model: { type: string }
         display_name: { type: string }
         group: { type: string }
-        capabilities:
+        feature_labels:
           type: array
+          description: 仅用于展示和筛选。
           items: { type: string }
-        stream_supported: { type: boolean, default: true }
         enabled: { type: boolean, default: true }
     ProviderModelUpdateRequest:
       type: object
       properties:
         display_name: { type: string }
         group: { type: string }
-        capabilities:
+        feature_labels:
           type: array
           items: { type: string }
-        stream_supported: { type: boolean }
+        disabled_capability_definition_ids:
+          type: array
+          description: 只能包含 Gateway 已验证并当前返回的能力 ID。
+          items: { type: string }
         enabled: { type: boolean }
     DefaultModelConfig:
       type: object
@@ -545,6 +612,9 @@ components:
         health_status:
           $ref: "#/components/schemas/HealthStatus"
         message: { type: string }
+        gateway_error_category:
+          type: string
+          description: Gateway 归一化的安全错误分类，不包含上游原始响应或凭证。
         checked_at: { type: string, format: date-time }
     ModelSyncResult:
       type: object
@@ -567,6 +637,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ModelProvider"
+    ProviderTypeListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderType"
     ProviderModelListResponse:
       type: object
       required: [total, items]

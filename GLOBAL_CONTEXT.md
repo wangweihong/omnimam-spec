@@ -18,8 +18,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | --- | --- |
 | `identity` | 统一认证、注册审批、会话、版本化 JWT/RBAC 投影、服务主体与跨域用户删除检查协调。 |
 | `platform-management` | 管理平台级只读信息、SystemAuthConfig、跨 domain 脱敏 AuditLog 与平台入口。 |
-| `modelgateway` | 管理能力目录、执行引擎、能力绑定、平台适配与 Operation 执行。 |
-| `model-management` | 管理当前用户私有的模型提供商、模型清单、健康状态与默认模型。 |
+| `modelgateway` | 管理能力目录、平台执行引擎、能力绑定、Provider Adapter、模型发现/探测与统一 Operation 执行。 |
+| `user-model` | 管理当前用户私有 Provider、模型清单、默认模型、健康事实与执行资格。 |
 | `ai-chatting` | 管理话题、消息、助手、生成运行、快捷短语与翻译。 |
 | `application-platform` | 管理 ComfyUIWorkflow、模板、应用版本、运行表单与 ApplicationRun。 |
 | `task-center` | 管理 AtomicTask、执行尝试、组合编排、计划调度与执行状态。 |
@@ -32,7 +32,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载和运行状态对账。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
-当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，但本次迁移尚未写入 `RELEASE.md`，不能作为新的正式实现依据。用户私有模型事实继续由 `model-management` 承载。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
+当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，并将 `model-management` 重构为 `user-model`。两项调整将在同一个新 Release 中确认；在写入用户确认记录前不能作为新的正式实现依据。历史 `RELEASE.md` 中的旧 domain 名称保持原样。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
 
 ## 4. 核心业务对象
 
@@ -45,8 +45,10 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `ApplicationEngineInstance` | 一个真实执行账号或运行环境；归 modelgateway。 |
 | `ProviderCapability` | 从只读目录加载的平台、模型、Operation 和参数约束事实；归 modelgateway。 |
 | `EngineCapabilityBinding` | Engine 实例与平台能力的绑定及实例级收紧；归 modelgateway。 |
-| `UserModelProvider` | 当前用户私有模型连接；归 model-management。 |
-| `UserProviderModel` | 当前用户私有 Provider 下的模型清单与特征；归 model-management。 |
+| `UserModelProvider` | 当前用户私有模型连接；归 user-model，不转换为 ApplicationEngineInstance。 |
+| `UserProviderModel` | 当前用户私有 Provider 下的模型清单、展示标签和 Gateway 派生能力投影；归 user-model。 |
+| `UserModelExecutionContext` | User Model 完成使用资格校验后签发的请求级执行上下文；不建表。 |
+| `ResolvedModelRoute` | Gateway 按执行目标、能力和 Runtime Registry 请求级派生的路由；不建表。 |
 | `ApplicationRun` | 应用运行快照及 AtomicTask 状态的只读投影；归 application-platform。 |
 | `AtomicTask` | 一次异步执行的状态、进度、重试、超时和取消事实；归 task-center。 |
 | `Artifact` | 执行产生、尚未登记为正式素材的受控制品；归 asset-library。 |
@@ -72,13 +74,14 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、Engine 配置、Binding、Adapter 和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema 和 ApplicationRun 归 `application-platform`；模型服务配置归 `model-management`。异步执行、重试、取消和 Task Worker 分发归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消和 Task Worker 分发归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
 ## 6. 核心跨域关系
 
-- Application 执行由 application-platform 固定版本和运行快照，通过 modelgateway 解析能力并执行 Operation，再由 task-center 管理 AtomicTask；ApplicationRun 不拥有底层状态机。
+- Application 执行由 application-platform 固定版本、`PlatformEngineTarget` 和运行快照，通过 modelgateway `ExecuteOperation` 执行，再由 task-center 管理 AtomicTask；ApplicationRun 不拥有底层状态机。
+- AI Chat 由 user-model 校验 owner、enabled、health、能力和配置版本并签发 `UserModelExecutionContext`，再通过 modelgateway `UserModelTarget` 执行；GenerationRun 与运行快照仍归 ai-chatting。
 - Artifact 由受信任执行方交付给 asset-library，登记后形成或关联 Asset/AssetVersion；AtomicTask 成功不等于素材 ready。
 - workflow-canvas 固定 CanvasVersion 和 ApplicationVersion，将合法 DAG 编译到 task-center，并只保存运行映射与素材引用。
 - notification-center 消费已登记的可靠 source event，不从低层任务终态猜测上层 Application、Asset 或 Canvas 结果。
@@ -98,6 +101,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - Task Center 当前以 `AtomicTask` 为唯一执行单元；旧 `TaskRun`、`ExecutionLease`、Worker claim 和自研 Dispatcher 路径已废弃。
 - `ProviderCapability` 来自只读目录，管理员手工导入和编辑能力的旧方案已废弃。
 - Application Platform 只能通过受控边界消费 Model Gateway，不能读取其私有表或复制可变 Registry 事实。
+- User Model 不维护 Provider 专用 HTTP 客户端；Model Gateway 不保存或查询用户 Provider、模型、默认配置和用户模型健康事实。
 - 已发布版本和历史快照不得被后续可变资源改写；跨域摘要最多展开一跳并执行同等权限过滤。
 - S2 `schema.sql` 是设计态 Schema，不是 migration；本仓库不保存正式实现代码、运行时配置或 CI/CD 实现。
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
@@ -109,7 +113,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 8. 非目标与延期范围
 
-本次迁移不创建正式数据库 migration、不重命名兼容标识；Model Gateway 迁移仍需后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 当前 S1/S2 已由 `spec-v1.16.0` 发布，`appstudio` 当前 S1/S2 及 Outbox 修复分别由 `spec-v1.16.0`、`spec-v1.16.1` 发布，`infrastructure` S1/S2 已由 `spec-v1.12.0` 发布；未发布领域或各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次重构不创建正式数据库 migration；保留对象名、权限码、错误码、事件名和 `user_*` 表名，但 domain_id 与 canonical HTTP 路由立即改为 `user-model` 和 `/api/v1/user-model/`，不保留旧路由别名。Model Gateway 与 User Model 调整仍需同一个后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 当前 S1/S2 已由 `spec-v1.16.0` 发布，`appstudio` 当前 S1/S2 及 Outbox 修复分别由 `spec-v1.16.0`、`spec-v1.16.1` 发布，`infrastructure` S1/S2 已由 `spec-v1.12.0` 发布；未发布领域或各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 

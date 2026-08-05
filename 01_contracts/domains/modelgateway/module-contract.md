@@ -1,6 +1,6 @@
 # Model Gateway Module Contract
 
-本契约实现 `modelgateway/product-spec.md` 当前迁移草案。S1 引用：`US-AIAPP-039..041`、`US-AIAPP-049` 及其关联业务规则。
+本契约实现 `modelgateway/product-spec.md` 当前迁移草案。S1 引用：`US-AIAPP-039..041`、`US-AIAPP-049`、`US-AIAPP-051..052` 及其关联业务规则。
 
 ## 1. 模块边界
 
@@ -10,6 +10,10 @@
 | provider-capability-loader | 先严格加载内置 YAML，再从单一目录原子加载外部 YAML，验证 Schema 和执行依赖并建立只读注册表与诊断 | 不递归、不允许目录覆盖内置 ID、不写库、不热加载 | US-AIAPP-039、040；BR-AIAPP-130..139、188 |
 | engine-instance | 管理真实连接环境、鉴权配置、手动/周期健康检测、ComfyUI 当前 object_info 和安全失败摘要，并向应用创建者提供无凭证只读发现 | 不声明平台模型、扩张系统执行能力、维护 object-info 历史或向普通用户暴露凭证及原始上游失败载荷 | US-AIAPP-041、044、045、049；BR-AIAPP-140、162、163、169、170、175、176 |
 | engine-binding | 管理 manual 绑定，并为匹配 EngineType 的实例原子创建、启动补齐 required_immutable 系统绑定 | 不复制能力清单，不允许 restrictions 扩张能力或修改系统绑定 | US-AIAPP-041；BR-AIAPP-135、137、141、189 |
+| provider-type-registry | 维护稳定 ProviderType 到 Adapter、CapabilityDefinition 到 OperationExecutor 的内部映射，并输出不含内部实现 ID 的只读投影 | 不保存用户 Provider，不允许客户端注册 Adapter 或 Executor | US-AIAPP-051；BR-AIAPP-195、196 |
+| provider-adapter | 统一应用 Provider 协议、鉴权、连接测试、模型发现、模型探测和安全错误归一化 | 不保存用户模型健康事实，不直接返回凭证明文或未经处理的上游响应 | US-AIAPP-051；BR-AIAPP-196、198、202 |
+| model-route-resolver | 按 `PlatformEngineTarget` 或 `UserModelTarget` 派生请求级 `ResolvedModelRoute` | 不建表、不提供 CRUD、不读取 User Model 私有表 | US-AIAPP-052；BR-AIAPP-197..200 |
+| operation-executor | 按 CapabilityDefinition 解析并调用已注册 OperationExecutor，返回协议无关结果 | 不拥有 ApplicationRun、GenerationRun、AtomicTask 或用户模型事实 | US-AIAPP-052；BR-AIAPP-201、203、204 |
 
 
 ## 2. ProviderCapability 启动契约
@@ -63,6 +67,55 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - `refreshed_at` 超过 48 小时即动态视为 stale；读取可返回 stale 目录，导入、解析、校验、转换、模板发布、RuntimeFormSchema 和运行必须拒绝使用。
 - `GET /engine-instances/{id}/object-info` 返回当前原始目录并支持 gzip 内容协商；`POST /engine-instances/{id}/object-info/refresh` 只返回轻量状态，不在工作流、校验、模板或运行响应中复制目录。
 
+### 3.3 User Model Adapter 内部接口
+
+以下接口是 `user-model -> modelgateway` 的受控模块接口，不是面向客户端的公共 HTTP CRUD：
+
+```text
+TestProviderConnection(providerType, endpoint, authType, credentialHandle, config)
+  -> ProviderProbeResult
+
+DiscoverProviderModels(providerType, endpoint, authType, credentialHandle, config)
+  -> DiscoveredModel[]
+
+ProbeProviderModel(providerType, endpoint, authType, credentialHandle, remoteModel, config)
+  -> ModelProbeResult
+```
+
+- `providerType` 必须解析到 Runtime Registry 中已注册且可用的 Adapter；接口不接受调用方指定 `adapter_id` 或 `operation_executor_id`。
+- Gateway 负责应用鉴权、公共 Header、超时、Provider 协议和错误归一化；`credentialHandle` 只能由受信任服务解析，响应不得返回凭证明文。
+- 连接测试、发现和探测返回协议无关事实。Gateway 不持久化调用输入或结果；User Model 决定是否保存用户模型健康事实。
+- 未保存 Provider 测试不得在任一领域创建 Provider、模型、健康记录或路由事实。
+
+### 3.4 统一 Operation 执行接口
+
+```text
+ExecuteOperation(
+  principal,
+  target: PlatformEngineTarget | UserModelTarget,
+  capabilityDefinitionId,
+  input,
+  executionOptions
+) -> OperationExecutionResult
+```
+
+`PlatformEngineTarget` 包含平台 Engine、Binding、ProviderCapability revision 及调用方运行快照所需的稳定引用。`UserModelTarget` 只封装 User Model 签发的 `UserModelExecutionContext`；该上下文至少绑定 owner、Provider/模型稳定 ID、远端模型标识、ProviderType、CapabilityDefinition、配置版本、不透明凭证句柄和有效期。
+
+Gateway 必须校验目标类型、Registry 映射、上下文签发者、principal 范围、有效期、能力和配置版本。`UserModelTarget` 不允许客户端直接构造 Provider 地址、凭证、Adapter ID 或 Executor ID。校验通过后，Model Route Resolver 仅在请求内派生：
+
+```text
+ResolvedModelRoute
+  source_scope: platform | user
+  provider_ref
+  model_ref
+  capability_definition_id
+  operation_executor_id
+  credential_handle
+  config_or_capability_revision
+```
+
+`ResolvedModelRoute` 不建表、不缓存为第三份模型事实、不提供 API 或 CRUD。Gateway 返回标准化提交引用、状态、取消结果、输出或安全错误，不创建或更新 `ApplicationRun`、`GenerationRun`、`AtomicTask` 和用户模型健康事实。
+
 ## 4. 数据与一致性
 
 - ProviderCapability、ApplicationEngineType 和加载结果不建表，当前事实来自只读 Registry。
@@ -71,6 +124,8 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - Application Platform、ComfyUIWorkflow 和 ApplicationRun 只保存稳定 Gateway ID、不可变 revision 或非敏感快照，不得查询 Gateway 私有表。
 - EngineInstance 删除前通过受控引用检查确认不存在 Application Platform 历史运行引用，现有数据库 FK 继续作为最终一致性保护。
 - ApplicationExecutor 将标准 Operation 请求交给 Model Gateway；OperationExecutor 返回归一化提交引用、状态、取消结果、失败或标准输出，不拥有 ApplicationRun、AtomicTask 或 Artifact 生命周期。
+- Gateway 不保存 `UserModelProvider`、`UserProviderModel`、`UserDefaultModelConfig`、用户模型健康事实或 `UserModelExecutionContext`，也不查询 User Model 私有表。
+- ProviderType、Adapter 与 Executor 的内部映射只来自 `runtime-registry.yaml`；User Model 只消费移除内部 ID 后的稳定 ProviderType 投影。
 
 ## 5. 权限边界
 
@@ -84,6 +139,9 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 ## 6. 跨域与事件边界
 
 - Application Platform 通过受控模块边界消费 ProviderCapability、Engine、Binding、当前 `object_info` 和 OperationExecutor，不读取 Model Gateway 私有表。
+- Application Platform 通过 `PlatformEngineTarget` 调用 `ExecuteOperation`；ApplicationRun 编排和执行快照仍归 Application Platform。
+- User Model 通过稳定 ProviderType 调用连接测试、模型发现和模型探测，并为合格用户模型签发执行上下文；Gateway 不读取其私有表。
+- AI Chat 使用 User Model 执行上下文构造 `UserModelTarget` 并调用 `ExecuteOperation`；GenerationRun 及模型、能力、配置版本快照仍归 AI Chat。
 - Task Center 保持现有 system_key，并调度 Model Gateway 注册的 Engine 健康与 object-info ReconcileHandler。
 - `engine_instance_health_changed` 由 `modelgateway.engine-instance` 发布，Application Platform 路由消费者按 EngineInstance ID 查询最新事实。
 - `provider_capability_correction_required` 由 `modelgateway.operation-executor` 发布，事件不自动修改能力清单。
@@ -95,5 +153,6 @@ ProviderCapability 只能声明已由对应 ApplicationEngineType 注册的 Oper
 - 管理端导入、编辑或热加载 ProviderCapability。
 - ProviderCapability 数据库修订历史或 ComfyUI object-info 历史。
 - Application、Template、ApplicationRun、ComfyUIWorkflow、Task、Artifact、Asset 或 Canvas 所有权。
-- 新 API 路径、新 DTO、新错误码、新权限码、新表名或新调度 key。
+- 将 User Model 内部协作接口暴露为新的公共 HTTP CRUD，或新增错误码、权限码、表名和调度 key。
+- 保存用户 Provider、模型、默认配置、用户模型健康事实或 `ResolvedModelRoute`。
 - 正式实现代码、实际 migration 或部署配置。

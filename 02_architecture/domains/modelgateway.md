@@ -1,12 +1,14 @@
 # Model Gateway 领域架构参考
 
-本文从 application-platform v1.3.0 原样迁移 Gateway 核心架构。产品语义以 `00_product/domains/modelgateway/product-spec.md` 为准，实现接口与数据结构以 `01_contracts/domains/modelgateway/` 为准。
+本文在 application-platform v1.3.0 迁移的 Gateway 核心架构上补充 User Model 融合边界。产品语义以 `00_product/domains/modelgateway/product-spec.md` 为准，实现接口与数据结构以 `01_contracts/domains/modelgateway/` 为准。
 
-Application Platform 保留 ApplicationExecutor、应用版本、运行快照和 Artifact 交付；Model Gateway 提供 Registry、Engine、Binding、Adapter 与 OperationExecutor 受控边界。
+Application Platform 保留 ApplicationExecutor、ApplicationRun 编排、运行快照和 Artifact 交付；User Model 保留用户 Provider、模型、默认配置、用户模型健康事实与资格校验；Model Gateway 提供 Registry、Engine、Binding、Adapter、发现、探测和统一 `ExecuteOperation` 边界。
 
 ## 1. 架构目标
 
 - 将 ApplicationEngineType、EngineAdapter、OperationExecutor 与易变的平台能力清单分离。
+- 通过 Runtime Registry 维护稳定 `provider_type -> adapter_id` 和 `capability -> operation_executor_id` 内部映射，客户端只选择 Provider Type。
+- 统一支持 `PlatformEngineTarget` 与 `UserModelTarget`，并在请求内派生不持久化的 `ResolvedModelRoute`。
 - 以内置 YAML 与启动目录 YAML 作为 ProviderCapability 事实源，不创建数据库副本。
 - 内置清单严格校验并保留 ID；目录文件失败只导致能力级降级，不覆盖内置能力。
 - ProviderCapability 与 ComfyUI workflow 使用联合能力来源；ComfyUI 节点能力只由 EngineInstance 当前 object_info 提供，不复制到工作流、校验、模板或运行。
@@ -22,8 +24,9 @@ flowchart LR
     L --> R["只读 ProviderCapability Registry"]
     RR["runtime-registry.yaml"] --> T["Runtime Registry"]
     T --> L
-    T --> A["EngineAdapter Registry"]
+    T --> A["Provider / Engine Adapter Registry"]
     T --> O["OperationExecutor Registry"]
+    PT["Provider Type Catalog"] --> T
 
     R --> B["EngineCapabilityBinding"]
     E["ApplicationEngineInstance"] --> B
@@ -49,7 +52,14 @@ flowchart LR
     AR --> AF["Artifact Ref"]
     AF --> AL["Artifact / Asset / Representation / asset-library"]
     TR --> W["Worker"]
-    W --> O
+    W --> PE["PlatformEngineTarget"]
+    UM["User Model<br/>Provider、模型、默认、健康"] --> UC["UserModelExecutionContext"]
+    UC --> UT["UserModelTarget"]
+    PE --> MR["Model Route Resolver"]
+    UT --> MR
+    T --> MR
+    MR --> X["ExecuteOperation"]
+    X --> O
     O --> A
     A --> P["External Provider"]
 ```
@@ -122,12 +132,12 @@ flowchart LR
 
 API Server 与 TaskWorker 都执行相同 bootstrap。唯一索引保证多副本只形成一条绑定；upsert 将 revision、enabled 和空 restrictions 恢复为当前内置事实。绑定管理 API 依据 ProviderCapability 的 binding_policy 派生 `system_managed` 并拒绝修改。EngineInstance 删除由外键 cascade 清理绑定。
 
-## 5. EngineAdapter 与 OperationExecutor
+## 5. Adapter、发现、探测与 OperationExecutor
 
-EngineAdapter 负责平台级公共协议：
+Gateway Adapter 负责 Provider 或平台公共协议：
 
 - base URL、鉴权和公共 Header；
-- 网络、上传和平台级健康检测；
+- 网络、上传、模型发现、Provider/模型探测和平台级健康检测；
 - 公共错误、追踪 ID 和状态映射。
 
 OperationExecutor 负责具体 Operation：
@@ -137,7 +147,9 @@ OperationExecutor 负责具体 Operation：
 - 同步或异步提交、查询、取消和恢复；
 - 输出提取、向 ApplicationExecutor 返回归一化输出和供应商错误。
 
-YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
+YAML 和用户标签只能引用已注册的 Operation，不能补足缺失的执行器。Provider Type 是稳定公开类型，Adapter 与 Executor ID 只存在于内部 Registry。
+
+`ExecuteOperation` 接受 `PlatformEngineTarget | UserModelTarget`、CapabilityDefinition、Operation 和标准参数。Gateway 校验目标类型、Registry 映射、principal、上下文签发者、能力、配置版本与有效期后，只在当前请求内产生 `ResolvedModelRoute`。Gateway 不为该结果建表、缓存第三份模型事实或提供 CRUD。
 
 ## 6. 数据归属
 
@@ -149,6 +161,10 @@ YAML 只能声明已注册的 Operation，不能补足缺失的执行器。
 | ApplicationEngineInstance | modelgateway 数据库合同中的兼容表 | 是 |
 | ComfyUI Engine object_info | modelgateway 数据库合同中的 EngineInstance 一对一当前目录 | 是，仅当前一份 |
 | EngineCapabilityBinding | modelgateway 数据库合同中的兼容表 | 是 |
+| UserModelProvider / UserProviderModel / UserDefaultModelConfig / ModelHealthCheck | user-model 数据库合同 | 是，不进入 Gateway |
+| UserModelExecutionContext | user-model 请求级签发结果 | 否 |
+| PlatformEngineTarget / UserModelTarget / ResolvedModelRoute | Gateway 请求级执行对象 | 否 |
+| GenerationRun | ai-chatting 数据库合同 | 是，不进入 Gateway |
 | ComfyUIWorkflow | application-platform 数据库中的用户私有非版本化导入资源 | 是 |
 | ComfyUIWorkflowValidation | application-platform 数据库中的不可变实例校验结果与诊断 | 是，不含 object_info |
 | ApplicationTemplateVersion | application-platform 数据库 | 是 |
@@ -193,7 +209,7 @@ sequenceDiagram
     participant Engine as EngineInstance
     participant Task as Task Center
     participant Worker as Worker
-    participant Exec as OperationExecutor
+    participant Gateway as ExecuteOperation
     participant Provider as External Provider
     participant Asset as Asset Library
 
@@ -204,21 +220,43 @@ sequenceDiagram
     User->>App: 提交 ApplicationRun
     App->>Registry: 重新校验能力
     App->>Engine: 重新校验并选择实例
-    App->>App: 保存不可变执行快照，task_creation_status=pending
+    App->>App: 固定 PlatformEngineTarget 与不可变执行快照
     App->>Task: application_run_id + idempotency_key 幂等创建 AtomicTask
     Task-->>App: 返回唯一 atomic_task_id
     App->>App: 绑定 AtomicTask，task_creation_status=created
     Task->>Worker: Conductor 分发 AtomicTask handler
-    Worker->>Exec: 使用执行快照提交
-    Exec->>Provider: 调用供应商 API
-    Provider-->>Exec: 任务或结果
-    Exec-->>Task: 状态、进度、标准输出
+    Worker->>Gateway: ExecuteOperation(PlatformEngineTarget)
+    Gateway->>Gateway: 请求级解析 Adapter 与 OperationExecutor
+    Gateway->>Provider: 应用协议与鉴权并调用供应商 API
+    Provider-->>Gateway: 任务或结果
+    Gateway-->>Task: 归一化状态、进度、标准输出或错误
     Task-->>App: 终态持久化后的 resource_version 投影事件
     App->>Asset: 受控交付标准输出并幂等形成 Artifact
     Asset-->>App: 返回 artifact_id
     App->>Asset: 以 artifact_id 幂等登记 AssetVersion
     Asset->>Task: Representation build DAG / backfill actions
 ```
+
+用户模型执行使用同一入口，但资格与生命周期不迁入 Gateway：
+
+```mermaid
+sequenceDiagram
+    participant Chat as AI Chat
+    participant UserModel as User Model
+    participant Gateway as Model Gateway
+    participant Provider as External Provider
+
+    Chat->>UserModel: ResolveUserModelExecutionContext
+    UserModel->>UserModel: 校验 owner/enabled/health/能力/配置版本
+    UserModel-->>Chat: UserModelExecutionContext
+    Chat->>Gateway: ExecuteOperation(UserModelTarget)
+    Gateway->>Gateway: 校验上下文并派生 ResolvedModelRoute
+    Gateway->>Provider: Adapter + OperationExecutor
+    Provider-->>Gateway: 结果或错误
+    Gateway-->>Chat: 归一化输出或错误
+```
+
+Gateway 不查询 User Model 私有表，不创建或更新 User Model 健康事实、默认配置或 GenerationRun。探测结果由调用方 User Model 持久化并发布既有事件。
 
 Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/processing/ready/failed/deleted`；预览就绪是独立事实。ApplicationPlatform 只保存 Artifact 引用和只读版本投影，不发布竞争性的 Artifact 生命周期事件。
 
@@ -230,6 +268,7 @@ Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/
 - 单文件失败：只隔离该文件；其他能力正常注册。
 - 重复 ID：所有冲突文件不可用，不按顺序覆盖。
 - Adapter/Executor 缺失：对应能力不可用，不能由 YAML 补足。
+- Provider Type 未注册、用户上下文过期或配置版本不匹配：在调用 Provider 前拒绝，不回查 User Model 私有表。
 - 运行时供应商拒绝：运行失败并创建 `CapabilityCorrectionRequired`，系统不自动改文件。
 - 能力重启后变化：既有 Binding 保留但可能失效；历史 ApplicationRun 快照保持不变。
 - ComfyUI 导入失败：不创建工作流；其他工作流与模板不受影响。
@@ -260,6 +299,7 @@ Model Gateway 注册 `application-platform.comfyui-object-info-refresh` Reconcil
 - 文件级加载诊断仅管理员可见。
 - ProviderCapability 无任何写 API 或重新加载 API。
 - EngineInstance 认证配置按 Model Gateway S1/S2 权限边界管理；ProviderCapability 文件不得包含凭证。
+- `UserModelTarget` 只接受 User Model 签发的不透明凭证句柄；客户端不能提交 Provider 地址、凭证明文、Adapter ID 或 Executor ID。
 - 应用创建者可以发现 EngineInstance 基础状态并读取可见 ComfyUI 实例当前 object_info；base URL 的可见性沿用 EngineInstance 契约，auth_config、凭证和实例写操作仍由管理员权限保护。
 - Application 默认 private，只有管理员可设置 global；运行、画布、复制与预设开关独立校验。
 - ComfyUIWorkflow 始终为 owner 私有资源，不存在 global 或跨用户共享；管理员代管记录 actor 与 owner。

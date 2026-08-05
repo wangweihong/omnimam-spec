@@ -32,7 +32,7 @@
 
 ## 5. 上游与下游
 
-上游是 task-center、workflow-canvas 及未来通过合同门禁的 application-platform、asset-library、model-management 可靠事件。下游是用户收件箱 REST API、Notification Outbox 和 sse 的提示投影。Web 收到提示后必须重查通知事实。
+上游是 task-center、workflow-canvas 及未来通过合同门禁的 application-platform、asset-library、user-model 可靠事件。下游是用户收件箱 REST API、Notification Outbox 和 sse 的提示投影。Web 收到提示后必须重查通知事实。
 
 ## 6. 正式事实源
 

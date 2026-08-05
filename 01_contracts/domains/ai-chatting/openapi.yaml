@@ -438,7 +438,7 @@ components:
         assistant: { $ref: '#/components/schemas/AssistantSummary', nullable: true, readOnly: true }
         model_id:
           type: string
-          description: 引用 model-management.UserProviderModel.id。
+          description: 引用 user-model.UserProviderModel.id。
         model: { $ref: '#/components/schemas/ProviderModelRefSummary', nullable: true, readOnly: true }
         branch_source: { type: object, additionalProperties: true }
         last_active_at: { type: string, format: date-time }
@@ -468,7 +468,7 @@ components:
         is_system: { type: boolean }
         suggested_model_id:
           type: string
-          description: 引用 model-management.UserProviderModel.id。
+          description: 引用 user-model.UserProviderModel.id。
         suggested_model: { $ref: '#/components/schemas/ProviderModelRefSummary', nullable: true, readOnly: true }
         use_suggested_model: { type: boolean }
         context_message_count: { type: integer }
@@ -508,7 +508,7 @@ components:
         model_snapshot:
           type: object
           additionalProperties: true
-          description: 生成时来自 model-management 的模型快照。
+          description: 生成时来自 User Model 的非敏感模型快照。
         assistant_snapshot:
           type: object
           additionalProperties: true
@@ -529,13 +529,27 @@ components:
         not_persisted: { type: boolean }
     GenerationRun:
       type: object
-      required: [id, topic_id, assistant_message_id, operation, status]
+      required: [id, topic_id, assistant_message_id, operation, model_id, capability_definition_id, model_config_version, model_snapshot, status]
       properties:
         id: { type: string }
         topic_id: { type: string, description: 当前 generation 操作已由 Topic 上下文限定。 }
         assistant_message_id: { type: string, description: SendMessageResponse 同时返回对应 assistant_message，不重复展开。 }
         operation:
           $ref: "#/components/schemas/Operation"
+        model_id:
+          type: string
+          description: 当次固定的 user-model.UserProviderModel.id。
+        capability_definition_id:
+          type: string
+          description: 当次 Gateway ExecuteOperation 使用的能力 ID。
+        model_config_version:
+          type: integer
+          minimum: 0
+          description: User Model 签发执行上下文时固定的配置版本。
+        model_snapshot:
+          type: object
+          additionalProperties: true
+          description: 当次模型的非敏感不可变展示快照。
         status:
           $ref: "#/components/schemas/GenerationStatus"
         started_at: { type: string, format: date-time }
@@ -618,7 +632,7 @@ components:
         is_system: { type: boolean }
     ProviderModelRefSummary:
       type: object
-      description: model-management 提供的当前用户模型一跳只读投影。
+      description: user-model 提供的当前用户模型一跳只读投影。
       x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-AICHAT-02, BR-AICHAT-25]}
       required: [id, display_name, provider_id, provider_name, model, health_status, enabled]
       properties:

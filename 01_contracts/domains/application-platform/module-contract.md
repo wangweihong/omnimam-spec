@@ -17,8 +17,9 @@
 ## 2. Model Gateway 协作契约
 
 - ProviderCapability、Runtime Registry、ApplicationEngineType、ApplicationEngineInstance、EngineCapabilityBinding、EngineAdapter、OperationExecutor、健康检测和 ComfyUI 当前 object_info 由 `modelgateway` 拥有。
-- Application Platform 通过稳定 ID、权限裁剪摘要和受控模块接口解析有效能力、读取 Engine/当前 object_info 并调用 OperationExecutor，不得查询 Gateway 私有表。
-- `ApplicationExecutor` 继续归 Application Platform，负责 ApplicationRun 编排、AtomicTask 协作和向 asset-library 受控交付标准输出。
+- Application Platform 通过稳定 ID、权限裁剪摘要和受控模块接口解析有效能力、读取 Engine/当前 object_info，并以 `PlatformEngineTarget` 调用 Model Gateway `ExecuteOperation`；不得查询 Gateway 私有表或直接调用 OperationExecutor。
+- `ApplicationExecutor` 继续归 Application Platform，负责 ApplicationRun 编排、AtomicTask 协作、`PlatformEngineTarget` 执行快照和向 asset-library 受控交付标准输出；Provider 协议、鉴权应用、下载和 Operation 执行实现归 Model Gateway。
+- Application Platform 不构造或消费 `UserModelTarget`，也不通过 User Model 私有 Provider 替代平台 Engine。
 - Application Platform 保留 `ProviderCapabilityRefSummary`、`EngineInstanceRefSummary` 和历史 Engine 快照；这些是运行创建时的不可变非敏感投影，不是 Gateway 当前事实副本。
 - 现有 `application-platform.engine-health` 与 `application-platform.comfyui-object-info-refresh` system_key 保持不变，仅由 Model Gateway 注册对应 ReconcileHandler。
 
@@ -34,7 +35,7 @@
 - 转换直接选择 ComfyUI EngineInstance，并在事务内按其当前目录重新校验；历史 validation 不作为请求输入。每次转换创建新的模板与首版，版本只深拷贝 API Workflow 和模板契约，revision 不包含 object_info 或派生依赖；通用模板创建 API 不接受 ComfyUI 首版原始 Workflow。
 - Application Platform 从 Model Gateway 读取按 `operation_executors` key 字典序派生的能力名称数组，不复制 Runtime Registry。
 - ApplicationTemplateVersion 和 ApplicationVersion 通过显式 publish 动作发布，发布后不可变；ApplicationVersion 使用同一应用内唯一语义版本字符串。
-- ApplicationRun 固定联合能力来源 revision、EngineInstance、模板版本、输入和输出映射快照；ProviderCapability 字段只在 provider_capability 分支存在。
+- ApplicationRun 固定联合能力来源 revision、EngineInstance、Binding、`PlatformEngineTarget`、模板版本、输入和输出映射快照；ProviderCapability 字段只在 provider_capability 分支存在。
 - ApplicationRun 创建与详情响应返回 Application、ApplicationVersion、ApplicationTemplateVersion、ProviderCapability、EngineInstance 和 AtomicTask 的一跳摘要。同域关系优先从 ApplicationRun 创建快照读取，旧数据缺少快照时才在 owner/visibility 边界内读取当前投影；AtomicTask 通过 Task Center 受控只读服务解析，禁止直接查询 Task Center 私有表。摘要缺失不使 ApplicationRun 响应失败。
 - ApplicationRun 的 Artifact 引用是 application-platform 保存的有界只读投影，必须直接提供输出名、媒体类型、处理/登记状态、资源版本及可用的 Asset 导航 ID；客户端禁止按 `artifact_id` 逐项调用 asset-library。需要实时 Artifact 正文或受保护内容时才显式进入 asset-library 单资源流程。
 - AtomicTask 是执行状态事实源，ApplicationRun 只接受更高 `task_resource_version` 的投影。
@@ -44,7 +45,7 @@
 - `EnsureCanvasApplicationRun` 必须校验 AtomicTask functionRef、Canvas/Node 关联、ApplicationVersion、最终输入和当前 Engine/runtime；重复调用修复同一绑定，禁止请求 Task Center 创建新任务。
 - `application-platform.run` 是规范 functionRef；`application.execute` 不再是可注册运行时名称。
 - Artifact 由 asset-library 按稳定 producer key 保存；application-platform 只维护 `application_run_id + output_key + sequence -> artifact_id` 引用和更高 resource_version 的只读投影。
-- ApplicationExecutor 调用 Model Gateway OperationExecutor 并编排归一化输出，只能向 asset-library 交付字节流、受控上传会话或可信存储引用；不得交付凭证、任意 URL、私网地址或原始响应。
+- ApplicationExecutor 以 ApplicationRun 快照中的 `PlatformEngineTarget` 调用 Model Gateway `ExecuteOperation` 并编排归一化输出，只能向 asset-library 交付 Gateway 返回的字节流、受控上传会话或可信存储引用；不得交付凭证、任意 URL、私网地址或原始响应。
 - Artifact 每次处理、预览或登记变化由 asset-library 同事务写 outbox；application-platform 不向 SSE 发布竞争性的 Artifact 生命周期事件。
 
 ## 4. 权限边界
@@ -71,7 +72,8 @@
 
 ## 6. 非目标
 
-- ProviderCapability、Engine、Binding、Adapter、OperationExecutor 或 ComfyUI object-info 所有权。
+- ProviderCapability、Engine、Binding、Adapter、OperationExecutor、Provider 专用客户端或 ComfyUI object-info 所有权。
+- `UserModelTarget` 的解析或执行。
 - 工作流版本树、lifecycle、global 或跨用户共享、普通 Workflow 自动转 API Workflow、自定义节点前端 JS、节点编辑、自动修复和校验阶段真实运行。
 - 在本仓库维护正式实现代码、实际 migration 或部署配置文件。
 - application-platform 不拥有 Canvas、CanvasVersion、CanvasRun、CanvasNodeRun 或 DAG 编译；这些能力由已发布的 workflow-canvas S1/S2 定义。

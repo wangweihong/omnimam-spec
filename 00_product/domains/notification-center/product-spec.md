@@ -124,9 +124,10 @@ flowchart LR
 | --- | --- |
 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup | task-center |
 | Artifact、Asset、AssetVersion、AssetRepresentation | asset-library |
-| ApplicationRun、ApplicationEngineInstance | application-platform |
+| ApplicationRun | application-platform |
+| ApplicationEngineInstance | modelgateway |
 | CanvasRun、CanvasNodeRun | workflow-canvas |
-| ProviderModel 健康状态 | model-management |
+| ProviderModel 健康状态 | user-model |
 
 通知记录只保存用于展示的信息和目标资源引用，例如：
 
@@ -637,11 +638,11 @@ send_task_failed_message
 | asset-library | `asset_version_processing_changed` | `asset.representation.completed/failed/batch_completed/batch_failed` | `owner_user_id` | 需补 notification-service 消费关系和单项/批次映射 |
 | asset-library | `artifact_processing_changed`、`artifact_registration_changed` | `application.artifact.ready` 及处理/登记失败主题 | `owner_user_id`、`application_run_id` | 需补 notification-service 消费关系 |
 | application-platform | `application_run_projection_changed` | `application.run.completed/failed` | ApplicationRun 发起人 | 需补消费者和发起人/owner 载荷 |
-| application-platform | `engine_instance_health_changed` | `application.engine_instance.unavailable/recovered` | `ADMIN`、`SUPER_ADMIN` | 需补消费者、前态和管理员范围契约 |
-| model-management | `model_health_status_changed` | `model.provider_model.unavailable/recovered` | `ownerUserId` | 需补 notification-service 消费关系；现行 camelCase 载荷由源契约负责 |
+| modelgateway | `engine_instance_health_changed` | `application.engine_instance.unavailable/recovered` | `ADMIN`、`SUPER_ADMIN` | 需补消费者、前态和管理员范围契约 |
+| user-model | `model_health_status_changed` | `model.provider_model.unavailable/recovered` | `ownerUserId` | 需补 notification-service 消费关系；现行 camelCase 载荷由源契约负责 |
 | asset-library 或未来扫描领域 | 待定义扫描/导入业务结果事件 | `asset.scan.*`、`asset.import.*`、`asset.batch.*` | owner 或 initiator | 前瞻规划 |
 | asset-library | 待定义 StorageBackend 状态与容量事件 | `storage.backend.unavailable`、`storage.capacity.warning`、`storage.scan.completed` | `ADMIN`、`SUPER_ADMIN` | 前瞻规划 |
-| application-platform / model-management | 待定义凭证到期事件 | `application.engine_instance.credential_expiring`、`model.provider.credential_expiring` | owner 或管理员 | 前瞻规划 |
+| modelgateway / user-model | 待定义凭证到期事件 | `application.engine_instance.credential_expiring`、`model.provider.credential_expiring` | owner 或管理员 | 前瞻规划 |
 | identity / system | 待定义安全和系统公告事件 | `security.*`、`system.*` | 受影响用户或管理员 | 前瞻规划 |
 | agent | 待 AgentRun 和审批模型确定 | `agent.*` | initiator、owner 或 approver | 前瞻规划 |
 

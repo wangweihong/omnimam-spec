@@ -1,7 +1,7 @@
 model_provider_changed:
-  producer: model-management.provider
+  producer: user-model.provider
   consumers:
-    - model-management.model
+    - user-model.model
     - ai-chatting
   trigger_condition: 当前用户模型提供商创建、更新、启用状态变化或删除。
   payload:
@@ -15,11 +15,11 @@ model_provider_changed:
   related_user_stories: [US-USER-MODEL-02, US-USER-MODEL-03, US-USER-MODEL-04]
   related_rules: [BR-USER-MODEL-06, BR-USER-MODEL-07]
 provider_model_changed:
-  producer: model-management.model
+  producer: user-model.model
   consumers:
     - ai-chatting
-    - model-management.default-model
-  trigger_condition: 当前用户模型创建、同步、更新、删除、启用状态或能力标签变化。
+    - user-model.default-model
+  trigger_condition: 当前用户模型创建、同步、更新、删除、启用状态、特征标签或能力关闭范围变化。
   payload:
     ownerUserId: string
     providerId: string
@@ -32,7 +32,7 @@ provider_model_changed:
   related_user_stories: [US-USER-MODEL-06, US-USER-MODEL-07, US-USER-MODEL-08, US-USER-MODEL-11, US-USER-MODEL-13]
   related_rules: [BR-USER-MODEL-10, BR-USER-MODEL-12, BR-USER-MODEL-13, BR-USER-MODEL-22, BR-USER-MODEL-26]
 model_health_status_changed:
-  producer: model-management.health
+  producer: user-model.health
   consumers:
     - ai-chatting
   trigger_condition: 模型健康检测结果导致 healthStatus 或 unhealthyReason 变化。
@@ -50,7 +50,7 @@ model_health_status_changed:
   related_user_stories: [US-USER-MODEL-09, US-USER-MODEL-10, US-USER-MODEL-13]
   related_rules: [BR-USER-MODEL-15, BR-USER-MODEL-16, BR-USER-MODEL-18, BR-USER-MODEL-27, BR-USER-MODEL-29]
 default_model_changed:
-  producer: model-management.default-model
+  producer: user-model.default-model
   consumers:
     - ai-chatting
   trigger_condition: 当前用户保存或替换某个 usage 的默认模型配置。

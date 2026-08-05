@@ -7,8 +7,8 @@
 | Domain | 错误码文件 | 说明 |
 | --- | --- | --- |
 | ai-chatting | `01_contracts/domains/ai-chatting/errors.yaml` | AI 聊天话题、消息、助手、生成、翻译和访问控制错误码 |
-| model-management | `01_contracts/domains/model-management/errors.yaml` | 用户模型提供商、模型清单、默认模型、健康检测和访问控制错误码 |
-| modelgateway | `01_contracts/domains/modelgateway/errors.yaml` | ProviderCapability 启动加载、引擎、绑定与 ComfyUI object_info 错误码 |
+| user-model | `01_contracts/domains/user-model/errors.yaml` | 用户 Provider、模型清单、默认模型、健康检测、Gateway 委托映射和访问控制错误码 |
+| modelgateway | `01_contracts/domains/modelgateway/errors.yaml` | ProviderCapability 启动加载、引擎、绑定、Adapter/Executor 与 ComfyUI object_info 错误码 |
 | application-platform | `01_contracts/domains/application-platform/errors.yaml` | ComfyUI 工作流、应用契约、运行和兼容访问错误码 |
 | task-center | `01_contracts/domains/task-center/errors.yaml` | AtomicTask、Group/DAG、Schedule、运行时、Attempt 与权限错误码 |
 | asset-library | `01_contracts/domains/asset-library/errors.yaml` | 素材查询、访问、标签、上传、Collection、Artifact、AssetVersion 与 Representation 错误码 |
@@ -33,11 +33,11 @@
 | 111000-111199 | ai-chatting | generation | generation 并发、停止、重生成和可见性错误 |
 | 111200-111399 | ai-chatting | translation | 翻译默认模型和翻译状态错误 |
 | 111400-111599 | ai-chatting | access | AI 聊天访问和所有权错误 |
-| 120200-120399 | model-management | provider | 模型提供商可见性、唯一性和连接检测错误 |
-| 120400-120599 | model-management | model | 提供商模型可见性、唯一性和模型标识错误 |
-| 120600-120799 | model-management | default-model | 默认模型缺失、候选不可用和用途错误 |
-| 120800-120999 | model-management | health | 模型健康检测错误 |
-| 121000-121199 | model-management | access | 用户模型配置访问控制错误 |
+| 120200-120399 | user-model | provider | 用户 Provider 可见性、唯一性、Provider Type 和连接检测错误 |
+| 120400-120599 | user-model | model | Provider 模型可见性、唯一性、模型标识和执行资格错误 |
+| 120600-120799 | user-model | default-model | 默认模型缺失、候选不可用和用途错误 |
+| 120800-120999 | user-model | health | 用户模型健康检测错误 |
+| 121000-121199 | user-model | access | 用户模型配置访问控制错误 |
 | 130200-130399 | modelgateway | provider-capability | 目录、YAML、Schema、重复 ID、执行依赖和能力可用性错误；保留既有数值区间 |
 | 130400-130599 | modelgateway | engine | EngineInstance、鉴权、Binding、限制与健康可用性错误；保留既有数值区间 |
 | 130600-130799 | application-platform | application | 模板来源、不可变版本、RuntimeForm 和输入校验错误 |

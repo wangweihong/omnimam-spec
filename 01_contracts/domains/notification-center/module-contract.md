@@ -34,7 +34,7 @@
 - `artifact_processing_changed`、`artifact_registration_changed`：缺消费关系。
 - `application_run_projection_changed`：缺消费关系和 initiator/owner 载荷。
 - `engine_instance_health_changed`：缺消费关系、from status 和管理员接收范围。
-- `model_health_status_changed`：缺消费关系；现行 camelCase payload 由 model-management 契约负责，通知中心不得静默改名。
+- `model_health_status_changed`：缺消费关系；现行 camelCase payload 由 user-model 契约负责，通知中心不得静默改名。
 
 扫描、导入、StorageBackend 容量、凭证到期、系统公告、安全和 Agent 主题登记为 `FUTURE`。`CONTRACT_GAP` 与 `FUTURE` topic 的 `enabled` 必须为 false；收到相关事件时返回/记录 `ERR_NOTIFICATION_SOURCE_EVENT_UNSUPPORTED`，不得创建 Notification。
 
@@ -103,8 +103,9 @@
 - task-center：只提供 AtomicTask/Group 可靠事件和受控任务导航；通知中心不读 Conductor 或 Task Center 私表。
 - workflow-canvas：只提供 CanvasRun 可靠事件和受控运行导航；通知中心不从 AtomicTask 自行推断 CanvasRun 结果。
 - asset-library：未来补齐 Artifact/AssetVersion 消费关系后提供 owner 和业务结果；AtomicTask SUCCESS 不代表 AssetVersion ready。
-- application-platform：未来补齐 ApplicationRun/EngineInstance 事件接收者和前态；ApplicationEngineInstance 与 ProviderModel 不合并。
-- model-management：未来按 ownerUserId 消费 ProviderModel 健康变化；camelCase 例外由其源 S2 负责。
+- application-platform：未来补齐 ApplicationRun 事件接收者载荷。
+- modelgateway：未来补齐 ApplicationEngineInstance 健康事件前态和管理员接收范围；ApplicationEngineInstance 与 ProviderModel 不合并。
+- user-model：未来按 ownerUserId 消费 ProviderModel 健康变化；camelCase 例外由其源 S2 负责。
 - identity：提供当前认证用户、ADMIN/SUPER_ADMIN 角色和通知权限判断；Notification Center 不维护用户或角色事实。
 - sse：消费 Notification Outbox 事件并拥有 UserEvent、event_id、历史、重放和连接；不拥有 Notification。
 

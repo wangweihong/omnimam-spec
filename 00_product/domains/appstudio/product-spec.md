@@ -150,7 +150,7 @@ Coding Agent、Hermes、OpenCode 等 Runtime 通常已经实现：
 ```text
 Agent Service
     ↓
-model-management
+user-model
     决定当前用户使用哪个模型
     ↓
 modelgateway
@@ -309,7 +309,7 @@ flowchart TB
     end
 
     AGENT[Agent Service]
-    MM[model-management]
+    MM[user-model]
     MG[modelgateway]
     TASK[Task Center]
     WORKER[Task Worker]
@@ -479,9 +479,9 @@ AppStudio 不保存 Provider 专属信息。
 
 ---
 
-## 4.5 model-management
+## 4.5 user-model
 
-`model-management` 管理当前用户私有模型：
+`user-model` 管理当前用户私有模型：
 
 ```text
 UserModelProvider
@@ -1533,7 +1533,7 @@ NONE
 ```text
 ModelBinding
     ↓
-model-management 校验模型
+user-model 校验模型
     ↓
 modelgateway 生成 ModelAccessSpec
     ↓
@@ -1549,7 +1549,7 @@ StudioApplication Runtime 自行调用模型。
 当 StudioApplication 使用用户私有模型时：
 
 * 必须具有当前用户授权上下文。
-* model-management 校验模型所有权。
+* user-model 校验模型所有权。
 * 不允许客户端传入任意 userId。
 * 不向 StudioApplication 前端返回 CredentialRef。
 * Infra Service 仅向 Runtime 注入运行期凭证。
@@ -2495,7 +2495,7 @@ AppStudio
 Agent Service
     管理 Coding Agent、Session、Memory、Skills、MCP、模型绑定和 Runtime Binding
 
-model-management
+user-model
     决定用户可以使用哪个模型
 
 modelgateway
@@ -2530,7 +2530,7 @@ flowchart LR
     USER[User]
     STUDIO[AppStudio]
     AGENT_SERVICE[Agent Service]
-    MM[model-management]
+    MM[user-model]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Coding Agent Runtime]

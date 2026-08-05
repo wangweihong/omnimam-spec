@@ -23,6 +23,9 @@
 | ComfyUIWorkflowValidation | 工作流针对一个 ComfyUI EngineInstance 的不可变兼容性校验快照；不提交 prompt，不覆盖历史结果 | application-platform |
 | ApplicationVersion | Application 的不可变发布契约，定义稳定的业务输入输出并引用底层模板 | application-platform |
 | RuntimeFormSchema | 根据应用版本、能力约束、权限和运行时可用性派生的临时业务表单 | application-platform |
+| UserModelProvider | 当前用户私有模型服务连接和非敏感配置；不等于 ProviderCapability 或 ApplicationEngineInstance | user-model |
+| UserProviderModel | 用户 Provider 下的远端模型标识、展示字段、特征标签、启用范围和 Gateway 派生能力投影 | user-model |
+| UserModelExecutionContext | User Model 完成 owner、启用、健康、能力和配置版本校验后签发的请求级执行上下文；不包含凭证明文且不建表 | user-model |
 
 ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管理员可写数据库版本实体；运行快照保存实际使用的 revision。`ProviderCapabilityVersion` 不作为独立全局术语。
 
@@ -35,6 +38,9 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | EngineCapabilityBinding | Engine 实例与平台能力之间的绑定及实例级收紧限制 | modelgateway |
 | Operation | 可由执行平台完成的一项标准业务操作；标识格式仍待 modelgateway 确认 | modelgateway |
 | OperationExecutor | 某项 Operation 在特定平台上的真实执行能力 | modelgateway |
+| PlatformEngineTarget | Application Platform 使用的 Gateway 执行目标，引用平台 Engine、Binding、ProviderCapability revision 和运行快照 | modelgateway |
+| UserModelTarget | 使用 User Model 签发执行上下文的 Gateway 执行目标；不把用户 Provider 转换为平台 Engine | modelgateway |
+| ResolvedModelRoute | Gateway 按执行目标、能力和 Runtime Registry 在单次请求内派生的路由；不建表、不提供 CRUD | modelgateway |
 | ApplicationRun | 一次应用运行的业务输入、版本和执行环境快照，以及 AtomicTask 的只读投影 | application-platform |
 | AtomicTask | 一次异步执行的状态、进度、重试、超时和取消事实源 | task-center |
 | TaskAttempt | AtomicTask 的一次具体执行尝试及其失败、外部任务和恢复信息 | task-center |
@@ -47,7 +53,7 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | RuntimeMount | InfraRuntime 使用的受控挂载记录，包含来源引用、目标路径、只读标志和授权上下文 | infrastructure |
 | source_ref | 由来源领域授权生成的不可变或受控资源引用；不得解释为宿主机路径 | infrastructure |
 
-`EngineAdapter` 负责平台级连接、鉴权和公共协议，`OperationExecutor` 负责具体 Operation；旧 `ProviderAdapter` catalog 名称不再作为 modelgateway 的正式能力事实源。
+Gateway Adapter 负责 Provider 连接、鉴权应用、发现、探测和公共协议，`OperationExecutor` 负责具体 Operation；稳定 `providerType` 可对外展示，内部 `adapter_id` 和 `operation_executor_id` 不能由客户端选择。
 
 ## Agent 与生成应用
 

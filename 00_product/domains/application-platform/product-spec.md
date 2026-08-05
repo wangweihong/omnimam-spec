@@ -588,23 +588,23 @@ ApplicationTemplate 不保存：
 
 * 验证模板与应用运行输入；
 * 根据模板解析标准操作参数；
-* 根据 `ApplicationEngineInstance` 的类型找到 `EngineAdapter` 和对应的 `OperationExecutor`；
-* 编排任务提交、状态查询和取消；
+* 根据已校验的 Engine、Binding、能力 revision 和运行快照构造 `PlatformEngineTarget`；
+* 通过 Model Gateway `ExecuteOperation` 编排任务提交、状态查询和取消；
 * 将标准输出通过受控内容入口交付 asset-library，并保存返回的 `Artifact` 引用；
-* 将外部平台失败结果归一化为应用运行失败原因。
+* 将 Gateway 返回的标准错误映射为应用运行失败原因。
 
 其产品语义为：
 
 ```text
-ApplicationTemplate + ApplicationRun + ApplicationEngineInstance
+ApplicationTemplate + ApplicationRun + PlatformEngineTarget
 → 校验并解析标准操作参数
-→ EngineAdapter 处理平台公共交互
-→ OperationExecutor 执行具体业务操作
-→ 归一化运行状态与失败原因
+→ Model Gateway ExecuteOperation
+→ Gateway 内部解析 EngineAdapter 与 OperationExecutor
+→ 返回归一化运行状态、输出与失败
 → asset-library 创建并处理 Artifact
 ```
 
-`ApplicationExecutor` 不维护模型清单、平台参数范围或供应商生命周期；这些事实来自模板、`ProviderCapability` 当前加载修订或 ComfyUI 工作流能力契约。
+`ApplicationExecutor` 不维护模型清单、平台参数范围、供应商生命周期、Provider 协议、鉴权应用或下载实现；这些事实和实现分别来自模板、`ProviderCapability` 当前加载修订、ComfyUI 工作流能力契约与 Model Gateway。Application Platform 只使用 `PlatformEngineTarget`，不得构造或消费 `UserModelTarget`。
 
 独立运行创建 AtomicTask 的顺序为：先固定并保存 ApplicationRun 执行快照，再以 ApplicationRun ID 和幂等键请求 task-center 创建 `application-platform.run` AtomicTask，成功后绑定 `atomic_task_id`。创建失败时 ApplicationRun 保留为 `task_creation_failed`，不得伪造 AtomicTask 状态；重试必须返回或绑定同一 AtomicTask，不能重复创建执行。
 
@@ -1820,7 +1820,8 @@ ApplicationRun
 → 解析 EngineRestrictions
 → 过滤有效 CapabilityVariant
 → 应用 ApplicationTemplateConstraint
-→ 选择 ApplicationEngineInstance
+→ 选择 ApplicationEngineInstance 与 EngineCapabilityBinding
+→ 构造 PlatformEngineTarget
 ```
 
 对于 SaaS 等平台，`CapabilitySource` 为状态为 `available` 的 `ProviderCapability` 当前加载修订，并通过 `EngineCapabilityBinding` 找到候选实例。对于 ComfyUI，`CapabilitySource` 为工作流能力契约，并从满足模板 Engine 约束的 ComfyUI 实例中选择候选实例。
@@ -1835,10 +1836,13 @@ ApplicationRun
 ApplicationRun
 → ApplicationTemplate
 → ApplicationExecutor
-→ EngineAdapter + OperationExecutor
-→ ApplicationEngineInstance
+→ PlatformEngineTarget
+→ Model Gateway ExecuteOperation
+→ Gateway 内部 EngineAdapter + OperationExecutor
 → 平台任务
 ```
+
+`ApplicationExecutor` 只向 Gateway 传递经过本领域运行校验并固定到 ApplicationRun 快照的 `PlatformEngineTarget`。它不得使用 `UserModelTarget`，也不得读取 Gateway 私有表或直接调用 Provider 专用客户端。
 
 ---
 
@@ -1967,8 +1971,8 @@ ComfyUI 首个模板版本只能由 API-ready 的 `ComfyUIWorkflow` 通过转换
 → 校验 ApplicationRun 输入
 → 选择 ApplicationEngineInstance
 → 校验 CapabilityVariant
-→ OperationExecutor 校验标准操作参数
-→ 提交外部平台
+→ 固定 PlatformEngineTarget 与执行快照
+→ Model Gateway ExecuteOperation 校验并提交外部平台
 ```
 
 任一步失败都必须在调用外部平台前终止运行，并返回对应字段、当前值和可理解的失败原因；不得用自动切换模型或扩张能力范围的方式绕过校验。
@@ -2044,7 +2048,7 @@ CapabilityCorrectionRequired
 51. `BR-AIAPP-180`（deprecated，由 `BR-AIAPP-184` 替代）：旧规则由 application-platform 写 Artifact 生命周期 outbox。
 52. `BR-AIAPP-181`：ApplicationPlatform 只拥有 ApplicationRun 输出声明和 Artifact 引用投影；Artifact 身份、内容、处理、登记、保留和事件事实归 asset-library。
 53. `BR-AIAPP-182`：ApplicationRun 使用 `application_run_id + output_key + sequence` 稳定映射 Artifact；重复交付必须命中同一 Artifact，自动 TaskAttempt 重试不得产生重复制品。
-54. `BR-AIAPP-183`：ApplicationExecutor 负责 Provider 协议和下载，只能向 asset-library 交付字节流、受控上传会话或可信存储引用，不得交付凭证、任意 URL、私网地址或原始响应。
+54. `BR-AIAPP-183`：ApplicationExecutor 负责 ApplicationRun 编排和标准输出的受控交付，Provider 协议、鉴权应用、下载与 Operation 执行实现归 Model Gateway；ApplicationExecutor 只能向 asset-library 交付 Gateway 返回的字节流、受控上传会话或可信存储引用，不得交付凭证、任意 URL、私网地址或原始响应。
 55. `BR-AIAPP-184`：ApplicationRun 按 Artifact resource_version 保存可重建只读投影；Artifact 处理、登记或可选派生失败不反向改写已终态 AtomicTask。
 56. `BR-AIAPP-185`：ApplicationRun 创建与详情响应保留 application、application version、template version、ProviderCapability、engine 和 AtomicTask ID，并同时返回权限裁剪的一跳可读摘要。应用平台同域关系优先使用运行创建时保存的非敏感快照，AtomicTask 摘要通过 Task Center 受控只读能力获取；关联缺失时父运行仍返回，摘要不得包含凭证、object_info 正文、任务参数或输出。ApplicationRun 内嵌的 Artifact 引用本身必须包含输出名、媒体类型、处理/登记状态和 Asset 导航 ID，前端不得为每个 Artifact 再调用详情接口。
 57. `BR-AIAPP-186`：ComfyUIWorkflow 导入不接收或保存 EngineInstance，也不读取 object_info；visual_workflow 只保存源画布并进入 pending，api_workflow 完成基础节点结构校验后直接进入 ready。nodes、input-candidates、output-candidates、dependencies 仍必须接收目标实例并按其当前目录即时派生，不持久化解析缓存；只有 `object_info.output_node=true` 的节点端口可标记 extractable。

@@ -7,15 +7,15 @@ Canvas Application 节点复用 Workflow Canvas 已创建的 DAG AtomicTask。`a
 ## 1. 架构目标
 
 - 保持 Application、Template、RuntimeFormSchema 与 ApplicationRun 的稳定应用语义。
-- 通过 `modelgateway` 解析 ProviderCapability、EngineCapabilityBinding、EngineInstance 与当前 object_info。
-- ApplicationExecutor 继续编排应用执行、AtomicTask 协作和 Artifact 交付，不复制 Gateway 私有事实。
+- 通过 `modelgateway` 解析 ProviderCapability、EngineCapabilityBinding、EngineInstance 与当前 object_info，并形成 `PlatformEngineTarget`。
+- ApplicationExecutor 继续编排应用执行、AtomicTask 协作和 Artifact 交付，通过 Gateway `ExecuteOperation` 执行，不复制 Gateway 私有事实或 Provider 专用客户端。
 - ComfyUI 工作流导入、解析、兼容性校验和模板转换继续由本领域维护。
 
 ## 2. Model Gateway 依赖
 
 `CapabilityDefinition`、`ApplicationEngineType`、`ProviderCapability`、`ApplicationEngineInstance`、`EngineCapabilityBinding`、`EngineAdapter`、`OperationExecutor`、Runtime Registry、健康检测和当前 object_info 的架构归 `02_architecture/domains/modelgateway.md`。
 
-Application Platform 只通过稳定 ID、权限裁剪摘要和受控模块接口读取当前能力与执行状态。ApplicationRun 中的 ProviderCapability、EngineInstance 与能力 revision 是创建时的不可变非敏感快照，不构成 Gateway 当前事实副本。
+Application Platform 只通过稳定 ID、权限裁剪摘要和受控模块接口读取当前能力与执行状态。ApplicationRun 中的 ProviderCapability、EngineInstance、Binding、`PlatformEngineTarget` 与能力 revision 是创建时的不可变非敏感快照，不构成 Gateway 当前事实副本。Application Platform 不使用 `UserModelTarget`。
 
 ## 7. ComfyUI 工作流导入与转换时序
 
@@ -74,7 +74,7 @@ sequenceDiagram
     participant Engine as Model Gateway EngineInstance
     participant Task as Task Center
     participant Worker as Worker
-    participant Exec as Model Gateway OperationExecutor
+    participant Gateway as Model Gateway ExecuteOperation
     participant Provider as External Provider
     participant Asset as Asset Library
 
@@ -85,15 +85,16 @@ sequenceDiagram
     User->>App: 提交 ApplicationRun
     App->>Registry: 重新校验能力
     App->>Engine: 重新校验并选择实例
-    App->>App: 保存不可变执行快照，task_creation_status=pending
+    App->>App: 固定 PlatformEngineTarget 与不可变执行快照
     App->>Task: application_run_id + idempotency_key 幂等创建 AtomicTask
     Task-->>App: 返回唯一 atomic_task_id
     App->>App: 绑定 AtomicTask，task_creation_status=created
     Task->>Worker: Conductor 分发 AtomicTask handler
-    Worker->>Exec: 使用执行快照提交
-    Exec->>Provider: 调用供应商 API
-    Provider-->>Exec: 任务或结果
-    Exec-->>Task: 状态、进度、标准输出
+    Worker->>Gateway: PlatformEngineTarget + capability + operation + 参数
+    Gateway->>Gateway: 解析 Adapter 与 OperationExecutor
+    Gateway->>Provider: 应用协议与鉴权并调用供应商 API
+    Provider-->>Gateway: 任务或结果
+    Gateway-->>Task: 归一化状态、进度、标准输出或错误
     Task-->>App: 终态持久化后的 resource_version 投影事件
     App->>Asset: 受控交付标准输出并幂等形成 Artifact
     Asset-->>App: 返回 artifact_id
@@ -107,7 +108,7 @@ Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/
 
 ## 10. 失败隔离
 
-Model Gateway 将目录、Registry、Adapter、Executor、Engine 或 Binding 不可用结果通过稳定错误和受控模块边界返回。本领域不得绕过失败、补造执行能力或静默切换模型；历史 ApplicationRun 快照保持不变。
+Model Gateway 将目录、Registry、Adapter、Executor、Engine 或 Binding 不可用结果通过 `ExecuteOperation` 的稳定错误和受控模块边界返回。本领域不得绕过失败、补造执行能力、改用 `UserModelTarget` 或静默切换模型；历史 ApplicationRun 快照保持不变。
 - ComfyUI 导入失败：不创建工作流；其他工作流与模板不受影响。
 - 实例复检失败：追加 failed 或 incompatible 校验，不覆盖旧结果，不修改模板快照。
 - 转换失败：模板与首版模板版本全部回滚；相同幂等键可安全重试，不同幂等键可从同一工作流创建其他模板。

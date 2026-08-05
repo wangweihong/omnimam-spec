@@ -38,7 +38,7 @@
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
 | infrastructure | 通过 Task Center 间接创建/操作受控 Runtime | 直接调用 Infra Service、Docker Socket 或 Provider API |
 | appstudio | 调用内部 `CreateCodingAgentForStudio`、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 AppStudio 私表、创建第二套 Session/Invocation、绕过 ChangeSet |
-| model-management/modelgateway | 校验模型引用并生成 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
+| user-model/modelgateway | 校验模型引用并生成 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
 
 ## 5. 一致性与安全

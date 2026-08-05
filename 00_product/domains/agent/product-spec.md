@@ -147,7 +147,7 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 启动流程为：
 
 1. Agent Service 根据 Agent 的 ModelBinding 确定模型引用。
-2. `model-management` 解析用户私有模型选择。
+2. `user-model` 解析用户私有模型选择。
 3. `modelgateway` 将模型引用解析为 `ModelAccessSpec`。
 4. Agent Service 将 `ModelAccessSpec`、Platform Agent 的授权挂载要求或 Coding Agent 的 Workspace Tool 配置写入 Agent Runtime Task。
 5. Task Worker 的 Infra Adapter 调用 Infra Service；Infra Service 解析 CredentialRef 并注入 Runtime。
@@ -157,7 +157,7 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as model-management
+    participant MM as user-model
     participant MG as modelgateway
     participant TC as Task Center
     participant TW as Task Worker
@@ -262,7 +262,7 @@ flowchart TB
     API[omni-apiserver]
 
     AS[Agent Service]
-    MM[model-management]
+    MM[user-model]
     MG[modelgateway]
     TC[Task Center]
     WORKER[Task Worker]
@@ -345,9 +345,9 @@ volumeName
 
 ---
 
-## 5.2 model-management
+## 5.2 user-model
 
-`model-management` 管理当前用户的：
+`user-model` 管理当前用户的：
 
 ```text
 UserModelProvider
@@ -1162,7 +1162,7 @@ runtimePolicy
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as model-management
+    participant MM as user-model
     participant MG as modelgateway
     participant TC as Task Center
 
@@ -1277,7 +1277,7 @@ sequenceDiagram
     participant AS as Agent Service
     participant TC as Task Center
     participant TW as Task Worker
-    participant MM as model-management
+    participant MM as user-model
     participant MG as modelgateway
     participant IS as Infra Service
     participant AR as Agent Runtime
@@ -1922,7 +1922,7 @@ Agent Service 调用以下内部服务时使用服务身份：
 
 ```text
 Task Center
-model-management
+user-model
 modelgateway
 Asset Library
 Application Platform
@@ -1971,7 +1971,7 @@ Agent Service：
 ```text
 AgentModelBinding
     ↓
-model-management 校验模型所有权
+user-model 校验模型所有权
     ↓
 modelgateway 生成 ModelAccessSpec
     ↓
@@ -2413,7 +2413,7 @@ AgentRuntimeBinding
 * SSE 流式输出。
 * Agent Memory 基础能力。
 * AgentModelBinding。
-* `model-management` 集成。
+* `user-model` 集成。
 * `modelgateway` ModelAccessSpec 解析。
 * Infra Service Runtime 创建和停止。
 * Secret 安全注入。
@@ -2548,7 +2548,7 @@ Agent Service 必须支持 Runtime 异常后的状态对账和恢复。
 Agent Service
     管理 Agent、Session、Invocation、Memory、AgentWorkspace、Skills、MCP、权限和业务生命周期
 
-model-management
+user-model
     决定当前用户可以使用哪个模型
 
 modelgateway
@@ -2582,7 +2582,7 @@ Notification Center
 flowchart LR
     USER[User / AppStudio]
     AS[Agent Service]
-    MM[model-management]
+    MM[user-model]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Agent Runtime]

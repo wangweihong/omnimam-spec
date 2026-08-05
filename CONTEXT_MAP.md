@@ -14,8 +14,8 @@
 | --- | --- | --- | --- |
 | `identity` | `domains/identity/context.md` | 认证流程、注册审批、会话、RBAC 投影、服务主体、用户删除检查与资源授权 | 登录、Token、用户、审批、权限、服务凭据、删除依赖 |
 | `platform-management` | `domains/platform-management/context.md` | 平台级只读信息、SystemAuthConfig、AuditLog 与平台入口 | 平台管理、注册开关、认证策略、审计日志、系统概览 |
-| `modelgateway` | `domains/modelgateway/context.md` | 能力目录、执行引擎、绑定与 Operation 执行 | Capability、Engine、Binding、Adapter、Executor |
-| `model-management` | `domains/model-management/context.md` | 用户模型提供商和模型配置 | 模型、密钥引用、健康检测 |
+| `modelgateway` | `domains/modelgateway/context.md` | 能力目录、平台执行引擎、绑定、Adapter、模型发现/探测与 Operation 执行 | Capability、Engine、Binding、Adapter、Executor、Provider Type |
+| `user-model` | `domains/user-model/context.md` | 用户 Provider、模型清单、默认模型、健康事实与执行资格 | 用户模型、密钥引用、默认模型、用户模型健康检测 |
 | `ai-chatting` | `domains/ai-chatting/context.md` | 会话、消息、助手和生成 | AI 对话、Assistant、翻译 |
 | `application-platform` | `domains/application-platform/context.md` | ComfyUIWorkflow、应用、表单和运行 | Application、模板、ApplicationRun |
 | `task-center` | `domains/task-center/context.md` | 异步执行、重试、编排、调度和版本化 Function Registry | AtomicTask、DAG、Schedule、functionRef、Task Worker、Infra Adapter |
@@ -28,7 +28,7 @@
 | `infrastructure` | `domains/infrastructure/context.md` | 第一阶段单机 Docker 运行层与受控挂载 | InfraRuntime、Docker Job/Service、RuntimeMount、Task Worker、Workspace 挂载 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 
-`modelgateway` 已有迁移后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、健康检测和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
+`modelgateway` 与 `user-model` 已有本次重构后的 S1、S2 和架构参考，但尚未形成新的 Release。Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；用户 Provider、模型清单、默认模型和用户模型健康先读 `domains/user-model/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
 
 `agent` 和 `appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，AppStudio Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 应同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Workspace 关键词在这两个领域仅用于定位后端 canonical 事实，不代表公共资源、页面或用户输入。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 可按 `spec-v1.16.0` 门禁使用；AppStudio 必须同时遵守 `spec-v1.16.0` 与 `spec-v1.16.1` 门禁；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
 
@@ -38,7 +38,7 @@
 
 | 关键词 | 优先读取 | 按需继续 |
 | --- | --- | --- |
-| Model Gateway、CapabilityDefinition、EngineAdapter、OperationExecutor、ProviderCapability、Binding | `domains/modelgateway/context.md` | 涉及应用消费再读 application-platform |
+| Model Gateway、CapabilityDefinition、EngineAdapter、OperationExecutor、ProviderCapability、Binding、Provider Type、ResolvedModelRoute | `domains/modelgateway/context.md` | 涉及用户模型再读 user-model；涉及应用消费再读 application-platform |
 | 应用、模板、版本、RuntimeFormSchema、ApplicationRun | `domains/application-platform/context.md` | 涉及画布再读 workflow-canvas |
 | EngineInstance、ProviderCapability、健康检测、object_info | `domains/modelgateway/context.md` | 涉及 ComfyUIWorkflow 再读 application-platform |
 | ComfyUI Workflow、模板转换、试运行 | `domains/application-platform/context.md` | 涉及 Engine 当前事实再读 modelgateway |
@@ -51,8 +51,8 @@
 | SSE、UserEvent、event_id、Last-Event-ID、重放 | `domains/sse/context.md` | 再读事件所属事实领域 |
 | 用户、注册审批、登录、JWT、Refresh Token、RBAC、authorizationVersion、PrincipalContext、服务主体、用户删除依赖 | `domains/identity/context.md` | 涉及 owner/资源转移或领域依赖事实时再读目标领域 |
 | SystemAuthConfig、allow_registration、平台认证配置、AuditLog、审计日志 | `domains/platform-management/context.md` | 认证执行再读 identity；来源事件再读对应 domain |
-| 模型提供商、ProviderModel、默认模型、用户模型健康检测 | `domains/model-management/context.md` | 平台 Engine 健康检测读 modelgateway；对话使用读 ai-chatting |
-| Topic、Message、Assistant、QuickPhrase、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 model-management |
+| 用户模型、模型提供商、ProviderModel、默认模型、用户模型健康检测、UserModelExecutionContext | `domains/user-model/context.md` | Adapter、发现、探测和执行读 modelgateway；对话使用读 ai-chatting |
+| Topic、Message、Assistant、QuickPhrase、GenerationRun、生成流 | `domains/ai-chatting/context.md` | 模型配置再读 user-model；执行实现再读 modelgateway |
 | MCP、server/discover、Streamable HTTP、stdio Proxy、MCP Tool、MCP Resource、MCP Task | `domains/mcp/context.md` | 调用应用再读 application-platform；任务映射再读 task-center |
 | AgentSession、AgentInvocation、AgentMemory、Hermes、OpenCode、AgentRuntime | `domains/agent/context.md` | Coding Agent 修改源码再读 appstudio |
 | AgentWorkspace、workspace_type、AgentRuntimeProvider（后端内部） | `domains/agent/context.md` | 周期执行再读 task-center |
@@ -65,12 +65,13 @@
 | 任务 | 必须读取 | 按需读取 |
 | --- | --- | --- |
 | Application 执行 | application-platform、modelgateway、task-center | asset-library |
+| AI Chat 用户模型执行 | ai-chatting、user-model、modelgateway | task-center |
 | ComfyUI 工作流转应用 | application-platform、modelgateway | task-center |
 | 应用转画布节点 | application-platform、workflow-canvas | task-center |
 | 任务结果登记素材 | task-center、asset-library | notification-center |
 | Canvas 执行应用节点 | workflow-canvas、application-platform | task-center、asset-library |
 | 任务或画布完成通知 | notification-center、对应源领域 | sse |
-| AI 对话引用素材 | ai-chatting、asset-library | model-management |
+| AI 对话引用素材 | ai-chatting、asset-library | user-model |
 | 实时状态展示 | sse、对应事实领域 | notification-center |
 | Agent 通过 MCP 运行应用 | mcp、application-platform | task-center、modelgateway、asset-library |
 | Agent 通过 MCP 查询或上传素材 | mcp、asset-library | identity |

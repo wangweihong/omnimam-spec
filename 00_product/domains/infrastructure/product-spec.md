@@ -366,9 +366,9 @@ AppStudio 不直接调用 Infra。Preview、Build 和 Production Runtime 的 Inf
 
 ---
 
-## 5.5 model-management 与 modelgateway
+## 5.5 user-model 与 modelgateway
 
-`model-management` 管理当前用户的模型选择和 Provider 配置。
+`user-model` 管理当前用户的模型选择和 Provider 配置。
 
 `modelgateway` 将模型引用解析为标准模型访问配置，例如：
 
@@ -2227,7 +2227,7 @@ agent
 appstudio
     决定如何开发、预览、构建和发布 StudioApplication
 
-model-management
+user-model
     决定用户选择哪个模型
 
 modelgateway

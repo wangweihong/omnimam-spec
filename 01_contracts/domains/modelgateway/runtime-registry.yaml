@@ -1,10 +1,10 @@
 schema_version: "1.0"
 description: >-
   Model Gateway 只读 Runtime Registry 契约。该文件登记内置能力定义、
-  EngineType、Adapter、OperationExecutor 和鉴权结构，不是运行时配置，也不提供写 API。
+  EngineType、ProviderType、Adapter、OperationExecutor 和鉴权结构，不是运行时配置，也不提供写 API。
 x-s1-refs:
-  user_stories: [US-AIAPP-039, US-AIAPP-041, US-AIAPP-042]
-  business_rules: [BR-AIAPP-140, BR-AIAPP-144, BR-AIAPP-151, BR-AIAPP-193]
+  user_stories: [US-AIAPP-039, US-AIAPP-041, US-AIAPP-042, US-AIAPP-051, US-AIAPP-052]
+  business_rules: [BR-AIAPP-140, BR-AIAPP-144, BR-AIAPP-151, BR-AIAPP-193, BR-AIAPP-195, BR-AIAPP-196, BR-AIAPP-201]
 
 capability_definitions:
   - {id: video.text_to_video, name_i18n: {zh-CN: 文生视频, en-US: Text to Video}, input_media_types: [text], output_media_types: [video]}
@@ -14,6 +14,8 @@ capability_definitions:
   - {id: image.edit, name_i18n: {zh-CN: 图像编辑, en-US: Image Editing}, input_media_types: [text, image], output_media_types: [image]}
   - {id: image.upscale, name_i18n: {zh-CN: 图像放大, en-US: Image Upscaling}, input_media_types: [image], output_media_types: [image]}
   - {id: text.chat_completion, name_i18n: {zh-CN: 对话补全, en-US: Chat Completion}, input_media_types: [text, json], output_media_types: [text, json]}
+  - {id: text.translate, name_i18n: {zh-CN: 文本翻译, en-US: Text Translation}, input_media_types: [text, json], output_media_types: [text, json]}
+  - {id: image.understanding, name_i18n: {zh-CN: 图片理解, en-US: Image Understanding}, input_media_types: [text, image, json], output_media_types: [text, json]}
 
 engine_adapters:
   - id: comfyui
@@ -21,7 +23,9 @@ engine_adapters:
   - id: byteplus_modelark
     responsibilities: [authentication, base_url, upload, health_check, common_error_mapping]
   - id: deepseek_official
-    responsibilities: [authentication, base_url, health_check, common_error_mapping]
+    responsibilities: [authentication, base_url, model_discovery, model_probe, health_check, common_error_mapping]
+  - id: openai_compatible
+    responsibilities: [authentication, base_url, model_discovery, model_probe, health_check, common_error_mapping]
 
 operation_executors:
   - {id: comfyui_workflow, engine_adapter_id: comfyui, capability_definition_ids: [video.text_to_video, video.image_to_video, video.video_edit, image.text_to_image, image.edit, image.upscale]}
@@ -29,6 +33,39 @@ operation_executors:
   - {id: byteplus_image_to_video, engine_adapter_id: byteplus_modelark, capability_definition_ids: [video.image_to_video]}
   - {id: byteplus_reference_to_video, engine_adapter_id: byteplus_modelark, capability_definition_ids: [video.video_edit]}
   - {id: deepseek_chat_completions, engine_adapter_id: deepseek_official, capability_definition_ids: [text.chat_completion]}
+  - {id: openai_chat_completions, engine_adapter_id: openai_compatible, capability_definition_ids: [text.chat_completion, text.translate, image.understanding]}
+
+provider_types:
+  - id: openai_compatible
+    display_name: OpenAI Compatible
+    adapter_id: openai_compatible
+    authentication_types: [none, api_key, bearer_token]
+    configuration_schema:
+      type: object
+      additional_properties: false
+      properties:
+        organization: {type: string}
+        project: {type: string}
+    supports_model_discovery: true
+    supports_model_probe: true
+    operation_executors:
+      text.chat_completion: openai_chat_completions
+      text.translate: openai_chat_completions
+      image.understanding: openai_chat_completions
+  - id: deepseek_official
+    display_name: DeepSeek Official API
+    adapter_id: deepseek_official
+    authentication_types: [api_key]
+    configuration_schema:
+      type: object
+      additional_properties: false
+    supports_model_discovery: true
+    supports_model_probe: true
+    operation_executors:
+      text.chat_completion: deepseek_chat_completions
+
+# provider_types 的 adapter_id 与 operation_executors 仅供 Gateway 内部解析。
+# User Model 的 ProviderType 公共投影必须删除这些内部字段。
 
 application_engine_types:
   - id: comfyui

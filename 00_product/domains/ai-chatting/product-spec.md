@@ -25,7 +25,9 @@ classDiagram
     id
     display_name
     provider_id
-    capabilities
+    capability_definition_ids
+    executable
+    capability_resolution_status
     enabled
     health_status
     owner_user_id
@@ -80,6 +82,10 @@ classDiagram
     assistant_message_id
     status
     operation
+    model_id
+    capability_definition_id
+    model_config_version
+    model_snapshot
   }
 
   class QuickPhrase {
@@ -114,19 +120,22 @@ classDiagram
 ### 2.2 ModelSettingsModelRef（模型设置模型只读投影）
 
 `ModelSettingsModelRef` 不是 AI 聊天领域自有模型配置，也不由 AI 聊天创建、同步、保存或删除。
-它是 `model-management.UserProviderModel` 在聊天场景中的只读引用/投影，用于展示、选择、健康状态判断、capability 判断和生成时快照记录。
+它是 `user-model.UserProviderModel` 在聊天场景中的只读引用/投影，用于展示、选择、健康状态、可执行能力判断和生成时快照记录。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| id | string | 是 | `model-management.UserProviderModel.id` |
+| id | string | 是 | `user-model.UserProviderModel.id` |
 | displayName | string | 是 | 模型设置中的模型显示名称 |
 | providerId | string | 是 | 模型设置中的提供商 ID |
 | providerName | string | 是 | 模型设置中的提供商显示名称 |
-| capabilities | array of string | 是 | 模型设置中的能力标签，例如 `text`、`vision`、`image`、`translation` |
+| capabilityDefinitionIds | array of string | 是 | Gateway 派生的只读可执行能力，例如 `text.chat_completion`、`text.translate`、`image.understanding` |
+| executable | boolean | 是 | User Model 综合 owner、启用、健康、能力和配置版本后的当前执行资格 |
+| capabilityResolutionStatus | enum | 是 | `unknown`、`resolved`、`unavailable` 或 `stale` |
 | enabled | boolean | 是 | 模型设置中当前用户是否启用该模型 |
-| healthStatus | enum: healthy, unhealthy | 是 | 模型设置中的模型健康状态 |
+| healthStatus | enum: unknown, healthy, unhealthy | 是 | User Model 中的模型健康状态 |
 | unhealthyReason | string | 否 | unhealthy 时展示给用户的异常原因，来源于模型设置 |
 | ownerUserId | string | 是 | 模型配置所属用户，来源于模型设置 |
+| configVersion | integer | 是 | User Model 当前配置版本，用于执行前签发和运行快照 |
 
 ### 2.3 Assistant（助手）
 
@@ -137,7 +146,7 @@ classDiagram
 | name | string | 是 | 助手名称，同一用户下唯一 |
 | systemPrompt | string | 否 | 系统提示词 |
 | isSystem | boolean | 是 | 是否为系统助手 |
-| suggestedModelId | string | 否 | 助手建议模型 ID，引用 `model-management.UserProviderModel.id` |
+| suggestedModelId | string | 否 | 助手建议模型 ID，引用 `user-model.UserProviderModel.id` |
 | useSuggestedModel | boolean | 是 | 是否默认使用建议模型 |
 | contextMessageCount | integer | 否 | 参与上下文的历史消息数量 |
 | streamEnabled | boolean | 是 | 是否建议流式输出 |
@@ -157,7 +166,7 @@ classDiagram
 | title | string | 是 | 话题标题 |
 | pinned | boolean | 是 | 是否置顶 |
 | assistantId | string | 是 | 当前话题使用的助手 ID |
-| modelId | string | 是 | 当前话题使用的模型 ID，引用 `model-management.UserProviderModel.id` |
+| modelId | string | 是 | 当前话题使用的模型 ID，引用 `user-model.UserProviderModel.id` |
 | branchSource | object | 否 | 分支来源，包含来源话题和来源消息 |
 | lastActiveAt | string(date-time) | 是 | 最近活跃时间 |
 | createdAt | string(date-time) | 是 | 创建时间 |
@@ -200,6 +209,10 @@ classDiagram
 | assistantMessageId | string | 是 | 本次生成对应的 assistant message |
 | operation | enum: chat, translate | 是 | 操作类型 |
 | status | enum: queued, generating, done, interrupted, failed | 是 | 生成状态 |
+| modelId | string | 是 | 当次使用的 `user-model.UserProviderModel.id` |
+| capabilityDefinitionId | string | 是 | 当次 Gateway Operation 使用的能力 ID |
+| modelConfigVersion | integer | 是 | User Model 签发执行上下文时的配置版本 |
+| modelSnapshot | object | 是 | 当次模型的非敏感不可变展示快照 |
 | startedAt | string(date-time) | 否 | 开始时间 |
 | finishedAt | string(date-time) | 否 | 完成时间 |
 
@@ -233,7 +246,7 @@ classDiagram
 ### 3.1 规则列表
 
 - **BR-AICHAT-01** `Topic` 是消息会话的组织单位，包含标题、置顶状态、当前助手、当前模型、分支来源和最近活跃时间。
-- **BR-AICHAT-02** `Topic`、`Assistant` 和 `QuickPhrase` 默认归属于当前用户个人数据边界；模型配置归属于 `model-management`，AI 聊天只读取当前用户自己的模型设置引用，不维护独立模型配置。
+- **BR-AICHAT-02** `Topic`、`Assistant` 和 `QuickPhrase` 默认归属于当前用户个人数据边界；模型配置归属于 `user-model`，AI 聊天只读取当前用户自己的模型设置引用，不维护独立模型配置。
 - **BR-AICHAT-03** `Message` 必须属于一个 `Topic`，角色至少包含 `user`、`assistant`、`system`。
 - **BR-AICHAT-04** `Message.status` 至少覆盖 `queued`、`generating`、`done`、`interrupted`、`failed`。
 - **BR-AICHAT-05** 每次 assistant response 必须保留 `model_snapshot` 与 `assistant_snapshot`。
@@ -243,11 +256,11 @@ classDiagram
 - **BR-AICHAT-09** 系统助手不可删除；系统助手名称不可由普通编辑修改。
 - **BR-AICHAT-10** 助手名称需要在当前用户下保持唯一。
 - **BR-AICHAT-11** 快捷短语作用域为 `global` 或 `assistant`；助手级短语只能在对应助手上下文中显示或筛选。
-- **BR-AICHAT-12** 翻译能力依赖 `model-management` 中当前用户已启用的默认翻译模型；没有翻译模型时不得静默 fallback 到任意聊天模型。
+- **BR-AICHAT-12** 翻译能力依赖 `user-model` 中当前用户已启用且具备 `text.translate` 的默认翻译模型；没有合格翻译模型时不得静默 fallback 到任意聊天模型。
 - **BR-AICHAT-13** 默认翻译模型健康状态为 `unhealthy` 时，翻译入口需要提示模型异常并阻止翻译请求。
 - **BR-AICHAT-14** 翻译和普通聊天复用同一 AI 对话能力，但用 `operation` 或等价参数区分；`operation=translate` 不使用 stream，`operation=chat` 必须支持 SSE stream。
-- **BR-AICHAT-15** 图片附件能力依赖 `model-management` 中当前用户模型的 capability：只有声明 `vision` 或 `image` 的模型才可支持图片附件。
-- **BR-AICHAT-16** 当前选中模型在 `model-management` 中健康状态为 `unhealthy` 时，发送、重新生成、编辑后重生成和图片附件发送均不得继续调用该模型。
+- **BR-AICHAT-15** 图片附件能力依赖 `user-model` 返回的 Gateway 派生能力；只有最终能力包含 `image.understanding` 的模型才可携带图片附件。
+- **BR-AICHAT-16** 当前选中模型在 `user-model` 中未启用、非 `healthy`、`executable=false` 或能力解析非 `resolved` 时，发送、重新生成、编辑后重生成和图片附件发送均不得继续调用该模型。
 - **BR-AICHAT-17** 图片附件当前只支持 base64 请求数据，不后端持久化、不做安全扫描、不展示媒体具体内容；消息列表仅显示附件图标。
 - **BR-AICHAT-18** 图片附件仅支持 `jpg`、`jpeg`、`png`、`webp`、`bmp`，单张图片不得超过 5MB。
 - **BR-AICHAT-19** 导出能力由前端组装，不创建后端导出任务，不产生导出审计要求。
@@ -255,8 +268,11 @@ classDiagram
 - **BR-AICHAT-21** 同一话题同一时间只允许一个 active generation，避免竞态写入消息流。
 - **BR-AICHAT-22** 输入为空且没有图片附件时，不允许发送。
 - **BR-AICHAT-23** AI Chat API 必须声明并校验已登记的 `ai_chat.*` 权限码。`USER`、`ADMIN`、`SUPER_ADMIN` 默认获得对应的基础工作区、话题、消息、生成、助手、快捷短语和翻译权限；权限只控制操作入口，不扩大 Topic、Message、Assistant、QuickPhrase、GenerationRun 或 MessageTranslation 的 owner_user_id、作用域和可见性边界。跨用户代管能力如需开放，必须另行登记显式管理权限。
-- **BR-AICHAT-24** 新话题或无当前模型上下文需要默认聊天模型时，必须读取 `model-management` 中当前用户的 `assistant.default` 默认模型配置。
-- **BR-AICHAT-25** Topic、Assistant 和助手级 QuickPhrase 响应必须保留 assistant/model ID，并同时返回当前用户权限边界内的一跳可读摘要。模型摘要由 model-management 受控批量只读能力提供；Message 的 `model_snapshot`/`assistant_snapshot` 已是历史展示事实，父消息和 Generation 引用由当前 Topic 响应上下文解析，不再递归展开。
+- **BR-AICHAT-24** 新话题或无当前模型上下文需要默认聊天模型时，必须读取 `user-model` 中当前用户的 `assistant.default` 默认模型配置。
+- **BR-AICHAT-25** Topic、Assistant 和助手级 QuickPhrase 响应必须保留 assistant/model ID，并同时返回当前用户权限边界内的一跳可读摘要。模型摘要由 User Model 受控批量只读能力提供；Message 的 `model_snapshot`/`assistant_snapshot` 已是历史展示事实，父消息和 Generation 引用由当前 Topic 响应上下文解析，不再递归展开。
+- **BR-AICHAT-26** AI Chat 不从 `feature_labels` 推断执行能力；普通聊天使用 `text.chat_completion`，翻译使用 `text.translate`，携带图片的聊天使用 `image.understanding`，且所需能力必须位于 User Model 返回的 `capability_definition_ids`。
+- **BR-AICHAT-27** 每次生成或翻译在调用 Provider 前必须通过 User Model 的 `ResolveUserModelExecutionContext` 完成 owner、启用、健康、能力和配置版本校验，再以 `UserModelTarget` 调用 Model Gateway `ExecuteOperation`；AI Chat 不直接应用 Provider 协议或凭证。
+- **BR-AICHAT-28** `GenerationRun` 创建时必须固定模型 ID、CapabilityDefinition ID、模型配置版本和非敏感模型快照；Gateway 执行结果只推进 AI Chat 拥有的 GenerationRun 生命周期，后续模型或 Registry 变化不得改写历史快照。
 
 ### 3.2 状态与异常
 
@@ -307,8 +323,8 @@ stateDiagram-v2
 - 页面默认选中最近或置顶优先的话题，并加载对应消息。
 - 如果加载失败，需要有错误提示和可恢复入口。
 - 页面入口和 API 操作使用已登记的 `ai_chat.*` 权限码；管理员和超级管理员可进入同一聊天工作区，但仍按当前主体个人数据边界读取和修改资源。
-- 模型列表只读取 `model-management` 中当前用户自己的模型设置，AI 聊天不创建、同步、保存或删除模型。
-- 新话题没有当前模型上下文时，默认模型来自 `model-management` 中当前用户的 `assistant.default` 配置。
+- 模型列表只读取 `user-model` 中当前用户自己的模型设置，AI 聊天不创建、同步、保存或删除模型。
+- 新话题没有当前模型上下文时，默认模型来自 `user-model` 中当前用户的 `assistant.default` 配置。
 
 #### 可视化补充
 
@@ -343,13 +359,18 @@ sequenceDiagram
   actor User as 用户
   participant UI as /ai-chatting
   participant API as AI Chat API
+  participant UM as User Model
+  participant MG as Model Gateway
   participant SSE as SSE Stream
-  participant LLM as Generation Runtime
+  participant LLM as Provider
 
   User->>UI: 输入内容并点击发送
   UI->>UI: 校验输入、图片、模型状态
   UI->>API: 提交 topic message，operation=chat
-  API->>LLM: 创建 generation run
+  API->>UM: 解析模型执行上下文
+  UM-->>API: 返回带配置版本的受信任上下文
+  API->>MG: ExecuteOperation(UserModelTarget)
+  MG->>LLM: 通过已注册 Adapter/Executor 调用
   API-->>UI: 返回 user_message、assistant_message、generation
   LLM-->>SSE: 输出增量内容
   SSE-->>UI: message delta / done / failed
@@ -440,10 +461,10 @@ flowchart TD
 
 - 助手列表支持搜索和创建新助手。
 - 系统助手受保护，不允许删除；非系统助手可以编辑和删除。
-- 模型列表来自 `设置/模型管理` 中当前用户自己的已启用模型，支持按名称、服务商和 capability 过滤。
-- AI 聊天不提供模型创建、同步、保存、删除能力；这些能力只属于 `model-management`。
+- 模型列表来自 User Model 中当前用户自己的模型，支持按名称、服务商和只读 `capability_definition_ids` 过滤。
+- AI 聊天不提供模型创建、同步、保存、删除能力；这些能力只属于 `user-model`。
 - 已启用但健康状态为 `unhealthy` 的模型仍可在列表中展示，但必须显示异常原因并禁止选中。
-- 助手可以配置建议模型；建议模型必须引用 `model-management.UserProviderModel.id`。用户切换助手时保留当前模型选择，并提示可一键切换到助手建议模型，用户手动选择优先。
+- 助手可以配置建议模型；建议模型必须引用 `user-model.UserProviderModel.id`。用户切换助手时保留当前模型选择，并提示可一键切换到助手建议模型，用户手动选择优先。
 - 快捷短语分为全局和助手级两类，可插入输入区。
 - 快捷短语可以是普通短语或 prompt 类型。
 
@@ -481,7 +502,7 @@ flowchart TD
 - 单张图片不得超过 5MB。
 - 每条消息图片数量上限应在正式实现前明确。
 - 当前特性不要求后端持久化附件、不做安全扫描、不展示图片预览或媒体具体内容。
-- 图片附件能力依赖模型 capability，只有声明 `vision` 或 `image` 的模型才可发送图片附件。
+- 图片附件能力依赖 Gateway 派生的 `image.understanding`，特征标签不能使模型获得该能力。
 
 #### 可视化补充
 
@@ -491,7 +512,7 @@ flowchart TD
   B -->|否| X[提示格式不支持]
   B -->|是| C{单张是否 <= 5MB}
   C -->|否| Y[提示图片过大]
-  C -->|是| D{当前模型是否支持 vision/image}
+  C -->|是| D{当前模型是否支持 image.understanding}
   D -->|否| Z[提示当前模型不支持图片]
   D -->|是| E[前端转 base64]
   E --> F[随消息提交]
@@ -504,7 +525,7 @@ flowchart TD
 
 #### 业务说明
 
-- 输入区翻译使用 `model-management` 中当前用户默认翻译模型，把输入内容切换为目标语言译文，并允许恢复原文。
+- 输入区翻译使用 `user-model` 中当前用户具备 `text.translate` 的默认翻译模型，把输入内容切换为目标语言译文，并允许恢复原文。
 - 消息翻译在消息旁显示译文结果和翻译元信息；再次触发可取消译文显示。
 - 未配置默认翻译模型时，翻译入口给出明确提示，不触发生成。
 - 默认翻译模型 unhealthy 时，翻译入口需要提示模型异常并阻止翻译请求。
@@ -606,7 +627,7 @@ flowchart TD
 
 - 展示当前助手、当前模型、话题标题和历史入口。
 - 助手选择使用 Dialog。
-- 模型选择使用 Dialog，并作为 `设置/模型管理` 中当前用户模型的只读选择入口，展示模型名称、服务商、capability、健康状态。
+- 模型选择使用 Dialog，并作为 User Model 当前用户模型的只读选择入口，展示模型名称、服务商、可执行能力、健康状态和不可用原因。
 - unhealthy 模型可以展示，但必须禁用选中，并展示异常原因。
 - 话题标题可编辑。
 

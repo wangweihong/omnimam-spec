@@ -17,9 +17,9 @@ x-source-event-mappings:
       missing: notification-service 消费关系。
     - source_event: application-platform.application_run_projection_changed
       missing: notification-service 消费关系和 initiator/owner 字段。
-    - source_event: application-platform.engine_instance_health_changed
+    - source_event: modelgateway.engine_instance_health_changed
       missing: notification-service 消费关系、前态和管理员范围。
-    - source_event: model-management.model_health_status_changed
+    - source_event: user-model.model_health_status_changed
       missing: notification-service 消费关系。
   future_topics:
     - asset.scan.completed

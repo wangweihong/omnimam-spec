@@ -19,10 +19,34 @@
 * 执行引擎实例 `ApplicationEngineInstance`
 * Runtime Registry
 * Engine 健康检测与 ComfyUI 当前 `object_info`
+* 稳定 `providerType` 到 Adapter 的只读映射
+* 用户 Provider 的连接测试、模型发现、模型探测与能力解析实现
+* `PlatformEngineTarget`、`UserModelTarget` 的统一 Operation 执行入口
+
+本领域与直接协作领域的最终职责如下：
+
+| 能力 | 最终归属 |
+| --- | --- |
+| `ApplicationEngineInstance`、`EngineCapabilityBinding`、平台健康状态 | `modelgateway` |
+| Provider Adapter、模型发现、模型探测、Operation 执行实现 | `modelgateway` |
+| 用户 Provider、模型清单、默认模型、用户模型健康事实 | `user-model` |
+| 用户模型 owner、启用状态、默认值和使用资格校验 | `user-model` |
+| `ApplicationRun` 编排与执行快照 | `application-platform` |
+| AI Chat `GenerationRun` 生命周期 | `ai-chatting` |
+
+```mermaid
+flowchart LR
+    UM["User Model<br/>用户 Provider、模型清单、默认模型"] --> R["Model Route Resolver"]
+    MG["Model Gateway<br/>Capability、Adapter、Executor"] --> R
+    AE["Application Engine<br/>Gateway 拥有的平台实例、Binding、健康状态"] --> R
+    R --> EX["统一模型执行入口"]
+```
 
 ## 2. 领域边界
 
-`modelgateway` 不拥有 `ApplicationExecutor`、ComfyUIWorkflow、ApplicationTemplate、Application、ApplicationVersion、RuntimeFormSchema、ApplicationRun、Canvas、AtomicTask、Artifact 或 Asset。上述应用与运行对象继续由原领域维护，并通过稳定 ID、只读投影和受控模块边界消费本领域事实。
+`modelgateway` 不拥有 `ApplicationExecutor`、ComfyUIWorkflow、ApplicationTemplate、Application、ApplicationVersion、RuntimeFormSchema、ApplicationRun、GenerationRun、Canvas、AtomicTask、Artifact 或 Asset。上述应用与运行对象继续由原领域维护，并通过稳定 ID、只读投影和受控模块边界消费本领域事实。
+
+Gateway 不保存用户 Provider、用户模型、默认配置或用户模型健康事实，不读取 `user-model` 私有表，也不把用户 Provider 转换为 `ApplicationEngineInstance`。User Model 负责 owner、enabled、health、默认值和使用资格校验；Gateway 只接受受信任 User Model 签发的请求级执行上下文。
 
 ## 3. 迁移兼容原则
 
@@ -573,6 +597,66 @@ flowchart TD
 
 ---
 
+### 4.8 ProviderType 与 UserModelTarget
+
+Runtime Registry 为 User Model 提供稳定 `providerType` 目录。每个 ProviderType 声明显示名称、认证类型、非敏感配置 Schema、是否支持模型发现和是否支持模型探测，并在 Gateway 内部映射到一个已注册 Adapter。ProviderType 的公共投影不得返回 `adapter_id`、`operation_executor_id` 或实现类名。
+
+用户选择和保存的是 `providerType`，不是 Adapter。请求中的任意 Adapter ID、Executor ID、Provider 地址或凭证明文都不能成为 Gateway 的受信任执行目标。
+
+Gateway 支持两类执行目标：
+
+| 目标 | 来源 | 事实归属 | Gateway 输入 |
+| --- | --- | --- | --- |
+| `PlatformEngineTarget` | Application Platform | Gateway EngineInstance、Binding 和平台健康事实 | 稳定 Engine/Binding/能力 ID 与 revision |
+| `UserModelTarget` | User Model | User Model 的用户 Provider、模型、健康与使用资格事实 | 受信任 `UserModelExecutionContext` |
+
+`UserModelExecutionContext` 至少包含 owner、Provider/模型稳定 ID、远端模型标识、ProviderType、CapabilityDefinition ID、配置版本、不透明 `credentialHandle`、签发时间和过期时间。上下文不包含凭证明文；Gateway 只校验签发者、范围、有效期、必需版本和 Registry 映射，不查询 User Model 数据库。
+
+### 4.9 Model Route Resolver
+
+Model Route Resolver 将执行目标、CapabilityDefinition 和 Runtime Registry 合成为请求级 `ResolvedModelRoute`：
+
+```text
+source_scope: platform | user
+provider_ref
+model_ref
+capability_definition_id
+operation_id
+executor_id
+credential_handle
+health_summary
+capability_revision
+config_version
+```
+
+`ResolvedModelRoute` 只在请求内存在，不建表、不提供 CRUD、不形成第三份模型事实。平台目标从 Engine/Binding 解析，用户目标从已校验的 UserModelExecutionContext 解析。
+
+### 4.10 用户模型 Adapter 能力
+
+Gateway 对 User Model 提供四个受控内部能力：
+
+```text
+TestProviderConnection
+DiscoverProviderModels
+ProbeProviderModel
+ExecuteOperation
+```
+
+Adapter 负责 Provider 协议、base URL 处理、鉴权应用、Header、超时、连接测试、模型发现、模型探测和公共错误归一化；OperationExecutor 负责标准 Operation 输入校验、请求转换、执行、取消和结果归一化。User Model 不实现同类 HTTP 客户端。
+
+用户模型的最终能力按以下交集派生：
+
+```text
+Adapter 支持能力
+∩ ProviderCapability 或探测结果
+∩ 用户启用范围
+= 最终可执行能力
+```
+
+Gateway 返回派生 `capability_definition_ids`、`stream_supported`、`executable`、`unavailable_reason` 和 `capability_resolution_status`；User Model 将其作为只读投影返回。用户标签不得创建 Registry 未注册的 Operation。
+
+---
+
 
 
 ## 5. ComfyUI 当前 object_info
@@ -628,6 +712,12 @@ Application Platform 负责应用语义和 `ApplicationExecutor` 编排。它通
 
 ComfyUIWorkflow 的导入、解析、兼容性校验、模板转换和试运行仍归 Application Platform。相关流程通过稳定 `engine_instance_id` 读取本领域维护的 EngineInstance 与当前 `object_info`，不得直接复制或修改 Gateway 私有事实。
 
+## 7.1 与 User Model 和 AI Chat 的协作
+
+User Model 保存用户配置与健康事实，并通过稳定 ProviderType 调用 Gateway 的连接测试、模型发现和模型探测能力。Gateway 返回协议无关结果，不持久化这些用户事实，也不发布 `model_health_status_changed`。
+
+AI Chat 继续拥有 GenerationRun 生命周期。每次生成前由 User Model 解析当前用户模型执行上下文，AI Chat 再调用 Gateway `ExecuteOperation`；AI Chat 保存模型 ID、CapabilityDefinition ID、配置版本和非敏感模型快照，Gateway 不创建或更新 GenerationRun。
+
 ## 8. 业务规则
 
 1. `BR-AIAPP-130`：`kind=catalog` 的 ProviderCapability YAML 是 SaaS 平台模型、Operation、Variant 和参数约束的唯一能力事实源；`kind=engine_binding` 只表达引擎基础运行时身份，不得虚构模型目录。两类能力均不得同步为管理员可写数据库资源。
@@ -650,6 +740,16 @@ ComfyUIWorkflow 的导入、解析、兼容性校验、模板转换和试运行�
 59. `BR-AIAPP-188`：ProviderCapability 的 `kind`、`origin` 和 `binding_policy` 分别表达能力用途、加载来源和绑定策略，三者相互独立；`origin` 只能由加载器派生，外部目录清单不得声明为 builtin。
 60. `BR-AIAPP-189`：系统必须提供 `comfyui-workflow-runtime` 内置绑定能力，并为全部现有与新建 comfyui EngineInstance 维护唯一 required_immutable 绑定。新建实例与绑定必须同事务提交；启动回填必须幂等且支持多副本收敛；系统绑定随内置 revision 更新并在实例删除时级联删除。
 64. `BR-AIAPP-193`：ApplicationEngineType 的能力选项必须从 `operation_executors` key 派生，并按 key 字典序返回等长的 `zh-CN`、`en-US` 名称数组；客户端只能选择这些 key，不允许手工输入能力 ID。
+65. `BR-AIAPP-195`：Runtime Registry 必须提供稳定 `provider_type -> adapter_id` 与 `capability_definition_id -> operation_executor_id` 映射；公共 ProviderType 投影不得暴露内部 Adapter 或 Executor ID。
+66. `BR-AIAPP-196`：Gateway 必须统一实现 Provider 协议、鉴权应用、模型发现、模型探测、错误归一化和 Operation 执行；User Model 不得维护 Provider 专用 HTTP 客户端。
+67. `BR-AIAPP-197`：执行目标分为 `PlatformEngineTarget` 和 `UserModelTarget`；用户 Provider 不得转换为 ApplicationEngineInstance，也不得创建 EngineCapabilityBinding。
+68. `BR-AIAPP-198`：Gateway 不保存用户 Provider、用户模型、默认配置或用户模型健康事实，不读取 User Model 私有表，不发布用户模型健康状态事件。
+69. `BR-AIAPP-199`：Gateway 只接受受信任 User Model 签发、未过期、范围匹配且携带配置版本的 UserModelExecutionContext；客户端提供的 Provider 地址、凭证、Adapter ID 或 Executor ID 必须拒绝。
+70. `BR-AIAPP-200`：`ResolvedModelRoute` 仅为请求级派生结果，不建表、不提供独立 CRUD、不作为第三份模型事实。
+71. `BR-AIAPP-201`：用户模型最终能力等于 Adapter 支持能力、ProviderCapability 或探测结果与用户启用范围的交集；用户标签不能创建未注册 Operation。
+72. `BR-AIAPP-202`：`TestProviderConnection`、`DiscoverProviderModels` 和 `ProbeProviderModel` 返回协议无关结果与安全错误；未保存 Provider 测试不在 Gateway 或 User Model 创建持久事实。
+73. `BR-AIAPP-203`：`ExecuteOperation` 必须根据目标类型解析 Adapter 和 OperationExecutor，并返回归一化输出、状态和错误；ApplicationRun 与 GenerationRun 生命周期继续由来源领域拥有。
+74. `BR-AIAPP-204`：Gateway Registry 或 ProviderCapability 更新不得删除、重命名或改写 User Model 资源；能力失效只通过派生不可用结果影响执行资格。
 
 
 ## 9. 用户故事与验收标准
@@ -688,6 +788,22 @@ ComfyUIWorkflow 的导入、解析、兼容性校验、模板转换和试运行�
 * `AC-AIAPP-049-04`：有实例读取权限的用户可读取原始当前目录、ComfyUI 版本、refreshed_at 和 stale；支持 gzip 内容压缩，其他工作流与历史响应不重复携带目录正文。
 * `AC-AIAPP-049-05`：目录缺失或超过 48 小时后，解析、普通 Workflow 转换、校验、模板发布、RuntimeFormSchema 和运行均在调用 ComfyUI 前失败；工作流导入不依赖目录，只读目录可继续返回最后成功内容并标记 stale。
 
+`US-AIAPP-051`：作为 User Model，我希望通过稳定 ProviderType 使用 Gateway Adapter 完成连接测试、模型发现和模型探测，使用户模型管理不再维护 Provider 专用客户端。
+
+* `AC-AIAPP-051-01`：ProviderType 只返回稳定类型、显示名称、认证类型、配置 Schema 和发现/探测支持标记，不返回 Adapter 或 Executor ID。
+* `AC-AIAPP-051-02`：只有 Registry 中已注册且可用的 ProviderType 可以映射 Adapter；任意客户端 adapter_id 被拒绝。
+* `AC-AIAPP-051-03`：未保存 Provider 测试不落库、不记录凭证明文，并只返回归一化安全错误。
+* `AC-AIAPP-051-04`：发现和探测结果不覆盖 User Model 的显示名、分组、启用状态、特征标签或能力关闭范围。
+* `AC-AIAPP-051-05`：Gateway 不查询 User Model 私有表，也不持久化用户 Provider、模型、默认配置或健康事实。
+
+`US-AIAPP-052`：作为模型能力消费者，我希望 Gateway 通过统一执行入口运行平台 Engine 或已校验用户模型，使协议、鉴权和 Operation 实现保持单一事实源。
+
+* `AC-AIAPP-052-01`：PlatformEngineTarget 继续按 EngineInstance、Binding、健康状态和能力 revision 解析，不改变 ApplicationRun 语义。
+* `AC-AIAPP-052-02`：UserModelTarget 只接受 User Model 签发的上下文；跨用户、停用、不健康、能力不匹配或过期上下文在调用 Provider 前被拒绝。
+* `AC-AIAPP-052-03`：ResolvedModelRoute 仅存在于请求内，不创建表、共享外键或独立资源 API。
+* `AC-AIAPP-052-04`：AI Chat 通过 Gateway ExecuteOperation 执行，同时由 ai-chatting 保存 GenerationRun 及模型、能力和配置版本快照。
+* `AC-AIAPP-052-05`：ProviderCapability 或 Registry 更新只改变派生执行资格，不改写 User Model 资源和历史运行快照。
+
 
 
 ## 10. 非目标
@@ -696,4 +812,6 @@ ComfyUIWorkflow 的导入、解析、兼容性校验、模板转换和试运行�
 - 不维护 ComfyUIWorkflow、工作流校验历史、画布、任务或素材事实。
 - 不提供 ProviderCapability 写入、导入、删除、启停或热加载能力。
 - 不重命名既有产品对象、API、DTO、错误码、权限码、事件、表或调度 key。
+- 不保存或查询 User Model 私有事实，不创建 UserModelProvider、UserProviderModel、UserDefaultModelConfig 或用户模型健康表。
+- 不持久化 `ResolvedModelRoute`，不提供用户可选 Adapter/Executor ID。
 - 不在本仓库维护正式实现代码、实际 migration 或运行时配置。

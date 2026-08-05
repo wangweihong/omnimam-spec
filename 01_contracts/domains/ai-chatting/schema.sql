@@ -1,7 +1,7 @@
 -- ai-chatting S2 design schema.
 -- Product source: 00_product/domains/ai-chatting/product-spec.md
 -- 本文件是设计态 schema，不是实际数据库 migration。
--- AI 聊天不维护独立模型配置表；model_id 引用 model-management.UserProviderModel.id。
+-- AI 聊天不维护独立模型配置表；model_id 引用 user-model.UserProviderModel.id。
 
 -- S1 refs: US-AICHAT-06; BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10.
 CREATE TABLE ai_chat_assistants (
@@ -72,7 +72,7 @@ CREATE TABLE ai_chat_messages (
 CREATE INDEX idx_ai_chat_messages_topic ON ai_chat_messages(topic_id);
 CREATE INDEX idx_ai_chat_messages_parent ON ai_chat_messages(parent_message_id);
 
--- S1 refs: US-AICHAT-02, US-AICHAT-03, US-AICHAT-04, US-AICHAT-09; BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-20, BR-AICHAT-21.
+-- S1 refs: US-AICHAT-02, US-AICHAT-03, US-AICHAT-04, US-AICHAT-09; BR-AICHAT-04, BR-AICHAT-14, BR-AICHAT-20, BR-AICHAT-21, BR-AICHAT-27, BR-AICHAT-28.
 CREATE TABLE ai_chat_generation_runs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -84,6 +84,10 @@ CREATE TABLE ai_chat_generation_runs (
   topic_id TEXT NOT NULL REFERENCES ai_chat_topics(id),
   assistant_message_id TEXT NOT NULL REFERENCES ai_chat_messages(id),
   operation TEXT NOT NULL CHECK (operation IN ('chat', 'translate')),
+  model_id TEXT NOT NULL,
+  capability_definition_id TEXT NOT NULL,
+  model_config_version INTEGER NOT NULL,
+  model_snapshot_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL CHECK (status IN ('queued', 'generating', 'done', 'interrupted', 'failed')),
   started_at TEXT DEFAULT '',
   finished_at TEXT DEFAULT ''

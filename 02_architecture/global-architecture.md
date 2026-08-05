@@ -13,8 +13,8 @@
 | 领域 | 架构职责 | 当前事实源状态 |
 | --- | --- | --- |
 | `identity` | 统一认证、会话、Token、RBAC、权限资源、审计 | 已有 S1，S2 待补 |
-| `model-management` | 用户模型提供商、模型清单、健康检测、默认模型 | 已有 S1/S2 |
-| `modelgateway` | Runtime Registry、ProviderCapability、Engine、Binding、Adapter、OperationExecutor 与 object_info | 已有迁移 S1/S2，待 Release |
+| `user-model` | 用户 Provider、模型清单、默认模型、用户模型健康事实与执行资格 | 已有重构 S1/S2，待 Release |
+| `modelgateway` | Runtime Registry、ProviderCapability、平台 Engine/Binding、Adapter、发现/探测、OperationExecutor 与 object_info | 已有迁移 S1/S2，待 Release |
 | `ai-chatting` | 话题、消息、生成运行、助手、快捷短语、翻译 | 已有 S1/S2 |
 | `asset-library` | Artifact、用户素材、AssetVersion、Representation、存储、派生任务与周期补全 | 已有 S1/S2，部分普通素材 API 待补 |
 | `application-platform` | ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 与 Artifact 引用投影 | 已有 S1/S2 |
@@ -32,7 +32,7 @@
 ```mermaid
 graph TD
   Identity["identity<br/>认证、会话、权限"]
-  Model["model-management<br/>用户模型能力"]
+  Model["user-model<br/>用户模型配置与资格"]
   Chat["ai-chatting<br/>对话与生成"]
   Asset["asset-library<br/>Artifact / Asset / Representation"]
   Gateway["modelgateway<br/>Capability、Engine、Adapter、Executor"]
@@ -47,6 +47,8 @@ graph TD
   MCP["mcp<br/>Agent 协议访问层"]
 
   Chat --> Model
+  Chat --> Gateway
+  Model --> Gateway
   Chat --> Asset
   App --> Gateway
   App --> Task
@@ -90,8 +92,9 @@ graph TD
 说明：
 
 - `identity` 是横向基础能力，其他领域通过当前用户、权限码和审计语义依赖它。
-- `ai-chatting` 只读取 `model-management` 的用户模型配置，不维护独立模型清单。
-- `modelgateway` 定义只读 Runtime Registry、ProviderCapability、Engine、Binding、Adapter、OperationExecutor、健康检测和 ComfyUI 当前 object_info。
+- `ai-chatting` 读取 `user-model` 的用户模型投影并请求执行上下文，再通过 `modelgateway` 执行；不维护独立模型清单或 Provider 客户端。
+- `user-model` 拥有用户 Provider、模型、默认配置和用户模型健康事实；Provider 测试、模型发现和探测委托 Gateway。
+- `modelgateway` 定义只读 Runtime Registry、ProviderCapability、平台 Engine/Binding、Adapter、OperationExecutor、健康检测和 ComfyUI 当前 object_info；不读取 User Model 私有表。
 - `application-platform` 定义 ComfyUIWorkflow、模板/应用版本、RuntimeFormSchema、ApplicationRun 投影和 Artifact 引用，通过受控边界消费 Model Gateway。
 - `task-center` 管理 AtomicTask、Group/DAG、Schedule 和业务状态投影；Conductor 负责内部调度、自动重试、Worker 分发与故障恢复。
 - `agent` 和 `appstudio` 的所有 Infra-backed 操作都先创建 AtomicTask，再由 Task Worker 通过 Infra Adapter 调用 `infrastructure`；两者不直接访问 Docker 或 Infra Service。
@@ -126,14 +129,19 @@ Preview 使用应用启动时固定的源码 Revision，Build 使用固定 Snaps
 sequenceDiagram
   participant User as 用户
   participant Chat as ai-chatting
-  participant Model as model-management
+  participant Model as user-model
+  participant Gateway as modelgateway
   participant LLM as 外部模型服务
 
   User->>Chat: 发送消息
-  Chat->>Model: 读取当前用户可用模型/默认模型
-  Model-->>Chat: 返回模型配置只读投影
-  Chat->>LLM: 发起生成
-  LLM-->>Chat: 流式输出
+  Chat->>Model: 解析模型并请求执行上下文
+  Model->>Model: 校验 owner/enabled/health/能力/配置版本
+  Model-->>Chat: UserModelExecutionContext
+  Chat->>Gateway: ExecuteOperation(UserModelTarget)
+  Gateway->>Gateway: 派生请求级 ResolvedModelRoute
+  Gateway->>LLM: Adapter + OperationExecutor 执行
+  LLM-->>Gateway: 流式输出或错误
+  Gateway-->>Chat: 归一化输出或错误
   Chat-->>User: SSE delta/done/failed/interrupted
 ```
 
@@ -151,12 +159,12 @@ sequenceDiagram
   participant SSE as SSE projector/gateway
 
   User->>App: 选择应用、输入和可选 AppEngine
-  App->>Gateway: 校验能力、Binding、Engine 并选择执行实现
+  App->>Gateway: 校验能力、Binding、Engine
   Gateway-->>App: 返回权限裁剪的有效能力和 Engine
-  App->>App: 保存 ApplicationRun 不可变快照
+  App->>App: 固定 PlatformEngineTarget 与 ApplicationRun 快照
   App->>Task: application_run_id + idempotency_key 创建 AtomicTask
   Task->>Worker: Conductor 分发已注册 AtomicTask handler
-  Worker->>Gateway: 调用 OperationExecutor
+  Worker->>Gateway: ExecuteOperation(PlatformEngineTarget)
   Gateway->>Engine: 调用平台 endpoint
   Engine-->>Gateway: 返回平台任务或结果
   Gateway-->>Worker: 返回归一化状态和标准输出

@@ -1,6 +1,9 @@
--- model-management S2 design schema.
--- Product source: 00_product/domains/model-management/product-spec.md
+-- user-model S2 design schema.
+-- Product source: 00_product/domains/user-model/product-spec.md
 -- 本文件是设计态 schema，不是实际数据库 migration。
+-- ProviderType、capability_definition_ids、executable、unavailable_reason、
+-- capability_resolution_status、stream_supported、UserModelExecutionContext 和
+-- ResolvedModelRoute 均为请求时 Gateway 派生事实，不在 user-model 建表。
 
 -- S1 refs: US-USER-MODEL-01..US-USER-MODEL-05; BR-USER-MODEL-01..BR-USER-MODEL-09, BR-USER-MODEL-30, BR-USER-MODEL-31.
 CREATE TABLE user_model_providers (
@@ -41,10 +44,11 @@ CREATE TABLE user_provider_models (
   model TEXT NOT NULL,
   display_name TEXT NOT NULL,
   model_group TEXT DEFAULT '',
-  capabilities_json TEXT NOT NULL DEFAULT '[]',
-  stream_supported BOOLEAN NOT NULL DEFAULT TRUE,
+  feature_labels_json TEXT NOT NULL DEFAULT '[]',
+  disabled_capability_definition_ids_json TEXT NOT NULL DEFAULT '[]',
   health_status TEXT NOT NULL CHECK (health_status IN ('unknown', 'healthy', 'unhealthy')),
   unhealthy_reason TEXT DEFAULT '',
+  last_checked_at TIMESTAMPTZ,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   deleted_at TEXT DEFAULT ''
 );

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- 将 `model-management` 重构为 `user-model`，产品展示名统一为 User Model；当前 S1/S2、Domain Context 和架构路径同步迁移，历史 `RELEASE.md` 记录保持原样。
+- User Model canonical API 立即迁移到 `/api/v1/user-model/`，删除旧 `/model-providers`、`/provider-models`、`/default-models` 和 `/model-options` 路由，不保留别名或重定向；保留对象名、`MODEL_*` 权限、`ERR_MODEL_*`、事件名和 `user_*` 表名。
+- 明确 User Model 拥有用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格；Model Gateway 拥有平台 Engine/Binding/健康、Provider Adapter、发现、探测和 Operation 执行。`UserModelProvider` 不转换为 `ApplicationEngineInstance`，Gateway 不读取 User Model 私有表。
+- 新增稳定 Provider Type 目录、Gateway 派生能力只读字段、`UserModelExecutionContext`、`PlatformEngineTarget`、`UserModelTarget` 和统一 `ExecuteOperation`；`ResolvedModelRoute` 仅请求级派生，不建表或提供 CRUD。
+- AI Chat 通过 User Model 校验执行资格并经 Gateway 执行，保存 GenerationRun 的模型、能力和配置版本快照；Application Platform 只使用 `PlatformEngineTarget`，ApplicationRun 编排和执行快照语义保持不变。
 - 修复 AppStudio Outbox 幂等键冲突：七类领域事件统一使用 `<event_type>:<domain_key_components>` 全限定键，保留 `appstudio_outbox.idempotency_key` 单列全局唯一约束；不新增 migration、不改写历史 Outbox，旧键只随既有事件保留。
 - 将 Agent/AppStudio Workspace 内化为后端事实：用户侧 Agent 创建固定为 Platform Agent，后端原子创建 AgentWorkspace 和默认 Session；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建。Agent 公共 DTO、Workspace Binding API、`agent.workspace.read` 和用户可见 Workspace 错误已移除。
 - AppStudio 公共契约改为 StudioApplication 级 Source/Revision：删除 `/api/v1/studio-workspaces/*` 与公开 StudioWorkspace DTO，源码、搜索、ChangeSet、恢复、Snapshot 和 Preview 均以 `studio_application_id` 寻址，公共字段使用 `source_revision`，权限改为 `appstudio.source.read/write`。
