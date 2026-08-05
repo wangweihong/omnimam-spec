@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：补齐 AgentRuntimeAdapter 调用 Hermes 的受控 Endpoint 解析，以及 Docker Job 实际输出字节到 Asset Library Artifact 的可信交付链路。
-- 状态：发布中。规格内容提交 `64435e32db213bf4483d057039036375ee545183` 已创建；`spec-v1.17.2` Release 元数据已写入且定向复验通过，待提交和创建 annotated tag。
+- 状态：已完成。规格内容提交、Release 元数据提交和 `spec-v1.17.2` annotated tag 均已创建，限定契约验证通过。
 - 目标 Release：`spec-v1.17.2`；`RELEASE.md` 必须继续指向上述规格内容提交，而不是后续 Release 元数据提交。
 
 ## 本次已完成
@@ -24,10 +24,12 @@
 - 已在 Infrastructure OpenAPI 明确 Endpoint resolve、内容读取和 Artifact 回链的稳定错误码映射；OpenAPI 与 Function Registry schema 均结构化拒绝绝对输出路径和 `..` 路径段。
 - 已创建规格内容提交 `64435e32db213bf4483d057039036375ee545183`，提交信息为 `spec: close Hermes endpoint and runtime output contracts`。
 - 已将 Agent/Infrastructure S1、Infrastructure S2、四域 Context、`GLOBAL_CONTEXT.md` 与 `CHANGELOG.md` 切换为 `spec-v1.17.2` 已发布状态，并在 `RELEASE.md` 新增用户确认记录。
+- 已创建 Release 元数据提交 `5990e6054ec8b79a342ef6e979b6522b855378aa`，提交信息为 `release: publish Hermes endpoint and runtime output contracts`。
+- 已创建 annotated tag `spec-v1.17.2`，并确认其 peeled commit 为 `5990e6054ec8b79a342ef6e979b6522b855378aa`。
 
 ## 当前进行中
 
-- 提交 Release 元数据并创建 `spec-v1.17.2` annotated tag。
+- 无。
 
 ## 文件变化
 
@@ -68,11 +70,11 @@
 ## 未完成事项
 
 - 本轮规格实施无未完成项。
-- 用户已明确确认发布；待完成 Release 元数据提交和 `spec-v1.17.2` tag。
+- 本地发布和提交已完成；用户未要求推送，当前未推送远端。
 
 ## 推荐下一步
 
-- 提交 Release 元数据，然后在该提交上创建 annotated tag `spec-v1.17.2`。
+- 后续如需同步远端，显式推送 `master` 和 annotated tag `spec-v1.17.2`；推送前无需重做已完成的规格与 Release 提交。
 
 Next Prompt:
 
