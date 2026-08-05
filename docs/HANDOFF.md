@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：正式提交并发布 User Model 重构与 Model Gateway 融合规格，发布版本为 `spec-v1.17.0`。
-- 状态：发布进行中。用户已于 2026-08-05 明确要求“提交并发布”；规格内容已提交为 `f7f43b2f42ac961441e2227b7c9117baf122aa00`，正在写入 `spec-v1.17.0` Release 记录并准备发布提交、tag 和远端推送。
+- 状态：已完成并发布。用户已于 2026-08-05 明确要求“提交并发布”；规格内容提交为 `f7f43b2f42ac961441e2227b7c9117baf122aa00`，发布提交为 `bb3a0e8ff182c740f8d08e46613a6876a8e2aa86`，`spec-v1.17.0` annotated tag 与 `master` 已推送到 `origin`。
 
 ## 本次已完成
 
@@ -24,7 +24,7 @@
 
 ## 当前进行中
 
-- 校验 Release 与 Context 正式状态一致性，准备发布提交。
+- 无。
 
 ## 文件变化
 
@@ -55,21 +55,22 @@
 - 已校验 User Model 11 条 canonical 路径精确匹配计划，目标规范中不存在旧模型 API 路由。
 - 已校验 Provider Type 与请求 DTO 不暴露 Adapter/Executor ID；ProviderModel 的 4 个能力派生字段存在且为只读。
 - 已校验 Gateway schema 不创建 User Model 私有表或 `ResolvedModelRoute` 表；AI Chat GenerationRun 包含模型、能力、配置版本和非敏感快照字段。
-- 活跃规范中的 `model-management` 仅用于说明本次 domain 迁移；其他命中均为 `CHANGELOG.md` 历史记录，`RELEASE.md` 未修改。
+- 活跃规范中的 `model-management` 仅用于说明本次 domain 迁移；其他命中均为历史记录。既有 `RELEASE.md` 条目未改写，已新增 `spec-v1.17.0` 正式发布记录。
 - `git diff --check` 已通过。
 - 已确认 User Model 的 S1、完整 S2、架构和 Domain Context 入口文件均存在，旧 `model-management` 的 4 个活跃路径均已移除。
 - 已确认无关未跟踪内容 `archive/`、`docs/identity_fix.md`、`设计图/` 未被修改。
-- 已知风险：`spec-v1.17.0` Release 记录已准备但发布提交、tag 和远端推送尚未完成；Agent Runtime 既有 ModelAccessSpec/直连模型架构仍未纳入统一 Gateway 执行链路，且已在实施门禁中明确排除。
+- 已校验 `spec-v1.17.0` 引用的内容 commit 存在、全部正式文件路径存在、4 个退役路径均不存在。
+- 已创建发布提交 `bb3a0e8ff182c740f8d08e46613a6876a8e2aa86` 和 annotated tag `spec-v1.17.0`，并成功推送 `master` 与 tag 到 `origin`。
+- 已知风险：Agent Runtime 既有 ModelAccessSpec/直连模型架构仍未纳入统一 Gateway 执行链路，且已在 `spec-v1.17.0` 实施门禁中明确排除。
 - 验证约束：只运行目标 Spec 校验和相关模块检查，同一失败检查最多修复并重试两次。
 
 ## 未完成事项
 
-- 创建 `spec-v1.17.0` 发布提交。
-- 创建 `spec-v1.17.0` tag，推送 `master` 与 tag 到 `origin`。
+- 本任务范围内无未完成事项。
 
 ## 推荐下一步
 
-- 校验 `RELEASE.md` 引用路径、内容 commit 和 Context 发布状态；通过后创建发布提交与 tag。
+- 下游实现仓库按 `spec-v1.17.0` 实施门禁，在同一发布批次迁移 Web、AI Chat 和其他客户端到 `/api/v1/user-model/...`，并接入统一 Gateway 执行入口。
 
 Next Prompt:
 
