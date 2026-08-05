@@ -37,9 +37,9 @@
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
 | `00_product/domains/agent/product-spec.md` | S1 | Agent、Session、Memory、内部 Workspace 绑定和 AgentRuntime 产品语义 |
-| `01_contracts/domains/agent/openapi.yaml` | S2 Draft | Agent、Session、Invocation、Memory 和 Runtime API |
-| `01_contracts/domains/agent/schema.sql` | S2 Draft | Agent 领域设计态 Schema |
-| `01_contracts/domains/agent/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Draft | 错误、权限、事件和模块边界 |
+| `01_contracts/domains/agent/openapi.yaml` | S2 | Agent、Session、Invocation、Memory 和 Runtime API |
+| `01_contracts/domains/agent/schema.sql` | S2 | Agent 领域设计态 Schema |
+| `01_contracts/domains/agent/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 | 错误、权限、事件和模块边界 |
 Context 只负责导航，Task Center 的任务执行契约和 infrastructure 的运行层合同必须按跨域任务继续读取。
 
 ## 7. 常见任务定位
@@ -53,7 +53,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-Agent S1/S2 均为未 Release 草稿，不能作为正式实现、合并或验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
+Agent 当前完整 S1/S2 已由 `spec-v1.17.1` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

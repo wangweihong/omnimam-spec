@@ -107,13 +107,13 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - 文档头部版本或状态可能滞后，是否可作为正式实现依据必须核对 `RELEASE.md` 的具体记录和门禁。
 - MCP v1 复用 Identity JWT/RBAC 和 PrincipalContext，不提供直接 Capability 执行、OAuth/PAT、交互式 Task 或直接 StorageBackend 上传；资源 owner/visibility 仍由目标 domain 定义。
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
-- `agent` 的当前 S1/S2 已由 `spec-v1.16.0` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布；`infrastructure` 的 S1/S2 已由 `spec-v1.12.0` 发布。上述版本均允许按各自 implementation gate 作为正式实现依据。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
+- `agent` 的当前完整 S1/S2 已由 `spec-v1.17.1` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，StudioBuild Artifact producer 与批量摘要投影已由 `spec-v1.17.1` 发布；Asset Library 对应 StudioBuild producer、owner、幂等与 owner-only 权限契约也由 `spec-v1.17.1` 发布；`infrastructure` 的 S1/S2 已由 `spec-v1.12.0` 发布。上述版本均允许按各自 implementation gate 作为正式实现依据。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
 - Infrastructure 只返回 Runtime output descriptor，Artifact 登记由 Task Worker 使用来源任务 producer context 调用 asset-library；`USER_ACCESSIBLE` Endpoint 必须受权解析，`PUBLIC` 第一阶段默认禁用。
 
 ## 8. 非目标与延期范围
 
-本次重构不创建正式数据库 migration；保留对象名、权限码、错误码、事件名和 `user_*` 表名，但 domain_id 与 canonical HTTP 路由立即改为 `user-model` 和 `/api/v1/user-model/`，不保留旧路由别名。Model Gateway 与 User Model 调整仍需同一个后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 当前 S1/S2 已由 `spec-v1.16.0` 发布，`appstudio` 当前 S1/S2 及 Outbox 修复分别由 `spec-v1.16.0`、`spec-v1.16.1` 发布，`infrastructure` S1/S2 已由 `spec-v1.12.0` 发布；未发布领域或各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
+本次重构不创建正式数据库 migration；保留对象名、权限码、错误码、事件名和 `user_*` 表名，但 domain_id 与 canonical HTTP 路由立即改为 `user-model` 和 `/api/v1/user-model/`，不保留旧路由别名。Model Gateway 与 User Model 调整仍需同一个后续 Release。`mcp` 已由 `spec-v1.9.2` 发布；MCP 语境中的 Agent 仍是协议调用端，而 `agent` 是管理 OmniMAM 持久化 Agent 资源的独立事实域。`agent` 当前完整 S1/S2 已由 `spec-v1.17.1` 发布，`appstudio` 当前 S1/S2、Outbox 修复及 StudioBuild producer 投影分别由 `spec-v1.16.0`、`spec-v1.16.1`、`spec-v1.17.1` 发布，Asset Library 对应 StudioBuild Artifact 契约由 `spec-v1.17.1` 发布，`infrastructure` S1/S2 已由 `spec-v1.12.0` 发布；未发布领域或各领域标记为草稿、延期、未来或 CONTRACT_GAP 的能力不得由摘要提升为已支持能力。
 
 ## 9. 上下文读取规则
 

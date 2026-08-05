@@ -62,7 +62,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；事件幂等键修复已由 `spec-v1.16.1` 发布，Server 必须使用事件类型前缀生成全限定 Outbox 键。本次 StudioBuild Artifact producer 与批量摘要投影修订仍处于 Unreleased。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；事件幂等键修复已由 `spec-v1.16.1` 发布，Server 必须使用事件类型前缀生成全限定 Outbox 键；StudioBuild Artifact producer 与批量摘要投影修订已由 `spec-v1.17.1` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

@@ -1,5 +1,42 @@
 # Release Records
 
+## spec-v1.17.1
+
+- commit: ed413ea46a279de2a3c556d5f35a46c8485f3813
+- status: released
+- confirmed_by: user（2026-08-05 请求“发布agent 的release”，随后明确“一起发布”当前 StudioBuild producer 契约）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+  - asset-library
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/asset-library/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/agent/events.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/asset-library/openapi.yaml
+  - 01_contracts/domains/asset-library/schema.sql
+  - 01_contracts/domains/asset-library/permissions.yaml
+  - 01_contracts/domains/asset-library/module-contract.md
+- context:
+  - domains/agent/context.md
+  - domains/appstudio/context.md
+  - domains/asset-library/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: 本版本正式确认当前完整 Agent S1/S2，并同时发布 AppStudio/Asset Library 的 StudioBuild Artifact producer 契约。用户侧只创建和管理 Platform Agent，后端原子创建并固定绑定 AgentWorkspace、默认 Session 和 Binding；Coding Agent 只能由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建。公共 API、页面、通知、SSE 和用户可见错误不得要求、返回或展示 Workspace 类型、ID 或绑定状态；纯 CHAT 且不启动 Runtime、工具或后台工作时可以不创建 AtomicTask，其他 Invocation 与 AgentRuntime 生命周期操作必须委托 Task Center。AgentRuntimeProvider 只承载 Hermes/OpenCode，不得与 StudioDeploymentProvider 或 Infrastructure RuntimeProvider 混用业务状态。StudioBuild Bundle 必须使用 `producer_type=studio_build`、`producer_id=StudioBuild.id`、`producer_idempotency_key=studio-build:<studio_build_id>:bundle` 和 `StudioBuild.owner_user_id`；仅受信 `appstudio.build.execute` Task Worker 可携带服务身份和原任务 `authorization_ref` 创建。同一 StudioBuild 的自动 TaskAttempt 重试复用同一 Artifact，新逻辑 Build 必须创建新 StudioBuild ID。AppStudio 批量摘要每批 1..200 项、保持顺序，仅返回 `id/owner_user_id/name/status`，不存在或不可见统一为 null；Asset Library 禁止读取 AppStudio 私表和 N+1 查询。Build 协作者、管理员角色、服务身份或仅持有 producer ID 均不得绕过 Artifact owner-only 权限。
+
 ## spec-v1.17.0
 
 - commit: f7f43b2f42ac961441e2227b7c9117baf122aa00
