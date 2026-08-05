@@ -55,7 +55,7 @@
 
 ## 8. 当前状态
 
-`user-model` 接替 `model-management` 的本次重构尚未写入新 Release；历史 Release 记录保持原样。具体实施仍须等待用户确认新 Release，Context 不把未来 Provider Type 或 Adapter 声明为已支持。
+`user-model` 接替 `model-management` 的本次重构已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据；历史 Release 记录保持原样。Provider Type 或 Adapter 仍只有在 Gateway Runtime Registry 实际注册并加载后才视为可用，本 Context 不扩张运行时支持范围。
 
 ## 9. 不在本领域定义的内容
 

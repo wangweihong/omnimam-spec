@@ -1,5 +1,69 @@
 # Release Records
 
+## spec-v1.17.0
+
+- commit: f7f43b2f42ac961441e2227b7c9117baf122aa00
+- status: released
+- confirmed_by: user（2026-08-05 请求“提交并发布”）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - ai-chatting
+  - application-platform
+  - appstudio
+  - infrastructure
+  - modelgateway
+  - notification-center
+  - user-model
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/ai-chatting/product-spec.md
+  - 00_product/domains/application-platform/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/modelgateway/product-spec.md
+  - 00_product/domains/notification-center/product-spec.md
+  - 00_product/domains/user-model/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/ai-chatting/module-contract.md
+  - 01_contracts/domains/ai-chatting/openapi.yaml
+  - 01_contracts/domains/ai-chatting/schema.sql
+  - 01_contracts/domains/application-platform/module-contract.md
+  - 01_contracts/domains/modelgateway/module-contract.md
+  - 01_contracts/domains/modelgateway/runtime-registry.yaml
+  - 01_contracts/domains/notification-center/events.yaml
+  - 01_contracts/domains/notification-center/module-contract.md
+  - 01_contracts/domains/user-model/openapi.yaml
+  - 01_contracts/domains/user-model/schema.sql
+  - 01_contracts/domains/user-model/errors.yaml
+  - 01_contracts/domains/user-model/permissions.yaml
+  - 01_contracts/domains/user-model/events.yaml
+  - 01_contracts/domains/user-model/module-contract.md
+- architecture:
+  - 02_architecture/domains/ai-chatting.md
+  - 02_architecture/domains/application-platform.md
+  - 02_architecture/domains/modelgateway.md
+  - 02_architecture/domains/user-model.md
+  - 02_architecture/global-architecture.md
+- context:
+  - domains/ai-chatting/context.md
+  - domains/application-platform/context.md
+  - domains/modelgateway/context.md
+  - domains/notification-center/context.md
+  - domains/user-model/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- supporting:
+  - 00_product/glossary.md
+  - 01_contracts/error-code-index.md
+- retired_paths:
+  - 00_product/domains/model-management/
+  - 01_contracts/domains/model-management/
+  - 02_architecture/domains/model-management.md
+  - domains/model-management/
+- implementation_gate: `user-model` 正式接替 `model-management`，客户端必须在同一发布批次切换到 `/api/v1/user-model/...`，旧 `/model-providers`、`/provider-models`、`/default-models` 和 `/model-options` 不提供别名、重定向或兼容期。User Model 独占用户 Provider、模型清单、默认配置、用户模型健康事实以及 owner、enabled、health、默认值和使用资格校验；Model Gateway 独占 `ApplicationEngineInstance`、`EngineCapabilityBinding`、平台健康、Provider Adapter、模型发现、探测和 Operation 执行。用户只能选择稳定 `providerType`，不得读取或提交内部 Adapter/Executor ID；Gateway 只接受 User Model 签发、绑定 principal/能力/配置版本且未过期的 `UserModelExecutionContext`，不得读取 User Model 私有表或保存用户模型事实。`UserModelProvider` 不转换为 `ApplicationEngineInstance`，`ResolvedModelRoute` 仅请求级派生且不建表。AI Chat 必须经 User Model 校验后通过 Gateway 执行并保存 GenerationRun 模型、能力和配置版本快照；Application Platform 只使用 `PlatformEngineTarget`，ApplicationRun 编排仍归 Application Platform。本版本不改变 Agent Runtime 既有 ModelAccessSpec/直连模型架构，不得据此推断 Agent 已切换到统一 Gateway 执行入口。
+
 ## spec-v1.16.1
 
 - commit: 7ec33b70abbbe15b1295fb4fb5ae14423e49422d

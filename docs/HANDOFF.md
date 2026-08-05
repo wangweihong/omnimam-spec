@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：正式提交并发布 User Model 重构与 Model Gateway 融合规格，发布版本为 `spec-v1.17.0`。
-- 状态：发布进行中。用户已于 2026-08-05 明确要求“提交并发布”；正在重新验证当前工作树，随后提交规格、写入 Release、创建 tag 并推送远端。
+- 状态：发布进行中。用户已于 2026-08-05 明确要求“提交并发布”；规格内容已提交为 `f7f43b2f42ac961441e2227b7c9117baf122aa00`，正在写入 `spec-v1.17.0` Release 记录并准备发布提交、tag 和远端推送。
 
 ## 本次已完成
 
@@ -24,7 +24,7 @@
 
 ## 当前进行中
 
-- 重新运行目标 YAML/OpenAPI/S1 引用与差异校验，准备规格内容提交。
+- 校验 Release 与 Context 正式状态一致性，准备发布提交。
 
 ## 文件变化
 
@@ -59,18 +59,17 @@
 - `git diff --check` 已通过。
 - 已确认 User Model 的 S1、完整 S2、架构和 Domain Context 入口文件均存在，旧 `model-management` 的 4 个活跃路径均已移除。
 - 已确认无关未跟踪内容 `archive/`、`docs/identity_fix.md`、`设计图/` 未被修改。
-- 已知风险：本轮 User Model 与 Model Gateway 联合变更尚未写入 `RELEASE.md`，在用户明确确认新 Release 前不能作为正式实现依据；Agent Runtime 既有 ModelAccessSpec/直连模型架构仍未纳入统一 Gateway 执行链路。
+- 已知风险：`spec-v1.17.0` Release 记录已准备但发布提交、tag 和远端推送尚未完成；Agent Runtime 既有 ModelAccessSpec/直连模型架构仍未纳入统一 Gateway 执行链路，且已在实施门禁中明确排除。
 - 验证约束：只运行目标 Spec 校验和相关模块检查，同一失败检查最多修复并重试两次。
 
 ## 未完成事项
 
-- 创建规格内容提交并取得 commit SHA。
-- 将 `spec-v1.17.0` 记录写入 `RELEASE.md`，更新本交接并创建发布提交。
+- 创建 `spec-v1.17.0` 发布提交。
 - 创建 `spec-v1.17.0` tag，推送 `master` 与 tag 到 `origin`。
 
 ## 推荐下一步
 
-- 运行目标校验；通过后仅暂存本任务文件，排除 `archive/`、`docs/identity_fix.md` 和 `设计图/`。
+- 校验 `RELEASE.md` 引用路径、内容 commit 和 Context 发布状态；通过后创建发布提交与 tag。
 
 Next Prompt:
 

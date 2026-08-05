@@ -58,7 +58,7 @@
 
 ## 8. 当前状态
 
-本领域由既有已发布 `application-platform` 事实迁移形成，但本次迁移本身尚未写入 `RELEASE.md`，在用户后续确认 Release 前不得作为新的正式实现依据。
+本领域由既有已发布 `application-platform` 事实迁移形成，本次迁移与 User Model 重构已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据。
 
 ## 9. 不在本领域定义的内容
 

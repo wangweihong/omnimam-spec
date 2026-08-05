@@ -32,7 +32,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载和运行状态对账。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
-当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，并将 `model-management` 重构为 `user-model`。两项调整将在同一个新 Release 中确认；在写入用户确认记录前不能作为新的正式实现依据。历史 `RELEASE.md` 中的旧 domain 名称保持原样。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
+当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，并将 `model-management` 重构为 `user-model`。两项调整已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据；历史 `RELEASE.md` 中的旧 domain 名称保持原样。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
 
 ## 4. 核心业务对象
 
