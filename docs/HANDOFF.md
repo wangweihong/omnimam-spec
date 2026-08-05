@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：将 Agent 当前完整 S1/S2 与 Asset Library/AppStudio StudioBuild producer 契约一起作为 `spec-v1.17.1` Release 发布。
-- 状态：待发布提交。正式发布记录与 Context 状态已更新，扩展后的三域定向验证全部通过。
+- 状态：已完成。正式发布记录已提交，三域定向验证全部通过，本地 annotated tag `spec-v1.17.1` 已创建。
 
 ## 本次已完成
 
@@ -15,14 +15,16 @@
 - 用户随后明确“一起发布”，release 范围扩展为 Agent、AppStudio 和 Asset Library。
 - 已更新 `RELEASE.md` 的 `spec-v1.17.1` 记录，完整列出 Agent S1 与六个 S2，以及本次 StudioBuild producer 涉及的两域 S1/S2 文件。
 - 已将 Agent Context 的 S2 状态从 Draft 修正为正式 S2，并将 AppStudio/Asset Library StudioBuild 修订从 Unreleased 更新为 `spec-v1.17.1`；同步 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md` 和 `CHANGELOG.md`。
+- 已创建 release commit `35c2a58`（`release: publish agent and studio build producer spec`）和本地 annotated tag `spec-v1.17.1`；tag 指向该 release commit。
 
 ## 当前进行中
 
-- 创建 release commit 与本地 `spec-v1.17.1` tag。
+- 无。
 
 ## 文件变化
 
-- 已修改：`docs/HANDOFF.md`、`RELEASE.md`、三个 Domain Context、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`。
+- release commit 已修改：`docs/HANDOFF.md`、`RELEASE.md`、三个 Domain Context、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`。
+- 最终 handoff 由独立 docs commit 记录；发布标签保持指向 release commit。
 - 明确不修改：Agent S1/S2 正文、三域架构文件、其他领域契约、实现代码、数据库 migration。
 - 未处理的原有未跟踪内容：`archive/`、`docs/identity_fix.md`、`设计图/`。
 
@@ -45,15 +47,16 @@
 - `spec-v1.17.1` 版本唯一、基线 commit 正确，三域 S1/S2 与 Context 清单全部存在且已列入 release。
 - StudioBuild producer 枚举与 SQL CHECK、批量 API 1/200 边界、字段白名单和 `appstudio.build.manage` 权限校验通过。
 - 三域 Context、Global Context 和 Context Map 的 `spec-v1.17.1` 状态一致，`git diff --check` 通过。
+- release commit 文件范围复核通过；本地 annotated tag `spec-v1.17.1` 指向 release commit `35c2a58`。
 - 按约束不运行全仓测试。
 
 ## 未完成事项
 
-- 创建 release commit 与本地 `spec-v1.17.1` tag。
+- 无。用户未要求推送，release commit 与 tag 尚未推送远端。
 
 ## 推荐下一步
 
-- 提交 8 个发布状态文件并创建 annotated tag `spec-v1.17.1`；随后刷新最终 handoff。
+- 在用户明确要求推送后，推送 `master` 与 annotated tag `spec-v1.17.1`；推送前无需重复已通过的定向契约验证。
 
 Next Prompt:
 
