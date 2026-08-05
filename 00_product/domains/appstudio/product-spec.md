@@ -823,6 +823,8 @@ StudioPreviewRuntime 是 AppStudio 对 Infra Runtime 的业务投影。公共 Pr
 
 ```text
 id
+ownerUserId
+name
 studioApplicationId
 sourceSnapshotId
 atomicTaskId
@@ -847,6 +849,8 @@ SUCCEEDED
 FAILED
 CANCELED
 ```
+
+`ownerUserId` 是 StudioBuild 的 canonical 所属用户事实，创建后不可变，并作为 StudioBuild Bundle Artifact 的 owner 来源；Asset Library 不从 Task Worker、管理员角色或 Build 协作者推断 owner。
 
 `PREPARING/INSTALLING/BUILDING/VALIDATING` 可以作为 Task 进度阶段展示，但不是 AppStudio 自有状态机。StudioBuild 只有在 AtomicTask 成功、Asset Library 中 Artifact 已完成且其 digest 与 Build 返回值一致后才能进入 `SUCCEEDED`；Task 成功不能单独推断 Build 成功。
 
@@ -1384,7 +1388,9 @@ sequenceDiagram
     BJ->>BJ: 安装、编译、检查、启动验证
     BJ-->>INFRA: 输出文件描述 + digest
     INFRA-->>TW: Job Succeeded + output descriptor
-    TW->>AL: 受控登记 Bundle Artifact
+    TW->>AL: 受信服务身份 + 原 Task authorization_ref 登记 Bundle Artifact
+    AL->>ST: BatchSummaries(studioBuildId, authorization_ref)
+    ST-->>AL: canonical owner 或 null
     AL-->>TW: artifactId + digest + processing status
     TW-->>TC: artifactId + digest + logsRef
     TC-->>ST: Task Result
@@ -1410,6 +1416,8 @@ sequenceDiagram
 10. Release Artifact 完整性检查。
 
 Build 失败不得创建 Release。AtomicTask 成功但 Artifact 未完成、登记失败或 digest 不一致时，StudioBuild 仍不能进入 `SUCCEEDED`。
+
+Bundle Artifact 固定声明 `producer_type=studio_build`、`producer_id=StudioBuild.id` 和 `producer_idempotency_key=studio-build:<studio_build_id>:bundle`。同一 StudioBuild 的自动 TaskAttempt 重试复用该 key；新的逻辑 Build 必须创建新的 StudioBuild ID。Task Worker 必须携带受信服务身份和原 Build Task 的 `authorization_ref`，Asset Library 通过 AppStudio 投影解析 `StudioBuild.owner_user_id`，不得读取 AppStudio 私表或接受 Worker 自报 owner。
 
 ---
 
@@ -1764,6 +1772,8 @@ StudioRuntimeInstance
 
 Workspace Tool 授权不得仅凭 `agentId`。每次授权必须同时绑定 Principal、Agent、Session、Invocation、Workspace、动作集合和有效期；AppStudio 每次读写都重新校验，且 Agent Runtime Identity 不自动继承应用所有者权限。
 
+`appstudio.build.manage` 允许 owner、`authorized_editor` 和 `system_admin` 在各自授权范围内查看 StudioBuild，包括受控 Build 摘要投影；服务身份还必须携带原任务 `authorization_ref` 并按委托用户重新执行相同可见性校验，不能仅凭服务身份绕过用户权限。StudioBuild 可见性不授予其 Artifact 权限：`authorized_editor`、`system_admin` 或其他协作者若不是 `StudioBuild.owner_user_id` 对应的 Artifact owner，仍不能读取该 Artifact。
+
 ---
 
 ## 17.2 Service Identity
@@ -2061,7 +2071,12 @@ UpdateReleaseNotes
 ```text
 GetBuildArtifactSummary
 RetryArtifactRegistration
+POST /api/v1/studio-builds/batch-summaries
 ```
+
+`POST /api/v1/studio-builds/batch-summaries` 使用 `appstudio.build.manage`，为 Asset Library 提供受控的一跳 producer 投影。请求为 `items: [{id}]`，每次 1 至 200 项；响应使用 `total/items` 并严格保持请求顺序。每个响应项原样返回请求 `id` 和 nullable `studio_build`；投影仅包含 `id`、`owner_user_id`、`name`、`status`，不得包含 Task 参数、`authorization_ref`、诊断、日志、Artifact ID/digest、源码或 Snapshot 信息。
+
+普通 Artifact 列表与详情使用当前调用者身份读取该投影；Task Worker 创建 Artifact 时使用受信服务身份并传递原 Build Task 的 `authorization_ref`，AppStudio 以委托用户执行 `appstudio.build.manage` 校验。StudioBuild 不存在或对该用户不可见时统一返回 `studio_build=null`，不得泄露原因差异；AppStudio 不因调用方是服务身份而跳过用户权限。
 
 ---
 
@@ -2458,7 +2473,7 @@ StudioDeploymentProvider 是 AppStudio 内部注册组件，只负责发布态 T
 
 ## R-STUDIO-018
 
-素材和制品必须复用 Asset Library；StudioBuild 只有在 Task 成功、Artifact READY 且 digest 一致后才能成功。
+素材和制品必须复用 Asset Library；StudioBuild 是受信 Artifact producer，其 Bundle 固定使用 `producer_id=StudioBuild.id`、`studio-build:<studio_build_id>:bundle` 和 `StudioBuild.owner_user_id`。同一 Build 的自动 TaskAttempt 重试必须复用同一 Artifact，新逻辑 Build 必须创建新 ID。AppStudio 通过受控批量投影提供 owner 与一跳摘要且禁止 Asset Library 读取私表；Build 可见性不继承 Artifact 权限。StudioBuild 只有在 Task 成功、Artifact READY 且 digest 一致后才能成功。
 
 ## R-STUDIO-019
 
@@ -2598,10 +2613,10 @@ flowchart LR
 - `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、内部 Workspace、动作和有效期的短期 Tool 授权；用户侧不接触 Workspace 字段。
 - `AC-APPSTUDIO-001-04`：Preview 固定启动时的应用源码 Revision，后续源码变化不会隐式改变正在运行的 Preview。
 - `AC-APPSTUDIO-001-05`：Build 只读取 `READY` 的 StudioSourceSnapshot；源码上下文的后续 Revision 不影响进行中或历史 Build。
-- `AC-APPSTUDIO-001-06`：AtomicTask 成功但 Artifact 未 READY、登记失败或 digest 不一致时，StudioBuild 不得进入 `SUCCEEDED`。
+- `AC-APPSTUDIO-001-06`：StudioBuild Bundle 必须以 `StudioBuild.id`、`studio-build:<studio_build_id>:bundle` 和 `StudioBuild.owner_user_id` 幂等登记；同一 Build 的自动 Attempt 命中同一 Artifact，新逻辑 Build 使用新 ID；AtomicTask 成功但 Artifact 未 READY、登记失败或 digest 不一致时，StudioBuild 不得进入 `SUCCEEDED`。
 - `AC-APPSTUDIO-001-07`：StudioRelease 必须固定 Build、Version、RuntimeConfig、Environment、Artifact ID 和 digest，后续可变配置不得改写历史 Release。
 - `AC-APPSTUDIO-001-08`：新 RuntimeInstance 只有健康后才能切换当前入口；部署或健康检查失败时旧健康实例和入口保持不变。
 - `AC-APPSTUDIO-001-09`：回滚创建新的 StudioRelease 和 RuntimeInstance，并复用目标历史内容；旧 Release 不被修改或重新激活。
-- `AC-APPSTUDIO-001-10`：Preview、Build、发布、升级和回滚只能走 Task Center、Task Worker、Infra Adapter 和 Infra Service，AppStudio 与 StudioDeploymentProvider 不得直接调用 Infra。
+- `AC-APPSTUDIO-001-10`：Preview、Build、发布、升级和回滚只能走 Task Center、Task Worker、Infra Adapter 和 Infra Service，AppStudio 与 StudioDeploymentProvider 不得直接调用 Infra；Build Worker 创建 Artifact 时必须携带受信服务身份和原任务 `authorization_ref`，AppStudio 批量摘要按委托用户或当前调用者校验并仅返回 `id/owner_user_id/name/status`，不可见项统一为 null，服务身份、Build 协作者和管理员角色均不得绕过 Artifact owner 权限。
 - `AC-APPSTUDIO-001-11`：Production 只读使用固定 Artifact digest，携带内部 Workspace、Revision 或 Snapshot 挂载的请求必须拒绝；公共 API 不接受 Workspace ID。
 - `AC-APPSTUDIO-001-12`：第一阶段只允许 Infrastructure 的单机 Docker 能力；Kubernetes、Edge、Local Process、多节点和跨 Provider 参数必须保持禁用。

@@ -13,7 +13,7 @@
 | application | StudioApplication 初始化、元数据、归档和内部默认 Workspace 引用 | AI 能力 Application、Agent Session、运行时容器、公共 Workspace 资源 |
 | source | 内部 Repository、Workspace、文件索引、Revision、ChangeSet、Snapshot、Version及应用级源码投影 | Agent 会话、源码存储 Provider 私有配置、生产 Runtime、Workspace 页面或选择器 |
 | preview | 基于当前 Workspace Revision 的 StudioPreviewRuntime 和诊断摘要 | 正式 Snapshot、Build Artifact、Release |
-| build | StudioBuild 业务投影、Build Gate、Task/Artifact 稳定引用 | TaskAttempt/重试状态、Artifact 内容、源码当前目录 |
+| build | StudioBuild 业务投影、canonical owner、Build Gate、Task/Artifact 稳定引用和受控 producer 批量摘要 | TaskAttempt/重试状态、Artifact 内容、源码当前目录 |
 | release-runtime | RuntimeConfig 引用、StudioRelease、StudioRuntimeInstance、健康切换和回滚 | Docker/Provider 私有状态、Secret 明文、Artifact 内容 |
 | access | 应用/源码/版本/发布权限和 Coding Agent Tool 授权 | Identity 用户、Agent 业务生命周期 |
 | event-outbox | AppStudio 可靠事件、重试和重放 | Notification 收件箱、SSE 历史事实 |
@@ -28,6 +28,7 @@
 - Build、Preview、Release/升级/回滚的实际运行均通过 Task Center -> Task Worker -> Infra Adapter -> Infrastructure。
 - Preview 创建/刷新与停止分别使用 `appstudio.preview.ensure/stop`，Build 使用 `appstudio.build.execute`，部署/升级/回滚与停止分别使用 `appstudio.production.reconcile/stop`；arguments、结果、能力和策略必须符合 Task Center `function-registry.yaml` 固定版本，AppStudio 不提交 Infra DTO。
 - AppStudio 只保存 Task ID、InfraRuntime ID、Endpoint 摘要、Artifact ID/digest 和脱敏诊断；不保存 TaskAttempt、容器 ID、Host Port、Provider response 或 storage_ref。
+- StudioBuild 的 `owner_user_id` 是 Bundle Artifact owner 的 canonical 来源。`appstudio.build.execute` Task Worker 创建 Artifact 时必须携带受信服务身份和原任务 `authorization_ref`；Bundle 固定声明 `producer_type=studio_build`、`producer_id=StudioBuild.id` 和 `producer_idempotency_key=studio-build:<studio_build_id>:bundle`。自动 TaskAttempt 重试复用同一 key；新逻辑构建创建新 StudioBuild ID。
 - `RuntimeConfig` 使用 PUT 整体替换并以 `resource_version` 乐观控制，只保存 `secret://`/`integration://` 引用和校验状态。
 
 ## 4. 跨域协作
@@ -37,7 +38,7 @@
 | agent | 调用内部 `CreateCodingAgentForStudio`，校验固定 Coding Agent/Invocation，签发受控 Workspace Tool 授权 | 让前端调用内部创建语义、读取 Agent 私表、建立第二套交互记录、绕过 Agent 授权 |
 | task-center | 创建/查询/取消 Build/Preview/Production functionRef 任务，消费可靠状态 | 写 Task/Attempt/重试/超时终态 |
 | infrastructure | 通过 Task Center 间接使用 Revision/Snapshot/Artifact 受控 `source_ref` | 直接操作 Docker、宿主机路径或 Provider API |
-| asset-library | 受控创建/读取 Bundle Artifact 和批量摘要 | 保存 Blob、storage_uri 或写 Artifact 私表 |
+| asset-library | 受控创建/读取 Bundle Artifact 和批量摘要；通过 `POST /api/v1/studio-builds/batch-summaries` 读取 owner 与一跳 producer 投影 | 保存 Blob、storage_uri、写 Artifact 私表，或由 Asset Library 读取 AppStudio 私表 |
 | notification-center/sse | 发布可靠 AppStudio 状态事件 | 写通知收件箱或以 UserEvent 替代事实 |
 
 ## 5. 一致性与安全
@@ -45,6 +46,9 @@
 - StudioApplication 与 application-platform.Application 身份、版本、运行对象和私有数据完全分离。
 - ChangeSet、Revision、Snapshot、Version、Build、Release 和 RuntimeInstance 的历史不可被后续可变资源覆盖。
 - Build 成功必须同时满足 Task 终态、Asset Library Artifact 内容完成和 digest 一致；AtomicTask SUCCESS 不能单独推断 Artifact ready。
+- `POST /api/v1/studio-builds/batch-summaries` 每批接收 1..200 个 `{id}`，响应 `total/items` 与请求数量和顺序一致；每项返回请求 ID 与 nullable `studio_build`，投影字段严格限制为 `id/owner_user_id/name/status`。不得返回 Task 参数、`authorization_ref`、诊断、日志、Artifact ID/digest、源码、Revision 或 Snapshot 信息。
+- Artifact 创建时，AppStudio 对受信服务身份携带的原任务 `authorization_ref` 按委托用户执行 `appstudio.build.manage`；Artifact 列表/详情时按当前调用者执行同一校验。仅有服务身份不得绕过用户权限，不存在或不可见统一返回 null。
+- `authorized_editor` 和 `system_admin` 可以按 AppStudio 授权查看 Build，但不因此获得 Asset Library Artifact 权限；Artifact 仍由 Asset Library 严格按 owner 过滤。
 - 新生产 Runtime 只有健康后才能切换入口；部署失败、健康失败或回滚失败不得破坏旧健康实例。
 - 回滚必须创建新的 StudioRelease 和候选 StudioRuntimeInstance，并引用目标历史 Release 的不可变内容；不得修改或重新激活旧 Release。
 - API/事件列表使用 `total/items`、统一分页和最多一跳摘要；文件正文按大小上限返回，禁止把源码大对象放进列表。

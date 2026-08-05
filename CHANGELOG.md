@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- 统一 Asset Library Artifact producer 契约，新增共享 `ArtifactProducerType=application_run|canvas_run|atomic_task|studio_build` 并同步 OpenAPI 四个入口与 SQL CHECK；StudioBuild Bundle 固定使用 `producer_id=StudioBuild.id` 和 `studio-build:<studio_build_id>:bundle`，不新增重复 `studio_build_id` 或跨域外键。
+- 明确 StudioBuild Artifact owner 取 `StudioBuild.owner_user_id`，仅受信 `appstudio.build.execute` 执行链路可携带服务身份与原任务 `authorization_ref` 创建；自动 TaskAttempt 重试复用同一 Artifact，新逻辑 Build 必须创建新 ID，Build 协作者、管理员角色和服务身份均不得绕过 Artifact owner-only 权限。
+- AppStudio 新增 `POST /api/v1/studio-builds/batch-summaries`：每批 1..200 项、保持请求顺序，仅投影 `id/owner_user_id/name/status`，不存在或不可见统一返回 null；Asset Library 列表/详情按当前调用者批量解析并禁止读取 AppStudio 私表或产生 N+1。
 - 将 `model-management` 重构为 `user-model`，产品展示名统一为 User Model；当前 S1/S2、Domain Context 和架构路径同步迁移，历史 `RELEASE.md` 记录保持原样。
 - User Model canonical API 立即迁移到 `/api/v1/user-model/`，删除旧 `/model-providers`、`/provider-models`、`/default-models` 和 `/model-options` 路由，不保留别名或重定向；保留对象名、`MODEL_*` 权限、`ERR_MODEL_*`、事件名和 `user_*` 表名。
 - 明确 User Model 拥有用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格；Model Gateway 拥有平台 Engine/Binding/健康、Provider Adapter、发现、探测和 Operation 执行。`UserModelProvider` 不转换为 `ApplicationEngineInstance`，Gateway 不读取 User Model 私有表。

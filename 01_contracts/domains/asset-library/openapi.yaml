@@ -821,7 +821,7 @@ paths:
       x-permission: asset.artifact.read
       x-s1-refs:
         user_stories: [US-USER-ASSET-42, US-USER-ASSET-45]
-        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-76]
+        business_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-76, BR-USER-ASSET-80]
       parameters:
         - {$ref: '#/components/parameters/page_num'}
         - {$ref: '#/components/parameters/page_size'}
@@ -829,7 +829,7 @@ paths:
         - {$ref: '#/components/parameters/created_before'}
         - {name: processing_status, in: query, schema: {type: string, enum: [created, transferring, processing, ready, failed, deleted]}}
         - {name: registration_status, in: query, schema: {type: string, enum: [pending, registered, failed]}}
-        - {name: producer_type, in: query, schema: {type: string, enum: [application_run, canvas_run, atomic_task]}}
+        - {name: producer_type, in: query, schema: {$ref: '#/components/schemas/ArtifactProducerType'}}
       responses:
         '200':
           description: Artifact 列表或业务错误。
@@ -1545,14 +1545,24 @@ components:
         registration_result: {type: string, enum: [created, already_registered]}
         asset: {$ref: '#/components/schemas/UserAsset'}
         asset_version: {$ref: '#/components/schemas/AssetVersion'}
+    ArtifactProducerType:
+      type: string
+      description: Artifact 的 canonical producer 类型；studio_build 对应 AppStudio StudioBuild。
+      enum: [application_run, canvas_run, atomic_task, studio_build]
     CreateArtifactRequest:
       type: object
       additionalProperties: false
       required: [producer_type, producer_id, producer_idempotency_key, output_key, sequence, artifact_type, media_type, save_policy, processing_profile_version]
       properties:
-        producer_type: {type: string, enum: [application_run, canvas_run, atomic_task]}
-        producer_id: {type: string}
-        producer_idempotency_key: {type: string, minLength: 1, maxLength: 512}
+        producer_type: {$ref: '#/components/schemas/ArtifactProducerType'}
+        producer_id:
+          type: string
+          description: producer 的 canonical ID；producer_type=studio_build 时必须等于 StudioBuild.id，不新增重复 studio_build_id 字段。
+        producer_idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: studio_build Bundle 固定为 studio-build:<studio_build_id>:bundle；同一 StudioBuild 的自动 TaskAttempt 重试复用该键。
         atomic_task_id: {type: string, nullable: true}
         task_attempt_id: {type: string, nullable: true}
         application_run_id: {type: string, nullable: true}
@@ -1583,10 +1593,14 @@ components:
       properties:
         id: {type: string}
         owner_user_id: {type: string}
-        producer_type: {type: string, enum: [application_run, canvas_run, atomic_task]}
-        producer_id: {type: string}
-        producer: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
-        producer_idempotency_key: {type: string}
+        producer_type: {$ref: '#/components/schemas/ArtifactProducerType'}
+        producer_id: {type: string, description: producer 的稳定 canonical ID；studio_build 时为 StudioBuild.id，即使摘要不可见也保留。}
+        producer:
+          allOf: [{$ref: '#/components/schemas/RelatedResourceSummary'}]
+          nullable: true
+          readOnly: true
+          description: 当前调用者可见的一跳 producer 摘要；StudioBuild 不存在或不可见时统一为 null，不泄露原因差异。
+        producer_idempotency_key: {type: string, description: studio_build Bundle 使用 studio-build:<studio_build_id>:bundle。}
         atomic_task_id: {type: string, nullable: true}
         atomic_task: {$ref: '#/components/schemas/RelatedResourceSummary', nullable: true, readOnly: true}
         task_attempt_id: {type: string, nullable: true, description: 自动尝试的审计 ID；所属 AtomicTask 摘要已由 atomic_task 返回，尝试详情在 Task Center 任务上下文解析。}
@@ -1714,11 +1728,11 @@ components:
         current_version_id: {type: string, nullable: true}
     RelatedResourceSummary:
       type: object
-      description: Artifact 来源领域提供的一跳非敏感运行/任务投影，不展开参数、输入、输出或子资源。
+      description: Artifact 来源领域提供的一跳非敏感运行/任务/构建投影，不展开参数、输入、输出或子资源。
       x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-GLOBAL-005, BR-USER-ASSET-80]}
       required: [type, id, name, status]
       properties:
-        type: {type: string, enum: [application_run, canvas_run, atomic_task]}
+        type: {$ref: '#/components/schemas/ArtifactProducerType'}
         id: {type: string}
         name: {type: string}
         status: {type: string}

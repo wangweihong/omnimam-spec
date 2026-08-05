@@ -65,9 +65,9 @@ appstudio.build.manage:
   resource: studio_build
   action: create, read, cancel, retry
   subject: owner, authorized_editor, system_admin
-  description: 从固定 Snapshot 创建和观察 Build。
-  frontend_usage: 构建、诊断和取消。
-  backend_enforcement: Task 状态由 task-center 拥有；Artifact 由 asset-library 拥有；AppStudio 只保存引用。
+  description: 从固定 Snapshot 创建和观察 Build，并提供受控 StudioBuild producer 摘要。
+  frontend_usage: 构建、诊断和取消；Asset Library 使用同一权限读取一跳摘要。
+  backend_enforcement: owner、authorized_editor 与 system_admin 只在各自 Build 授权范围内可见；批量摘要限制 1..200 项、保持请求顺序，仅返回 id/owner_user_id/name/status，不存在或不可见统一返回 null。受信服务调用还必须携带原任务 authorization_ref 并按委托用户重新校验，不得仅凭服务身份绕过用户权限。Task 状态由 task-center 拥有，Artifact 由 asset-library 拥有且继续按 Artifact owner 校验；Build authorized_editor 或管理员角色不继承 Artifact 权限。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-011, R-STUDIO-017, R-STUDIO-018]
   related_user_stories: [US-APPSTUDIO-001]

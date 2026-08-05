@@ -9,7 +9,7 @@
 - `StudioApplication`、`StudioApplicationVersion`：生成应用身份及固定 Source Snapshot 的发布版本。
 - `StudioSourceRepository`、`StudioWorkspace`、Revision、`StudioChangeSet`：内部逻辑源码仓库、默认编辑上下文和原子变更历史；公共投影为应用级 Source/Revision。
 - `StudioSourceSnapshot`：供正式 Build 使用的不可变源码版本事实。
-- `StudioBuild`：Source Snapshot 到可运行 Bundle 的业务投影，引用 Task Center 和 Artifact。
+- `StudioBuild`：Source Snapshot 到可运行 Bundle 的业务投影，拥有 canonical `owner_user_id`，引用 Task Center 和 Artifact，并向 Asset Library 提供受控 producer 摘要。
 - `StudioPreviewRuntime`：基于应用当前源码 Revision 的编辑态快速预览，内部仍固定 Workspace Revision。
 - `StudioRelease`、`StudioRuntimeInstance`：固定 Artifact digest 的环境发布及当前部署实例事实。
 - `RuntimeConfig`：按环境保存公开配置、Secret/Integration 引用和乐观版本的可变配置事实。
@@ -25,6 +25,9 @@
 - 正式 Build 只能读取不可变 StudioSourceSnapshot；生产运行只能读取固定 digest 的 Artifact。
 - Task Center 拥有 AtomicTask、TaskAttempt、TaskGroup、重试、取消和调度状态；StudioBuild/Release 只保存业务投影，Preview/Build/Production 的 Infra 操作均经 Task Worker。
 - asset-library 拥有 Artifact 身份、内容、处理和存储；AppStudio 只保存 Artifact ID 与历史 digest 快照。
+- StudioBuild 是受信 Artifact producer；Bundle 固定使用 `StudioBuild.id`、`studio-build:<studio_build_id>:bundle` 和 `StudioBuild.owner_user_id`，自动 TaskAttempt 重试复用同一 Artifact，新逻辑 Build 使用新 ID。
+- AppStudio 通过最多 200 项且保持顺序的批量 API 提供 `id/owner_user_id/name/status` 投影；Artifact 创建按原任务委托用户校验，列表/详情按当前调用者校验，不存在或不可见统一返回 null。
+- Build `authorized_editor` 和管理员角色可以按 AppStudio 授权查看 Build，但不继承 Asset Library Artifact 权限；服务身份也不能绕过委托用户权限。
 - StudioBuild 只有在 AtomicTask 成功、Artifact READY 且 digest 一致后才能成功；Task 成功不能单独推断 Artifact ready。
 - 新 StudioRuntimeInstance 健康后才能切换当前入口；回滚必须基于历史不可变内容创建新的 StudioRelease 和候选 RuntimeInstance。
 - Agent 删除或挂起不影响 StudioWorkspace、Build、Release 或 StudioRuntimeInstance。
@@ -32,7 +35,7 @@
 
 ## 4. 领域边界
 
-本领域拥有 StudioApplication、StudioApplicationVersion、源码 Repository、Workspace、Revision、ChangeSet、Snapshot、Build、Preview Runtime、RuntimeConfig、Release 和 StudioRuntimeInstance。Agent 交互事实归 agent；任务状态归 task-center；Artifact 内容归 asset-library；通知归 notification-center。
+本领域拥有 StudioApplication、StudioApplicationVersion、源码 Repository、Workspace、Revision、ChangeSet、Snapshot、Build、StudioBuild owner/一跳摘要、Preview Runtime、RuntimeConfig、Release 和 StudioRuntimeInstance。Agent 交互事实归 agent；任务状态归 task-center；Artifact 身份、内容与 owner-only 权限归 asset-library；通知归 notification-center。
 
 ## 5. 上游与下游
 
@@ -54,12 +57,12 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 | --- | --- | --- |
 | StudioApplication/Source/Revision | AppStudio S1 | Agent 修改行为或内部 Workspace 绑定再读 agent Context |
 | Snapshot/Build | AppStudio S1 | 执行与重试再读 task-center Context |
-| Build Artifact | AppStudio S1 | 内容、处理或存储再读 asset-library Context |
+| Build Artifact producer/owner/摘要 | AppStudio S1 | 必须继续读 asset-library Context；涉及 Attempt 重试或 Function Registry 再读 task-center Context |
 | Release/StudioRuntimeInstance | AppStudio S1 | 通知投影再读 notification-center Context |
 
 ## 8. 当前状态
 
-AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；事件幂等键修复已由 `spec-v1.16.1` 发布，Server 必须使用事件类型前缀生成全限定 Outbox 键。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；事件幂等键修复已由 `spec-v1.16.1` 发布，Server 必须使用事件类型前缀生成全限定 Outbox 键。本次 StudioBuild Artifact producer 与批量摘要投影修订仍处于 Unreleased。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

@@ -123,9 +123,9 @@ asset.artifact.create:
   module: artifact
   resource: artifact
   action: create
-  description: 允许受信 ApplicationExecutor、画布执行器或 AtomicTask Worker 幂等创建并上传当前用户 Artifact。
+  description: 允许受信 ApplicationExecutor、画布执行器、AtomicTask Worker 或 appstudio.build.execute Task Worker 幂等创建并上传当前用户 Artifact。
   frontend_usage: 不直接授予普通页面；通过受信执行链路调用。
-  backend_enforcement: owner 必须从受信上下文解析；拒绝客户端指定其他用户、Provider 凭证、任意 URL、私网地址或原始响应。
+  backend_enforcement: 必须同时校验已注册执行链路的受信服务身份与原任务委托授权；studio_build 只允许 appstudio.build.execute 声明，producer_id 必须为 StudioBuild.id，owner 必须通过 AppStudio 批量投影从 StudioBuild.owner_user_id 解析，且 key 必须为 studio-build:<studio_build_id>:bundle；拒绝仅凭服务身份、客户端 owner、伪造 producer、Provider 凭证、任意 URL、私网地址或原始响应创建。
   default_roles: []
   related_rules: [BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-67, BR-USER-ASSET-68]
   related_user_stories: [US-USER-ASSET-42]
@@ -136,9 +136,9 @@ asset.artifact.read:
   action: read
   description: 查看当前用户自己的 Artifact、受控状态投影和有界批量可读摘要。
   frontend_usage: 控制任务制品列表、详情、预览、登记入口和跨域任务详情摘要。
-  backend_enforcement: 必须按已认证 owner 过滤；批量解析最多 200 项，不存在、已删除或不可见目标统一返回空摘要；不得通过来源 ID 或任务关联绕过所有权。
+  backend_enforcement: 必须按已认证 Artifact owner 过滤，USER、ADMIN、SUPER_ADMIN 与 StudioBuild authorized_editor 均不得仅凭角色、producer_id、Build 可见性或任务关联绕过所有权；StudioBuild 摘要按当前调用者通过 AppStudio 1..200 项批量投影解析且禁止读取私表，不存在或不可见时保留 producer_id 并统一返回 producer=null。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-81]
+  related_rules: [BR-USER-ASSET-02, BR-USER-ASSET-64, BR-USER-ASSET-66, BR-USER-ASSET-80, BR-USER-ASSET-81]
   related_user_stories: [US-USER-ASSET-42, US-USER-ASSET-45, US-USER-ASSET-47]
 
 asset.artifact.delete:

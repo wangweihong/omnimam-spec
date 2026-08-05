@@ -2,25 +2,21 @@
 
 ## 当前目标与状态
 
-- 当前目标：正式提交并发布 User Model 重构与 Model Gateway 融合规格，发布版本为 `spec-v1.17.0`。
-- 状态：已完成并发布。用户已于 2026-08-05 明确要求“提交并发布”；规格内容提交为 `f7f43b2f42ac961441e2227b7c9117baf122aa00`，发布提交为 `bb3a0e8ff182c740f8d08e46613a6876a8e2aa86`，`spec-v1.17.0` annotated tag 与 `master` 已推送到 `origin`。
+- 当前目标：统一 `StudioBuild` 作为 Asset Library Artifact 的正式受信 producer，并补齐 AppStudio owner/一跳摘要投影契约。
+- 状态：已完成。正式 S1/S2、Context 与变更记录已更新，定向结构化校验与差异检查均已通过。
 
 ## 本次已完成
 
-- 已读取 `skills/spec-workflow/SKILL.md`、`S1.md` 和完整 `S2.md`。
-- 已确认工作区存在无关未跟踪内容 `archive/`、`docs/identity_fix.md`、`设计图/`，本任务保持不动。
-- 已锁定重构决策：新 domain_id 为 `user-model`，展示名为 `User Model`；保留现有对象名、`MODEL_*` 权限、`ERR_MODEL_*` 错误、事件名和 `user_*` 表名；旧 API 路由立即移除且不提供兼容别名。
-- 已将 S1、S2、Domain Context 和架构目录从 `model-management` 重命名为 `user-model`。
-- 已重写 `00_product/domains/user-model/product-spec.md`，明确 ProviderType、用户维护字段、Gateway 派生能力、执行资格、UserModelExecutionContext 和无旧路由兼容期。
-- 已更新 `00_product/domains/modelgateway/product-spec.md`，在两个 S1 中固化职责表、职责模型、两类执行目标、请求级 ResolvedModelRoute 和 Gateway 内部接口。
-- 已修复新增 Gateway S1 编号与 Application Platform 既有 `BR-AIAPP-194`、`US-AIAPP-050` 的冲突；新增规则使用 `BR-AIAPP-195..204`，新增用户故事使用 `US-AIAPP-051..052`。
-- 已更新 Gateway `runtime-registry.yaml` 和 `module-contract.md`，定义 ProviderType 内部映射、两类执行目标、四个内部接口、请求级路由及不保存/不穿透 User Model 私有事实的约束。
-- 已同步 AI Chat S1/S2、Schema、OpenAPI、Context 和架构：GenerationRun 经 User Model 解析执行上下文并通过 Gateway 执行，同时保存模型、能力和配置版本快照。
-- 已同步 Application Platform S1、模块契约、Context 和架构：ApplicationExecutor 只使用 `PlatformEngineTarget` 调用 Gateway `ExecuteOperation`；Provider 协议、鉴权应用、下载和 Operation 实现归 Gateway，ApplicationRun 编排和执行快照仍归 Application Platform。
-- 已更新 User Model 与 Model Gateway Domain Context、`GLOBAL_CONTEXT.md` 和 `CONTEXT_MAP.md`，同步新 domain_id、执行目标、事实归属、读取导航和未 Release 状态。
-- 已更新全局术语、错误码索引、User Model/Gateway/全局架构参考和 `CHANGELOG.md`，统一新 domain_id、canonical API、执行链路及请求级派生对象。
-- 已同步 Notification Center 事件来源及 Agent、AppStudio、Infrastructure 的活跃依赖引用到 `user-model`；保留 Agent Runtime 既有 ModelAccessSpec/直连模型架构，本次不扩张为未定义的 Runtime 代理协议。
-- 已将 Notification Center 中 `ApplicationEngineInstance` 和 `engine_instance_health_changed` 的事实源改为 `modelgateway`，事件名和通知主题保持不变。
+- 已读取 `skills/spec-workflow/SKILL.md`、`S1.md` 和 `S2.md`。
+- 已确认 `Task Center function-registry.yaml` 已使用 `producer_type: studio_build`、`arguments.studio_build_id` 与 `studio-build:{arguments.studio_build_id}:bundle`，本任务不修改该文件。
+- 已确认 Asset Library 当前 OpenAPI 枚举与数据库 CHECK 缺少 `studio_build`，AppStudio 当前没有 Build 批量摘要 API。
+- 已确认 `studio_builds.owner_user_id` 是 canonical Artifact owner 来源。
+- 已更新 Asset Library S1 的 Artifact 定义、创建流程、第一阶段验收、`BR-USER-ASSET-66/67/80` 和 `US-USER-ASSET-42`，明确 StudioBuild producer、owner、幂等与 owner-only 可见性。
+- 已更新 AppStudio S1 的 StudioBuild 字段、Build 流程、权限模型、Artifact 集成、`R-STUDIO-018` 和既有验收项，明确受控批量摘要与委托授权链路。
+- 已更新 Asset Library OpenAPI 的共享 `ArtifactProducerType`、StudioBuild 字段语义和 SQL CHECK，并同步 module contract 与 `asset.artifact.create/read` enforcement。
+- 已新增 AppStudio `POST /api/v1/studio-builds/batch-summaries` 及严格字段投影 schema，并同步 module contract、`appstudio.build.manage` enforcement 和 schema 注释。
+- 已更新 `domains/asset-library/context.md`、`domains/appstudio/context.md`、`CONTEXT_MAP.md` 与 `CHANGELOG.md`；`GLOBAL_CONTEXT.md`、`RELEASE.md` 保持不变。
+- 已完成目标 YAML 解析、本地 `$ref`、producer 枚举、SQL CHECK、批量摘要 API、Task Center 锚点、六个权限/幂等场景及差异范围校验。
 
 ## 当前进行中
 
@@ -28,49 +24,44 @@
 
 ## 文件变化
 
-- 已修改：`docs/HANDOFF.md`；User Model、Model Gateway、AI Chat 和 Application Platform 的目标 S1/S2、Domain Context 与架构参考。
-- 已重命名：`00_product/domains/model-management/` → `00_product/domains/user-model/`、`01_contracts/domains/model-management/` → `01_contracts/domains/user-model/`、`02_architecture/domains/model-management.md` → `02_architecture/domains/user-model.md`、`domains/model-management/` → `domains/user-model/`。
-- 不修改：历史 Release 记录、正式实现代码、数据库 migration、无关未跟踪内容。
+- 已修改：`docs/HANDOFF.md`；Asset Library 与 AppStudio 的 S1 product spec、S2 OpenAPI/module contract/permissions；Asset Library schema；AppStudio schema 注释；两个 Domain Context；`CONTEXT_MAP.md`；`CHANGELOG.md`。
+- 明确不修改：`GLOBAL_CONTEXT.md`、`RELEASE.md`、Task Center Function Registry、实现代码、数据库 migration。
+- 未处理的原有未跟踪内容：`archive/`、`docs/identity_fix.md`、`设计图/`。
 
 ## 关键决定
 
-- `UserModelProvider` 不转换为 `ApplicationEngineInstance`。
-- User Model 拥有用户 Provider、模型、默认配置和用户模型健康事实；Model Gateway 拥有 Adapter、发现、探测、能力验证、Operation 执行以及平台 Engine/Binding/健康事实。
-- 用户选择稳定 `providerType`，不得提交内部 `adapter_id` 或 Executor ID。
-- `ResolvedModelRoute` 和 `UserModelExecutionContext` 是请求级派生结果，不建表；Gateway 不读取 User Model 私有表。
-- Provider 能力由 Gateway 事实与用户启用范围求交集，用户标签不能扩张可执行能力。
+- `producer_type=studio_build`，`producer_id=StudioBuild.id`，幂等键为 `studio-build:<studio_build_id>:bundle`。
+- Artifact owner 取 `StudioBuild.owner_user_id`；Artifact 继续 owner-only，Build `authorized_editor` 不继承 Artifact 权限。
+- 自动 TaskAttempt 重试复用同一 producer key；新的逻辑构建必须创建新的 StudioBuild ID。
+- AppStudio 提供受控批量 Build producer 投影；Asset Library 禁止读取 AppStudio 私表。
+- producer 不存在或不可见时保留 `producer_id` 并返回 `producer=null`，不得泄露原因差异。
 
 ## API、Schema、依赖或配置变化
 
-- S1 已声明 canonical API 迁移到 `/api/v1/user-model/...`，删除当前正式 Spec 中旧 `/model-providers`、`/provider-models`、`/default-models` 和 `/model-options` 路由。
-- 已新增只读 Provider Type 目录、ProviderModel 能力解析只读字段，以及 User Model/Gateway 内部调用契约。
-- 不新增共享表、跨域外键或 `ResolvedModelRoute` 表。
+- 已新增 `POST /api/v1/studio-builds/batch-summaries`，请求 1 至 200 项并保持响应顺序；不存在或对委托用户不可见的项返回 `studio_build=null`。
+- 投影字段限制为 `id`、`owner_user_id`、`name`、`status`。
+- Asset Library `ArtifactProducerType` 已统一为 `application_run | canvas_run | atomic_task | studio_build`，由四个 producer 类型入口复用。
+- Asset Library schema 仅扩展 `producer_type` CHECK，不建立跨域外键。
+- Task Worker 创建 Artifact 时携带受信服务身份和原任务 `authorization_ref`；Asset Library 使用 AppStudio 投影解析 canonical owner。
 
 ## 验证与风险
 
-- 首次尝试使用 Ruby 解析目标 YAML 时发现当前环境未安装 Ruby（`/bin/bash: ruby: 未找到命令`）；该命令未进入规范校验阶段，不计为失败重试。后续必须先确认可用的结构化 YAML 解析器，再执行目标文件校验。
-- 已使用 PyYAML 6.0.1 成功解析 User Model、Model Gateway、AI Chat、Application Platform 和 Notification Center 事件共 22 个目标 YAML。
-- 已校验 4 份目标 OpenAPI：共 88 个 `operationId`，文件内及跨文件均唯一；411 个本地 `$ref` 全部可解析。
-- 已校验 187 个目标 S2 的 S1 引用，均能在直接相关 S1 或全局规则中找到。
-- 已校验 User Model 11 条 canonical 路径精确匹配计划，目标规范中不存在旧模型 API 路由。
-- 已校验 Provider Type 与请求 DTO 不暴露 Adapter/Executor ID；ProviderModel 的 4 个能力派生字段存在且为只读。
-- 已校验 Gateway schema 不创建 User Model 私有表或 `ResolvedModelRoute` 表；AI Chat GenerationRun 包含模型、能力、配置版本和非敏感快照字段。
-- 活跃规范中的 `model-management` 仅用于说明本次 domain 迁移；其他命中均为历史记录。既有 `RELEASE.md` 条目未改写，已新增 `spec-v1.17.0` 正式发布记录。
-- `git diff --check` 已通过。
-- 已确认 User Model 的 S1、完整 S2、架构和 Domain Context 入口文件均存在，旧 `model-management` 的 4 个活跃路径均已移除。
-- 已确认无关未跟踪内容 `archive/`、`docs/identity_fix.md`、`设计图/` 未被修改。
-- 已校验 `spec-v1.17.0` 引用的内容 commit 存在、全部正式文件路径存在、4 个退役路径均不存在。
-- 已创建发布提交 `bb3a0e8ff182c740f8d08e46613a6876a8e2aa86` 和 annotated tag `spec-v1.17.0`，并成功推送 `master` 与 tag 到 `origin`。
-- 已知风险：Agent Runtime 既有 ModelAccessSpec/直连模型架构仍未纳入统一 Gateway 执行链路，且已在 `spec-v1.17.0` 实施门禁中明确排除。
-- 验证约束：只运行目标 Spec 校验和相关模块检查，同一失败检查最多修复并重试两次。
+- PyYAML 已成功解析 5 个目标 YAML。
+- Asset Library OpenAPI 的 256 个本地 `$ref` 和 53 个唯一 `operationId` 校验通过；AppStudio OpenAPI 的 149 个本地 `$ref` 和 34 个唯一 `operationId` 校验通过。
+- 四个 OpenAPI producer 类型入口与 SQL CHECK 的枚举一致，且未新增重复的 `studio_build_id` 字段。
+- AppStudio 批量摘要 API 的 1/200 边界、顺序保持、nullable 结果和字段白名单均通过。
+- Task Center Function Registry 锚点和六个 owner、伪造拒绝、幂等重试、新 Build、新旧权限、不可见摘要场景静态核对通过。
+- 首次静态场景检查因检查脚本定位错误而失败；修正检查定位后首次重试通过，规格文件无需因此修改。
+- `git diff --check`、变更范围检查及目标 S1/S2 最终人工差异审查通过；按约束未运行全仓测试。
+- 已知风险：这些 S1/S2 变更尚未经用户 release 确认，不能作为正式实现或发布依据。
 
 ## 未完成事项
 
-- 本任务范围内无未完成事项。
+- 无。本任务未包含提交、发布或更新 `RELEASE.md`。
 
 ## 推荐下一步
 
-- 下游实现仓库按 `spec-v1.17.0` 实施门禁，在同一发布批次迁移 Web、AI Chat 和其他客户端到 `/api/v1/user-model/...`，并接入统一 Gateway 执行入口。
+- 由用户评审本次 S1/S2 差异；确认后按 Release 流程更新 `RELEASE.md`，再进入实现仓库适配。
 
 Next Prompt:
 

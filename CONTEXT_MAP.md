@@ -19,12 +19,12 @@
 | `ai-chatting` | `domains/ai-chatting/context.md` | 会话、消息、助手和生成 | AI 对话、Assistant、翻译 |
 | `application-platform` | `domains/application-platform/context.md` | ComfyUIWorkflow、应用、表单和运行 | Application、模板、ApplicationRun |
 | `task-center` | `domains/task-center/context.md` | 异步执行、重试、编排、调度和版本化 Function Registry | AtomicTask、DAG、Schedule、functionRef、Task Worker、Infra Adapter |
-| `asset-library` | `domains/asset-library/context.md` | Artifact、Asset 和派生表现 | 素材、入库、预览、存储 |
+| `asset-library` | `domains/asset-library/context.md` | Artifact、producer、Asset 和派生表现 | 素材、入库、预览、存储、StudioBuild Artifact |
 | `workflow-canvas` | `domains/workflow-canvas/context.md` | 画布结构、版本、编译和运行 | Canvas、节点、边、部分执行 |
 | `notification-center` | `domains/notification-center/context.md` | 通知收件箱、偏好、聚合 | 完成、失败、待处理通知 |
 | `sse` | `domains/sse/context.md` | 用户级实时事件投影 | EventSource、断线恢复、重同步 |
 | `agent` | `domains/agent/context.md` | Agent、Session、Memory、内部 Workspace 绑定与 AgentRuntime | Platform Agent、Coding Agent、Hermes、OpenCode |
-| `appstudio` | `domains/appstudio/context.md` | 生成应用源码、Revision、构建、发布与运行 | StudioApplication、Source、Revision、StudioBuild、StudioRelease |
+| `appstudio` | `domains/appstudio/context.md` | 生成应用源码、Revision、构建、Build owner/摘要、发布与运行 | StudioApplication、Source、Revision、StudioBuild、StudioRelease |
 | `infrastructure` | `domains/infrastructure/context.md` | 第一阶段单机 Docker 运行层与受控挂载 | InfraRuntime、Docker Job/Service、RuntimeMount、Task Worker、Workspace 挂载 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 
@@ -45,7 +45,7 @@
 | AtomicTask、TaskAttempt、TaskGroup、DAGTaskGroup、TaskSchedule、重试、取消 | `domains/task-center/context.md` | 涉及业务结果再读源领域 |
 | Function Registry、functionRef、contract version、Task Worker、Infra Adapter | `domains/task-center/context.md` | Infra-backed 合同继续读 infrastructure；Agent/AppStudio 投影再读来源领域 |
 | TaskRun、ExecutionLease、Worker claim、DAGFlowTask | `domains/task-center/context.md` | 这些是过期检索词，先核对废弃说明 |
-| Artifact、Asset、AssetVersion、Representation、Blob、扫描、缩略图 | `domains/asset-library/context.md` | 涉及生成任务再读 task-center |
+| Artifact、Artifact producer、Asset、AssetVersion、Representation、Blob、扫描、缩略图 | `domains/asset-library/context.md` | StudioBuild producer/owner/摘要再读 appstudio；涉及生成任务再读 task-center |
 | Canvas、Node、Edge、ApplicationNode、CanvasRun、局部执行 | `domains/workflow-canvas/context.md` | 涉及应用节点再读 application-platform |
 | Notification、未读、偏好、聚合、需要处理 | `domains/notification-center/context.md` | 涉及源状态再读生产事件领域 |
 | SSE、UserEvent、event_id、Last-Event-ID、重放 | `domains/sse/context.md` | 再读事件所属事实领域 |
@@ -57,7 +57,7 @@
 | AgentSession、AgentInvocation、AgentMemory、Hermes、OpenCode、AgentRuntime | `domains/agent/context.md` | Coding Agent 修改源码再读 appstudio |
 | AgentWorkspace、workspace_type、AgentRuntimeProvider（后端内部） | `domains/agent/context.md` | 周期执行再读 task-center |
 | StudioApplication、Source、Revision、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改或内部 StudioWorkspace 绑定再读 agent |
-| StudioBuild、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行再读 task-center；Artifact 再读 asset-library |
+| StudioBuild、StudioBuild batch summary、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行与 Attempt 重试再读 task-center；Artifact owner/权限再读 asset-library |
 | InfraRuntime、Docker Job、Docker Service、RuntimeMount、DockerRuntimeProvider、Task Worker 调用 Infra | `domains/infrastructure/context.md` | 必须继续读 task-center；涉及 AgentWorkspace 读 agent，涉及 StudioWorkspace/Revision/Snapshot/Artifact 读 appstudio |
 
 ## 4. 跨域任务映射
@@ -78,7 +78,7 @@
 | Coding Agent 修改 StudioApplication | agent、appstudio | task-center |
 | StudioApplication 构建与发布 | appstudio、task-center | asset-library、notification-center |
 | Agent/AppStudio 调用基础设施 | task-center、infrastructure | agent、appstudio、asset-library |
-| StudioBuild 交付 Artifact | appstudio、asset-library | task-center |
+| StudioBuild 交付 Artifact、producer owner 与一跳摘要 | appstudio、asset-library、task-center | 无 |
 | 迁移认证配置或跨域审计 | platform-management、identity | 涉及来源事件再读对应 domain |
 
 ## 5. 全局文档入口

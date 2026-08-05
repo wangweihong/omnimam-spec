@@ -81,7 +81,7 @@ CREATE TABLE blobs (
 CREATE INDEX idx_blobs_sha256 ON blobs(sha256);
 CREATE INDEX idx_blobs_status ON blobs(status);
 
--- Artifact is owned by asset-library; provider credentials and arbitrary URLs are forbidden.
+-- Artifact is owned by asset-library; producer relations do not use cross-domain foreign keys; provider credentials and arbitrary URLs are forbidden.
 -- S1 refs: US-USER-ASSET-42, US-USER-ASSET-45; BR-USER-ASSET-64..BR-USER-ASSET-68, BR-USER-ASSET-76..BR-USER-ASSET-78.
 CREATE TABLE artifacts (
   id TEXT PRIMARY KEY,
@@ -94,7 +94,7 @@ CREATE TABLE artifacts (
   owner_user_id TEXT NOT NULL,
   artifact_type TEXT NOT NULL,
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio', 'text', 'document', 'model_3d', 'prompt', 'prompt_template', 'pdf', 'other')),
-  producer_type TEXT NOT NULL CHECK (producer_type IN ('application_run', 'canvas_run', 'atomic_task')),
+  producer_type TEXT NOT NULL CHECK (producer_type IN ('application_run', 'canvas_run', 'atomic_task', 'studio_build')),
   producer_id TEXT NOT NULL,
   producer_idempotency_key TEXT NOT NULL,
   atomic_task_id TEXT,

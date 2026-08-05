@@ -189,7 +189,7 @@ CREATE TABLE studio_runtime_configs (
   UNIQUE (studio_application_version_id, environment, resource_version)
 );
 
--- s1_refs: R-STUDIO-011, R-STUDIO-017, R-STUDIO-018; source: 5.7 StudioBuild, 10 Build.
+-- s1_refs: R-STUDIO-011, R-STUDIO-017, R-STUDIO-018; source: 5.7 StudioBuild, 10 Build. owner_user_id is the canonical Bundle Artifact owner source; no cross-domain FK.
 CREATE TABLE studio_builds (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',

@@ -13,7 +13,7 @@
 | `selector-parser` | 将受限统一选择器解析、校验并规范化为查询 AST，不生成或执行 SQL | `US-USER-ASSET-03`、`US-USER-ASSET-20`、`US-USER-ASSET-22`、`US-USER-ASSET-24`、`US-USER-ASSET-28`、`BR-USER-ASSET-37`、`BR-USER-ASSET-39` |
 | `natural-language-resolver` | 将自然语言转换为候选结构化条件，或明确返回“无结构化意图” | `US-USER-ASSET-04`、`BR-USER-ASSET-09`、`BR-USER-ASSET-10` |
 | `group` | 维护素材分组、分组排序、素材与分组的多对多关联 | `US-USER-ASSET-34`..`US-USER-ASSET-39`、`BR-USER-ASSET-49`..`BR-USER-ASSET-56` |
-| `artifact` | 维护跨应用、画布和 AtomicTask 的 Artifact 身份、owner、受控内容、处理、保留、登记状态与源事件 | `US-USER-ASSET-42`、`US-USER-ASSET-45`、`BR-USER-ASSET-64`..`BR-USER-ASSET-68`、`BR-USER-ASSET-76`..`BR-USER-ASSET-78` |
+| `artifact` | 维护跨应用、画布、AtomicTask 和 StudioBuild 的 Artifact 身份、owner、受控内容、处理、保留、登记状态与源事件 | `US-USER-ASSET-42`、`US-USER-ASSET-45`、`BR-USER-ASSET-64`..`BR-USER-ASSET-68`、`BR-USER-ASSET-76`..`BR-USER-ASSET-80` |
 | `artifact-registration` | 在同一事务中将 ready Artifact 登记为 Asset/AssetVersion，复用 Blob 创建 original Representation | `US-USER-ASSET-41`、`US-USER-ASSET-43`、`BR-USER-ASSET-65`..`BR-USER-ASSET-69` |
 | `representation` | 维护 expected policy、AssetRepresentation、build request、状态汇总和 backfill 缺口 | `US-USER-ASSET-43`..`US-USER-ASSET-45`、`BR-USER-ASSET-69`..`BR-USER-ASSET-77` |
 | `processing-task` | 解释 Representation build、backfill 和 `sha256_backfill` 的业务语义；执行由 Task Center 完成 | `US-USER-ASSET-09`、`US-USER-ASSET-32`、`US-USER-ASSET-43`、`US-USER-ASSET-44` |
@@ -59,7 +59,8 @@
 ## 5.0 关联资源可读投影
 
 - UserAsset 列表和写动作返回 `current_version`；Collection 返回 `parent_collection`，CollectionItem 返回 `pinned_version`；AssetRelation 返回 `source_asset` 与 `target_asset`。这些同域关系按 owner 批量读取，目标删除或不可见时保留 ID 并省略摘要。
-- Artifact 返回 producer 及可用的 AtomicTask、ApplicationRun、CanvasRun 一跳摘要；跨领域摘要只能通过 Task Center、application-platform、workflow-canvas 的受控批量只读能力或创建时非敏感快照获取，禁止查询目标领域私有表。
+- Artifact 返回 producer 及可用的 AtomicTask、ApplicationRun、CanvasRun 一跳摘要；跨领域摘要只能通过 Task Center、application-platform、workflow-canvas、AppStudio 的受控批量只读能力或创建时非敏感快照获取，禁止查询目标领域私有表。
+- `producer_type=studio_build` 时 `producer_id=StudioBuild.id`，不得新增重复 `studio_build_id`。Artifact 列表和详情必须收集同页 StudioBuild ID，使用当前调用者身份一次调用 `POST /api/v1/studio-builds/batch-summaries`，按顺序映射结果，禁止逐行调用造成 N+1；不可见或不存在时保留 `producer_id` 并返回 `producer=null`。
 - Artifact 登记后的 `asset_id`、`asset_version_id` 同时返回同域摘要。`task_attempt_id`、`node_run_id`、`node_id` 是所属任务/运行内的审计定位字段，由已返回的父任务或运行上下文解析，不再递归展开。
 - 所有列表查询次数必须与行数无关；摘要不返回任务参数、运行输入输出、canonical 内容、metadata、凭证或受保护 URL。
 - `POST /api/v1/artifacts/batch-summaries` 是 Artifact 事实源提供的受控批量投影：每批 1..200 个 `{id}`，保持请求顺序，按调用主体逐项裁剪；不存在、已删除或不可见统一返回空摘要，不返回差异错误。
@@ -114,8 +115,9 @@
 
 ## 10. Artifact 与 Asset 登记
 
-- 受信 ApplicationExecutor、画布执行器或 Worker 通过 `POST /api/v1/artifacts` 和受控内容上传端点创建 Artifact；owner 由服务端上下文解析。
-- Artifact producer key 在 owner 范围唯一；同一 AtomicTask 自动 Attempt 重试复用同一 Artifact，冲突内容返回稳定幂等错误。
+- 受信 ApplicationExecutor、画布执行器或 Worker 通过 `POST /api/v1/artifacts` 和受控内容上传端点创建 Artifact；owner 由服务端上下文解析。`studio_build` 仅允许已注册 `appstudio.build.execute` 执行链路声明，其他服务或客户端伪造该 producer 必须拒绝。
+- Task Worker 创建 StudioBuild Artifact 时同时携带受信服务身份和原 Build Task 的 `authorization_ref`。asset-library 使用单项 AppStudio 批量摘要请求按委托用户执行 `appstudio.build.manage`，以 `StudioBuild.owner_user_id` 解析 canonical owner；服务身份、调用方 owner 参数或 Build 协作者身份均不能替代该解析。
+- Artifact producer key 在 owner 范围唯一；StudioBuild Bundle 固定使用 `studio-build:<studio_build_id>:bundle`。同一 StudioBuild 的自动 TaskAttempt 重试复用同一 Artifact；新的逻辑构建必须使用新的 StudioBuild ID，冲突内容返回稳定幂等错误。
 - ApplicationExecutor 负责 Provider 协议和下载，只能推送字节流、受控上传会话或可信存储引用，不得传递凭证、任意 URL、私网地址或原始响应。
 - `POST /api/v1/artifacts/{artifact_id}/register` 只接受 ready Artifact；同一事务创建或命中 Asset/AssetVersion、复用 Blob 创建 original Representation、更新登记状态并写 outbox。
 - 登记失败由 asset-library Artifact 保存；不得创建空 AssetVersion，也不得改变 AtomicTask 终态。
@@ -141,7 +143,7 @@
 
 - `schema.sql` 只表达目标设计，不是实际 migration。实现从旧标签 JSON 切换时，必须先 trim、校验并回填到规范化表，再切换读写，最后停止读取旧字段。
 - 回填遇到大小写不同的 Label key 或 Tag 时必须保留为不同值；超出数量上限或字段约束的数据进入迁移异常报告，不得静默丢弃或折叠。
-- 普通素材读取、创建、更新、删除、内容读取、上传、Collection、标签和引用摘要分别使用 `asset.*` 权限；所有后端操作仍必须执行 owner 与 `canWrite` 校验，前端隐藏不替代鉴权。
+- 普通素材读取、创建、更新、删除、内容读取、上传、Collection、标签和引用摘要分别使用 `asset.*` 权限；所有后端操作仍必须执行 owner 与 `canWrite` 校验，前端隐藏不替代鉴权。Artifact 读取始终按 Artifact owner 过滤，普通用户、管理员角色和 StudioBuild `authorized_editor` 均不因 producer 关系获得额外可见性。
 - Artifact 创建、登记、删除和 Representation 写入分别使用受控权限并发布 asset-library 源事件。
 
 ## 12. S2 最小契约说明

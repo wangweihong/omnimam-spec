@@ -40,7 +40,7 @@ updated_at: 2026-07-28
 2. 将业务素材与物理文件分离。
 3. 支持素材历史版本。
 4. 支持素材分类、标签和逻辑分组。
-5. 统一接收和管理应用运行、画布运行和 AtomicTask 产生的制品。
+5. 统一接收和管理应用运行、画布运行、AtomicTask 和 StudioBuild 产生的制品。
 6. 让画布、应用和任务稳定引用具体素材版本。
 7. 追踪素材的生成来源和使用位置。
 8. 支持本地磁盘存储。
@@ -225,7 +225,7 @@ Blob 与 StorageBackend 是全局存储基础设施事实，不属于普通素�
 
 ## 4.6 Artifact
 
-`Artifact` 表示应用、画布或 AtomicTask 产生、尚未登记为正式素材的执行制品。
+`Artifact` 表示应用、画布、AtomicTask 或 AppStudio StudioBuild 产生、尚未登记为正式素材的执行制品。
 
 例如：
 
@@ -237,7 +237,7 @@ Blob 与 StorageBackend 是全局存储基础设施事实，不属于普通素�
 
 Artifact 不等于 Asset。
 
-Artifact 可以是临时结果，也可以被登记为 Asset。Artifact 的身份、受控内容引用、处理状态、保留策略和登记结果由 asset-library 维护；Task Center 只保存 Artifact 引用，ApplicationPlatform 只保存 ApplicationRun 输出到 Artifact 的映射。
+Artifact 可以是临时结果，也可以被登记为 Asset。Artifact 的身份、受控内容引用、处理状态、保留策略和登记结果由 asset-library 维护；Task Center 只保存 Artifact 引用，ApplicationPlatform 只保存 ApplicationRun 输出到 Artifact 的映射，AppStudio 只保存 StudioBuild 的 Artifact ID 与 digest。
 
 ---
 
@@ -1044,7 +1044,7 @@ turntable_preview
 
 ## 11.1 Artifact 创建
 
-受信任的 ApplicationExecutor、画布执行器或 AtomicTask Worker 在输出端口产生文件或结构化结果时，通过 asset-library 创建 Artifact。调用方负责外部 Provider 协议、轮询、鉴权和下载，不得把 Provider 凭证、任意 URL、私网地址或原始响应交给 asset-library。
+受信任的 ApplicationExecutor、画布执行器、AtomicTask Worker，或执行已注册 `appstudio.build.execute` 的 Task Worker 在输出端口产生文件或结构化结果时，通过 asset-library 创建 Artifact。调用方负责外部 Provider 协议、轮询、鉴权和下载，不得把 Provider 凭证、任意 URL、私网地址或原始响应交给 asset-library。
 
 调用方只能通过受控字节流、上传会话或 asset-library 可验证的可信存储引用交付内容。Task Center 不创建 Artifact 业务事实，只保存 Artifact ID 等小型结果引用。
 
@@ -1088,6 +1088,21 @@ atomic_task_id + output_key + sequence
 ```
 
 同一个 AtomicTask 的自动 TaskAttempt 重试复用同一键；手动重试会创建新的 AtomicTask，因此可以形成新的 Artifact。
+
+StudioBuild Bundle 使用以下固定映射：
+
+```text
+producer_type = studio_build
+producer_id = StudioBuild.id
+producer_idempotency_key = studio-build:<studio_build_id>:bundle
+owner_user_id = StudioBuild.owner_user_id
+```
+
+只有受信 `appstudio.build.execute` 执行链路可以声明 `studio_build` producer。Task Worker 创建 Artifact 时必须携带受信服务身份和原 Build Task 的 `authorization_ref`；asset-library 通过 AppStudio 受控投影解析 StudioBuild 的 canonical owner，不接受调用方声明 owner。不存在、对委托用户不可见、owner 无法解析或 producer/key 不匹配时必须拒绝创建。
+
+同一 StudioBuild 的自动 TaskAttempt 重试必须复用同一 producer key 并命中同一 Artifact；需要新的逻辑构建时必须先创建新的 StudioBuild ID，再使用对应的新 key。
+
+Artifact 始终按 `owner_user_id` owner-only。普通用户、`ADMIN`、`SUPER_ADMIN` 和 StudioBuild `authorized_editor` 均不得仅凭 `producer_id`、Build 可见性或角色绕过 Artifact owner 校验。Artifact 列表与详情解析 StudioBuild 一跳摘要时，使用当前调用者身份批量调用 AppStudio；producer 不存在或对当前调用者不可见时保留 `producer_id` 并返回 `producer=null`，不得通过响应或错误泄露两种原因的差异。
 
 Artifact 受控内容完成上传时，asset-library 在同一事务写 `artifact_content_completed` outbox。Task Center 按以下幂等键创建 `asset-library.artifact.process` AtomicTask：
 
@@ -2454,7 +2469,11 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 
 ## 29.4 Artifact
 
-* 受信任的 ApplicationExecutor、画布执行器或 AtomicTask Worker 可以幂等创建 Artifact。
+* 受信任的 ApplicationExecutor、画布执行器、AtomicTask Worker 或 `appstudio.build.execute` Task Worker 可以幂等创建 Artifact。
+* StudioBuild Artifact 使用 `producer_id=StudioBuild.id` 和 `studio-build:<studio_build_id>:bundle`，owner 从 `StudioBuild.owner_user_id` 解析。
+* 同一 StudioBuild 的自动 TaskAttempt 重试命中同一 Artifact；新的逻辑构建使用新的 StudioBuild ID 和 producer key。
+* StudioBuild `authorized_editor`、管理员角色和其他用户不能因 Build 可见或持有 `producer_id` 读取非本人 Artifact。
+* 不存在或不可见 StudioBuild 的 producer 摘要统一为空，同时稳定保留 `producer_id`。
 * Artifact 可以保持临时状态。
 * Artifact 可以保存为新 Asset。
 * Artifact 可以追加为已有 Asset 的新版本。
@@ -2565,8 +2584,8 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 63. `BR-USER-ASSET-63`（deprecated，由 `BR-USER-ASSET-64` 替代）：旧规则将 Artifact 状态事实归 application-platform。
 64. `BR-USER-ASSET-64`：asset-library 是 Artifact 身份、受控内容、处理、保留、登记状态和事件的唯一事实源；ApplicationPlatform、画布和 Task Center 只保存引用或只读投影。
 65. `BR-USER-ASSET-65`：Artifact 处理状态与登记状态独立；只有 ready Artifact 可登记，登记失败不得修改 AtomicTask 终态。
-66. `BR-USER-ASSET-66`：Artifact owner 来自受信 producer 对应的当前用户或 AtomicTask 创建用户，不得归属 Worker、EngineInstance、管理员或其他用户。
-67. `BR-USER-ASSET-67`：Artifact producer key、登记和 Representation 写入均必须幂等；自动 TaskAttempt 重试不得创建重复逻辑制品。
+66. `BR-USER-ASSET-66`：Artifact owner 来自受信 producer 对应的当前用户、AtomicTask 创建用户或 `StudioBuild.owner_user_id`，不得归属 Worker、EngineInstance、管理员或其他用户；普通用户、管理员角色和 StudioBuild `authorized_editor` 均不得仅凭 producer 关系绕过 Artifact owner 校验。
+67. `BR-USER-ASSET-67`：Artifact producer key、登记和 Representation 写入均必须幂等；自动 TaskAttempt 重试不得创建重复逻辑制品；StudioBuild Bundle 固定使用 `studio-build:<studio_build_id>:bundle`，同一 StudioBuild 的自动 Attempt 复用该键，新逻辑构建必须创建新的 StudioBuild ID。
 68. `BR-USER-ASSET-68`：Artifact 内容必须通过受控上传交付，不得保存 Provider 凭证、任意 URL、私网地址或原始响应。
 69. `BR-USER-ASSET-69`：Artifact 登记事务复用 Blob 创建 original Representation，并写可靠 Representation 请求 outbox。
 70. `BR-USER-ASSET-70`：asset-library 根据媒体类型、policy 和 profile version 决定 expected Representation；Task Center 不发明媒体处理策略。
@@ -2579,7 +2598,7 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 77. `BR-USER-ASSET-77`：素材 UI 以 AssetVersion 事实和事件判断 ready，不得以 AtomicTask 成功直接推断。
 78. `BR-USER-ASSET-78`：transient Artifact 不生成 AssetRepresentation；临时预览必须作为 Artifact preview 独立表达。
 79. `BR-USER-ASSET-79`：Artifact 内容完成事务必须可靠触发幂等 `asset-library.artifact.process` AtomicTask；Task Center 不直接读写 Artifact 内容或状态。
-80. `BR-USER-ASSET-80`：素材列表与详情必须保留稳定关系 ID，并同时返回当前用户可见的一跳可读摘要：UserAsset 当前版本、Artifact producer/任务/运行/登记素材、Collection 父级与固定版本、AssetRelation 两端素材均不得要求客户端逐 ID 补查；列表使用同域批量查询或目标领域受控批量投影，关联缺失或不可见时只省略摘要。
+80. `BR-USER-ASSET-80`：素材列表与详情必须保留稳定关系 ID，并同时返回当前用户可见的一跳可读摘要：UserAsset 当前版本、Artifact producer/任务/运行/登记素材、Collection 父级与固定版本、AssetRelation 两端素材均不得要求客户端逐 ID 补查；StudioBuild producer 摘要必须使用当前调用者身份经 AppStudio 受控批量投影解析，禁止读取 AppStudio 私表；关联缺失或不可见时保留关系 ID、仅返回空摘要且不得泄露原因差异。
 81. `BR-USER-ASSET-81`：asset-library 必须为 Task Center 等受控调用方提供有界 Artifact 批量可读摘要；每项先按调用主体与 owner 校验，仅返回标识、输出键、类型、媒体类型、处理/登记状态、预览可用性和可选登记素材摘要，不返回内容、metadata、存储引用、永久 URL 或不可见性差异。
 82. `BR-USER-ASSET-82`：Blob 与 StorageBackend 是全局存储基础设施事实；Blob 详情以及 StorageBackend 列表、详情、创建和更新只允许 `ADMIN`、`SUPER_ADMIN`，普通用户不得通过任一入口枚举这些资源。
 83. `BR-USER-ASSET-83`：管理员存储检查响应原样返回 Blob `object_key`、StorageBackend `root` 和完整 `config`；这些敏感字段不得进入普通素材、Representation、Artifact、任务输出或跨域摘要。
@@ -2637,11 +2656,13 @@ Artifact 和 AssetVersion 事件都必须使用统一事件信封、聚合 `reso
 
 ## US-USER-ASSET-42 管理任务制品
 
-作为运行发起用户，我希望应用、画布或 AtomicTask 产生的多个 Artifact 能够独立上传、查看、处理和过期，并保持与来源运行的追溯关系。
+作为运行发起用户，我希望应用、画布、AtomicTask 或 StudioBuild 产生的多个 Artifact 能够独立上传、查看、处理和过期，并保持与来源运行或构建的追溯关系。
 
 - Artifact 使用稳定 producer key 幂等创建。
-- 自动重试不创建重复制品，手动重试可以形成新制品。
-- 任何制品访问都限制在 owner 范围，内容交付不暴露 Provider 凭证或任意 URL。
+- StudioBuild Bundle 使用 `producer_id=StudioBuild.id` 和 `studio-build:<studio_build_id>:bundle`，owner 取 `StudioBuild.owner_user_id`。
+- 同一 StudioBuild 的自动 TaskAttempt 重试不创建重复制品；新的逻辑构建创建新的 StudioBuild ID 和 producer key。
+- 任何制品访问都限制在 owner 范围，Build 协作者或管理员角色不继承 Artifact 权限，内容交付不暴露 Provider 凭证或任意 URL。
+- producer 不存在或不可见时保留稳定 ID 并返回空摘要，不泄露原因差异。
 
 ## US-USER-ASSET-43 自动生成素材表现形式
 
