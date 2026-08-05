@@ -1,4 +1,4 @@
-# Infrastructure S2 permissions, released in spec-v1.12.0。只接受 Task Center 服务身份；权限追溯使用 US-INFRA-001/BR-INFRA-001。
+# Infrastructure S2 permissions draft based on spec-v1.12.0。Runtime 写操作只接受 Task Center；Endpoint resolve 另按受控服务身份授权。
 infra.runtime.read:
   domain: infrastructure
   module: runtime
@@ -71,6 +71,18 @@ infra.endpoint.read:
   default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-INFRA-001, R-INFRA-008, R-INFRA-014]
   related_user_stories: [US-INFRA-001]
+infra.endpoint.resolve:
+  domain: infrastructure
+  module: mount-config
+  resource: runtime_endpoint
+  action: resolve
+  subject: agent_runtime_adapter, task_center_worker
+  description: 解析 READY INTERNAL Endpoint 的短时平台内部地址。
+  frontend_usage: 无直接前端入口。
+  backend_enforcement: 从工作负载身份确认 agent 或必要的 task-center 调用方；校验固定 purpose、ownerReference、Endpoint READY、Runtime RUNNING/健康且未撤销。base_url 禁止进入持久化、普通响应、事件和日志。
+  default_roles: [SERVICE_AGENT, SERVICE_TASK_CENTER]
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008, R-INFRA-015, R-INFRA-021]
+  related_user_stories: [US-INFRA-001]
 infra.node.read:
   domain: infrastructure
   module: placement
@@ -106,4 +118,28 @@ infra.output.read:
   backend_enforcement: 不返回媒体正文、宿主路径或存储 Provider 细节。
   default_roles: [SERVICE_TASK_CENTER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-INFRA-001, R-INFRA-008]
+  related_user_stories: [US-INFRA-001]
+infra.output.content.read:
+  domain: infrastructure
+  module: output
+  resource: runtime_output_content
+  action: read
+  subject: task_center_worker
+  description: 流式读取已收集 RuntimeOutput 的实际 staging 字节。
+  frontend_usage: 无直接前端入口。
+  backend_enforcement: 仅允许原任务执行链路的 Task Worker，按 owner 范围读取；返回实际 Content-Length、Content-Type 和 digest，不信任 content_ref 自带授权。
+  default_roles: [SERVICE_TASK_CENTER]
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008, R-INFRA-022]
+  related_user_stories: [US-INFRA-001]
+infra.output.artifact.attach:
+  domain: infrastructure
+  module: output
+  resource: runtime_output
+  action: attach_artifact
+  subject: task_center_worker
+  description: 在 Artifact 内容完成且完整性一致后幂等回链 Artifact ID。
+  frontend_usage: 无直接前端入口。
+  backend_enforcement: 校验 Task Worker 身份、owner、Artifact 内容完成状态、size 和 digest；冲突回链必须拒绝，成功前不得清理 staging。
+  default_roles: [SERVICE_TASK_CENTER]
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008, R-INFRA-022]
   related_user_stories: [US-INFRA-001]

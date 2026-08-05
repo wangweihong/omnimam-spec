@@ -1,7 +1,7 @@
--- Infrastructure S2 design schema, v1.0.0, released in spec-v1.12.0. This is not a migration.
+-- Infrastructure S2 design schema, v1.1.0-draft based on spec-v1.12.0. This is not a migration.
 -- Infra 只保存运行层事实；Agent、AppStudio、Task Center 和 Artifact 业务事实不在本 schema 内。
 
--- s1_refs: R-INFRA-003, R-INFRA-004, R-INFRA-005, R-INFRA-020; source: 7 RuntimeProfile, 10 Runtime Provider.
+-- s1_refs: R-INFRA-003, R-INFRA-004, R-INFRA-005, R-INFRA-020, R-INFRA-021, R-INFRA-022; source: 7 RuntimeProfile, 10 Runtime Provider.
 CREATE TABLE infra_runtime_profiles (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE infra_runtimes (
 CREATE INDEX idx_infra_runtimes_owner ON infra_runtimes(owner_domain, owner_reference, status);
 CREATE INDEX idx_infra_runtimes_status ON infra_runtimes(status, updated_at);
 
--- s1_refs: R-INFRA-002, R-INFRA-008, R-INFRA-014; source: 8.3 RuntimeEndpoint, 14 网络管理.
+-- s1_refs: R-INFRA-002, R-INFRA-008, R-INFRA-014, R-INFRA-021; source: 8.3 RuntimeEndpoint, 14 网络管理.
 CREATE TABLE infra_runtime_endpoints (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -80,11 +80,19 @@ CREATE TABLE infra_runtime_endpoints (
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0,
   runtime_id TEXT NOT NULL REFERENCES infra_runtimes(id),
+  endpoint_name TEXT NOT NULL,
+  protocol TEXT NOT NULL CHECK (protocol IN ('http', 'https')),
+  container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+  published_host TEXT,
+  published_port INTEGER CHECK (published_port BETWEEN 1 AND 65535),
   visibility TEXT NOT NULL CHECK (visibility IN ('INTERNAL', 'USER_ACCESSIBLE', 'PUBLIC')),
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'READY', 'EXPIRED', 'REVOKED')),
   display_ref TEXT,
   expires_at TIMESTAMPTZ,
-  revoked_at TIMESTAMPTZ
+  revoked_at TIMESTAMPTZ,
+  CHECK (name = endpoint_name),
+  CHECK (status <> 'READY' OR (published_host IS NOT NULL AND published_port IS NOT NULL)),
+  UNIQUE (runtime_id, endpoint_name)
 );
 CREATE INDEX idx_infra_runtime_endpoints_runtime ON infra_runtime_endpoints(runtime_id, status);
 
@@ -122,7 +130,7 @@ CREATE TABLE infra_runtime_config_bindings (
   failure_code TEXT
 );
 
--- s1_refs: R-INFRA-002, R-INFRA-008; source: 8.6 RuntimeOutput, 12.3 输出目录.
+-- s1_refs: R-INFRA-002, R-INFRA-008, R-INFRA-022; source: 8.6 RuntimeOutput, 12.3 输出目录.
 CREATE TABLE infra_runtime_outputs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -133,10 +141,33 @@ CREATE TABLE infra_runtime_outputs (
   resource_version INTEGER NOT NULL DEFAULT 0,
   runtime_id TEXT NOT NULL REFERENCES infra_runtimes(id),
   output_key TEXT NOT NULL,
+  declared_relative_path TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'COLLECTED', 'FAILED')),
   artifact_id TEXT,
   media_type TEXT,
+  size_bytes BIGINT CHECK (size_bytes >= 0),
+  content_digest TEXT CHECK (content_digest ~ '^sha256:[0-9a-f]{64}$'),
+  content_ref TEXT UNIQUE,
+  staging_ref TEXT,
+  collected_at TIMESTAMPTZ,
+  artifact_attached_at TIMESTAMPTZ,
   failure_code TEXT,
+  CHECK (declared_relative_path !~ '^/' AND declared_relative_path !~ '(^|/)\.\.(/|$)'),
+  CHECK (content_ref IS NULL OR content_ref = 'infra-output://' || id),
+  CHECK (
+    status <> 'COLLECTED'
+    OR (
+      size_bytes IS NOT NULL
+      AND content_digest IS NOT NULL
+      AND content_ref IS NOT NULL
+      AND collected_at IS NOT NULL
+      AND (staging_ref IS NOT NULL OR artifact_id IS NOT NULL)
+    )
+  ),
+  CHECK (
+    (artifact_id IS NULL AND artifact_attached_at IS NULL)
+    OR (artifact_id IS NOT NULL AND status = 'COLLECTED' AND artifact_attached_at IS NOT NULL)
+  ),
   UNIQUE (runtime_id, output_key)
 );
 

@@ -11,6 +11,7 @@
 - `AgentWorkspace`：Platform Agent 的独立持久化工作区，由后端自动创建和绑定，不是用户侧资源。
 - `AgentRuntime`：按需运行 Hermes/OpenCode 的 Agent 执行实例。
 - `AgentRuntimeProvider`：创建、恢复和检查 AgentRuntime 的系统注册组件。
+- `AgentRuntimeAdapter`：校验 Agent、Session、Invocation 与 Runtime Binding 后，短时解析 READY Endpoint 并同步调用 Hermes/OpenCode 的内部适配边界。
 
 ## 3. 核心规则
 
@@ -22,6 +23,7 @@
 - Coding Agent 不直接挂载 AppStudio 存储，只使用当前 AgentInvocation 的受控 Workspace Tool 授权；Runtime 挂载请求必须经 Task Center、Task Worker 和 Infra Adapter。
 - Agent 删除、挂起或 Runtime 重建不得改写 StudioWorkspace、StudioBuild、StudioRelease 或 StudioRuntimeInstance。
 - 纯 `CHAT` 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必须关联 AtomicTask，任务尝试、重试、取消和调度并发均以 task-center 当前事实源为准。
+- AgentRuntime 的创建、停止、删除和恢复写操作仍经 Task Center；AgentRuntimeAdapter 仅可用 Agent 工作负载身份调用 Infrastructure 的只读 Endpoint resolve，解析地址只用于当次 Hermes/OpenCode 调用且不得持久化或传播。
 - AgentRuntimeProvider 当前只承载 Hermes/OpenCode 的业务生命周期和 Task 编排；Infrastructure RuntimeProvider 第一阶段只承载 Docker，两者不得混用。
 
 ## 4. 领域边界
@@ -53,7 +55,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-Agent 当前完整 S1/S2 已由 `spec-v1.17.1` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
+Agent 当前完整 S1/S2 已由 `spec-v1.17.1` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯；本轮 AgentRuntimeAdapter 只读 Endpoint resolve 例外仍是待新 Release 草稿。
 
 ## 9. 不在本领域定义的内容
 

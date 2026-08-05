@@ -1,8 +1,9 @@
 # OmniMAM Agent Service 功能设计文档
 
 > 文档状态：S1 Draft
-> 文档版本：v1.0
-> 修订日期：2026-08-03
+> 文档版本：v1.1-draft
+> 正式基线：spec-v1.17.1
+> 修订日期：2026-08-05
 > 适用范围：Agent 定义、会话、记忆、Skills、工具权限、Workspace 绑定、模型绑定及 Runtime 生命周期编排
 
 ---
@@ -27,7 +28,7 @@
 * Agent 启动、挂起、恢复、停止和异常恢复。
 * Agent Invocation、消息流和运行事件。
 
-Agent Service 不直接管理 Docker、Kubernetes、GPU、容器、Pod、端口或运行节点。所有实际 Runtime 都由 Agent 创建 Task Center 任务，再由 `Task Worker -> Infra Adapter -> Infra Service` 创建和管理。
+Agent Service 不直接管理 Docker、Kubernetes、GPU、容器、Pod、端口或运行节点。所有实际 Runtime 都由 Agent 创建 Task Center 任务，再由 `Task Worker -> Infra Adapter -> Infra Service` 创建和管理。Runtime READY 后，AgentRuntimeAdapter 可以使用 Agent 工作负载身份调用 Infrastructure 的受控只读 Endpoint resolve，再同步访问 Hermes/OpenCode；该地址不进入 Agent 持久化事实或公共 API。
 
 ---
 
@@ -124,7 +125,7 @@ Coding Agent 配置 AppStudio Workspace Tool Endpoint，禁止挂载 StudioWorks
 返回 Runtime Endpoint 摘要
 ```
 
-Agent Service 不感知 Infra Service 最终采用哪种 Provider，也不直接调用 Infra Service。
+Agent Service 不感知 Infra Service 最终采用哪种 Provider，也不直接调用 Infra Service 的运行或生命周期写操作。AgentRuntimeAdapter 对已绑定 Endpoint 的受控只读 resolve 是唯一例外。
 
 ---
 
@@ -662,7 +663,9 @@ AgentRuntimeAdapter
 AgentRuntimeAdapter 必须提供以下逻辑能力：
 
 ```text
-使用受控 Endpoint 与配置初始化 Runtime
+校验 Agent、Session、Invocation 和 AgentRuntimeBinding
+使用 Agent 工作负载身份解析已绑定的受控 Endpoint
+使用短时解析结果与配置初始化 Runtime
 创建或恢复 Runtime Session
 发送 Agent Message 并返回标准 Agent Invocation Event Stream
 取消 Runtime 中的 Invocation
@@ -670,6 +673,8 @@ AgentRuntimeAdapter 必须提供以下逻辑能力：
 ```
 
 具体编程语言接口和 DTO 由 S2 或实现定义。Adapter 返回的原始 Runtime 状态不能直接覆盖 AgentInvocation 或 AtomicTask 终态，必须由 Agent Service 按稳定引用和资源版本投影。
+
+Endpoint 解析请求固定使用 `purpose=AGENT_RUNTIME_ADAPTER`，并携带 owner reference 与 Invocation/trace 审计关联 ID。Infrastructure 必须从工作负载身份确认调用服务，不信任请求声明；只有绑定的 Endpoint 为 READY、Runtime 为 RUNNING 且健康、owner 匹配且未撤销时才返回短时 `base_url`。Adapter 只能在内存中使用该地址，不得写入 Agent、Session、Invocation、RuntimeBinding、Task 结果、事件或日志。
 
 ---
 
@@ -1320,10 +1325,11 @@ sequenceDiagram
 6. 如 Agent 为 READY 或 SUSPENDED，则通过关联 Task 启动或恢复 Runtime。
 7. 确保 Runtime Session 已建立。
 8. 为 Coding Agent 签发当前 Invocation 专用的短期 Workspace Tool 授权。
-9. 通过 AgentRuntimeAdapter 发送消息。
-10. 接收 Agent Invocation Event Stream。
-11. 将输出写入 Assistant Message。
-12. 按 Task 结果和 Runtime 最终结果单调更新 AgentInvocation 状态。
+9. 校验 AgentRuntimeBinding 的 owner、Runtime 和 Endpoint 引用，调用 Infrastructure 受控只读 resolve。
+10. 通过 AgentRuntimeAdapter 使用短时地址发送消息。
+11. 接收 Agent Invocation Event Stream。
+12. 将输出写入 Assistant Message。
+13. 按 Task 结果和 Runtime 最终结果单调更新 AgentInvocation 状态。
 
 ---
 
@@ -1929,7 +1935,7 @@ Application Platform
 Notification Center
 ```
 
-Agent Service 不直接调用 Infra Service；Infra Runtime 写接口只接受 Task Worker 的受信身份，也不能直接暴露给前端。
+Agent Service 不直接调用 Infra Service 的 Runtime 写接口；这些接口只接受 Task Worker 的受信身份，也不能直接暴露给前端。AgentRuntimeAdapter 可以用 Agent 工作负载身份调用只读 Endpoint resolve，但不得调用其他 Infra API，也不得向公共 Agent API、通知、SSE、Task 结果或日志传播解析地址。
 
 ---
 
@@ -2492,7 +2498,7 @@ Agent Service 不得读取或保存明文模型凭证。
 
 ## R-AGENT-009
 
-AgentRuntimeAdapter 只负责 Agent Runtime 交互协议，不负责基础设施运行。
+AgentRuntimeAdapter 只负责 Agent Runtime 交互协议及已绑定 Endpoint 的受控只读解析，不负责基础设施运行或 Runtime 生命周期写操作。
 
 ## R-AGENT-010
 
@@ -2539,6 +2545,10 @@ Agent Service 必须支持 Runtime 异常后的状态对账和恢复。
 ## R-AGENT-020
 
 纯 `CHAT` 且不启动 Runtime、不执行工具或后台工作的 Invocation 可以由 Agent Service 直接管理；一旦进入异步执行，必须创建并绑定 AtomicTask。
+
+## R-AGENT-021
+
+AgentRuntimeAdapter 必须先校验 Agent、Session、Invocation 和 AgentRuntimeBinding，再以 Agent 工作负载身份解析 READY 的 Hermes/OpenCode Endpoint；解析地址只允许在当前同步调用内使用，不得持久化或传播到公共响应、事件、Task 结果和日志。
 
 ---
 

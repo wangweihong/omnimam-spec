@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- 补齐 Hermes Endpoint 与 RuntimeOutput 契约闭环：AgentRuntimeAdapter 在 Agent、Session、Invocation 和 Runtime Binding 校验后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve；Runtime 生命周期写操作仍统一经过 Task Center，普通 Endpoint 摘要、Agent/Task 数据、事件和日志均不得传播 `base_url`、Host Port 或私网地址。
+- Infrastructure 新增 Endpoint resolve、RuntimeOutput 内容流读取与幂等 Artifact 回链 API；Docker Service 只发布 RuntimeProfile 声明的命名容器端口并绑定平台内部接口，映射与健康检查完成后 Endpoint 才进入 READY。
+- Docker Job 必须从受控输出根读取声明普通文件的实际字节，拒绝目录、符号链接逃逸和根外路径，计算 `size_bytes` 与 `sha256:<64 hex>` 并复制到 Infra staging 后生成非 bearer `infra-output://<output_id>`；新增 `ERR_INFRA_ENDPOINT_NOT_READY` 与输出收集、内容不可用、完整性不一致错误码 `240804..240807`。
+- `appstudio.build.execute@1.1` 成为 ACTIVE，固定 `bundle.tar.gz` 输出和 `infra.output.collect`、`infra.output.content.read` 能力；Task Worker 按 Infra 流读取、Asset Library `create -> upload -> complete`、大小/digest 双重校验和 attach 流程交付 Artifact。`1.0` 保留为 RETAINED 且历史 digest 不改写，本轮仍为待新 Release 草稿，未修改 `RELEASE.md`。
 - 将 Agent 当前完整 S1/S2 与 Asset Library/AppStudio StudioBuild producer 契约一起确认为 `spec-v1.17.1` Release；修正三域 Context、Global Context 与 Context Map 的发布状态。Agent 本身不新增或改写产品语义、API、Schema、错误码、权限码、事件和模块边界；StudioBuild producer 变更按该版本 implementation gate 作为正式实现、合并和验收依据。
 - 统一 Asset Library Artifact producer 契约，新增共享 `ArtifactProducerType=application_run|canvas_run|atomic_task|studio_build` 并同步 OpenAPI 四个入口与 SQL CHECK；StudioBuild Bundle 固定使用 `producer_id=StudioBuild.id` 和 `studio-build:<studio_build_id>:bundle`，不新增重复 `studio_build_id` 或跨域外键。
 - 明确 StudioBuild Artifact owner 取 `StudioBuild.owner_user_id`，仅受信 `appstudio.build.execute` 执行链路可携带服务身份与原任务 `authorization_ref` 创建；自动 TaskAttempt 重试复用同一 Artifact，新逻辑 Build 必须创建新 ID，Build 协作者、管理员角色和服务身份均不得绕过 Artifact owner-only 权限。

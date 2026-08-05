@@ -1,10 +1,10 @@
 # OmniMAM Infra Service 功能设计文档
 
-> 文档状态：S1 Released
-> 文档版本：v1.1
-> 发布版本：spec-v1.12.0
+> 文档状态：S1 Draft（基于 spec-v1.12.0 正式基线）
+> 文档版本：v1.2-draft
+> 正式基线：spec-v1.12.0
 > 发布 commit：2f71a836006d5f35f48144fa03d1176232ea70c6
-> 修订日期：2026-08-03
+> 修订日期：2026-08-05
 > 适用范围：第一阶段单机 Docker 计算节点、Job、Service、资源、网络、挂载与运行凭证管理
 
 本次草稿修订将 Infra Service 收敛为第一阶段的 Docker 运行层：
@@ -12,7 +12,7 @@
 * 当前版本只实现 `DockerRuntimeProvider` 和受控的单机 Docker 节点。
 * 当前版本保留 Job/Service、RuntimeProfile、资源、挂载、Secret、Endpoint、日志、超时、幂等和 Docker 对账语义。
 * Kubernetes、Edge、Local Process、多节点调度和 Edge Node Agent 迁移到下一版本规划，不属于本版实现范围。
-* 本文件为 S1 正式事实源，已随 `spec-v1.12.0` 发布，可作为正式实现依据。
+* `spec-v1.12.0` 仍是正式实现依据；本轮 Endpoint 解析与 RuntimeOutput 字节交付修订在新 Release 前仅为草稿。
 
 ---
 
@@ -337,7 +337,7 @@ Infra Service 负责：
 * 返回 Runtime Endpoint。
 * 停止和清理 Agent Runtime。
 
-`agent` 不得直接调用 Infra 或操作容器。`agent` 只向 Task Center 提交 Runtime 启动、恢复、挂起和删除任务；Task Worker 再通过 Infra Service 使用 Docker 运行能力。
+`agent` 不得直接调用 Infra 的运行与生命周期写操作，也不得操作容器。`agent` 只向 Task Center 提交 Runtime 启动、恢复、挂起和删除任务；Task Worker 再通过 Infra Service 使用 Docker 运行能力。唯一只读例外是：AgentRuntimeAdapter 在完成 Agent、Session、Invocation 和 AgentRuntimeBinding 校验后，可以使用 Agent 工作负载身份解析已绑定的 `INTERNAL` Endpoint，并立即调用 Hermes/OpenCode；该例外不得创建、启动、停止、删除或修改 Runtime。
 
 ---
 
@@ -544,8 +544,9 @@ RuntimeProfile 负责定义：
 * 默认资源。
 * 最大资源。
 * 网络策略。
+* Service 可发布的命名 Endpoint、协议和容器端口。
 * 支持的配置 Binding。
-* 输入输出目录。
+* 输入目录、受控输出根目录和 Job 可声明的命名输出。
 * 健康检查方式。
 * Secret 注入方式。
 * 日志采集方式。
@@ -583,10 +584,17 @@ networkPolicy:
   outboundInternet: false
   exposeEndpoint: false
 
+endpoints: []
+
 filesystem:
   inputRoot: /inputs
   outputRoot: /outputs
   tempRoot: /tmp/omnimam
+
+outputs:
+  - name: result
+    relativePath: result.mp4
+    mediaType: video/mp4
 
 timeoutSeconds: 3600
 cleanupPolicy: always
@@ -604,6 +612,8 @@ S1 中：
 * RuntimeProfile 修改后不影响已启动 Runtime。
 * RuntimeProfile 必须进行版本化。
 * Infra Runtime 必须记录实际使用的 Profile Revision。
+* Service 只能请求该 Revision 已声明的命名 Endpoint，上层不得提交任意容器端口、Host Port 或绑定地址。
+* Job 只能声明该 Revision 允许的输出名称、相对路径和媒体类型，不得扩大受控输出根。
 
 建议引用方式：
 
@@ -742,15 +752,20 @@ Infra Service 不理解这些引用的业务语义，也不据此写入其他领
 ```text
 id
 runtimeId
-name
+endpointName
 protocol
-internalAddress
-externalAddress
+containerPort
+publishedHost
+publishedPort
 visibility
 status
 createdAt
 updatedAt
 ```
+
+`endpointName`、`protocol` 和 `containerPort` 来自固定的 RuntimeProfile Revision。`publishedHost` 和 `publishedPort` 是 Infrastructure 私有运行事实，只能用于受控解析，不能出现在普通 Endpoint 摘要、跨域事件、日志或 Task/Agent 结果中。
+
+Docker Provider 必须将声明的容器端口动态发布到平台内部接口，并完成 RuntimeProfile 定义的健康检查后才能把 Endpoint 标记为 `READY`。仅容器已启动、端口已分配或 Docker 报告 running 均不足以形成 READY Endpoint。
 
 `visibility`：
 
@@ -852,16 +867,19 @@ RUNTIME_ARGUMENT
 id
 runtimeId
 name
-path
 mediaType
-size
+sizeBytes
 contentDigest
-artifactRef
+contentRef
+collectedAt
+artifactId
 status
 createdAt
 ```
 
-`artifactRef` 只允许在 Task Worker 完成 Asset Library 登记后作为可选稳定回链写入，不是 RuntimeOutput 创建或 Job 成功的前提。Infra 只返回路径受限的输出描述、大小、媒体类型和 digest，不上传媒体正文到业务响应。
+`contentDigest` 固定使用 `sha256:<64 lowercase hex>`；`contentRef` 固定使用非 bearer 的 `infra-output://<output-id>`，它只标识受控读取对象，不携带授权，不得替换为文件路径、任意 URL、Docker Volume 地址或 Provider 引用。
+
+Docker Provider 必须从 RuntimeProfile 的受控输出根读取声明的实际普通文件，拒绝目录、符号链接、符号链接逃逸和输出根外路径；读取实际字节、计算准确大小与 SHA-256，并复制到 Infrastructure 管理的临时 staging 后，RuntimeOutput 才能进入 `COLLECTED`。`artifactId` 只允许在 Task Worker 完成 Asset Library 内容上传并确认 digest 一致后幂等回写；输出收集失败不得创建 ready Artifact。
 
 ---
 
@@ -920,10 +938,10 @@ infra.node.draining
       "readOnly": true
     }
   ],
-  "outputs": [
+  "outputDeclarations": [
     {
       "name": "result",
-      "path": "/outputs/result.mp4",
+      "relativePath": "result.mp4",
       "mediaType": "video/mp4"
     }
   ],
@@ -951,7 +969,7 @@ infra.node.draining
 }
 ```
 
-Job 完成后 Infra 只返回 output descriptor；Task Worker 使用原任务的 producer context 向 Asset Library 登记 Artifact，并将稳定 Artifact ID 与 digest 写回 Task 小型结果。
+Job 完成后 Infra 只返回包含准确 `sizeBytes`、`contentDigest` 和 `infra-output://` 引用的 output descriptor。Task Worker 使用该引用从 Infra 鉴权流式读取实际字节，校验响应大小和 digest，再以原任务 producer context 调用 Asset Library `create -> content upload -> complete`；成功后将 Artifact ID 幂等回写 RuntimeOutput，并只把稳定 Artifact ID 与 digest 写入 Task 小型结果。自动重试必须复用既有 producer 幂等键和 Artifact，不得重复交付。
 
 ---
 
@@ -999,6 +1017,9 @@ Job 完成后 Infra 只返回 output descriptor；Task Worker 使用原任务的
     "outboundInternet": true,
     "exposeEndpoint": true,
     "accessMode": "INTERNAL"
+  },
+  "endpointRequest": {
+    "name": "hermes-http"
   },
   "lifecycle": {
     "restartPolicy": "ON_FAILURE",
@@ -1282,6 +1303,14 @@ RuntimeProfile 必须定义允许收集的输出目录。
 
 Infra Service 不得扫描 Runtime 任意文件系统并作为输出返回。
 
+每个 Job 输出必须同时满足：
+
+1. 输出名称和相对路径已由固定 RuntimeProfile Revision 允许。
+2. 解析后的文件位于受控输出根内，且是普通文件，不是目录或符号链接。
+3. Docker Provider 读取实际字节并计算 `sizeBytes` 和 SHA-256。
+4. 字节已复制到 Infra 管理的隔离 staging，才生成 `infra-output://<output-id>`。
+5. staging 只能由持有原 Task Worker 工作负载身份和匹配 owner 上下文的读取操作访问；Artifact 回链完成后才允许清理。
+
 ---
 
 ## 12.4 临时目录
@@ -1457,6 +1486,8 @@ http://<host-ip>:<allocated-port>
 Infra Service 负责端口分配和冲突处理。地址只通过受控 Endpoint 解析返回；普通列表、事件、日志和跨域摘要不得传播 Host Port、私网地址或 Provider 网络细节。
 
 上层只保存 `endpointRef` 和权限裁剪摘要，不直接保存 Host Port 作为业务事实。Endpoint 授权失效、Runtime 停止或 owner 不再可访问时，解析必须立即拒绝。
+
+第一阶段 Docker Provider 只能把 RuntimeProfile 声明的命名容器端口动态绑定到平台内部接口；上层不得选择 `publishedHost` 或 `publishedPort`。受控解析请求必须携带 `ownerReference`、固定目的 `AGENT_RUNTIME_ADAPTER` 和审计关联 ID，但调用服务必须从工作负载身份解析，不能信任请求体自报身份。仅 AgentRuntimeAdapter 和必要的 Task Center 内部流程可解析；Endpoint 必须为 READY，所属 Runtime 必须为 RUNNING 且健康，owner 匹配并且 Endpoint 未撤销，返回地址具有短有效期。
 
 ---
 
@@ -1862,7 +1893,10 @@ ReconcileRuntime
 
 ```text
 GetRuntimeEndpoint
+ResolveRuntimeEndpoint
 ```
+
+`GetRuntimeEndpoint` 只返回不含真实地址的摘要；`ResolveRuntimeEndpoint` 是受控只读操作，不得把解析结果写入 Agent 表、Task 结果、事件、日志或普通摘要。
 
 ---
 
@@ -1894,9 +1928,11 @@ RuntimeProfile 可以采用内置和目录加载方式，修改后由运维重�
 
 ```text
 ListRuntimeOutputs
+ReadRuntimeOutputContent
+AttachRuntimeOutputArtifact
 ```
 
-Artifact 登记由 Task Worker 使用来源任务 producer context 调用 Asset Library，不属于 Infrastructure 操作。
+`ReadRuntimeOutputContent` 只允许 Task Worker 鉴权流式读取已收集的实际字节，并返回实际 Content-Length、Content-Type 和 digest。`AttachRuntimeOutputArtifact` 在 Asset Library 内容完成且 digest 一致后幂等回写 Artifact ID。Artifact 创建、内容完成和 ready 事实仍由 Asset Library 拥有，不属于 Infrastructure 操作。
 
 ---
 
@@ -2139,7 +2175,7 @@ http://<host-ip>:<allocated-port>
 
 ## R-INFRA-002
 
-所有实际运行必须由 Task Worker 通过 Infra Adapter 调用 Infra Service；业务领域不得直接调用。
+所有实际运行与 Runtime 生命周期写操作必须由 Task Worker 通过 Infra Adapter 调用 Infra Service；业务领域不得直接调用。AgentRuntimeAdapter 仅可在完成 Agent 业务授权校验后，以 Agent 工作负载身份调用受控的只读 Endpoint 解析操作。
 
 ## R-INFRA-003
 
@@ -2212,6 +2248,14 @@ Edge Node Agent 是基础设施代理，不属于 `agent` 的 AI Agent。
 ## R-INFRA-020
 
 第一阶段业务服务只能依赖 Infra Service 的 Docker 无关逻辑接口，不得把 Docker 容器细节写入业务流程。未来增加 Provider 时，仍须沿用同一规则。
+
+## R-INFRA-021
+
+Docker Service 只能发布 RuntimeProfile Revision 声明的命名容器端口，并仅绑定平台内部接口；完成端口映射和健康检查前 Endpoint 不得进入 READY。
+
+## R-INFRA-022
+
+Docker Job 只有在受控输出根内读取实际普通文件、计算准确大小与 SHA-256 并复制到 Infra staging 后，才能形成 `COLLECTED` RuntimeOutput 和 `infra-output://` 可信引用；Artifact 内容完成且 digest 一致后才允许回写 Artifact ID 和清理 staging。
 
 ---
 

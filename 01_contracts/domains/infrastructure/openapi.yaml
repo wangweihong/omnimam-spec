@@ -1,11 +1,12 @@
-# Infrastructure S2 API contract, released in spec-v1.12.0.
+# Infrastructure S2 API contract draft based on the spec-v1.12.0 release.
 openapi: 3.0.3
 info:
   title: OmniMAM Infrastructure API
-  version: 1.0.0
+  version: 1.1.0-draft
   description: >-
-    第一阶段单机 Docker 运行层契约，已随 spec-v1.12.0 发布。所有写操作只允许 Task Center Task Worker 的受信服务身份调用；
-    业务领域不得直接调用本 API。Provider、宿主机路径、容器 ID 和明文 Secret 不进入普通响应。
+    第一阶段单机 Docker 运行层契约；spec-v1.12.0 仍是正式基线，本轮为待新 Release 草稿。所有 Runtime 生命周期写操作只允许
+    Task Center Task Worker 的受信服务身份调用；AgentRuntimeAdapter 仅可调用受控只读 Endpoint resolve。
+    Provider、宿主机路径、容器 ID、解析地址和明文 Secret 不进入普通响应。
 servers: [{url: /}]
 security: [{serviceBearerAuth: []}]
 tags: [{name: runtimes}, {name: endpoints}, {name: nodes}, {name: profiles}, {name: outputs}]
@@ -102,6 +103,22 @@ paths:
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.3 RuntimeEndpoint', '14 网络管理']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}]
       responses: {'200': {description: Endpoint 摘要；不返回宿主机地址。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeEndpoint'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/endpoints/{endpoint_id}/resolve:
+    post:
+      tags: [endpoints]
+      operationId: resolve_infra_runtime_endpoint
+      summary: 为受信工作负载解析短时内部 Endpoint 地址
+      description: >-
+        调用服务从工作负载身份解析，不信任请求声明。仅 agent AgentRuntimeAdapter 和必要的 task-center 内部流程可调用；
+        Endpoint 必须 READY、所属 Runtime 必须 RUNNING 且健康、owner_reference 必须匹配，并且 Endpoint 未过期或撤销。
+        base_url 只允许在当前同步调用内使用，不得写入 Agent/Task 数据、普通摘要、事件或日志。
+        非允许服务身份或 owner 不匹配返回 ERR_INFRA_ENDPOINT_ACCESS_DENIED；Endpoint/Runtime 未就绪、已停止、过期或撤销返回 ERR_INFRA_ENDPOINT_NOT_READY。
+      x-permission: infra.endpoint.resolve
+      x-service-auth: [agent, task-center]
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-021], source_sections: ['5.3 agent', '8.3 RuntimeEndpoint', '14 网络管理', '24.2 Endpoint']}
+      parameters: [{$ref: '#/components/parameters/endpoint_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResolveEndpointRequest'}}}}
+      responses: {'200': {description: 短时 Endpoint 解析结果或稳定业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ResolvedEndpoint'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtimes/{runtime_id}/logs:
     get:
       tags: [runtimes]
@@ -161,10 +178,51 @@ paths:
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008], source_sections: ['8.6 RuntimeOutput', '12 Workspace 与文件挂载']}
       parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
       responses: {'200': {description: 输出引用列表；内容由 Asset Library 负责。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeOutputListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtime-outputs/{output_id}/content:
+    get:
+      tags: [outputs]
+      operationId: read_infra_runtime_output_content
+      summary: 流式读取已收集 RuntimeOutput 的实际字节
+      description: >-
+        仅原执行链路的 Task Worker 可按 owner 范围读取。成功响应的 Content-Length、Content-Type 和 X-Content-Digest
+        必须来自 staging 中实际字节；content_ref 本身不携带授权。内容不可用或读取中断不得形成 ready Artifact。
+        内容未收集、已清理或不可读取返回 ERR_INFRA_OUTPUT_CONTENT_UNAVAILABLE；实际流与 descriptor 摘要不一致返回 ERR_INFRA_OUTPUT_INTEGRITY_MISMATCH。
+      x-permission: infra.output.content.read
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-022], source_sections: ['8.6 RuntimeOutput', '12.3 输出目录', '24.5 输出']}
+      parameters: [{$ref: '#/components/parameters/output_id'}]
+      responses:
+        '200':
+          description: 实际输出字节或稳定业务错误。
+          headers:
+            Content-Length: {description: 实际字节大小。, schema: {type: integer, format: int64, minimum: 0}}
+            Content-Type: {description: RuntimeOutput media_type。, schema: {type: string}}
+            X-Content-Digest: {description: 'sha256:<64 lowercase hex>。', schema: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}}
+          content:
+            application/octet-stream: {schema: {type: string, format: binary}}
+            application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/infra/runtime-outputs/{output_id}/attach-artifact:
+    post:
+      tags: [outputs]
+      operationId: attach_infra_runtime_output_artifact
+      summary: 幂等回链已完成内容的 Artifact
+      description: >-
+        仅 Task Worker 可调用。Infrastructure 必须确认 Artifact 内容已完成且 size/digest 与 RuntimeOutput 一致；
+        相同 Artifact 重放返回原结果，不同 Artifact 或摘要冲突返回完整性错误。成功后才允许清理 staging。
+        Artifact 内容不可确认返回 ERR_INFRA_OUTPUT_CONTENT_UNAVAILABLE；大小、digest 或既有回链冲突返回 ERR_INFRA_OUTPUT_INTEGRITY_MISMATCH。
+      x-permission: infra.output.artifact.attach
+      x-service-auth: task-center
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-022], source_sections: ['8.6 RuntimeOutput', '24.5 输出']}
+      parameters: [{$ref: '#/components/parameters/output_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AttachArtifactRequest'}}}}
+      responses: {'200': {description: 已回链的 RuntimeOutput 或稳定业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/RuntimeOutput'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
 components:
   securitySchemes: {serviceBearerAuth: {type: http, scheme: bearer, bearerFormat: service-jwt}}
   parameters:
     runtime_id: {name: runtime_id, in: path, required: true, schema: {type: string}}
+    endpoint_id: {name: endpoint_id, in: path, required: true, schema: {type: string}}
+    output_id: {name: output_id, in: path, required: true, schema: {type: string}}
     profile_id: {name: profile_id, in: path, required: true, schema: {type: string}}
     node_id: {name: node_id, in: path, required: true, schema: {type: string}}
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
@@ -186,8 +244,24 @@ components:
         source_ref: {type: string, description: 来源领域生成的受控引用，不是宿主机路径。}
         mounts: {type: array, items: {$ref: '#/components/schemas/RuntimeMountInput'}}
         configuration_bindings: {type: array, items: {$ref: '#/components/schemas/RuntimeConfigBindingInput'}}
+        endpoint_request: {$ref: '#/components/schemas/RuntimeEndpointRequest', nullable: true, description: 仅 SERVICE 可用，且 endpoint_name 必须由固定 RuntimeProfile Revision 声明。}
+        output_declarations: {type: array, items: {$ref: '#/components/schemas/RuntimeOutputDeclaration'}, description: 仅 JOB 可用；每项必须匹配固定 RuntimeProfile Revision，路径相对于受控输出根。}
         resource_requirement: {$ref: '#/components/schemas/ResourceRequirement'}
         timeout_policy: {$ref: '#/components/schemas/TimeoutPolicy'}
+    RuntimeEndpointRequest:
+      type: object
+      additionalProperties: false
+      required: [endpoint_name]
+      properties:
+        endpoint_name: {type: string, minLength: 1, maxLength: 128}
+    RuntimeOutputDeclaration:
+      type: object
+      additionalProperties: false
+      required: [output_key, relative_path, media_type]
+      properties:
+        output_key: {type: string, minLength: 1, maxLength: 128}
+        relative_path: {type: string, minLength: 1, pattern: '^(?!/)(?!.*(?:^|/)\.\.(?:/|$)).+$', description: 相对于 RuntimeProfile output_root 的受控路径；不得为绝对路径或包含 `..` 路径段。}
+        media_type: {type: string, minLength: 1}
     RuntimeMountInput:
       type: object
       required: [source_ref, target_path, read_only, mount_kind]
@@ -231,7 +305,27 @@ components:
     RuntimeEndpoint:
       type: object
       required: [id, runtime_id, visibility, status]
-      properties: {id: {type: string}, runtime_id: {type: string}, visibility: {type: string, enum: [INTERNAL, USER_ACCESSIBLE, PUBLIC]}, status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}, display_ref: {type: string, nullable: true}, expires_at: {type: string, format: date-time, nullable: true}}
+      description: 权限裁剪摘要；绝不返回 protocol、published_host、published_port 或 base_url。
+      properties: {id: {type: string}, runtime_id: {type: string}, endpoint_name: {type: string}, visibility: {type: string, enum: [INTERNAL, USER_ACCESSIBLE, PUBLIC]}, status: {type: string, enum: [PENDING, READY, EXPIRED, REVOKED]}, display_ref: {type: string, nullable: true}, expires_at: {type: string, format: date-time, nullable: true}}
+    ResolveEndpointRequest:
+      type: object
+      additionalProperties: false
+      required: [owner_reference, purpose, audit_correlation_id]
+      properties:
+        owner_reference: {type: string, minLength: 1}
+        purpose: {type: string, enum: [AGENT_RUNTIME_ADAPTER]}
+        audit_correlation_id: {type: string, minLength: 1, description: Invocation ID、trace ID 或等价稳定审计关联 ID。}
+    ResolvedEndpoint:
+      type: object
+      additionalProperties: false
+      required: [endpoint_ref, runtime_id, protocol, base_url, resolved_at, valid_until]
+      properties:
+        endpoint_ref: {type: string}
+        runtime_id: {type: string}
+        protocol: {type: string, enum: [http, https]}
+        base_url: {type: string, format: uri, description: 平台内部短时调用地址；不得持久化或传播。}
+        resolved_at: {type: string, format: date-time}
+        valid_until: {type: string, format: date-time}
     InfraNode:
       type: object
       required: [id, status, cpu_cores, memory_mb, provider_type]
@@ -243,7 +337,16 @@ components:
     RuntimeOutput:
       type: object
       required: [id, runtime_id, output_key, status]
-      properties: {id: {type: string}, runtime_id: {type: string}, output_key: {type: string}, artifact_id: {type: string, nullable: true}, status: {type: string, enum: [PENDING, COLLECTED, FAILED]}, media_type: {type: string, nullable: true}}
+      description: COLLECTED 时 size_bytes、content_digest、content_ref 和 collected_at 必填且来自 staging 实际字节。
+      properties: {id: {type: string}, runtime_id: {type: string}, output_key: {type: string}, artifact_id: {type: string, nullable: true}, status: {type: string, enum: [PENDING, COLLECTED, FAILED]}, media_type: {type: string, nullable: true}, size_bytes: {type: integer, format: int64, minimum: 0, nullable: true}, content_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$', nullable: true}, content_ref: {type: string, pattern: '^infra-output://[A-Za-z0-9._~-]+$', nullable: true, description: 非 bearer 受控引用，不是 URL 或文件路径。}, collected_at: {type: string, format: date-time, nullable: true}}
+    AttachArtifactRequest:
+      type: object
+      additionalProperties: false
+      required: [artifact_id, size_bytes, content_digest]
+      properties:
+        artifact_id: {type: string, minLength: 1}
+        size_bytes: {type: integer, format: int64, minimum: 0}
+        content_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
     RuntimeLogListResponse:
       type: object
       required: [total, items]

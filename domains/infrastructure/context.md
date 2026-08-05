@@ -6,14 +6,17 @@
 
 ## 2. 核心规则
 
-- 所有 Infra 操作必须由 Task Center 的 Task Worker 通过受控 Infra Adapter 发起；业务领域不得直接调用 Infra Service。
+- Runtime 创建、停止、删除和其他生命周期写操作必须由 Task Center 的 Task Worker 通过受控 Infra Adapter 发起；唯一例外是 AgentRuntimeAdapter 在完整业务绑定校验后，以 Agent 工作负载身份调用只读 Endpoint resolve。
 - 第一阶段只支持 `DockerRuntimeProvider`，Kubernetes、Edge、Local Process 和多节点调度属于后续版本规划。
+- RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明的容器端口，并在映射建立和健康检查通过后把 Endpoint 标记为 `READY`。
 - `AgentWorkspace` 只能按 Agent 授权挂载；`StudioWorkspace` 只能通过 AppStudio 受控授权访问。
 - Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace。
 - Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。
-- Infra Job 只返回受控 output descriptor；Task Worker 使用 producer context 调用 Asset Library 登记 Artifact，Infra 不生成 Artifact ready 事实。
+- Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
+- Task Worker 从 Infra 鉴权流式读取字节，双重校验大小和 digest，完成 Asset Library Artifact 内容后幂等回链；Infra 不生成 Artifact ready 事实。
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
 - `USER_ACCESSIBLE` Endpoint 必须校验 owner 和当前授权，`PUBLIC` 第一阶段默认禁用；Host Port 和私网地址不得进入普通摘要。
+- Endpoint resolve 返回的短时 `base_url` 不得进入 Agent 表、Task 结果、事件、日志或普通 Endpoint 摘要。
 
 ## 3. 正式事实源
 
@@ -25,7 +28,7 @@
 | `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.12.0`) | Infrastructure 设计态 Schema |
 | `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.12.0`) | 错误、权限、事件和模块边界 |
 
-Infrastructure S1/S2 已由 `spec-v1.12.0` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。后续修改必须通过新的 Release 记录后才能成为新的正式依据。
+Infrastructure S1/S2 已由 `spec-v1.12.0` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。本轮 Endpoint resolve 与 RuntimeOutput 内容交付闭环仍是待新 Release 草稿，必须通过新的 Release 记录后才能成为正式依据。
 
 ## 4. 直接依赖
 

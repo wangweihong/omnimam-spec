@@ -11,7 +11,7 @@
 - `TaskGroup`：多个 AtomicTask 的 SERIAL 或 PARALLEL 组合及汇总。
 - `DAGTaskGroup`：AtomicTask 节点和有向无环依赖组成的编排资源。
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
-- `Function Registry`：第一阶段七个 Agent/AppStudio Infra-backed functionRef 的版本化 I/O、能力、策略、Infra 映射与结果投影合同。
+- `Function Registry`：第一阶段七个 Agent/AppStudio Infra-backed functionRef 的版本化 I/O、能力、策略、Infra 映射、输出交付与结果投影合同。
 - `WorkflowRuntime`、`Task Worker`、`Infra Adapter`：内部运行时边界、已注册 handler 的执行者和 Infra-backed 请求适配边界。
 
 ## 3. 核心规则
@@ -25,6 +25,8 @@
 - ApplicationRun、CanvasRun 和素材处理状态是上层业务投影，不由任务终态替代。
 - 任务结果只保存 Artifact 等小型引用，不保存媒体正文或其他领域私有数据。
 - Infra-backed AtomicTask 创建前按精确 registry schema 校验，并固定 function contract version/digest；重试和恢复不得漂移到新版本。
+- `appstudio.build.execute@1.1` 固定声明 Build 输出；Task Worker 从 Infra 鉴权流式读取实际字节，校验大小和 SHA-256，再按 `create -> upload -> complete -> attach` 完成 Artifact 交付。`infra-output://` 不是外部 URL，也不得进入 Task 结果。
+- 自动 TaskAttempt 重试按 StudioBuild producer key 复用既有 Artifact；内容 digest 不一致时失败，不重复创建 Artifact。
 - 可靠状态事件必须支持下游幂等消费，乱序事件不得回退较新投影。
 
 ## 4. 领域边界
@@ -61,7 +63,7 @@
 
 ## 8. 当前状态
 
-`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。本轮新增的 Infra-backed Function Registry 仍是未 Release 草稿；具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
+`spec-v1.0.0` 起的新任务模型已确定，后续 Schedule、关联摘要、画布与通知协作有增量发布并正在实施。Infra-backed Function Registry 及本轮 `appstudio.build.execute@1.1` 输出交付合同仍是未 Release 草稿；具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
 
 ## 9. 不在本领域定义的内容
 

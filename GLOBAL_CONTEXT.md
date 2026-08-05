@@ -29,7 +29,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `sse` | 将已持久业务事实投影为当前用户可短期重放的实时事件。 |
 | `agent` | 管理 Agent、Session、Invocation、Memory、内部 Workspace 固定绑定和 AgentRuntime；用户侧只管理 Platform Agent。 |
 | `appstudio` | 管理生成式 Web/BFF 应用的源码、Revision、构建、发布和运行实例；内部维护唯一默认 StudioWorkspace。 |
-| `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控挂载和运行状态对账。 |
+| `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控 Endpoint 与 RuntimeOutput 内容交付。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 
 当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，并将 `model-management` 重构为 `user-model`。两项调整已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据；历史 `RELEASE.md` 中的旧 domain 名称保持原样。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
@@ -59,7 +59,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `Agent` | 持久化 platform/coding 智能代理；公共管理只覆盖 Platform Agent，Coding Agent 由 AppStudio 内部创建；归 agent。 |
 | `AgentInvocation` | AgentSession 中的一轮交互；异步执行时保存 AtomicTask 业务投影；归 agent。 |
 | `AgentWorkspace` | Platform Agent 的后端持久化与固定绑定事实，不作为公共资源；归 agent。 |
-| `AgentRuntime` | 按需运行 Hermes/OpenCode 的执行实例；归 agent。 |
+| `AgentRuntime` | 按需运行 Hermes/OpenCode 的业务执行实例；归 agent，底层 Docker Runtime 与 Endpoint 归 infrastructure。 |
 | `StudioApplication` | Agent 辅助开发的生成式 Web/BFF 应用身份；归 appstudio，独立于 AI 能力 Application。 |
 | `StudioApplicationVersion` | 固定 StudioSourceSnapshot 的生成应用版本；归 appstudio。 |
 | `StudioWorkspace` | StudioApplication 唯一默认编辑上下文的后端 canonical 事实；公共投影为应用级源码和 Revision；归 appstudio。 |
@@ -74,7 +74,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消和 Task Worker 分发归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消、Task Worker 分发和 RuntimeOutput 到 Artifact 的流式交付编排归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、RuntimeOutput descriptor、临时 staging、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 内容完成、处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -91,7 +91,9 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - `CreateStudioApplication` 不接受 Workspace 输入；后端创建 Repository、唯一默认编辑上下文、Coding Agent 和 Session。用户只通过 StudioApplication 级 Source/Revision、Snapshot 和 Preview 接口操作源码。
 - 纯 CHAT 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；其他 Invocation 和所有 Runtime 生命周期操作必须关联 AtomicTask。
 - agent 和 appstudio 的所有 Infra-backed 操作都通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Task Worker 只回写稳定运行引用和小型结果，不拥有来源领域状态。
+- 上一条只约束 Runtime 生命周期写操作。AgentRuntimeAdapter 在校验 Agent、Session、Invocation 和 Runtime Binding 后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve 并同步访问 Hermes/OpenCode；短时 `base_url` 不得持久化或传播。
 - Task Center 使用版本化只读 Function Registry 校验第一阶段七个 Agent/AppStudio Infra-backed functionRef，并在 AtomicTask 创建时固定合同 version/digest；调用方不能覆盖执行模式、能力或 Infra 映射，registry 升级不能改写历史任务。
+- `appstudio.build.execute@1.1` 固定声明 `bundle.tar.gz`，Task Worker 从 Infrastructure 鉴权流式读取实际输出字节并双重校验大小/SHA-256，再完成 Asset Library Artifact 内容并幂等回链；`infra-output://` 不是 bearer 或任意外部 URL。
 - appstudio 通过 task-center 执行 Preview、Build 和 Production 发布/升级/回滚，并只保存 asset-library Artifact 的稳定 ID 与不可变 digest 快照；Build 只有在 Artifact READY 且 digest 一致后成功。
 - 新 StudioRuntimeInstance 健康后才能切换当前入口；回滚基于历史不可变内容创建新的 StudioRelease 和候选 RuntimeInstance，不修改或重新激活旧 Release。
 - AgentRuntimeProvider 只承载 Hermes/OpenCode；StudioDeploymentProvider 只承载 StudioApplication Release。两者可以复用 infrastructure 的受控 Docker 适配，但不得形成共享业务状态或直接调用 Infra。
@@ -109,7 +111,8 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
 - `agent` 的当前完整 S1/S2 已由 `spec-v1.17.1` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，StudioBuild Artifact producer 与批量摘要投影已由 `spec-v1.17.1` 发布；Asset Library 对应 StudioBuild producer、owner、幂等与 owner-only 权限契约也由 `spec-v1.17.1` 发布；`infrastructure` 的 S1/S2 已由 `spec-v1.12.0` 发布。上述版本均允许按各自 implementation gate 作为正式实现依据。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
-- Infrastructure 只返回 Runtime output descriptor，Artifact 登记由 Task Worker 使用来源任务 producer context 调用 asset-library；`USER_ACCESSIBLE` Endpoint 必须受权解析，`PUBLIC` 第一阶段默认禁用。
+- Infrastructure 普通摘要只返回 Runtime output descriptor 和非敏感 Endpoint 引用；Docker Job 必须收集实际输出字节后生成大小、SHA-256 和 `infra-output://`，Artifact 内容交付由 Task Worker 使用来源任务 producer context 调用 asset-library。
+- RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明端口并在健康检查后进入 READY。Endpoint 地址只可通过受工作负载身份、owner、状态和撤销校验的只读 resolve 短时取得；`USER_ACCESSIBLE` 必须受权，`PUBLIC` 第一阶段默认禁用。
 
 ## 8. 非目标与延期范围
 

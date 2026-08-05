@@ -119,6 +119,9 @@
 - Task Worker 创建 StudioBuild Artifact 时同时携带受信服务身份和原 Build Task 的 `authorization_ref`。asset-library 使用单项 AppStudio 批量摘要请求按委托用户执行 `appstudio.build.manage`，以 `StudioBuild.owner_user_id` 解析 canonical owner；服务身份、调用方 owner 参数或 Build 协作者身份均不能替代该解析。
 - Artifact producer key 在 owner 范围唯一；StudioBuild Bundle 固定使用 `studio-build:<studio_build_id>:bundle`。同一 StudioBuild 的自动 TaskAttempt 重试复用同一 Artifact；新的逻辑构建必须使用新的 StudioBuild ID，冲突内容返回稳定幂等错误。
 - ApplicationExecutor 负责 Provider 协议和下载，只能推送字节流、受控上传会话或可信存储引用，不得传递凭证、任意 URL、私网地址或原始响应。
+- `appstudio.build.execute@1.1` Task Worker 可以从 Infrastructure 受控内容接口取得实际字节流，再调用既有 `POST /api/v1/artifacts -> /artifacts/{artifact_id}/content -> /artifacts/{artifact_id}/complete`。Asset Library 接受的是已鉴权调用中的字节流及声明的 size/SHA-256，不解析或抓取 `infra-output://`。
+- `infra-output://<output_id>` 不是可信外部 URL、对象存储地址或 bearer token，Asset Library 不保存它作为内容位置，也不得主动回调 Infrastructure。Task Worker 必须在 complete 前后校验实际字节大小和 digest；不一致、传输中断或内容不完整不得把 Artifact 置为 ready。
+- 同一 StudioBuild 自动 Attempt 重试按 producer key 复用既有 Artifact 和已完成内容；相同 digest 的完成重放幂等，不同 digest 返回稳定内容幂等冲突。Asset Library 完成内容后返回 canonical size/digest，供 Task Worker 调用 Infra attach-artifact。
 - `POST /api/v1/artifacts/{artifact_id}/register` 只接受 ready Artifact；同一事务创建或命中 Asset/AssetVersion、复用 Blob 创建 original Representation、更新登记状态并写 outbox。
 - 登记失败由 asset-library Artifact 保存；不得创建空 AssetVersion，也不得改变 AtomicTask 终态。
 - `POST /api/v1/artifact-registrations` 是兼容入口，行为和事实源与 canonical register 动作相同。

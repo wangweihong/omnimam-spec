@@ -20,6 +20,7 @@
 - Artifact 处理状态与登记状态独立，登记失败不得改写 AtomicTask 终态。
 - StudioBuild Bundle 使用 `producer_type=studio_build`、`producer_id=StudioBuild.id` 和 `studio-build:<studio_build_id>:bundle`；owner 通过 AppStudio 受控投影取 `StudioBuild.owner_user_id`。
 - 同一 StudioBuild 的自动 TaskAttempt 重试复用同一 Artifact；新的逻辑 Build 必须创建新的 StudioBuild ID。
+- Task Worker 可以把从 Infrastructure 受控内容接口取得并完成大小/SHA-256 校验的字节流交付给 Artifact 既有 `create -> content upload -> complete` 流程；`infra-output://` 不是 Asset Library 可自行抓取的 URL 或存储位置。
 - Artifact 始终 owner-only；Build 协作者、管理员角色或仅持有 producer ID 均不继承 Artifact 权限。
 - StudioBuild producer 摘要通过 AppStudio 批量投影读取，不存在或不可见时保留 ID 并返回空摘要，禁止读取 AppStudio 私表或逐项 N+1 查询。
 - 同一 Artifact 的幂等登记返回同一 Asset/AssetVersion，不重复复制 Blob。
@@ -59,7 +60,7 @@
 
 ## 8. 当前状态
 
-素材、上传、Artifact、Representation、组织、回收站和任务协作已有多次正式发布并正在实施；StudioBuild producer 与 AppStudio 摘要投影修订已由 `spec-v1.17.1` 发布。正文元数据可能仍标记 draft，具体可实施范围和门禁以 `RELEASE.md` 为准，不由 Context 提升未发布能力。
+素材、上传、Artifact、Representation、组织、回收站和任务协作已有多次正式发布并正在实施；StudioBuild producer 与 AppStudio 摘要投影修订已由 `spec-v1.17.1` 发布。本轮接受 Task Worker 从 Infrastructure 受控流取得字节的模块合同仍是待新 Release 草稿。正文元数据可能仍标记 draft，具体可实施范围和门禁以 `RELEASE.md` 为准，不由 Context 提升未发布能力。
 
 ## 9. 不在本领域定义的内容
 
