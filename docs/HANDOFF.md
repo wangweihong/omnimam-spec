@@ -26,6 +26,7 @@
 - 已将 Agent/Infrastructure S1、Infrastructure S2、四域 Context、`GLOBAL_CONTEXT.md` 与 `CHANGELOG.md` 切换为 `spec-v1.17.2` 已发布状态，并在 `RELEASE.md` 新增用户确认记录。
 - 已创建 Release 元数据提交 `5990e6054ec8b79a342ef6e979b6522b855378aa`，提交信息为 `release: publish Hermes endpoint and runtime output contracts`。
 - 已创建 annotated tag `spec-v1.17.2`，并确认其 peeled commit 为 `5990e6054ec8b79a342ef6e979b6522b855378aa`。
+- 已将 `master` 和 annotated tag `spec-v1.17.2` 推送到 `origin`；tag 保持指向 Release 元数据提交，不随最终 HANDOFF 提交移动。
 
 ## 当前进行中
 
@@ -70,11 +71,11 @@
 ## 未完成事项
 
 - 本轮规格实施无未完成项。
-- 本地发布和提交已完成；用户未要求推送，当前未推送远端。
+- 本地发布、提交和远端推送均已完成。
 
 ## 推荐下一步
 
-- 后续如需同步远端，显式推送 `master` 和 annotated tag `spec-v1.17.2`；推送前无需重做已完成的规格与 Release 提交。
+- 无发布遗留操作；后续任务直接以 `spec-v1.17.2` implementation gate 为正式基线。
 
 Next Prompt:
 
