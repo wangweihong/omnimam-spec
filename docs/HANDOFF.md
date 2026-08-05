@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 当前目标：将 Agent 当前完整 S1/S2 与 Asset Library/AppStudio StudioBuild producer 契约一起作为 `spec-v1.17.1` Release 发布。
-- 状态：已完成。正式发布记录已提交，三域定向验证全部通过，本地 annotated tag `spec-v1.17.1` 已创建。
+- 状态：已完成。正式发布记录已提交，三域定向验证全部通过，`master` 与 annotated tag `spec-v1.17.1` 已推送至 `origin`。
 
 ## 本次已完成
 
@@ -15,7 +15,7 @@
 - 用户随后明确“一起发布”，release 范围扩展为 Agent、AppStudio 和 Asset Library。
 - 已更新 `RELEASE.md` 的 `spec-v1.17.1` 记录，完整列出 Agent S1 与六个 S2，以及本次 StudioBuild producer 涉及的两域 S1/S2 文件。
 - 已将 Agent Context 的 S2 状态从 Draft 修正为正式 S2，并将 AppStudio/Asset Library StudioBuild 修订从 Unreleased 更新为 `spec-v1.17.1`；同步 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md` 和 `CHANGELOG.md`。
-- 已创建 release commit `35c2a58`（`release: publish agent and studio build producer spec`）和本地 annotated tag `spec-v1.17.1`；tag 指向该 release commit。
+- 已创建 release commit `35c2a58`（`release: publish agent and studio build producer spec`）和 annotated tag `spec-v1.17.1`；tag 指向该 release commit，分支与 tag 已推送至 `origin`。
 
 ## 当前进行中
 
@@ -32,8 +32,8 @@
 
 - Agent 部分是当前完整规格的正式状态确认，不虚构新的产品语义、API、Schema、权限、错误码或事件变更。
 - 同一 release 同时正式发布已提交的 StudioBuild producer、owner、幂等、委托授权、批量摘要和 owner-only 可见性契约。
-- 发布记录指向内容基线 commit；release 元数据完成验证后单独提交并创建本地 `spec-v1.17.1` tag。
-- 用户未要求推送，本次不推送远端。
+- 发布记录指向内容基线 commit；release 元数据完成验证后单独提交并创建 `spec-v1.17.1` tag。
+- 用户后续明确要求推送，`master` 与 release tag 一并发布到 `origin`。
 
 ## API、Schema、依赖或配置变化
 
@@ -47,16 +47,16 @@
 - `spec-v1.17.1` 版本唯一、基线 commit 正确，三域 S1/S2 与 Context 清单全部存在且已列入 release。
 - StudioBuild producer 枚举与 SQL CHECK、批量 API 1/200 边界、字段白名单和 `appstudio.build.manage` 权限校验通过。
 - 三域 Context、Global Context 和 Context Map 的 `spec-v1.17.1` 状态一致，`git diff --check` 通过。
-- release commit 文件范围复核通过；本地 annotated tag `spec-v1.17.1` 指向 release commit `35c2a58`。
+- release commit 文件范围复核通过；annotated tag `spec-v1.17.1` 指向 release commit `35c2a58`，远端推送成功。
 - 按约束不运行全仓测试。
 
 ## 未完成事项
 
-- 无。用户未要求推送，release commit 与 tag 尚未推送远端。
+- 无。
 
 ## 推荐下一步
 
-- 在用户明确要求推送后，推送 `master` 与 annotated tag `spec-v1.17.1`；推送前无需重复已通过的定向契约验证。
+- 等待下一项由用户确认的 Spec 任务；无需重复本次发布已通过的定向契约验证。
 
 Next Prompt:
 
