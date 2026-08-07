@@ -1,5 +1,46 @@
 # Release Records
 
+## spec-v1.18.0
+
+- commit: 9726555
+- status: released
+- confirmed_by: user（2026-08-07 请求直接基于现有代码实施 AppStudio Coding Agent 全流程）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+  - infrastructure
+  - task-center
+  - user-model
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/user-model/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/permissions.yaml
+  - 01_contracts/domains/agent/events.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/agent/runtime-protocol-fixtures.yaml
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/events.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/task-center/function-registry.schema.yaml
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/user-model/openapi.yaml
+  - 01_contracts/domains/user-model/schema.sql
+  - 01_contracts/domains/user-model/module-contract.md
+- implementation_gate: All CHAT and CODING AgentInvocation instances use the canonical `agent.invocation.execute@1.0` Task contract with stable references, short-lived authorization references, resource-version fencing and recovery cursors only. AppStudio creation atomically provisions the selected model binding, Coding Agent generation and first invocation; failed first Task submission preserves the READY application for idempotent retry. Coding Agent operations are exposed only through the application-level AppStudio Agent facade. Runtime execution uses profile-specific Hermes JSON-RPC/WebSocket and OpenCode REST/SSE adapters, Attempt-scoped Model Access Grants and Workspace Tool Grants, monotonic Task terminal projection, and source restore through a new Restore ChangeSet/Revision while preserving history.
+
 ## spec-v1.17.2
 
 - commit: 64435e32db213bf4483d057039036375ee545183
