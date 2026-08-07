@@ -378,8 +378,10 @@ ModelAccessSpec
 
 Infra Service 负责：
 
-* 接收由 `modelgateway` 或上层 Provider 解析后的 ModelAccessSpec。
-* 解析其中的 CredentialRef。
+* 只接受受信 Agent/Task 执行链路提供的短期 `AgentModelAccessGrant` 引用。
+* 以 Infrastructure 服务身份向 User Model 解析 grant，并由 `modelgateway` 形成 ModelAccessSpec。
+* 校验 grant 的 owner、Agent、用途、模型、配置版本、有效期和撤销状态。
+* 解析其中的 CredentialRef 或不透明 credential handle。
 * 在 Runtime 启动阶段注入 Endpoint、模型名称和凭证。
 * 防止 Secret 出现在普通查询接口和日志中。
 
@@ -1343,6 +1345,8 @@ SECRET
 
 ## 13.2 ModelAccessSpec
 
+Agent Runtime 创建请求只携带短期 `AgentModelAccessGrant` 引用，不直接携带以下结构。Infrastructure 以服务身份解析且校验通过后，才在内存中获得标准 ModelAccessSpec：
+
 示例：
 
 ```json
@@ -1362,12 +1366,13 @@ SECRET
 
 Infra Service 负责：
 
-1. 校验配置绑定是否被 RuntimeProfile 支持。
-2. 校验 CredentialRef 是否允许当前请求方使用。
-3. 解析 CredentialRef。
-4. 将凭证注入 Runtime。
-5. 确保普通查询接口不返回明文凭证。
-6. 对日志进行 Secret 脱敏。
+1. 校验调用方工作负载身份、grant 有效期及 owner/Agent/usage/config version 范围。
+2. 校验配置绑定是否被 RuntimeProfile 支持。
+3. 校验 CredentialRef 是否允许当前 grant 使用。
+4. 解析 CredentialRef。
+5. 将凭证注入 Runtime。
+6. 确保普通查询接口不返回 grant、ModelAccessSpec 或明文凭证。
+7. 对日志进行 Secret 脱敏。
 
 Agent Runtime 自行调用模型。
 
@@ -2223,7 +2228,7 @@ Infra Service 不得通过普通接口返回明文凭证。
 
 ## R-INFRA-014
 
-AgentRuntime 和 StudioRuntime 自行调用 LLM，Infra Service 只注入 ModelAccessSpec 和凭证。
+AgentRuntime 和 StudioRuntime 自行调用 LLM。Agent Runtime 的模型配置必须由 Infra Service 以服务身份解析短期 AgentModelAccessGrant 后注入 ModelAccessSpec 和凭证；不得信任调用方提交的模型地址或明文凭证。
 
 ## R-INFRA-015
 
@@ -2332,3 +2337,4 @@ Infra Service 的最终边界是：
 - `AC-INFRA-001-08`：`USER_ACCESSIBLE` Endpoint 必须校验 owner 与当前授权，`PUBLIC` 默认禁用；Host Port 或私网地址不得进入普通列表、事件和跨域摘要。
 - `AC-INFRA-001-09`：Provider 创建成功但响应超时后，恢复必须依赖 requestId 和 Provider 引用对账，不得创建第二个 Runtime。
 - `AC-INFRA-001-10`：孤儿清理只能作用于有平台受控标记、稳定 owner 且超过宽限期的 Runtime；未知 Docker 对象只告警，不自动删除。
+- `AC-INFRA-001-11`：Agent Runtime 启动只接受短期 grant 引用；Infrastructure 以服务身份校验 owner/Agent/usage/config version/有效期后解析并注入，普通响应、事件、日志和持久化不得包含 grant、ModelAccessSpec 或明文凭证。

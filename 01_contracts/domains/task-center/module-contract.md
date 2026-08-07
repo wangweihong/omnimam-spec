@@ -1,6 +1,6 @@
 # Task Center Module Contract
 
-本文档定义当前 task-center S2 模块边界。产品语义以 `00_product/domains/task-center/product-spec.md` 为准；第一阶段 Infra-backed 函数结构以 `function-registry.schema.yaml` 为准，逐项合同以 `function-registry.yaml` 为准。
+本文档定义当前 task-center S2 模块边界。产品语义以 `00_product/domains/task-center/product-spec.md` 为准；第一阶段 Agent/AppStudio 函数结构以 `function-registry.schema.yaml` 为准，逐项合同以 `function-registry.yaml` 为准。
 
 ## 1. 模块边界
 
@@ -14,6 +14,7 @@
 | function-registry | 可用 functionRef、输入输出 schema、能力要求、执行模式和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
 | task-worker | 消费 AtomicTask、执行已注册 handler、管理 Attempt 级恢复、RuntimeOutput 字节交付和受控结果映射 | Agent/AppStudio/Infra 业务状态、Artifact ready 事实、业务数据库、Docker Provider 私有实现 |
 | infra-adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求与输出声明，映射取消/超时/重试、稳定运行引用和受控输出读取 | 任意用户命令、宿主机路径、Docker Socket、Provider 私有 API |
+| agent-executor | 执行 `agent.invocation.execute@1.0`，调用 profile-specific adapter 并单调投影事件 | 创建第二套 Task 状态机、直接写 Agent 私表、将 Hermes/OpenCode 原始协议暴露给 API |
 | name-catalog | 系统任务名称 key、受控参数校验和 BCP 47 多语言投影 | 翻译用户自定义名称、按请求语言改写持久化 name |
 | access | project、namespace、createdBy 和服务身份访问控制 | identity 主体生命周期 |
 
@@ -52,12 +53,13 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Task Worker 以原任务 producer context 和 `authorization_ref` 调用 Asset Library 既有 `create -> content upload -> complete`，再调用 Infra `attach-artifact`。只有 Asset Library 内容完成且 size/digest 一致时才能投影成功；Task 结果只保存 Artifact ID/digest，不保存 `content_ref`、`base_url` 或 staging 引用。
 - 取消、超时、自动重试和 Worker/Infra 重启必须使用稳定幂等键与已保存的运行引用恢复或清理。`IN_PROGRESS` 通过延迟回调保持同一 Attempt，不长期占用 Worker，也不得重复创建 Docker Job/Service。以上 Infra-backed 规则对应 S1 `BR-TASK-147..152`。
 
-### 3.1 Infra-backed Function Registry
+### 3.1 Agent/AppStudio Function Registry
 
-`function-registry.yaml` 是第一阶段七个 canonical functionRef 的只读 S2 合同，不是运行时配置、数据库种子或用户可写资源：
+`function-registry.yaml` 是第一阶段八个 canonical functionRef 的只读 S2 合同，不是运行时配置、数据库种子或用户可写资源：
 
 | functionRef | 模式 | 来源领域 | 业务聚合 |
 | --- | --- | --- | --- |
+| `agent.invocation.execute` | SERVICE | agent | AgentInvocation |
 | `agent.runtime.ensure` | SERVICE | agent | AgentRuntime |
 | `agent.runtime.stop` | SERVICE | agent | AgentRuntime |
 | `appstudio.preview.ensure` | SERVICE | appstudio | StudioPreviewRuntime |
@@ -68,7 +70,8 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - 服务启动必须先用 `function-registry.schema.yaml` 校验 registry，确认 `function_ref + contract_version` 唯一、每个 functionRef 恰有一个 `ACTIVE` 版本、所有 I/O schema ref 可解析、引用的错误码存在且 retryable 属性一致；校验失败时 Task Center 不进入就绪状态。新任务只选择 `ACTIVE`，`RETAINED` 仅供历史任务，`DISABLED` 不允许创建或恢复执行。
 - 创建 AtomicTask 时先校验调用服务身份与 `allowed_callers`，再按 input schema 校验 `arguments`。未注册或调用方不可用返回 `ERR_TASK_FUNCTION_REF_NOT_REGISTERED`，输入不合法返回 `ERR_TASK_FUNCTION_INPUT_INVALID`，两者都不得创建任务或调用 Infra。
-- `required_capabilities`、执行模式、默认重试、取消、超时和 Infra Adapter 映射由固定合同派生；调用方不得提交 capability、修改 handler、扩大 RuntimeProfile、传入镜像/命令或覆盖 source policy。允许的 retry/timeout 覆盖不能超过合同上限。
+- `agent.invocation.execute@1.0` 的 arguments 只能包含 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期 `agent-invocation-grant://`、预期资源版本和可选 runtime/event 恢复游标。Task Worker agent-executor 仅可在当前 Attempt 内以受信身份解析该 grant，读取 Invocation/Session/消息上下文、Runtime Endpoint、ModelAccessSpec 和 CODING Workspace Tool grant；解析结果不得进入 Task arguments/result、事件、日志或持久化投影。Coding Runtime 必须通过 Workspace Tool 自行提交 ChangeSet，Task Worker 不得调用 AppStudio `ApplyChangeSet`。
+- `required_capabilities`、执行模式、默认重试、取消、超时和 Execution/Infra Adapter 映射由固定合同派生；调用方不得提交 capability、修改 handler、扩大 RuntimeProfile、传入镜像/命令或覆盖 source policy。允许的 retry/timeout 覆盖不能超过合同上限。
 - AtomicTask 保存 `function_contract_version` 和 registry 登记的规范化合同摘要，并保存派生后的 capabilities/retry/timeout/cancel 快照。摘要固定为 `sha256:<64 lowercase hex>`：对包含 `function_entry`、`input_schema`、`output_schema` 的对象执行 RFC 8785 JSON Canonicalization Scheme，其中 function entry 先将生命周期字段 `status` 规范化为 `ACTIVE`，再排除 `contract_digest` 和 `x-s1-refs`，I/O schema 使用已解析内容，最后计算 SHA-256。`status` 只控制新任务选择与历史恢复，不改变已发布合同摘要；启动加载和历史恢复都必须复算并比对登记值。服务必须保留所有非终态任务及历史保留期仍引用的 `ACTIVE/RETAINED` 合同，缺失或摘要不一致返回 `ERR_TASK_FUNCTION_CONTRACT_UNAVAILABLE`，不得回退到最新版本。
 - Task Worker 只在满足固定 capability 集时接收任务；没有合格 Worker 返回可重试 `ERR_TASK_FUNCTION_CAPABILITY_UNAVAILABLE`。Worker 返回的 `TaskOutput.result` 必须按固定 output schema 校验，失败返回 `ERR_TASK_FUNCTION_OUTPUT_INVALID`，不得把不合法结果投影为业务成功。
 - Task 级幂等键使用 registry 模板和内部 `retry_generation`；自动 Attempt 重试保持同一 AtomicTask。Infra `request_id` 固定为 `atomic_task_id:attempt_no`：同一 Attempt 的回调/超时恢复重放同一请求，确认失败后的新 Attempt 使用新 request ID，手动重试创建新 AtomicTask 和新 generation。
@@ -107,6 +110,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Conductor 与业务表使用独立数据库或 schema，互不直接写入。
 - 运行时事件按 `runtime_event_id` 幂等落入 `runtime_projection_events`；资源只接受更高 `runtime_sequence` 或确定性更强的终态。
 - reconciler 周期枚举全部非终态 execution，修复漏事件、乱序和 API/运行时重启窗口。
+- reconciler 对 execution 丢失及 SUCCESS、FAILED、TIMEOUT、CANCELED 终态都调用已注册 observer；Agent observer 按当前 Task/资源版本投影，服务 context 取消时 reconciler 必须退出。
 - reconciler 同时恢复已接受但尚未绑定非终态运行时的 MANUAL execution；目标创建以 ScheduleExecution ID 派生稳定幂等键并在计划活动锁内执行，Worker/API/运行时重启不得重复物化目标。
 - 状态、进度或结果变化递增 `resource_version`；消费者按资源 ID 与版本投影。
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
@@ -120,7 +124,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 ## 6. 跨域协作
 
 - Agent 和 AppStudio 只能创建带业务授权快照的 AtomicTask；Infra 操作统一经过 `Task Center -> Task Worker -> infra-adapter -> Infra Service`。Task Center 不把 Agent/AppStudio 的任务输入直接透传为 Docker 请求。
-- Agent 的 `agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
+- Agent 的 `agent.invocation.execute`、`agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentInvocation、AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
 - Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；StudioWorkspace 只能由 AppStudio 的受控授权产生；Preview 使用当前 Workspace Revision；Build 使用固定 Snapshot；Production 使用固定 Artifact。
 - `appstudio.build.execute@1.1` 将 registry 固定输出声明映射为 Infra `output_declarations`。Job 成功后先消费 RuntimeOutput descriptor，再鉴权流式读取字节并完成 Asset Library Artifact 内容，最后幂等回链 RuntimeOutput；Task Center 不缓存 staging 内容或把 `infra-output://` 暴露给来源领域。
 

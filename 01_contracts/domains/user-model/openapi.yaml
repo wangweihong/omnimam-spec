@@ -444,7 +444,7 @@ components:
         success: { type: boolean }
     DefaultUsage:
       type: string
-      enum: [assistant.default, quick, translation]
+      enum: [assistant.default, quick, translation, agent.chat, agent.coding]
     HealthStatus:
       type: string
       enum: [unknown, healthy, unhealthy]

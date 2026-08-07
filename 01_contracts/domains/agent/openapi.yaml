@@ -463,8 +463,14 @@ components:
         status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, SUCCEEDED, FAILED, CANCELING, CANCELED]}
         user_message_id: {type: string, nullable: true}
         assistant_message_id: {type: string, nullable: true}
-        atomic_task_id: {type: string, nullable: true, description: 纯 CHAT 可为空；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必填。}
+        atomic_task_id: {type: string, nullable: true, description: 仅 QUEUED 在任务绑定提交前可短暂为空；任何执行或取消前必须已绑定 AtomicTask，CHAT/CODING 使用 agent.invocation.execute@1.0。}
+        runtime_binding_id: {type: string, nullable: true}
+        runtime_session_ref: {type: string, nullable: true}
+        runtime_invocation_ref: {type: string, nullable: true}
+        last_event_sequence: {type: integer, minimum: 0, default: 0}
         failure_code: {type: string, nullable: true}
+        failure_message: {type: string, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
     AgentMessage:

@@ -21,9 +21,10 @@ CREATE TABLE agents (
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'STARTING', 'RUNNING', 'IDLE', 'SUSPENDED', 'ERROR', 'DISABLED', 'DELETING')),
   disabled BOOLEAN NOT NULL DEFAULT FALSE,
   runtime_policy_json TEXT NOT NULL DEFAULT '{}',
-  last_active_at TIMESTAMPTZ
+  last_active_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ
 );
-CREATE INDEX idx_agents_owner_status ON agents(owner_user_id, status, created_at);
+CREATE INDEX idx_agents_owner_status ON agents(owner_user_id, status, created_at) WHERE deleted_at IS NULL;
 CREATE INDEX idx_agents_workspace ON agents(workspace_type, workspace_id);
 
 -- s1_refs: R-AGENT-002, R-AGENT-017; source: 8.2 AgentSession, 12 消息与交互.
@@ -78,17 +79,27 @@ CREATE TABLE agent_invocations (
   user_message_id TEXT,
   assistant_message_id TEXT,
   atomic_task_id TEXT,
-  runtime_operation_ref TEXT,
+  runtime_binding_id TEXT,
+  runtime_session_ref TEXT,
+  runtime_invocation_ref TEXT,
+  last_event_sequence INTEGER NOT NULL DEFAULT 0 CHECK (last_event_sequence >= 0),
+  submission_generation INTEGER NOT NULL DEFAULT 0 CHECK (submission_generation >= 0),
+  task_expected_resource_version INTEGER,
+  terminal_projected_task_id TEXT,
+  terminal_projected_at TIMESTAMPTZ,
   failure_code TEXT,
   failure_message TEXT NOT NULL DEFAULT '',
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   idempotency_key TEXT NOT NULL,
-  CHECK (type = 'CHAT' OR atomic_task_id IS NOT NULL)
+  CHECK (atomic_task_id IS NOT NULL OR status = 'QUEUED' OR (status = 'FAILED' AND failure_code = 'ERR_AGENT_INVOCATION_TASK_UNAVAILABLE')),
+  CHECK (atomic_task_id IS NULL OR task_expected_resource_version IS NOT NULL),
+  CHECK (terminal_projected_task_id IS NULL OR terminal_projected_task_id = atomic_task_id)
 );
 CREATE UNIQUE INDEX idx_agent_invocations_idempotency ON agent_invocations(agent_id, idempotency_key);
 CREATE INDEX idx_agent_invocations_session_status ON agent_invocations(session_id, status, created_at);
 CREATE INDEX idx_agent_invocations_task ON agent_invocations(atomic_task_id);
+CREATE INDEX idx_agent_invocations_runtime_binding ON agent_invocations(runtime_binding_id) WHERE runtime_binding_id IS NOT NULL;
 
 -- s1_refs: R-AGENT-002; source: 14 Memory.
 CREATE TABLE agent_memories (
@@ -197,11 +208,14 @@ CREATE TABLE agent_runtime_bindings (
   state TEXT NOT NULL CHECK (state IN ('CREATING', 'STARTING', 'READY', 'RUNNING', 'STOPPING', 'STOPPED', 'FAILED', 'DELETED')),
   activity_state TEXT NOT NULL CHECK (activity_state IN ('IDLE', 'ACTIVE', 'SUSPENDED')),
   health_status TEXT NOT NULL CHECK (health_status IN ('UNKNOWN', 'HEALTHY', 'UNHEALTHY')),
+  current_task_id TEXT,
+  current_operation TEXT CHECK (current_operation IS NULL OR current_operation IN ('START', 'RECOVER', 'SUSPEND', 'STOP', 'DELETE')),
   last_health_at TIMESTAMPTZ,
   started_at TIMESTAMPTZ,
   stopped_at TIMESTAMPTZ
 );
-CREATE UNIQUE INDEX idx_agent_runtime_current ON agent_runtime_bindings(agent_id) WHERE state NOT IN ('DELETED', 'STOPPED', 'FAILED');
+CREATE UNIQUE INDEX idx_agent_runtime_current ON agent_runtime_bindings(agent_id) WHERE state <> 'DELETED';
+CREATE INDEX idx_agent_runtime_current_task ON agent_runtime_bindings(current_task_id) WHERE current_task_id IS NOT NULL;
 
 -- s1_refs: R-AGENT-002, R-AGENT-014, R-AGENT-019; source: 28 事件.
 CREATE TABLE agent_operation_events (

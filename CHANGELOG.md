@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- 补齐 Agent/AppStudio Coding Agent 端到端契约：所有 CHAT/CODING 统一使用 `agent.invocation.execute@1.0`，Task 仅携带 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期授权引用、资源版本和恢复游标；消息正文、owner、Workspace、Runtime Endpoint、模型凭据、用户密钥和 Provider 配置不得进入 Task。
+- AppStudio 创建请求新增初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，初始化事务原子创建 Application、Repository、Revision 0、Coding Agent、默认 Session、WorkspaceBinding 与 ACTIVE primary ModelBinding；事务后自动创建首条 Message/Invocation，Task 提交失败时保留 READY 项目并允许幂等重试。
+- 新增 AppStudio application-level Coding Agent 查询、消息、Invocation 查询/取消/SSE、suspend/resume/replace 契约和 generation 隔离；Invocation 聚合已应用 ChangeSet 的最终源码 Revision，历史阶段恢复继续调用 source restore 并创建新的 Restore ChangeSet/Revision，完整保留 Session、Message、Invocation、原 ChangeSet 与 Revision 历史。
+- 固化 Agent Model Access Grant、AppStudio Workspace Tool Grant、Task 终态单调投影和 Hermes/OpenCode 独立协议适配边界；Worker 只执行协议和投影结果，不得代替 Coding Agent 直接调用 AppStudio `ApplyChangeSet`。`agent.invocation.execute@1.0` 正式 digest 为 `sha256:7e076a03a291c331443bc9f8638ab355b2a4ac0c71711a148c9b1065a67e0868`。
 - 补齐 Hermes Endpoint 与 RuntimeOutput 契约闭环：AgentRuntimeAdapter 在 Agent、Session、Invocation 和 Runtime Binding 校验后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve；Runtime 生命周期写操作仍统一经过 Task Center，普通 Endpoint 摘要、Agent/Task 数据、事件和日志均不得传播 `base_url`、Host Port 或私网地址。
 - Infrastructure 新增 Endpoint resolve、RuntimeOutput 内容流读取与幂等 Artifact 回链 API；Docker Service 只发布 RuntimeProfile 声明的命名容器端口并绑定平台内部接口，映射与健康检查完成后 Endpoint 才进入 READY。
 - Docker Job 必须从受控输出根读取声明普通文件的实际字节，拒绝目录、符号链接逃逸和根外路径，计算 `size_bytes` 与 `sha256:<64 hex>` 并复制到 Infra staging 后生成非 bearer `infra-output://<output_id>`；新增 `ERR_INFRA_ENDPOINT_NOT_READY` 与输出收集、内容不可用、完整性不一致错误码 `240804..240807`。

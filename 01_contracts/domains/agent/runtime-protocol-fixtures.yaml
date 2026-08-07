@@ -1,0 +1,49 @@
+schema_version: "1.0"
+description: Agent Runtime 固定镜像协议 fixture；用于发布前验证，不是运行时配置。
+x-s1-refs:
+  user_stories: [US-AGENT-001]
+  business_rules: [BR-AGENT-001, R-AGENT-020, R-AGENT-021]
+profiles:
+  - profile_id: agent.hermes
+    image: nousresearch/hermes-agent:v2026.8.3
+    manifest_digest: sha256:16788311e2fa3035456bdc1bafb8ec2b1777db64ebf020af9bb7eb73c3712c9e
+    headless_command: [hermes, serve, --host, 127.0.0.1, --port, "9119", --skip-build]
+    discovery_path: /openapi.json
+    transport: JSON_RPC_WEBSOCKET_NDJSON
+    control_path: /api/ws
+    operations:
+      create_session: session.create
+      send_message: prompt.submit
+      cancel_invocation: session.interrupt
+    events:
+      - message.start
+      - message.delta
+      - message.complete
+      - tool.start
+      - tool.complete
+      - error
+      - session.info
+      - status.update
+    idempotency:
+      session_key: agent_session_id
+      invocation_key: agent_invocation_id
+      replay_rule: 复用已接受的 runtime_session_ref/runtime_invocation_ref，不重复提交 prompt。
+  - profile_id: agent.opencode
+    image: ghcr.io/anomalyco/opencode:1.18.13
+    manifest_digest: sha256:246ebd75d25380cde481b7507d38ed01ce813d541eb4c7412a25ba7d9bd1abe7
+    headless_command: [opencode, serve, --hostname, 127.0.0.1, --port, "4096"]
+    discovery_path: /doc
+    transport: REST_AND_SSE
+    operations:
+      health: GET /global/health
+      create_session: POST /session
+      send_message: POST /session/{sessionID}/message
+      cancel_invocation: POST /session/{sessionID}/abort
+      stream_events: GET /event
+    idempotency:
+      session_key: agent_session_id
+      invocation_key: agent_invocation_id
+      replay_rule: 复用已接受的 session ID 和 Runtime Invocation 关联，不重复提交 message。
+release_gate:
+  required_checks: [image_manifest, headless_start, health, create_session, send_message, event_stream, cancel, idempotent_replay]
+  failure_policy: 任一固定 Profile 未通过时不得发布或启用该 Profile 合同。

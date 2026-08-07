@@ -17,6 +17,7 @@
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
 - `USER_ACCESSIBLE` Endpoint 必须校验 owner 和当前授权，`PUBLIC` 第一阶段默认禁用；Host Port 和私网地址不得进入普通摘要。
 - Endpoint resolve 返回的短时 `base_url` 不得进入 Agent 表、Task 结果、事件、日志或普通 Endpoint 摘要。
+- Agent Invocation Worker 只能凭 Attempt-scoped authorization ref 解析 READY Runtime Endpoint；Infrastructure 不接收消息正文、用户模型凭证或 AppStudio Workspace Tool grant，也不拥有 Invocation 终态。
 
 ## 3. 正式事实源
 
@@ -29,6 +30,7 @@
 | `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.17.2`) | 错误、权限、事件和模块边界 |
 
 Infrastructure 当前 S1/S2、Endpoint resolve 与 RuntimeOutput 内容交付闭环已由 `spec-v1.17.2` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。
+Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` 发布后作为新增实现依据。
 
 ## 4. 直接依赖
 

@@ -115,7 +115,7 @@ Adapter 支持能力
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | ownerUserId | string | 是 | 所属用户 ID |
-| usage | enum | 是 | `assistant.default`、`quick`、`translation` |
+| usage | enum | 是 | `assistant.default`、`quick`、`translation`、`agent.chat`、`agent.coding` |
 | providerId | string | 是 | 默认模型所属 Provider ID |
 | modelId | string | 是 | 默认模型 ID |
 | updatedAt | string(date-time) | 是 | 更新时间 |
@@ -153,6 +153,26 @@ UserModelExecutionContext
 
 `credentialHandle` 是短期、不透明、受范围约束的凭证句柄，不包含凭证明文。Gateway 只接受由受信任 User Model 模块签发且版本未过期的上下文，不接受客户端直接构造 Provider 地址、凭证或 Adapter ID。
 
+### 3.7 AgentModelAccessGrant（短期模型授权）
+
+Agent 启动或恢复时，User Model 以当前用户、Agent、用途、模型与配置版本签发短期 grant：
+
+```text
+AgentModelAccessGrant
+  grant_id
+  owner_user_id
+  agent_id
+  usage
+  provider_id
+  model_id
+  config_version
+  credential_handle
+  issued_at
+  expires_at
+```
+
+grant 不建表、不返回客户端、不包含明文凭证或任意执行地址。只有受信任 Agent 服务可申请；Infrastructure 可在 Runtime 启动阶段解析为注入材料，Task Worker agent-executor 仅可在当前 `agent-invocation-grant://` 委托和 Attempt 内解析协议执行所需的 ModelAccessSpec。过期、撤销、owner/agent/usage/config version/Invocation/Attempt 不匹配时必须拒绝，解析结果不得持久化或进入 Task、结果、事件和日志。
+
 ## 4. 业务规则
 
 - **BR-USER-MODEL-01** 访问 User Model 页面和 API 依赖系统基础登录态。
@@ -177,7 +197,7 @@ UserModelExecutionContext
 - **BR-USER-MODEL-20** 系统按默认 30 秒周期异步探测当前用户已启用模型；调度不阻塞列表读取，探测实现仍由 Gateway 提供。
 - **BR-USER-MODEL-21** 旧探测结果不得覆盖较新配置版本或较新健康事实。
 - **BR-USER-MODEL-22** 删除模型时清理当前用户范围内引用该模型的默认绑定。
-- **BR-USER-MODEL-23** 默认用途包括 `assistant.default`、`quick`、`translation`。
+- **BR-USER-MODEL-23** 默认用途包括 `assistant.default`、`quick`、`translation`、`agent.chat`、`agent.coding`。
 - **BR-USER-MODEL-24** 默认候选必须属于当前用户，且 Provider 与模型均启用、模型健康、能力匹配并且 `executable=true`。
 - **BR-USER-MODEL-25** 保存默认模型只影响当前用户，并在保存时重新执行使用资格校验。
 - **BR-USER-MODEL-26** 下游只能读取当前用户权限裁剪后的模型投影或调用受控解析接口，不得读取 User Model 私有表。
@@ -201,6 +221,8 @@ UserModelExecutionContext
 - **BR-USER-MODEL-44** 正式 canonical API 统一使用 `/api/v1/user-model/`；旧 `/model-providers`、`/provider-models`、`/default-models` 和 `/model-options` 不保留别名、重定向或兼容期。
 - **BR-USER-MODEL-45** User Model 与 Model Gateway 必须在同一发布批次切换 ProviderType、能力解析和 Gateway 调用契约。
 - **BR-USER-MODEL-46** `UserModelProvider` 与 `ApplicationEngineInstance` 权限、生命周期、名称唯一性、Binding 和凭证规则保持独立。
+- **BR-USER-MODEL-47** Agent 启动和恢复必须按 `agent.chat` 或 `agent.coding` 解析 ACTIVE primary binding 并签发短期 `AgentModelAccessGrant`；缺失或无资格时不得 fallback，也不得先创建 Runtime 或 Task。
+- **BR-USER-MODEL-48** grant 只能由 Agent 服务申请；Infrastructure 与受当前 Invocation 委托的 Task Worker agent-executor 可按各自用途解析，必须绑定 owner、Agent、usage、模型、配置版本、有效期及当前 Invocation/Attempt 范围；不得返回客户端、持久化明文凭证或用于跨 Invocation 模型请求代理。
 
 ## 5. 用户故事
 
@@ -250,11 +272,13 @@ UserModelExecutionContext
 
 ### US-USER-MODEL-12 设置默认模型
 
-用户可以为 `assistant.default`、`quick`、`translation` 保存满足当前用途能力和执行资格的默认模型。
+用户可以为 `assistant.default`、`quick`、`translation`、`agent.chat`、`agent.coding` 保存满足当前用途能力和执行资格的默认模型。
 
 ### US-USER-MODEL-13 下游读取与执行用户模型
 
 下游读取权限裁剪后的模型投影；执行前由 User Model 生成带配置版本的执行上下文，再由 Gateway 执行对应 Operation。
+
+Agent 服务可在 Runtime 启动或恢复前申请短期 AgentModelAccessGrant；Infrastructure 仅以服务身份解析并在 Runtime 启动时注入模型配置和凭证，任何 Agent 公共响应不返回 grant 或 Workspace。
 
 ### US-USER-MODEL-14 只读状态查看配置
 

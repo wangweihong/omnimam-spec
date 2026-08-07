@@ -7,6 +7,7 @@
 ## 2. 核心对象
 
 - `StudioApplication`、`StudioApplicationVersion`：生成应用身份及固定 Source Snapshot 的发布版本。
+- `StudioApplication` 当前 Coding Agent 投影：保存 Agent、默认 Session 和 generation；替换 Agent 创建新 generation，旧 Agent/Session/Invocation 历史保留。
 - `StudioSourceRepository`、`StudioWorkspace`、Revision、`StudioChangeSet`：内部逻辑源码仓库、默认编辑上下文和原子变更历史；公共投影为应用级 Source/Revision。
 - `StudioSourceSnapshot`：供正式 Build 使用的不可变源码版本事实。
 - `StudioBuild`：Source Snapshot 到可运行 Bundle 的业务投影，拥有 canonical `owner_user_id`，引用 Task Center 和 Artifact，并向 Asset Library 提供受控 producer 摘要。
@@ -18,10 +19,12 @@
 ## 3. 核心规则
 
 - StudioApplication 与 application-platform.Application 不共享身份、版本、运行对象或私有数据。
-- `CreateStudioApplication` 不接受 Workspace 输入；后端自动创建唯一默认 Repository/StudioWorkspace、Coding Agent 和 Session。
+- `CreateStudioApplication` 不接受 Workspace 输入；请求携带初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，后端原子创建唯一默认 Repository/StudioWorkspace、Revision 0、Coding Agent、Session、WorkspaceBinding 和 ACTIVE primary ModelBinding。
 - Coding Agent 仅通过 Agent 内部 `CreateCodingAgentForStudio` 创建，固定引用默认 StudioWorkspace，并复用 AgentSession/AgentInvocation；AppStudio 不建立第二套 Agent 执行记录。
+- AppStudio 只通过 application-level Agent facade 暴露当前 Agent 状态、消息、Invocation 查询/取消/SSE 和 suspend/resume/replace，并校验 owner、generation 与绑定关系；Coding Agent 不进入公共 `/api/v1/agents`。
 - 公共 API、页面、权限、错误、通知和 SSE 以 StudioApplication、源码和 Revision 表达，不投影 Workspace ID。
 - 所有源码写入必须形成带 `base_revision` 的 ChangeSet；冲突时不得自动覆盖或部分应用。
+- Invocation 阶段 Revision 取其已应用 ChangeSet 最大 `target_revision`；恢复调用现有 source restore 创建新的 Restore ChangeSet/Revision，保留原 Session、Message、Invocation、ChangeSet 和 Revision 历史。
 - 正式 Build 只能读取不可变 StudioSourceSnapshot；生产运行只能读取固定 digest 的 Artifact。
 - Task Center 拥有 AtomicTask、TaskAttempt、TaskGroup、重试、取消和调度状态；StudioBuild/Release 只保存业务投影，Preview/Build/Production 的 Infra 操作均经 Task Worker。
 - asset-library 拥有 Artifact 身份、内容、处理和存储；AppStudio 只保存 Artifact ID 与历史 digest 快照。
@@ -62,7 +65,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-AppStudio S1/S2 已由 `spec-v1.16.0` 发布并允许作为正式实现依据；事件幂等键修复已由 `spec-v1.16.1` 发布，Server 必须使用事件类型前缀生成全限定 Outbox 键；StudioBuild Artifact producer 与批量摘要投影修订已由 `spec-v1.17.1` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio 既有 Source/Build/Release 基线分别由 `spec-v1.16.0`、`spec-v1.16.1` 和 `spec-v1.17.1` 发布；创建模型选择、Coding Agent generation/application facade、首次 Invocation 和 Invocation-to-Revision 恢复契约待 `spec-v1.18.0` 发布后才可作为正式实现依据。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

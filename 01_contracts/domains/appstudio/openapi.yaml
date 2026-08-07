@@ -8,7 +8,7 @@ info:
     本文件只按当前 AppStudio S1 生成；旧版 S2 不属于本契约输入。
 servers: [{url: /}]
 security: [{bearerAuth: []}]
-tags: [{name: applications}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
+tags: [{name: applications}, {name: agent}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
 paths:
   /api/v1/studio-applications:
     get:
@@ -26,7 +26,7 @@ paths:
       x-permission: appstudio.application.manage
       x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['6 StudioApplication 创建']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateRequest'}}}}
-      responses: {'200': {description: 后端已初始化 Repository、默认源码上下文、Coding Agent 和 Session 的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      responses: {'200': {description: 后端已初始化 Repository、默认源码上下文、Coding Agent 和 Session，并返回首次 CODING Invocation 投影。首次 Task 提交失败不回滚 READY 应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}:
     parameters: [{$ref: '#/components/parameters/studio_application_id'}]
     get:
@@ -54,6 +54,92 @@ paths:
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 归档后的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent:
+    get:
+      tags: [agent]
+      operationId: get_studio_agent_status
+      summary: 查询当前 Coding Agent 状态
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7 Coding Agent 开发', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      responses: {'200': {description: 当前 generation 的 Coding Agent/Session 状态；不返回 Workspace 或 Runtime Endpoint。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/messages:
+    post:
+      tags: [agent]
+      operationId: send_studio_agent_message
+      summary: 向当前 Coding Agent 发送开发指令
+      x-permission: appstudio.agent.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.1 发送开发指令', '7.2 开发流程']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentMessageRequest'}}}}
+      responses: {'200': {description: 已持久化并绑定 AtomicTask 的 Coding Invocation 投影。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentInvocation'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/invocations:
+    get:
+      tags: [agent]
+      operationId: list_studio_agent_invocations
+      summary: 查询当前 Coding Agent Invocation
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7 Coding Agent 开发', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 当前 generation 的 Invocation 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentInvocationListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/invocations/{agent_invocation_id}:
+    get:
+      tags: [agent]
+      operationId: get_studio_agent_invocation
+      summary: 查询 Coding Agent Invocation
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7 Coding Agent 开发', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/agent_invocation_id'}]
+      responses: {'200': {description: Invocation 投影。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentInvocation'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/invocations/{agent_invocation_id}/cancel:
+    post:
+      tags: [agent]
+      operationId: cancel_studio_agent_invocation
+      summary: 取消 Coding Agent Invocation
+      x-permission: appstudio.agent.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7 Coding Agent 开发', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/agent_invocation_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 取消请求后的 Invocation 投影。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentInvocation'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/invocations/{agent_invocation_id}/events:
+    get:
+      tags: [agent]
+      operationId: stream_studio_agent_invocation_events
+      summary: 订阅 Coding Agent Invocation 事件
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.2 开发流程', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/agent_invocation_id'}, {name: Last-Event-ID, in: header, schema: {type: string}, x-naming-exception: 标准 SSE Header。}]
+      responses: {'200': {description: 标准 SSE 事件流；payload 不含 Workspace。, content: {text/event-stream: {schema: {type: string}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/suspend:
+    post:
+      tags: [agent]
+      operationId: suspend_studio_agent
+      summary: 挂起当前 Coding Agent
+      x-permission: appstudio.agent.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.5 挂起、恢复与替换']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 当前 Coding Agent 状态。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/resume:
+    post:
+      tags: [agent]
+      operationId: resume_studio_agent
+      summary: 恢复当前 Coding Agent
+      x-permission: appstudio.agent.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.5 挂起、恢复与替换']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {'200': {description: 当前 Coding Agent 状态。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/replace:
+    post:
+      tags: [agent]
+      operationId: replace_studio_agent
+      summary: 替换当前 Coding Agent
+      x-permission: appstudio.agent.operate
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.5 挂起、恢复与替换']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentReplaceRequest'}}}}
+      responses: {'200': {description: 新 generation 的 Coding Agent 状态；旧历史保留。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/source:
     get:
       tags: [source]
@@ -344,6 +430,7 @@ components:
     studio_application_version_id: {name: studio_application_version_id, in: path, required: true, schema: {type: string}}
     studio_release_id: {name: studio_release_id, in: path, required: true, schema: {type: string}}
     studio_runtime_instance_id: {name: studio_runtime_instance_id, in: path, required: true, schema: {type: string}}
+    agent_invocation_id: {name: agent_invocation_id, in: path, required: true, schema: {type: string}}
     environment: {name: environment, in: path, required: true, schema: {type: string, enum: [preview, production]}}
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
     page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
@@ -356,11 +443,98 @@ components:
       properties: {id: {type: string}, name: {type: string}, description: {type: string}, status: {type: string, enum: [CREATING, READY, ARCHIVED, ERROR]}, current_version_id: {type: string, nullable: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
     StudioApplicationCreateRequest:
       type: object
-      required: [name]
-      properties: {name: {type: string, minLength: 1, maxLength: 200}, description: {type: string, maxLength: 2000}}
+      additionalProperties: false
+      required: [name, initial_requirement, coding_model_selection, idempotency_key]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        initial_requirement: {type: string, minLength: 1, maxLength: 20000}
+        application_type: {type: string, enum: [STATIC_WEB, WEB_WITH_LIGHT_BACKEND], default: STATIC_WEB}
+        backend_required: {type: boolean, default: false}
+        coding_agent_profile: {type: string, minLength: 1, maxLength: 200}
+        coding_model_selection: {$ref: '#/components/schemas/StudioCodingModelSelection'}
+        attachments: {type: array, maxItems: 50, items: {$ref: '#/components/schemas/StudioAgentAttachment'}}
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+    StudioApplicationCreateResponse:
+      type: object
+      additionalProperties: false
+      required: [application, coding_agent, initial_invocation]
+      properties:
+        application: {$ref: '#/components/schemas/StudioApplication'}
+        coding_agent: {$ref: '#/components/schemas/StudioAgentStatus'}
+        initial_invocation: {$ref: '#/components/schemas/StudioAgentInvocation'}
+    StudioCodingModelSelection:
+      type: object
+      additionalProperties: false
+      required: [source_type, source_ref]
+      properties:
+        source_type: {type: string, enum: [USER_DEFAULT_MODEL, USER_PROVIDER_MODEL, PLATFORM_MODEL]}
+        source_ref: {type: string, minLength: 1, maxLength: 500}
     StudioApplicationUpdateRequest:
       type: object
       properties: {name: {type: string, maxLength: 200}, description: {type: string, maxLength: 2000}, resource_version: {type: integer}}
+    StudioAgentStatus:
+      type: object
+      additionalProperties: false
+      required: [studio_application_id, agent_id, session_id, generation, status]
+      properties:
+        studio_application_id: {type: string}
+        agent_id: {type: string, description: 当前 generation 的稳定 Agent ID；不允许经公共 Agent API读取 Coding Agent。}
+        session_id: {type: string}
+        generation: {type: integer, minimum: 1}
+        status: {type: string, enum: [CREATING, READY, STARTING, RUNNING, IDLE, SUSPENDED, ERROR, DISABLED, DELETING]}
+        current_invocation_id: {type: string, nullable: true}
+    StudioAgentMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [instruction, idempotency_key]
+      properties:
+        instruction: {type: string, minLength: 1, maxLength: 20000}
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+        attachments: {type: array, maxItems: 50, items: {$ref: '#/components/schemas/StudioAgentAttachment'}}
+    StudioAgentAttachment:
+      type: object
+      additionalProperties: false
+      required: [type, reference_id]
+      properties:
+        type: {type: string, enum: [ASSET, ARTIFACT, SOURCE_FILE, BUILD_LOG, PREVIEW_LOG]}
+        reference_id: {type: string, minLength: 1}
+    StudioAgentInvocation:
+      type: object
+      additionalProperties: false
+      required: [id, agent_id, session_id, generation, type, status, created_at, updated_at]
+      properties:
+        id: {type: string}
+        agent_id: {type: string}
+        session_id: {type: string}
+        generation: {type: integer, minimum: 1}
+        type: {type: string, enum: [CODING]}
+        status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, SUCCEEDED, FAILED, CANCELING, CANCELED]}
+        atomic_task_id: {type: string, nullable: true, description: 仅 QUEUED 在任务绑定提交前可短暂为空，执行前必须存在。}
+        runtime_binding_id: {type: string, nullable: true}
+        runtime_session_ref: {type: string, nullable: true}
+        runtime_invocation_ref: {type: string, nullable: true}
+        last_event_sequence: {type: integer, minimum: 0, default: 0}
+        resulting_change_set_id: {type: string, nullable: true, description: 最后一个已应用 ChangeSet；没有源码结果时为空。}
+        resulting_source_revision: {type: integer, nullable: true, minimum: 0, description: 该 Invocation 所有已应用 ChangeSet 的最大 target_revision。}
+        failure_code: {type: string, nullable: true}
+        failure_message: {type: string, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    StudioAgentInvocationListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioAgentInvocation'}}}
+    StudioAgentReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [idempotency_key]
+      properties:
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+        coding_agent_profile: {type: string, maxLength: 200}
+        coding_model_selection: {type: string, maxLength: 500}
     StudioSourceState:
       type: object
       required: [studio_application_id, current_revision, status, updated_at]

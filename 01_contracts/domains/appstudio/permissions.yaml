@@ -23,6 +23,30 @@ appstudio.application.manage:
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-010, R-STUDIO-022]
   related_user_stories: [US-APPSTUDIO-001]
+appstudio.agent.read:
+  domain: appstudio
+  module: application-agent
+  resource: studio_application_agent, agent_invocation_projection
+  action: read, list, stream
+  subject: owner, authorized_editor, system_admin
+  description: 查询 StudioApplication 当前 Coding Agent、Session 和 Invocation 投影。
+  frontend_usage: 应用工作台 Agent 状态、对话历史与事件流。
+  backend_enforcement: 先校验应用可见性，再通过当前 generation 的稳定 ID 调用 Agent 内部 owner-scoped 查询；不得返回 Workspace、Endpoint、Infra 引用或模型凭证，也不得使用公共 Platform Agent 查询绕过 kind guard。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
+appstudio.agent.operate:
+  domain: appstudio
+  module: application-agent
+  resource: studio_application_agent, agent_invocation_projection
+  action: send, cancel, suspend, resume, replace
+  subject: owner, authorized_editor, system_admin
+  description: 通过 StudioApplication 操作当前 Coding Agent。
+  frontend_usage: 发送开发指令、取消 Invocation、挂起、恢复和替换 Agent。
+  backend_enforcement: 操作当前 generation；替换成功后原子切换新 Agent/Session 并保留旧历史，失败不得清空旧引用。所有 Invocation 通过 Task Center 执行。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
 appstudio.source.read:
   domain: appstudio
   module: source

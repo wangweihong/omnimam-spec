@@ -139,3 +139,21 @@ studio_runtime_instance_status_changed:
   failure_policy: 事件失败不执行第二次入口切换；RuntimeInstance 事实可重放，旧健康实例不得受影响。
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-009, R-STUDIO-013, R-STUDIO-015, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024]
   related_user_stories: [US-APPSTUDIO-001]
+appstudio_agent_binding_changed:
+  producer: appstudio-application-service
+  consumers: [sse, audit-service]
+  trigger_condition: StudioApplication 首次绑定或成功替换当前 Coding Agent/Session generation 后提交。
+  payload:
+    studio_application_id: string
+    owner_user_id: string
+    previous_agent_id: string|null
+    agent_id: string
+    session_id: string
+    generation: integer
+    resource_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: appstudio_agent_binding_changed:studio_application_id:generation
+  retry_policy: appstudio outbox 重试，消费者按 application/generation 幂等。
+  failure_policy: 事件失败不回滚当前绑定；旧 Agent 历史保留，payload 不得包含 Workspace、Runtime Endpoint 或模型配置。
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]

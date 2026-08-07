@@ -9,10 +9,10 @@
 | `provider-type` | 读取 Model Gateway 提供的稳定 ProviderType 目录并返回无内部 ID 的只读投影 | 不注册 Adapter、Executor 或 ProviderType |
 | `provider` | 管理当前用户 Provider、凭证引用、配置版本和启用状态 | 不实现 Provider 协议、鉴权应用或专用 HTTP 客户端 |
 | `model` | 管理当前用户模型清单、用户维护字段、启用状态和能力关闭范围 | 不允许用户声明实际可执行能力 |
-| `default-model` | 管理当前用户 `assistant.default`、`quick`、`translation` 默认模型 | 不跨用户或静默 fallback 到平台模型 |
+| `default-model` | 管理当前用户 `assistant.default`、`quick`、`translation`、`agent.chat`、`agent.coding` 默认模型 | 不跨用户或静默 fallback 到平台模型 |
 | `health` | 持久化 Provider/模型检测结果和用户模型健康事实 | 不实现网络探测，不发布 Gateway 重复健康事件 |
 | `option` | 提供当前用户权限裁剪的只读模型选项 | 不复制到下游领域私有表 |
-| `execution-context` | 校验 owner、enabled、health、能力和配置版本并签发短期执行上下文 | 不执行 Operation，不持久化 ResolvedModelRoute |
+| `execution-context` | 校验 owner、enabled、health、能力和配置版本并签发短期执行上下文或 AgentModelAccessGrant | 不执行 Operation，不持久化 ResolvedModelRoute/grant |
 
 ## 2. 输入与输出
 
@@ -24,6 +24,7 @@
 | default-model | principal、usage、providerId、modelId | `DefaultModelConfig` |
 | option | principal、usage、capability_definition_id | 当前用户模型选项 |
 | execution-context | principal、modelId、capabilityDefinitionId | `UserModelExecutionContext` |
+| execution-context | 受信 Agent principal、agentId、`agent.chat|agent.coding`、primary binding | `AgentModelAccessGrant` |
 
 ## 3. 对 Model Gateway 的内部依赖
 
@@ -74,6 +75,8 @@ issuer
 
 上下文必须短期有效、不可由客户端自行构造，并绑定 principal、模型、能力和配置版本。User Model 不创建 `ResolvedModelRoute` 表，也不把执行上下文作为长期业务资源保存。
 
+Agent 内部接口 `IssueAgentModelAccessGrant(principal, agentId, usage, modelBinding)` 只接受 `agent.chat|agent.coding`，返回绑定 owner、Agent、用途、模型、配置版本和有效期的 `agent-model-access-grant://` 引用。Infrastructure 可在 Runtime 启动/恢复时解析并注入；Task Worker 的 agent-executor 仅可在匹配当前 Agent/Invocation/Attempt 的 `agent-invocation-grant://` 委托下临时解析为 ModelAccessSpec。grant 不建表、不返回客户端、不允许跨 Agent/用途或跨 Attempt 复用，解析结果不得进入 Task、结果、事件或日志。
+
 ## 5. 同步与能力解析
 
 - `DiscoverProviderModels` 的结果只能创建新模型或更新远端发现事实。
@@ -103,6 +106,7 @@ issuer
 - ai-chatting 保存 GenerationRun 以及模型 ID、CapabilityDefinition ID、配置版本和非敏感模型快照；User Model 和 Gateway 均不拥有 GenerationRun。
 - Application Platform 继续使用 `PlatformEngineTarget`，ApplicationRun、Engine 与 Binding 的既有语义不因 User Model 重构而改变。
 - 下游不得读取 User Model 私有表、Provider 地址、凭证引用明细或凭证明文。
+- Agent 启动/恢复和 Invocation 执行必须使用用途匹配的短期 grant；缺失默认用途、模型不健康或无资格时 fail closed，且不得执行 Runtime 或 Invocation。Infrastructure 只在 Runtime 启动阶段解析注入，agent-executor 只在当前 Attempt 内解析协议执行所需的 ModelAccessSpec。
 
 ## 9. API 与错误映射
 
@@ -113,4 +117,4 @@ issuer
 ## 10. 相关 S1 引用
 
 - user_stories: US-USER-MODEL-01..US-USER-MODEL-15
-- business_rules: BR-USER-MODEL-01..BR-USER-MODEL-46
+- business_rules: BR-USER-MODEL-01..BR-USER-MODEL-48

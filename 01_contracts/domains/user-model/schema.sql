@@ -73,7 +73,7 @@ CREATE TABLE user_default_model_configs (
   extend_shadow TEXT DEFAULT '',
   resource_version INTEGER DEFAULT 0,
   owner_user_id TEXT NOT NULL,
-  usage TEXT NOT NULL CHECK (usage IN ('assistant.default', 'quick', 'translation')),
+  usage TEXT NOT NULL CHECK (usage IN ('assistant.default', 'quick', 'translation', 'agent.chat', 'agent.coding')),
   provider_id TEXT NOT NULL REFERENCES user_model_providers(id),
   model_id TEXT NOT NULL REFERENCES user_provider_models(id)
 );

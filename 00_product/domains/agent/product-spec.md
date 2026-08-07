@@ -231,13 +231,14 @@ Agent 删除或 Runtime 删除时，不自动删除 AgentWorkspace 或 StudioWor
 
 ## 3.6 Task Center 不替代 Agent Session
 
-Agent Service 为每轮交互创建持久化 `AgentInvocation`。纯对话 `CHAT` Invocation 可以由 Agent Service 直接管理；凡是会创建或恢复 Runtime、修改源码、执行工具、进入后台、需要取消/超时/重试或调用其他异步能力的 Invocation，都必须关联一个 AtomicTask。
+Agent Service 为每轮交互创建持久化 `AgentInvocation`。所有 `CHAT` 和 `CODING` Invocation 都必须关联一个 `agent.invocation.execute@1.0` AtomicTask，由 Task Center 统一管理执行、重试、取消和超时。API Server 只持久化 Message/Invocation、创建并绑定 AtomicTask 和返回投影，不得启动进程内 goroutine 执行 Agent。
 
 以下场景应使用 Task Center：
 
 * Agent Runtime 启动。
 * Agent Runtime 恢复。
 * Agent Runtime 删除。
+* 所有 CHAT/CODING 对话执行。
 * 长时间 Coding Agent 操作。
 * Agent 发起的复杂异步任务。
 * 需要重试、取消、依赖或后台执行的工具操作。
@@ -248,11 +249,11 @@ Agent Service 为每轮交互创建持久化 `AgentInvocation`。纯对话 `CHAT
 
 ```text
 AgentInvocation
-    ├── CHAT 且无异步执行：无 AtomicTask
-    └── CODING / TOOL_OPERATION / BACKGROUND_OPERATION / Runtime 操作：1 个 AtomicTask
+    ├── CHAT / CODING：1 个 agent.invocation.execute@1.0 AtomicTask
+    └── TOOL_OPERATION / BACKGROUND_OPERATION / Runtime 操作：1 个对应 AtomicTask
 ```
 
-Invocation 只保存 `atomicTaskId` 和业务投影；TaskAttempt、重试次数、超时、取消终态和调度并发仍以 Task Center 为准。
+Invocation 只保存 `atomicTaskId` 和业务投影；`QUEUED` 可在同一提交链路中短暂处于尚未绑定状态，但进入 Worker 执行前必须绑定 AtomicTask。任务创建失败时 Invocation 必须进入可解释的失败终态，不能由 API Server 降级执行。TaskAttempt、重试次数、超时、取消终态和调度并发仍以 Task Center 为准。
 
 ---
 
@@ -673,6 +674,13 @@ AgentRuntimeAdapter 必须提供以下逻辑能力：
 读取 Runtime 健康与活动状态摘要
 ```
 
+固定 Runtime Profile 的控制协议为：
+
+* `agent.hermes` 使用 `/api/ws` 上的 newline-delimited JSON-RPC/WebSocket；会话、消息与取消分别映射 `session.create`、`prompt.submit`、`session.interrupt`，并把 `message.*`、`tool.*`、`error`、`session.info`、`status.update` 映射为标准事件。
+* `agent.opencode` 使用 `POST /session` 创建会话、`POST /session/{sessionID}/message` 发送消息、`POST /session/{sessionID}/abort` 取消，并消费 `GET /event` SSE；健康检查使用 `GET /global/health`。
+
+同一 Invocation/TaskAttempt 重放必须复用稳定 Runtime Session 和 Runtime Invocation 引用，不能重复提交已被 Runtime 接受的消息。协议 fixture 必须覆盖会话、消息、事件、取消和幂等；固定镜像协议验证失败时不得发布或启用对应 Profile。
+
 具体编程语言接口和 DTO 由 S2 或实现定义。Adapter 返回的原始 Runtime 状态不能直接覆盖 AgentInvocation 或 AtomicTask 终态，必须由 Agent Service 按稳定引用和资源版本投影。
 
 Endpoint 解析请求固定使用 `purpose=AGENT_RUNTIME_ADAPTER`，并携带 owner reference 与 Invocation/trace 审计关联 ID。Infrastructure 必须从工作负载身份确认调用服务，不信任请求声明；只有绑定的 Endpoint 为 READY、Runtime 为 RUNNING 且健康、owner 匹配且未撤销时才返回短时 `base_url`。Adapter 只能在内存中使用该地址，不得写入 Agent、Session、Invocation、RuntimeBinding、Task 结果、事件或日志。
@@ -748,6 +756,7 @@ runtimePolicy
 createdAt
 updatedAt
 lastActiveAt
+deletedAt
 ```
 
 `kind` 只允许 `platform` 或 `coding`。`workspaceType` 必须分别为 `agent` 或 `studio`，`workspaceId` 创建后不可变。AgentProfile 可以决定 Runtime 和工具能力，但不得改变 Agent 的业务类型或 Workspace 归属。
@@ -786,6 +795,7 @@ Session 关闭后：
 * Memory 保留。
 * Runtime Session 可以被释放。
 * 不再接受新消息。
+* 已经进入运行态的 Invocation 不被隐式取消，仍按 AtomicTask 和 Runtime 最终结果完成。
 
 ---
 
@@ -845,6 +855,8 @@ completedAt
 failureCode
 failureMessage
 ```
+
+`QUEUED` Invocation 的 `atomicTaskId` 可在任务绑定事务完成前短暂为空；任何执行、取消或事件消费前必须已绑定。`CHAT` 与 `CODING` 均不得绕过 Task Center 直接执行。
 
 `type`：
 
@@ -999,6 +1011,8 @@ createdAt
 startedAt
 stoppedAt
 lastHealthAt
+currentTaskId
+currentOperation
 ```
 
 状态：
@@ -1014,7 +1028,7 @@ FAILED
 DELETED
 ```
 
-AgentRuntimeBinding 是 Agent Service 对 Infra Runtime 的业务绑定，不复制容器信息。
+AgentRuntimeBinding 是 Agent Service 对 Infra Runtime 的业务绑定，不复制容器信息。`currentTaskId/currentOperation` 标识当前生命周期操作；Task 终态回写必须同时匹配 binding、当前 Task 和操作类型。旧 Task 的乱序、重复或迟到结果只能记录审计，不得覆盖新操作投影。
 
 ---
 
@@ -1104,6 +1118,8 @@ Agent 正在停止 Runtime 并删除业务对象。
 
 Workspace 不随 Agent 自动删除。
 
+删除没有 Runtime/Infra 引用的 Agent 时，服务在同一事务内写入 `deletedAt` 并使其从公共查询消失。存在 Runtime 或可恢复 Infra 引用时，Agent 进入 `DELETING` 并创建删除 Task；成功后以事务将 RuntimeBinding 置为 `DELETED`、写入 `deletedAt` 并发布删除事件。失败、超时或取消时 Agent 回到可重试 `ERROR`，保留 Runtime/Endpoint 引用供再次删除，不能伪装成已删除。
+
 ---
 
 ## 9.2 状态流转
@@ -1141,6 +1157,8 @@ stateDiagram-v2
 
     DELETING --> [*]
 ```
+
+Disable 必须保留 Agent、Session、Message、Memory、Workspace 和模型绑定，并停止活动 Runtime；Enable 固定回到 `READY`，不得自动创建 Runtime 或恢复旧 Runtime Session。
 
 ---
 
@@ -1219,6 +1237,8 @@ Agent Service 在启动前解析：
 * Resource Requirement。
 * Lifecycle Policy。
 
+启动或恢复前必须找到与 Agent 类型用途匹配的 ACTIVE primary ModelBinding，并由 User Model 签发短期 Agent model access grant。缺失、无资格、过期或无法签发时返回既有 Agent 模型错误；在该校验成功前不得创建 RuntimeBinding、生命周期 AtomicTask 或 Infra Runtime。
+
 ---
 
 ## 11.2 Infra 请求
@@ -1288,12 +1308,11 @@ sequenceDiagram
     participant IS as Infra Service
     participant AR as Agent Runtime
 
-    AS->>TC: 创建 Agent Start Task
-    AS->>MM: 解析当前模型引用
-    MM-->>AS: ModelRef
-
-    AS->>MG: ResolveModelAccess
+    AS->>MM: 解析当前默认用途与模型引用
+    MM-->>AS: AgentModelAccessGrant
+    AS->>MG: ResolveModelAccess(grant)
     MG-->>AS: ModelAccessSpec
+    AS->>TC: 创建 Agent Start Task
 
     TC->>TW: 分发 agent.runtime.ensure
     TW->>IS: CreateService
@@ -1322,7 +1341,7 @@ sequenceDiagram
 2. 校验 Agent 是否禁用。
 3. 创建 User Message。
 4. 创建 AgentInvocation。
-5. 判断该 Invocation 是否需要 AtomicTask；CODING、工具、后台和 Runtime 操作必须创建并绑定 AtomicTask。
+5. 创建并绑定 `agent.invocation.execute@1.0` AtomicTask；任务绑定失败则 Invocation 失败且不执行 Runtime 请求。
 6. 如 Agent 为 READY 或 SUSPENDED，则通过关联 Task 启动或恢复 Runtime。
 7. 确保 Runtime Session 已建立。
 8. 为 Coding Agent 签发当前 Invocation 专用的短期 Workspace Tool 授权。
@@ -1350,8 +1369,8 @@ sequenceDiagram
     U->>AS: SendMessage
     AS->>AS: 持久化 Message + Invocation
 
-    alt 需要 Runtime 或异步执行
-        AS->>TC: 创建并绑定 Invocation AtomicTask
+    alt CHAT 或 CODING
+        AS->>TC: 创建并绑定 agent.invocation.execute@1.0
         TC->>TW: 分发 functionRef
         TW->>IS: Start / Create Runtime
         IS-->>TW: endpointRef
@@ -1433,6 +1452,8 @@ runtimeSessionRef
 5. 用户继续对话。
 
 不要求 Runtime 自己成为 Session 唯一事实源。
+
+恢复必须先对账当前 RuntimeBinding 与 Infrastructure 的现存 Runtime/Endpoint；仍健康且引用一致时复用，缺失、失败或已撤销时才通过 `agent.runtime.ensure` 重建。每次恢复都重新解析模型并签发新 grant，不复用已过期的 ModelAccessSpec 或凭证句柄；重建完成后必须创建新的 Runtime Session，并按 Agent Service 的 Session 摘要、最近消息和 Memory 恢复上下文。
 
 ---
 
@@ -1716,8 +1737,9 @@ READ_WRITE
 删除 Agent 时：
 
 * 停止并删除 Infra Runtime。
-* 删除 AgentRuntimeBinding。
-* 删除 Agent 业务对象或进行软删除。
+* 无 Runtime 引用时立即软删除 Agent。
+* 有 Runtime 引用时创建受控删除 Task，成功后将 AgentRuntimeBinding 标记为 `DELETED` 并软删除 Agent。
+* 删除 Task 失败、超时或取消时回到可重试 `ERROR`，保留 Infra 引用，不得清空绑定或发布 `agent.deleted`。
 * 不自动删除外部 Workspace。
 * 不自动删除 StudioSourceSnapshot。
 * 不自动删除已发布 StudioApplication。
@@ -1778,12 +1800,14 @@ sequenceDiagram
 恢复时：
 
 1. 重新解析 ModelBinding。
-2. 重新解析 CredentialRef。
+2. 重新签发短期 Agent model access grant 并解析 ModelAccessSpec；任何失败都不得先创建 Task 或 RuntimeBinding。
 3. 创建恢复 AtomicTask，由 Task Worker 通过 Infra Adapter 创建或启动 Runtime。
 4. 重新加载 AgentWorkspace 挂载，或为 StudioWorkspace 配置 AppStudio Workspace Tool，并加载 Skills。
 5. 创建 Runtime Session。
 6. 恢复 Session 摘要和 Memory。
 7. Agent 状态变为 IDLE。
+
+恢复复用 `agent.runtime.ensure`。提交前先对账现有运行引用；终态回写必须匹配 RuntimeBinding 的 `currentTaskId/currentOperation`，旧恢复任务不能覆盖更新的挂起、删除或再次恢复结果。
 
 ---
 
@@ -1855,6 +1879,7 @@ AGENT_RESUME
 AGENT_STOP
 AGENT_DELETE
 AGENT_RECOVER
+AGENT_INVOCATION_EXECUTE
 AGENT_LONG_OPERATION
 AGENT_TOOL_OPERATION
 ```
@@ -1873,6 +1898,8 @@ Agent Service 负责将 Task 结果投影到：
 * Agent 状态。
 * RuntimeBinding 状态。
 * AgentInvocation 状态。
+
+`agent.invocation.execute@1.0` 是 CHAT/CODING 的 canonical functionRef。Worker 负责解析绑定、确保 Runtime、调用 profile-specific adapter、单调投影标准事件并形成 Task 终态。Task Center 的 FAILED、TIMEOUT、CANCELED 以及 execution 丢失对账结果必须通知 Agent terminal observer；Agent 根据当前 Task 绑定投影 Invocation/Runtime 终态，不自行实现 watchdog。
 
 ---
 
@@ -2235,7 +2262,8 @@ GetRuntimeAgentStatus
 ```text
 ResolveAgentModelBinding
 ValidateAgentModelCapabilities
-BuildModelAccessSpec
+IssueAgentModelAccessGrant
+BuildModelAccessSpecFromGrant
 ```
 
 ---
@@ -2521,7 +2549,7 @@ Agent Runtime 不得直接修改生产 Runtime 或不可变 Release。
 
 ## R-AGENT-014
 
-CODING、TOOL_OPERATION、BACKGROUND_OPERATION 及任何 Runtime 生命周期操作必须关联 AtomicTask，并由 Task Center 管理尝试、重试、取消和超时。
+CHAT、CODING、TOOL_OPERATION、BACKGROUND_OPERATION 及任何 Runtime 生命周期操作必须关联 AtomicTask，并由 Task Center 管理尝试、重试、取消和超时。
 
 ## R-AGENT-015
 
@@ -2545,11 +2573,19 @@ Agent Service 必须支持 Runtime 异常后的状态对账和恢复。
 
 ## R-AGENT-020
 
-纯 `CHAT` 且不启动 Runtime、不执行工具或后台工作的 Invocation 可以由 Agent Service 直接管理；一旦进入异步执行，必须创建并绑定 AtomicTask。
+所有 `CHAT` 和 `CODING` Invocation 必须使用 `agent.invocation.execute@1.0`；API Server 不得使用进程内 goroutine 或无 Task 降级路径执行 Agent。
 
 ## R-AGENT-021
 
 AgentRuntimeAdapter 必须先校验 Agent、Session、Invocation 和 AgentRuntimeBinding，再以 Agent 工作负载身份解析 READY 的 Hermes/OpenCode Endpoint；解析地址只允许在当前同步调用内使用，不得持久化或传播到公共响应、事件、Task 结果和日志。
+
+## R-AGENT-022
+
+Agent 软删除、Runtime 生命周期和 Invocation 终态回写必须匹配当前 Task 引用并单调推进；迟到旧 Task 不得覆盖新操作，删除失败必须保留 Infra 引用并可重试。
+
+## R-AGENT-023
+
+Runtime 启动和恢复必须在创建 RuntimeBinding 或 AtomicTask 前完成 ACTIVE primary ModelBinding 资格校验和短期 grant 签发；Infrastructure 只能以服务身份解析 grant 并在启动时注入模型配置与凭证。
 
 ---
 
@@ -2627,7 +2663,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-AGENT-001`：用户可以管理持久化 Platform Agent、会话交互、记忆和受控 Runtime 生命周期，而无需选择或管理内部 Workspace；Coding Agent 由 AppStudio 创建和投影。
-- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding 和 Runtime Binding 的事实归属与生命周期必须遵守本 S1 第 3、8、9、18、19、20、21、23、24、28 节及 `R-AGENT-001..020`。
+- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding 和 Runtime Binding 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、18、19、20、21、23、24、28 节及 `R-AGENT-001..023`。
 
 验收标准：
 
@@ -2635,7 +2671,12 @@ flowchart LR
 - `AC-AGENT-001-02`：Coding Agent 只能由 AppStudio 通过 `CreateCodingAgentForStudio` 内部语义创建；用户侧 Agent 页面和公共 API 不得创建 Coding Agent 或查询 Workspace Binding。
 - `AC-AGENT-001-03`：Coding Agent 源码读写必须携带绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的 Tool 授权；授权不匹配或过期时不得执行。
 - `AC-AGENT-001-04`：Coding Agent 写入必须由 AppStudio 原子应用带 `base_revision` 的 ChangeSet；Revision 冲突时不自动覆盖、不隐式合并、不部分应用。
-- `AC-AGENT-001-05`：CODING、TOOL_OPERATION、BACKGROUND_OPERATION 以及 Runtime 启停恢复 Invocation 必须关联 AtomicTask；Agent 不复制 TaskAttempt、重试、超时或取消状态机。
-- `AC-AGENT-001-06`：纯 CHAT Invocation 可以不创建 AtomicTask；一旦需要启动 Runtime、执行工具或进入后台，必须先持久化并绑定 AtomicTask。
+- `AC-AGENT-001-05`：CHAT/CODING 使用 `agent.invocation.execute@1.0`，TOOL_OPERATION、BACKGROUND_OPERATION 以及 Runtime 启停恢复也必须关联 AtomicTask；Agent 不复制 TaskAttempt、重试、超时或取消状态机。
+- `AC-AGENT-001-06`：QUEUED Invocation 可在任务绑定前短暂为空，但执行前必须绑定 AtomicTask；创建失败进入明确失败终态，API Server 不得启动 goroutine 或降级直接执行。
+- `AC-AGENT-001-13`：CHAT/CODING Task 统一使用 `agent.invocation.execute@1.0`，arguments 只包含 Agent/Session/Invocation/RuntimeBinding、类型、短期授权引用、预期资源版本和恢复游标；消息、owner、Workspace、Endpoint、模型凭证、用户密钥和 Provider 配置不得进入 Task。未绑定过 Task 的提交失败可复用同一 Invocation 重试；绑定后只接受当前 Task ID 和资源版本的单调投影。
 - `AC-AGENT-001-07`：Runtime 删除、挂起或异常重建后，Agent、Session、Message、Memory 和内部固定 Workspace 引用保持不变。
 - `AC-AGENT-001-08`：所有 Infra-backed 操作只能走 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Agent 公共 API、通知、SSE 和用户日志不得暴露 Workspace ID、Provider 私有信息、宿主路径或明文 Secret。
+- `AC-AGENT-001-09`：无 Runtime 的删除立即软删除；有 Runtime 的删除仅在删除 Task 成功后事务写 Runtime `DELETED` 和 Agent `deletedAt`，失败回到可重试 `ERROR` 并保留 Infra 引用。
+- `AC-AGENT-001-10`：Disable 停止 Runtime 但保留业务数据，Enable 只回到 `READY`；Close Session 拒绝新消息但不取消已经运行的 Invocation。
+- `AC-AGENT-001-11`：启动/恢复在创建 Task 或 RuntimeBinding 前校验 ACTIVE primary binding 并签发 grant；恢复先对账旧运行引用，重建 Runtime Session 后恢复 Session/Memory，旧 Task 结果不得乱序覆盖。
+- `AC-AGENT-001-12`：Hermes 与 OpenCode 分别通过已验证的 JSON-RPC/WebSocket 和 REST/SSE 协议 fixture 覆盖会话、消息、事件、取消和幂等，任何固定镜像不通过时对应 Profile 不得发布。

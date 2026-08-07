@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..08` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、分类后的 Invocation/AtomicTask 和 Workspace Tool 授权语义。
+当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..13` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、全量 CHAT/CODING Task-backed、软删除终结、模型 grant 和 Workspace Tool 授权语义。
 
 ## 2. 模块边界
 
@@ -31,7 +31,13 @@
 - Agent 只保存 `infra_runtime_id`、`endpoint_ref`、状态和脱敏错误。Infra Provider、容器、宿主机路径和明文 Secret 不得进入 Agent API、事件或业务表。
 - AgentRuntimeAdapter 在调用 Hermes/OpenCode 前必须校验 Agent、Session、Invocation、AgentRuntimeBinding、`infra_runtime_id` 和 `endpoint_ref` 的一致性，然后以 Agent 工作负载身份调用 `POST /api/v1/infra/endpoints/{endpoint_id}/resolve`。请求固定 `purpose=AGENT_RUNTIME_ADAPTER`，并携带 owner reference 与 Invocation/trace 审计关联 ID。
 - resolve 返回的 `base_url` 只允许在当前同步调用内存中使用。Agent 表、Task 结果、公共 OpenAPI、通知、SSE、事件和日志均不得新增 Endpoint 地址字段；AgentRuntimeAdapter 不得调用其他 Infra API。
-- 纯 CHAT 且不启动 Runtime、工具或后台工作的 Invocation 可以不带 `atomic_task_id`；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必须带一跳稳定 AtomicTask 引用，重试、取消、超时和 Attempt 状态归 Task Center。
+- CHAT/CODING 必须使用 `agent.invocation.execute@1.0`；QUEUED 可在任务绑定提交前短暂没有 `atomic_task_id`，任何执行、取消或事件消费前必须绑定。API Server 不得启动 goroutine 或无 Task 降级执行。
+- Invocation Task arguments 只允许 Agent、Session、Invocation、RuntimeBinding、`invocation_type`、短期 `agent-invocation-grant://` 授权引用、预期资源版本和可选 runtime/event 恢复游标；禁止消息 ID/正文、owner、Workspace、Runtime Endpoint、模型凭证、用户密钥和 Provider 配置。grant 必须绑定 owner、Agent、Session、Invocation、RuntimeBinding、用途、资源版本和有效期；CODING 额外封装当前 Invocation 的 AppStudio Workspace Tool grant。Worker 只能按受信服务身份临时解析并执行协议，不得代表 Coding Agent 直接调用 `ApplyChangeSet`。
+- 未曾成功绑定 AtomicTask 的 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` Invocation，允许在同一业务幂等键下复用原 Message/Invocation、递增 submission generation/resource version 并重试 Task 提交；一旦绑定 Task，状态、取消和终态只能按当前 Task ID 与预期资源版本单调投影。
+- Runtime 启动/恢复前必须解析用途匹配的 ACTIVE primary binding 并签发短期 AgentModelAccessGrant；校验失败前不得创建 RuntimeBinding 或 AtomicTask。Infra 只接收 grant 引用并以服务身份解析注入。
+- RuntimeBinding 保存 `current_task_id/current_operation`；Task 结果只有同时匹配当前引用时才能单调投影。无 Runtime 删除立即写 `deleted_at`；有 Runtime 删除仅在 `agent.runtime.stop(action=DELETE)` 成功后事务写 Runtime `DELETED` 和 Agent `deleted_at`，失败保留 Infra 引用并回到可重试 `ERROR`。
+- Hermes adapter 固定使用 `/api/ws` JSON-RPC/WebSocket；OpenCode adapter 固定使用 session REST、`/event` SSE 和 abort。两者 fixture 必须覆盖 session/message/event/cancel/idempotency。
+- 固定镜像、manifest digest、headless command 和协议映射以 `runtime-protocol-fixtures.yaml` 为准；该文件验证失败时不得发布对应 Runtime Profile。
 
 ## 4. 跨域协作
 
@@ -40,7 +46,7 @@
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
 | infrastructure | 通过 Task Center 间接创建/操作受控 Runtime；AgentRuntimeAdapter 直接调用只读 Endpoint resolve | 直接调用其他 Infra API、Docker Socket 或 Provider API，持久化或传播解析地址 |
 | appstudio | 调用内部 `CreateCodingAgentForStudio`、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 AppStudio 私表、创建第二套 Session/Invocation、绕过 ChangeSet |
-| user-model/modelgateway | 校验模型引用并生成 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
+| user-model/modelgateway | 按 `agent.chat`/`agent.coding` 校验模型并签发 grant，解析为 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
 
 ## 5. 一致性与安全
@@ -48,10 +54,11 @@
 - Agent、Session、Memory 与 Runtime 生命周期分离；删除、挂起或重建 Agent 不改写 StudioWorkspace、Build、Release 或 StudioRuntimeInstance。
 - Workspace 专属失败只允许出现在 Agent 与 AppStudio 的内部协作和诊断中；公共创建失败统一映射为 `ERR_AGENT_INITIALIZATION_FAILED`。
 - Invocation 状态是 Agent 业务投影，不从 Infra 状态猜测完成；Task Center 结果通过稳定 ID 和资源版本投影。
+- Session Close 只拒绝新消息，不取消已运行 Invocation；Disable 停止 Runtime 但保留数据，Enable 只回到 READY。
 - Runtime 恢复必须使用已有 `infra_runtime_id`、Task 幂等键和受控运行引用，禁止重启窗口重复创建 Docker Service。
 - API 列表使用 `total/items` 和统一分页；关联摘要最多一跳，目标不可见时保留 ID、摘要为 null。
 - 日志和事件只保留脱敏摘要，不记录 Token、Secret、Provider 原始响应、宿主路径、Host Port、`base_url`、私网地址或大型消息正文。
 
 ## 6. S1 追溯
 
-主要规则：`R-AGENT-001..021`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、事件（28）。
+主要规则：`R-AGENT-001..023`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、事件（28）。

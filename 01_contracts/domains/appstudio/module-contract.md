@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..12` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
+当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..15` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、Coding Agent generation、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
 
 ## 2. 模块边界
 
@@ -20,8 +20,11 @@
 
 ## 3. 输入与输出
 
-- 公共 `CreateStudioApplication` 不接受 Workspace 输入。AppStudio 必须创建唯一默认 Repository/StudioWorkspace，再通过 Agent 内部 `CreateCodingAgentForStudio` 创建固定绑定的 Coding Agent 和 Session。
-- Coding Agent 创建失败时 StudioApplication 进入 `ERROR`；已创建 Repository/StudioWorkspace 保留并以创建幂等键重试，不得留下未固定绑定 Workspace 的 Coding Agent。
+- 公共 `CreateStudioApplication` 接收初始需求、附件、显式 Coding 模型选择、可选 Agent Profile 和创建幂等键，但不接受 Workspace 输入。AppStudio 必须在初始化事务中创建 Application、唯一默认 Repository/StudioWorkspace revision 0，并通过 Agent 内部 `CreateCodingAgentForStudio` 创建固定绑定的 Coding Agent、默认 Session、WorkspaceBinding 和选定的 ACTIVE primary ModelBinding。
+- 初始化事务失败时不得产生可用项目；同一 owner/创建幂等键重试不得重复初始化对象。初始化成功后 Application 保持 `READY`，再持久化首条 Message 和 CODING Invocation。首次 Task 提交失败只把该 Invocation 投影为 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE`；相同创建幂等键复用同一 Message/Invocation 重试提交，不删除项目或重复创建 Agent、Session、Binding。
+- StudioApplication 内部保存当前 `coding_agent_id/coding_session_id/coding_agent_generation`；应用级状态、消息、Invocation 查询/事件/取消、挂起、恢复和替换均通过 Agent 内部 owner-scoped 接口代理，响应不得返回 Workspace。
+- 替换成功后原子递增 generation 并切换新 Agent/Session；旧 Agent 历史保留。替换失败继续使用旧引用，不得形成半切换 generation。
+- 应用级 Invocation 投影按 `agent_invocation_id` 聚合全部已应用 ChangeSet，`resulting_source_revision` 取最大 `target_revision`，`resulting_change_set_id` 取该 Revision 对应的最后一个 ChangeSet。恢复继续调用既有 source restore API，以当前 Revision 为 base 创建新的 Restore ChangeSet/Revision；Session、Message、Invocation、原 ChangeSet 和历史 Revision 全部保留。
 - 公共源码、Revision、ChangeSet、Snapshot 和 Preview API 只以 `studio_application_id` 寻址；公共 DTO、权限、错误、通知和 SSE 不得返回或要求 `workspace_id`。
 - 所有源码写入必须带 `base_revision` 和幂等键；AppStudio 在内部解析唯一默认 Workspace，冲突不得自动覆盖、部分应用或隐式合并。
 - Source Snapshot 是不可变 Build 输入；Build 不得读取当前 Workspace。Production Release 固定 Artifact ID 和 digest，不得挂载 Workspace、Revision 或 Snapshot。
@@ -35,7 +38,7 @@
 
 | 目标 | 允许调用 | 禁止行为 |
 | --- | --- | --- |
-| agent | 调用内部 `CreateCodingAgentForStudio`，校验固定 Coding Agent/Invocation，签发受控 Workspace Tool 授权 | 让前端调用内部创建语义、读取 Agent 私表、建立第二套交互记录、绕过 Agent 授权 |
+| agent | 调用内部 `CreateCodingAgentForStudio` 和 owner-scoped Agent/Session/Invocation 操作，签发受控 Workspace Tool 授权 | 让前端调用内部创建语义、读取 Agent 私表、移除公共 Platform kind guard、建立第二套交互记录 |
 | task-center | 创建/查询/取消 Build/Preview/Production functionRef 任务，消费可靠状态 | 写 Task/Attempt/重试/超时终态 |
 | infrastructure | 通过 Task Center 间接使用 Revision/Snapshot/Artifact 受控 `source_ref` | 直接操作 Docker、宿主机路径或 Provider API |
 | asset-library | 受控创建/读取 Bundle Artifact 和批量摘要；通过 `POST /api/v1/studio-builds/batch-summaries` 读取 owner 与一跳 producer 投影 | 保存 Blob、storage_uri、写 Artifact 私表，或由 Asset Library 读取 AppStudio 私表 |

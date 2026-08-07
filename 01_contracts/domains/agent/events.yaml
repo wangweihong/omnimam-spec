@@ -2,13 +2,14 @@
 agent_lifecycle_changed:
   producer: agent-service
   consumers: [notification-center, sse, audit-service]
-  trigger_condition: 用户可见 Platform Agent 创建或 status、disabled 发生已持久化单调变化。
+  trigger_condition: 用户可见 Platform Agent 创建或 status、disabled、deleted_at 发生已持久化单调变化。
   payload:
     agent_id: string
     owner_user_id: string
     kind: string
     from_status: string|null
     to_status: string
+    deleted_at: string(date-time)|null
     resource_version: integer
     occurred_at: string(date-time)
   idempotency_key: agent_id:resource_version
@@ -50,8 +51,8 @@ agent_invocation_status_changed:
     occurred_at: string(date-time)
   idempotency_key: invocation_id:resource_version
   retry_policy: agent outbox 重试，消费者按 Invocation 版本幂等。
-  failure_policy: Invocation 是 Agent 业务投影；事件不得反向覆盖 AtomicTask 终态。
-  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-014, R-AGENT-020]
+  failure_policy: Invocation 是 Agent 业务投影；事件不得反向覆盖 AtomicTask 终态，重复或乱序 Runtime 事件不得回退 sequence/resource_version。
+  related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-014, R-AGENT-020, R-AGENT-022]
   related_user_stories: [US-AGENT-001]
 agent_runtime_status_changed:
   producer: agent-runtime-service
@@ -65,13 +66,15 @@ agent_runtime_status_changed:
     to_state: string
     activity_state: string
     health_status: string
+    current_task_id: string|null
+    current_operation: string|null
     error_code: string|null
     resource_version: integer
     occurred_at: string(date-time)
   idempotency_key: runtime_binding_id:resource_version
   retry_policy: agent outbox 重试；消费者按 Runtime Binding 版本幂等。
-  failure_policy: 发布失败不回滚 Runtime 操作；对账后可重放。
-  related_rules: [BR-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-018, R-AGENT-019]
+  failure_policy: 发布失败不回滚 Runtime 操作；对账后可重放；消费者只接受匹配当前 Task/operation 的结果。
+  related_rules: [BR-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-018, R-AGENT-019, R-AGENT-022]
   related_user_stories: [US-AGENT-001]
 agent_memory_changed:
   producer: agent-memory-service

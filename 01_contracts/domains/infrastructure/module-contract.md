@@ -43,6 +43,7 @@
 - 取消、停止、超时、重试和进程重启必须依据 requestId、已有 `infra_runtime_id` 和 Provider 引用恢复，不得重复创建运行单元。
 - `request_fingerprint` 是 Infra 根据规范化创建请求计算并持久化的内部摘要，不由调用方提交；同一 `requesting_service + request_id` 只有摘要一致时才能重放原结果。
 - Secret 只接受 SecretRef，由 Infra 在运行阶段解析并注入；普通 API、事件、日志和输出不得包含凭证、Provider 原始响应、容器 ID、Host Port、宿主路径或私网地址。
+- Agent Runtime 创建只接受 `agent-model-access-grant://` 引用。Infrastructure 必须从自身服务身份解析 grant，校验 owner/Agent/usage/model/config version/expiry/revocation，并仅在启动内存中形成和注入 ModelAccessSpec；请求方提交的模型地址、凭证或已解析 spec 必须拒绝。Task Worker agent-executor 对 Invocation grant 的 Attempt 级解析属于 Agent 执行协议边界，不授予其调用其他 Infra 写 API、持久化 ModelAccessSpec 或覆盖 Runtime 启动注入事实的权限。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
 - RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
 - Endpoint resolve 从工作负载身份解析调用服务，只允许 agent 和必要的 task-center；校验 owner、Endpoint READY、Runtime RUNNING/健康、未过期和未撤销，返回短时地址。解析请求自报的服务身份不参与授权，解析结果不得持久化。

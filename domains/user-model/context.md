@@ -11,6 +11,7 @@
 - `UserDefaultModelConfig`：按用途保存的当前用户默认模型选择。
 - `ModelHealthCheck`：由 Gateway Adapter 执行、由 User Model 持久化的一次 Provider 或模型检测结果。
 - `UserModelExecutionContext`：请求级受信任执行上下文，绑定 owner、稳定 Provider/模型 ID、Provider Type、能力、配置版本和不透明凭证句柄，不建表。
+- `AgentModelAccessGrant`：绑定 Agent Invocation/Attempt、用户模型、能力和过期时间的短期授权；Worker 通过引用临时解析 ModelAccessSpec，不在 Task 中传递凭证或 Provider 配置。
 
 ## 3. 核心规则
 
@@ -24,6 +25,7 @@
 - 下游只读取可见、启用且满足用途的模型投影，不维护自己的模型清单副本；只有通过 owner、enabled、health、能力和配置版本校验后才能签发执行上下文。
 - 默认模型按当前用户和用途解析；不可用时按明确规则提示或选择替代项。
 - `UserModelProvider` 不等于 `ProviderCapability` 或 `ApplicationEngineInstance`，不得转换为平台 Engine。
+- Agent Invocation 创建前必须具有 ACTIVE primary ModelBinding；`agent.chat` 与 `agent.coding` 授权使用短期 Model Access Grant，grant 过期或 Attempt 不匹配时拒绝解析。
 
 ## 4. 领域边界
 
@@ -55,7 +57,7 @@
 
 ## 8. 当前状态
 
-`user-model` 接替 `model-management` 的本次重构已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据；历史 Release 记录保持原样。Provider Type 或 Adapter 仍只有在 Gateway Runtime Registry 实际注册并加载后才视为可用，本 Context 不扩张运行时支持范围。
+`user-model` 接替 `model-management` 已由 `spec-v1.17.0` 发布；Agent Model Access Grant、`agent.chat`/`agent.coding` 用途和 ModelBinding 前置门禁待 `spec-v1.18.0` 发布。Provider Type 或 Adapter 仍只有在 Gateway Runtime Registry 实际注册并加载后才视为可用，本 Context 不扩张运行时支持范围。
 
 ## 9. 不在本领域定义的内容
 

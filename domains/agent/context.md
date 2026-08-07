@@ -7,11 +7,11 @@
 ## 2. 核心对象
 
 - `Agent`：持久化智能代理；公共 Agent 管理只投影 platform，内部还支持 AppStudio 创建的 coding，并固定引用一个后端 Workspace。
-- `AgentSession`、`AgentInvocation`、`AgentMessage`、`AgentMemory`：持续交互、单轮执行、原始消息和可恢复记忆事实。
+- `AgentSession`、`AgentInvocation`、`AgentMessage`、`AgentMemory`：持续交互、Task-backed 单轮执行、原始消息和可恢复记忆事实；Invocation 保存当前 Task、Runtime 恢复引用与单调事件游标。
 - `AgentWorkspace`：Platform Agent 的独立持久化工作区，由后端自动创建和绑定，不是用户侧资源。
 - `AgentRuntime`：按需运行 Hermes/OpenCode 的 Agent 执行实例。
 - `AgentRuntimeProvider`：创建、恢复和检查 AgentRuntime 的系统注册组件。
-- `AgentRuntimeAdapter`：校验 Agent、Session、Invocation 与 Runtime Binding 后，短时解析 READY Endpoint 并同步调用 Hermes/OpenCode 的内部适配边界。
+- `AgentRuntimeAdapter`：校验 Agent、Session、Invocation、Runtime Binding 和短期授权后，短时解析 READY Endpoint并按固定 Hermes/OpenCode 协议执行的内部适配边界。
 
 ## 3. 核心规则
 
@@ -22,7 +22,8 @@
 - 多个 Coding Agent 可以引用同一 StudioWorkspace，但写入必须经过 AppStudio ChangeSet 和 `base_revision` 校验。
 - Coding Agent 不直接挂载 AppStudio 存储，只使用当前 AgentInvocation 的受控 Workspace Tool 授权；Runtime 挂载请求必须经 Task Center、Task Worker 和 Infra Adapter。
 - Agent 删除、挂起或 Runtime 重建不得改写 StudioWorkspace、StudioBuild、StudioRelease 或 StudioRuntimeInstance。
-- 纯 `CHAT` 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；CODING、TOOL_OPERATION、BACKGROUND_OPERATION 和 Runtime 生命周期 Invocation 必须关联 AtomicTask，任务尝试、重试、取消和调度并发均以 task-center 当前事实源为准。
+- 所有 `CHAT` 和 `CODING` AgentInvocation 统一使用 `agent.invocation.execute@1.0` AtomicTask；任务尝试、重试、取消、超时和调度并发均以 task-center 当前事实源为准，API Server 不得进程内执行或降级绕过 Task。
+- Invocation 执行前必须存在 ACTIVE primary ModelBinding，并通过 Attempt-scoped Model Access Grant 解析模型访问；Coding 还必须使用短期 AppStudio Workspace Tool Grant，Worker 不得代表 Coding Agent 直接调用 `ApplyChangeSet`。
 - AgentRuntime 的创建、停止、删除和恢复写操作仍经 Task Center；AgentRuntimeAdapter 仅可用 Agent 工作负载身份调用 Infrastructure 的只读 Endpoint resolve，解析地址只用于当次 Hermes/OpenCode 调用且不得持久化或传播。
 - AgentRuntimeProvider 当前只承载 Hermes/OpenCode 的业务生命周期和 Task 编排；Infrastructure RuntimeProvider 第一阶段只承载 Docker，两者不得混用。
 
@@ -41,6 +42,7 @@
 | `00_product/domains/agent/product-spec.md` | S1 | Agent、Session、Memory、内部 Workspace 绑定和 AgentRuntime 产品语义 |
 | `01_contracts/domains/agent/openapi.yaml` | S2 | Agent、Session、Invocation、Memory 和 Runtime API |
 | `01_contracts/domains/agent/schema.sql` | S2 | Agent 领域设计态 Schema |
+| `01_contracts/domains/agent/runtime-protocol-fixtures.yaml` | S2 | Hermes/OpenCode 固定镜像的会话、消息、事件、取消与幂等发布门禁 |
 | `01_contracts/domains/agent/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 | 错误、权限、事件和模块边界 |
 Context 只负责导航，Task Center 的任务执行契约和 infrastructure 的运行层合同必须按跨域任务继续读取。
 
@@ -55,7 +57,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-Agent 当前完整 S1/S2 及 AgentRuntimeAdapter 只读 Endpoint resolve 例外已由 `spec-v1.17.2` 发布并允许按 implementation gate 作为正式实现、合并和验收依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
+Agent 截至 Endpoint resolve 的基线已由 `spec-v1.17.2` 发布；统一 CHAT/CODING Task、短期授权、当前 Task 单调投影和固定 Runtime 协议契约待 `spec-v1.18.0` 发布后才可作为正式实现依据。当前 S2 使用 `US-AGENT-001`、`BR-AGENT-001`、`R-AGENT-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

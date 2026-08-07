@@ -106,7 +106,7 @@
   range: 200400-200599
   retryable: true
   deprecated: false
-  related_rules: [BR-AGENT-001, R-AGENT-014, R-AGENT-018]
+  related_rules: [BR-AGENT-001, R-AGENT-014, R-AGENT-018, R-AGENT-020, R-AGENT-022]
   related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_MODEL_BINDING_INVALID
   value: 200204
@@ -118,7 +118,7 @@
   range: 200200-200399
   retryable: false
   deprecated: false
-  related_rules: [BR-AGENT-001, R-AGENT-005, R-AGENT-006]
+  related_rules: [BR-AGENT-001, R-AGENT-005, R-AGENT-006, R-AGENT-023]
   related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_MEMORY_INVALID
   value: 200205

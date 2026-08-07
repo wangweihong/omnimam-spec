@@ -325,6 +325,7 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 
 | 来源领域 | `functionRef` | 固定语义 | Task Worker 小型结果 | 业务投影归属 |
 | --- | --- | --- | --- | --- |
+| agent | `agent.invocation.execute` | 执行固定 CHAT/CODING Invocation，并通过 profile-specific adapter 投影事件 | `invocation_id`、`runtime_invocation_ref`、终态与脱敏失败摘要 | AgentInvocation / AgentMessage |
 | agent | `agent.runtime.ensure` | 创建、启动或恢复固定 AgentRuntime | `infra_runtime_id`、受控运行状态、`endpoint_ref`、健康摘要 | AgentRuntime / AgentRuntimeBinding |
 | agent | `agent.runtime.stop` | 挂起、停止或删除固定 AgentRuntime | `infra_runtime_id`、停止/删除状态、脱敏错误 | AgentRuntime / AgentRuntimeBinding |
 | appstudio | `appstudio.preview.ensure` | 以固定 Workspace Revision 创建或刷新 Preview | `infra_runtime_id`、`endpoint_ref`、健康摘要 | StudioPreviewRuntime |
@@ -333,7 +334,9 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 | appstudio | `appstudio.production.reconcile` | 以新 Release 和候选 RuntimeInstance 执行部署、升级或回滚 | `infra_runtime_id`、`endpoint_ref`、健康摘要 | StudioRuntimeInstance |
 | appstudio | `appstudio.production.stop` | 停止固定 StudioRuntimeInstance 并撤销当前入口 | `infra_runtime_id`、停止状态 | StudioRuntimeInstance |
 
-这些名称表示注册函数，不是允许用户直接调用的 HTTP 路径。Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`，并从业务输入中的授权引用生成 Infra 的受控 `source_ref`；不得把业务域的 Workspace、Snapshot 或 Artifact ID 直接解释成任意宿主机路径。
+这些名称表示注册函数，不是允许用户直接调用的 HTTP 路径。`agent.invocation.execute@1.0` 固定绑定 Agent/Session/Invocation/Runtime Binding；其幂等键按 Invocation 固定，自动 Attempt 必须复用 Runtime 接受后的稳定引用。取消调用对应 Runtime adapter，超时、失败、取消和 execution 丢失都必须形成 Task 终态并通知 Agent terminal observer；事件只按单调序号/版本推进，重复或乱序事件不得回退投影。
+
+Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`，并从业务输入中的授权引用生成 Infra 的受控 `source_ref`；不得把业务域的 Workspace、Snapshot 或 Artifact ID 直接解释成任意宿主机路径。
 
 `agent.runtime.stop` 使用受控目标动作区分挂起、停止和删除；`appstudio.production.reconcile` 使用部署原因区分首次部署、升级和回滚，但回滚输入必须引用 AppStudio 已创建的新 Release 与新候选 RuntimeInstance。Build 取消、Runtime ensure 取消及其他进行中操作统一使用 AtomicTask 取消语义，不创建 `*.cancel` functionRef。
 
@@ -451,8 +454,9 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 78. `BR-TASK-150`：Task Worker 必须通过唯一 Infra Adapter 调用 Infra Service，不得直接操作 Docker Socket、Provider 私有 API、宿主机路径或其他业务数据库。
 79. `BR-TASK-151`：AgentRuntime、Preview、Build 和 Production 的 Infra 操作必须使用业务域授权生成的 Workspace、Revision、Snapshot 或 Artifact `source_ref`；Task Worker 不得把用户输入解释为任意挂载路径。
 80. `BR-TASK-152`：Infra-backed Task Worker 在取消、超时、重试和重启后必须依据稳定幂等键及已有运行引用恢复或清理，不得重复创建 Docker Job/Service。
-81. `BR-TASK-153`：第一阶段 Infra-backed functionRef 必须来自第 5.8 节 canonical registry；Task Center 在创建任务前按精确输入 schema 校验，并固定合同版本与摘要。执行模式、能力、幂等、重试、取消、超时、Infra 映射和结果 schema 只能来自该版本合同，registry 升级不得改写历史任务。
+81. `BR-TASK-153`：第一阶段 Agent/AppStudio functionRef 必须来自第 5.8 节 canonical registry；Task Center 在创建任务前按精确输入 schema 校验，并固定合同版本与摘要。执行模式、能力、幂等、重试、取消、超时、Runtime/Infra 映射和结果 schema 只能来自该版本合同，registry 升级不得改写历史任务。
 82. `BR-TASK-154`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
+83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件，并将成功、失败、超时、取消和 execution 丢失终态通知 Agent observer。
 
 ---
 
@@ -612,9 +616,10 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 作为平台维护者，我希望 Agent 与 AppStudio 的 Infra-backed 任务只使用版本化、可校验的函数合同，使 Worker 路由、重试恢复和业务结果不会因调用方参数或 registry 升级而漂移。
 
 - `AC-TASK-026-01`：未注册、已禁用或不属于调用方领域的 functionRef，以及不满足精确输入 schema 的 arguments，在创建 AtomicTask 前被稳定拒绝且不调用 Infra。
-- `AC-TASK-026-02`：七个第一阶段 functionRef 均明确声明输入、输出、JOB/SERVICE 模式、能力、幂等、重试、取消、超时、Infra Adapter 映射和来源领域结果投影。
+- `AC-TASK-026-02`：八个第一阶段 Agent/AppStudio functionRef 均明确声明输入、输出、执行模式、能力、幂等、重试、取消、超时、Runtime/Infra Adapter 映射和来源领域结果投影。
 - `AC-TASK-026-03`：AtomicTask 固定 function contract version/digest；自动重试、延迟回调和重启恢复使用同一版本，registry 新版本不改变历史任务。
 - `AC-TASK-026-04`：Task Worker 输出只包含合同允许的小型引用和脱敏摘要；源码、Artifact 内容、Secret、宿主路径、容器信息、Provider 原始响应和业务状态仍由各事实领域拥有。
+- `AC-TASK-026-05`：CHAT/CODING 创建后执行前绑定 AtomicTask；重复 Attempt 不重复提交已接受消息，取消调用对应 adapter，所有终态及 execution 丢失均由 reconciler 单调通知 Agent observer。
 
 ---
 

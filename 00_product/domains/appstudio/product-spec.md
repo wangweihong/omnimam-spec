@@ -111,9 +111,10 @@ Coding Agent Runtime
 AppStudio 只保存：
 
 ```text
-agentId
-agentSessionId
-agentInvocationId
+当前 codingAgentId
+当前 codingSessionId
+codingAgentGeneration
+ChangeSet 审计中的 agentInvocationId
 ```
 
 不保存：
@@ -656,6 +657,9 @@ description
 status
 defaultWorkspaceId
 currentVersionId
+codingAgentId
+codingSessionId
+codingAgentGeneration
 createdAt
 updatedAt
 lastActivityAt
@@ -700,7 +704,7 @@ ARCHIVED
 ERROR
 ```
 
-AppStudio 不创建第二套 Conversation。AgentSession、AgentMessage、AgentInvocation 和 Memory 全部归 Agent Service；AppStudio 只在 ChangeSet 审计上下文中保存稳定的 Agent、Session 和 Invocation ID。
+AppStudio 不创建第二套 Conversation。AgentSession、AgentMessage、AgentInvocation 和 Memory 全部归 Agent Service；StudioApplication 内部保存当前 `codingAgentId/codingSessionId/codingAgentGeneration`，并只在 ChangeSet 审计上下文中保存稳定的 Agent、Session 和 Invocation ID。这些内部 ID 不得投影 Workspace，也不得让公共 Agent API 暴露 Coding Agent。
 
 ---
 
@@ -977,6 +981,7 @@ initialAssets
 backendRequired
 codingAgentProfile
 codingModelSelection
+idempotencyKey
 ```
 
 创建结果：
@@ -987,6 +992,7 @@ StudioSourceRepository
 内部默认 StudioWorkspace(revision=0)
 Coding Agent
 AgentSession
+首次 CODING AgentInvocation
 ```
 
 其中源码对象归 AppStudio；Coding Agent 和 AgentSession 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent。前端不得调用或替换该内部 Workspace 引用。
@@ -1031,11 +1037,15 @@ sequenceDiagram
     ST->>AS: Create AgentSession
     AS-->>ST: agentSessionId
 
-    ST->>ST: 保存默认 Agent 稳定引用
-    ST-->>U: StudioApplication READY
+    ST->>ST: 保存 generation=1 的 Agent/Session 稳定引用并提交初始化事务
+    ST->>AS: SendAgentMessage(initialRequirement, attachments, create idempotency key)
+    AS-->>ST: 首次 CODING Invocation 投影
+    ST-->>U: READY Application + 当前 Agent + 首次 Invocation
 ```
 
-创建时默认不强制立即启动 Agent Runtime。Coding Agent 创建失败时 StudioApplication 进入 `ERROR`，已创建的 Repository/内部源码上下文保留并允许使用同一幂等请求重试；不得留下没有固定内部 Workspace 的 Coding Agent。
+Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding 和选定的 ACTIVE primary ModelBinding 必须作为一个初始化事务提交。初始化失败时不得产生可用项目；同一 owner 与创建幂等键重试不得重复创建任何初始化对象。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
+
+创建时不要求 Runtime 已经 READY，但初始需求会自动触发首次 Invocation 的 Task 驱动 Runtime gating。`codingModelSelection` 必须由用户明确选择并形成 Coding 用途的 ACTIVE primary ModelBinding，不得回退到用户默认模型或其他隐式模型。
 
 ---
 
@@ -1043,7 +1053,7 @@ sequenceDiagram
 
 ## 7.1 发送开发指令
 
-AppStudio 向 Agent Service 提交：
+AppStudio 先按应用 owner 解析当前 generation 的内部 Agent/Session，再向 Agent Service 提交：
 
 ```text
 agentId
@@ -1051,7 +1061,10 @@ agentSessionId
 instruction
 attachments
 studioApplicationContext
+idempotencyKey
 ```
+
+用户通过应用级接口查看 Agent 状态、发送消息、查询 Invocation/事件、取消、挂起、恢复和替换。响应可以返回稳定 Agent/Session/Invocation ID 供诊断与导航，但不得返回 Workspace、Runtime Endpoint、模型凭证或 Infra 引用。
 
 附件可以包含：
 
@@ -1127,6 +1140,12 @@ validationSummary
 ```
 
 详细 Agent 消息和事件归 Agent Service 所有。
+
+应用级 Invocation 投影必须聚合其审计关联的全部 `APPLIED` StudioChangeSet：`resultingChangeSetId` 取最大 `targetRevision` 对应的最后一个 ChangeSet，`resultingSourceRevision` 取最大的 `targetRevision`；没有已应用 ChangeSet 时二者为空。用户选择历史 Invocation 恢复时，把该 `resultingSourceRevision` 传给既有 source restore API；AppStudio 以当前 Revision 为 `baseRevision` 创建新的 Restore ChangeSet 和新 Revision，不改写 Session、Message、Invocation、原 ChangeSet 或历史 Revision。后续 Coding Agent 在相同当前 Session 和新当前 Revision 上继续工作。
+
+## 7.5 挂起、恢复与替换
+
+挂起和恢复只代理到当前 generation 的 Coding Agent，并继承 Agent 的 Task、模型校验和 Session 恢复语义。替换必须创建新的 Coding Agent 和默认 Session，成功后原子递增 `codingAgentGeneration` 并切换当前引用；旧 Agent、Session、Invocation、Message、Memory 与 ChangeSet 审计历史保留且不改写。创建新 Agent 失败时继续保留旧引用，不能留下指向半创建 Agent 的 generation。
 
 ---
 
@@ -1999,6 +2018,10 @@ DeleteStudioApplication
 ```text
 SendStudioMessage
 GetStudioAgentStatus
+GetStudioAgentInvocation
+ListStudioAgentInvocations
+StreamStudioAgentInvocationEvents
+CancelStudioAgentInvocation
 SuspendStudioAgent
 ResumeStudioAgent
 ReplaceStudioAgent
@@ -2604,11 +2627,11 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Revision、Snapshot、Build、Preview、Release 和 Runtime；Workspace 仅是后端内部事实。
-- `BR-APPSTUDIO-001`：StudioApplication、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、7、9、10、11、12、15、16、17、18、21、22、26 节及 `R-STUDIO-001..024`。
+- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、20、21、22、26 节及 `R-STUDIO-001..024`。
 
 验收标准：
 
-- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace 输入；后端必须原子创建 Repository 和唯一默认源码上下文，并通过内部 `CreateCodingAgentForStudio` 创建固定绑定的 Coding Agent 和 Session；Coding Agent 失败时应用进入 `ERROR`，源码事实保留并允许幂等重试。
+- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace 输入；后端必须按 owner/创建幂等键原子创建 Application、Repository、唯一默认源码上下文 revision 0、固定绑定的 Coding Agent/Session/WorkspaceBinding 和用户显式选择的 ACTIVE primary Coding ModelBinding。初始化失败不得产生 READY 项目；初始化成功后自动创建首条 Message/CODING Invocation，Task 提交失败只令首次 Invocation 失败并允许同键复用重试，不删除 READY 项目或重复初始化对象。
 - `AC-APPSTUDIO-001-02`：所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；Revision 冲突、越权或校验失败时不覆盖、不隐式合并、不部分应用。
 - `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、内部 Workspace、动作和有效期的短期 Tool 授权；用户侧不接触 Workspace 字段。
 - `AC-APPSTUDIO-001-04`：Preview 固定启动时的应用源码 Revision，后续源码变化不会隐式改变正在运行的 Preview。
@@ -2620,3 +2643,6 @@ flowchart LR
 - `AC-APPSTUDIO-001-10`：Preview、Build、发布、升级和回滚只能走 Task Center、Task Worker、Infra Adapter 和 Infra Service，AppStudio 与 StudioDeploymentProvider 不得直接调用 Infra；Build Worker 创建 Artifact 时必须携带受信服务身份和原任务 `authorization_ref`，AppStudio 批量摘要按委托用户或当前调用者校验并仅返回 `id/owner_user_id/name/status`，不可见项统一为 null，服务身份、Build 协作者和管理员角色均不得绕过 Artifact owner 权限。
 - `AC-APPSTUDIO-001-11`：Production 只读使用固定 Artifact digest，携带内部 Workspace、Revision 或 Snapshot 挂载的请求必须拒绝；公共 API 不接受 Workspace ID。
 - `AC-APPSTUDIO-001-12`：第一阶段只允许 Infrastructure 的单机 Docker 能力；Kubernetes、Edge、Local Process、多节点和跨 Provider 参数必须保持禁用。
+- `AC-APPSTUDIO-001-13`：应用级 Agent API 可返回稳定 Agent/Session/Invocation ID，但不得返回 Workspace；状态、消息、Invocation 查询/事件/取消、挂起和恢复始终代理当前 generation，Coding Agent 不进入公共 `/api/v1/agents`。
+- `AC-APPSTUDIO-001-14`：替换 Coding Agent 创建新 Agent/Session 并原子递增 generation；旧 Agent 历史保留，新建失败时旧引用保持当前且不改写源码、Build、Release 或 RuntimeInstance。
+- `AC-APPSTUDIO-001-15`：应用级 Invocation 投影以关联的 APPLIED ChangeSet 最大 `target_revision` 作为 `resulting_source_revision`；恢复该阶段必须调用既有 source restore API 创建新的 Restore ChangeSet/Revision，且保留 Session、Message、Invocation、原 ChangeSet 和 Revision 历史。

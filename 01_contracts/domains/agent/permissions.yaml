@@ -31,7 +31,7 @@ agent.manage:
   subject: owner, system_admin
   description: 管理用户侧 Platform Agent 配置和业务生命周期。
   frontend_usage: Platform Agent 创建、编辑、启停和删除。
-  backend_enforcement: 创建时固定 kind=platform 并原子建立内部 AgentWorkspace 和 Binding；前端不得创建 Coding Agent、传递 Workspace 引用或删除 AppStudio 事实。
+  backend_enforcement: 创建时固定 kind=platform 并原子建立内部 AgentWorkspace 和 Binding；前端不得创建 Coding Agent、传递 Workspace 引用或删除 AppStudio 事实。删除使用软删除终态，存在 Runtime 时必须等待当前删除 Task 成功。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-001, R-AGENT-010, R-AGENT-011, R-AGENT-017]
   related_user_stories: [US-AGENT-001]
@@ -43,7 +43,7 @@ agent.invoke:
   subject: owner, system_admin
   description: 管理 Session 并发送、查询或取消 Invocation。
   frontend_usage: Agent 对话、消息流和取消入口。
-  backend_enforcement: 校验 Agent/Session 所有权、Session 状态、单轮并发和 Task Center 取消边界。
+  backend_enforcement: 校验 Agent/Session 所有权、Session 状态、单轮并发和 Task Center 取消边界；CHAT/CODING 执行前必须绑定 agent.invocation.execute@1.0，API Server 不得直接执行。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-002, R-AGENT-014, R-AGENT-017, R-AGENT-020]
   related_user_stories: [US-AGENT-001]
@@ -67,7 +67,7 @@ agent.session.manage:
   subject: owner, system_admin
   description: 管理 AgentSession 生命周期。
   frontend_usage: Session 创建、关闭和归档。
-  backend_enforcement: 关闭/归档后拒绝新消息；历史 Message 和 Memory 继续保留。
+  backend_enforcement: 关闭/归档后拒绝新消息；历史 Message 和 Memory 继续保留；关闭不取消已运行 Invocation。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-002]
   related_user_stories: [US-AGENT-001]
@@ -103,7 +103,7 @@ agent.runtime.operate:
   subject: owner, system_admin
   description: 操作 AgentRuntime 业务绑定。
   frontend_usage: Runtime 启动、挂起、恢复、停止和恢复入口。
-  backend_enforcement: 通过 Task Center 已注册 functionRef；不得直接调用 Infra 或暴露容器细节。
+  backend_enforcement: 通过 Task Center 已注册 functionRef；启动/恢复先校验 ACTIVE primary binding 并签发 grant；结果只在匹配当前 Task 时投影，不得直接调用 Infra 或暴露容器细节。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   related_rules: [BR-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-014, R-AGENT-018, R-AGENT-019]
   related_user_stories: [US-AGENT-001]

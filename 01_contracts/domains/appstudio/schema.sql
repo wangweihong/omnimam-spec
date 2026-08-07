@@ -14,9 +14,15 @@ CREATE TABLE studio_applications (
   owner_user_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'ARCHIVED', 'ERROR')),
   default_workspace_id TEXT,
-  current_version_id TEXT
+  current_version_id TEXT,
+  coding_agent_id TEXT,
+  coding_session_id TEXT,
+  coding_agent_generation INTEGER NOT NULL DEFAULT 0 CHECK (coding_agent_generation >= 0),
+  create_idempotency_key TEXT NOT NULL,
+  CHECK ((coding_agent_id IS NULL AND coding_session_id IS NULL) OR (coding_agent_id IS NOT NULL AND coding_session_id IS NOT NULL AND coding_agent_generation > 0))
 );
 CREATE UNIQUE INDEX idx_studio_applications_owner_name ON studio_applications(owner_user_id, name);
+CREATE UNIQUE INDEX idx_studio_applications_owner_create_key ON studio_applications(owner_user_id, create_idempotency_key);
 CREATE INDEX idx_studio_applications_owner_status ON studio_applications(owner_user_id, status, created_at);
 
 -- s1_refs: R-STUDIO-001, R-STUDIO-010; source: 3 系统上下文, 4.3 Source Repository 与 StudioWorkspace.
@@ -111,6 +117,7 @@ CREATE TABLE studio_change_sets (
   idempotency_key TEXT NOT NULL,
   UNIQUE (workspace_id, idempotency_key)
 );
+CREATE INDEX idx_studio_change_sets_invocation_revision ON studio_change_sets(agent_invocation_id, target_revision) WHERE status = 'APPLIED' AND agent_invocation_id IS NOT NULL;
 
 -- s1_refs: R-STUDIO-010, R-STUDIO-011; source: 5.5 StudioSourceSnapshot, 10 Build.
 CREATE TABLE studio_source_snapshots (

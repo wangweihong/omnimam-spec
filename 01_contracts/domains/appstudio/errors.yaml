@@ -24,6 +24,54 @@
   deprecated: false
   related_rules: [BR-APPSTUDIO-001, R-STUDIO-001, R-STUDIO-014]
   related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_AGENT_NOT_BOUND
+  value: 210202
+  http: 200
+  cn: StudioApplication 尚未绑定可用的 Coding Agent 和 Session。
+  en: The StudioApplication does not have an available Coding Agent and Session binding.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_AGENT_UNAVAILABLE
+  value: 210203
+  http: 200
+  cn: 当前 Coding Agent 不可用或不属于该应用。
+  en: The current Coding Agent is unavailable or does not belong to this application.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_AGENT_INVOCATION_FAILED
+  value: 210204
+  http: 200
+  cn: Coding Agent Invocation 创建、绑定任务或执行失败。
+  en: The Coding Agent Invocation failed during creation, task binding, or execution.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_AGENT_REPLACE_FAILED
+  value: 210205
+  http: 200
+  cn: Coding Agent 替换失败，当前 generation 保持不变。
+  en: Coding Agent replacement failed and the current generation remains unchanged.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_SOURCE_NOT_VISIBLE
   value: 210400
   http: 200
