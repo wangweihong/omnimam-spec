@@ -1,4 +1,4 @@
-# Infrastructure S2 API contract for the current release candidate.
+# Infrastructure S2 API contract released by spec-v1.19.0.
 openapi: 3.0.3
 info:
   title: OmniMAM Infrastructure API

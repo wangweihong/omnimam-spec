@@ -1,5 +1,38 @@
 # Release Records
 
+## spec-v1.19.0
+
+- commit: 6e994e2
+- status: released
+- confirmed_by: user（2026-08-08 请求实施 Agent MCP 全链路修复方案）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+  - infrastructure
+  - identity
+  - mcp
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/identity/product-spec.md
+  - 00_product/domains/mcp/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/agent/errors.yaml
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/agent/runtime-protocol-fixtures.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/identity/openapi.yaml
+  - 01_contracts/domains/identity/module-contract.md
+  - 01_contracts/domains/mcp/openapi.yaml
+  - 01_contracts/domains/mcp/module-contract.md
+- implementation_gate: Agent MCP Binding 支持 owner 隔离的 List/Create/PUT/Delete、活动名称唯一、资源版本乐观锁、KEEP/SET/CLEAR 凭证语义、不可恢复软删除和不可变 revision。Runtime ensure 只固定启用且未删除的最多 50 个 revision，并在任务入队前持久化与 Agent/generation/Application/Runtime/请求绑定的短期 Grant。Infrastructure 只接受 `MCP_SERVER_REF + authorizationRef`，不得读取 Agent 私表；OpenCode `agent.coding@1.0` 配置必须通过 Docker Archive/Exec 写入 tmpfs `/root/.config/opencode/opencode.json`、设为 `0600` 后释放启动门闩，凭证不得进入 Task、持久化、日志、Env、Cmd 或 inspect。AppStudio 首次创建、既有当前代幂等回填和代际替换遵守默认平台 Binding 原子规则；删除后同代不重建。MCP 可接受 `aud=mcp` 的 `AGENT_WORKLOAD` JWT，每请求重新校验 Grant 和对象/工具范围，普通 USER JWT 保持原行为。Hermes MCP 注入不属于本 release。
+
 ## spec-v1.18.0
 
 - commit: 9726555

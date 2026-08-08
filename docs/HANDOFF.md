@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：为 Agent MCP Binding 生命周期、不可变 revision、Runtime Grant、Infrastructure 解析注入、`AGENT_WORKLOAD` MCP 身份和 AppStudio 默认平台 Binding 补齐 S1/S2，并发布新的 SSOT release。
-- 状态：SSOT 跨域修订与聚焦验证已完成，准备创建规范内容提交并发布 `spec-v1.19.0`；Server 实现尚未开始，必须等待 release 发布并 pin。
+- 状态：规范内容提交 `6e994e2` 已创建，`spec-v1.19.0` release 元数据已写入，正在创建发布提交/tag 并推送；Server 实现尚未开始，必须等待 release 发布并 pin。
 - 工作分支：`codex/agent-mcp-runtime`。
 
 ## 本次已完成
@@ -16,10 +16,11 @@
 - 已补齐 Infrastructure `MCP_SERVER_REF` consumer resolver 与 Docker tmpfs/0600/启动门闩注入合同。
 - 已补齐 Identity `AGENT_WORKLOAD` PrincipalContext/JWT 和 MCP 每请求 Grant 复核、最小权限及 USER JWT 不回归合同。
 - 目标 YAML 解析、四个受影响 OpenAPI 本地 `$ref`、Agent 错误码唯一性/区间/追溯和 `git diff --check` 已通过。
+- 已创建规范内容提交 `6e994e2`，并以该准确 commit 生成 `spec-v1.19.0` Release 记录。
 
 ## 当前进行中
 
-- 创建规范内容提交，用其 commit 更新 release 元数据，创建 annotated tag 并推送。
+- 创建 release 元数据提交、annotated `spec-v1.19.0` tag，并推送分支与 tag。
 
 ## 文件变化
 
@@ -27,7 +28,7 @@
 - Modified: AppStudio 的 `product-spec.md`、`module-contract.md`。
 - Modified: Infrastructure 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`。
 - Modified: Identity 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`。
-- Modified: MCP 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`；Modified: `docs/HANDOFF.md`。
+- Modified: MCP 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`；Modified: `RELEASE.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
 
 ## 关键决定
 
@@ -52,7 +53,7 @@
 
 ## 推荐下一步
 
-创建规范内容提交，并把准确 commit 写入 `RELEASE.md` 的 `spec-v1.19.0` 记录。
+完成 release 提交、tag 和 push；随后回到 Server 更新 submodule pin 与 `SSOT_VERSION`。
 
 Next Prompt:
 

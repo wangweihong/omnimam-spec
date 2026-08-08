@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- 发布 `spec-v1.19.0`：补齐 Agent MCP Binding PUT/DELETE、活动名称唯一、乐观锁、显式凭证更新模式、不可变 revision、软删除和正式错误码；删除或更新只影响下一次 Runtime 启动、恢复或显式重建。
+- Runtime ensure 固定排序后的启用 Binding revision 并持久化精确 AgentRuntimeGrant；Infrastructure 新增 `MCP_SERVER_REF` consumer resolver，禁止 Worker/Infra/Provider 读取 Agent 私表。
+- 固化 OpenCode `agent.coding@1.0` 的 tmpfs `/root/.config/opencode/opencode.json`、`0600`、Docker Archive/Exec 和启动门闩合同；空工具白名单拒绝全部，Hermes MCP 注入暂不支持。
+- AppStudio 原子创建/回填每代默认平台 Binding；Identity/MCP 新增 `AGENT_WORKLOAD` `aud=mcp`、Agent generation/Application/Runtime/Grant 绑定、最小权限和逐请求 Grant 复核，USER JWT 行为保持不变。
 - 补齐 Agent/AppStudio Coding Agent 端到端契约：所有 CHAT/CODING 统一使用 `agent.invocation.execute@1.0`，Task 仅携带 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期授权引用、资源版本和恢复游标；消息正文、owner、Workspace、Runtime Endpoint、模型凭据、用户密钥和 Provider 配置不得进入 Task。
 - AppStudio 创建请求新增初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，初始化事务原子创建 Application、Repository、Revision 0、Coding Agent、默认 Session、WorkspaceBinding 与 ACTIVE primary ModelBinding；事务后自动创建首条 Message/Invocation，Task 提交失败时保留 READY 项目并允许幂等重试。
 - 新增 AppStudio application-level Coding Agent 查询、消息、Invocation 查询/取消/SSE、suspend/resume/replace 契约和 generation 隔离；Invocation 聚合已应用 ChangeSet 的最终源码 Revision，历史阶段恢复继续调用 source restore 并创建新的 Restore ChangeSet/Revision，完整保留 Session、Message、Invocation、原 ChangeSet 与 Revision 历史。
