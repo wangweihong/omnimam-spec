@@ -1214,7 +1214,7 @@ sequenceDiagram
 
 ## 10.3 AppStudio 内部创建 Coding Agent
 
-AppStudio 创建 StudioApplication 时，通过非前端的 `CreateCodingAgentForStudio` 模块语义请求 Agent Service 创建 Coding Agent。该内部请求携带稳定的 StudioApplication、StudioWorkspace 和授权上下文；Agent Service 校验调用方身份、Workspace 类型与授权后，原子创建 Coding Agent、默认 Session 和固定 Binding。
+AppStudio 创建 StudioApplication 时，通过非前端的 `CreateCodingAgentForStudio` 模块语义请求 Agent Service 创建 Coding Agent。该内部请求携带稳定的 StudioApplication、StudioWorkspace、Coding Agent generation 和授权上下文；Agent Service 校验调用方身份、Workspace 类型与授权后，原子创建 Coding Agent、默认 Session、固定 Workspace/Model Binding 和默认平台 MCP Binding。
 
 该模块语义不得暴露为用户可调用的 HTTP 接口，不得允许前端传递或替换 StudioWorkspace ID。创建失败时不得留下没有固定 Workspace 的 Coding Agent；失败结果返回 AppStudio，由 AppStudio 按其创建恢复规则处理。
 
@@ -1231,7 +1231,7 @@ Agent Service 在启动前解析：
 * ModelBinding。
 * 固定 WorkspaceBinding 与当前授权。
 * SkillBindings。
-* MCPBindings。
+* 当前启用且未删除的 MCPBindings 及其不可变 revision；按 Binding ID 稳定排序，最多 50 条，超过上限必须明确失败而不是截断。
 * Tool Permissions。
 * Platform Endpoint。
 * Resource Requirement。
@@ -1290,7 +1290,7 @@ Agent Service 在启动前解析：
 }
 ```
 
-该示例为 Coding Agent，因此不得携带 StudioWorkspace 文件系统挂载。Workspace Tool 的短期授权在每个 Invocation 开始时单独签发；Platform Agent 才可以按固定 AgentWorkspace Binding 生成受控 `agent-workspace://...` 挂载引用。
+该示例为 Coding Agent，因此不得携带 StudioWorkspace 文件系统挂载。每个 MCP Binding revision 以 `MCP_SERVER_REF` configuration binding 和同一个 `authorizationRef` 交给 Infrastructure 解析；Task、Worker 和 Provider 不得直接读取 Agent 数据表。Workspace Tool 的短期授权在每个 Invocation 开始时单独签发；Platform Agent 才可以按固定 AgentWorkspace Binding 生成受控 `agent-workspace://...` 挂载引用。
 
 Agent Service 不接收明文模型密钥。
 
@@ -1628,8 +1628,10 @@ credentialRef
 allowedTools
 configuration
 enabled
+resourceVersion
 createdAt
 updatedAt
+deletedAt
 ```
 
 `serverType`：
@@ -1639,6 +1641,12 @@ PLATFORM
 REMOTE
 RUNTIME_LOCAL
 ```
+
+同一 Agent 下活动 Binding 的 `name` 唯一。创建和每次更新必须在同一事务中写入当前态与一个不可变 `AgentMCPBindingRevision`；revision 使用更新后的 `resourceVersion`，保存 endpoint、工具白名单、非敏感配置和 `credentialRef`，但不得保存明文凭证。更新采用全量替换并校验 `resourceVersion`，凭证通过 `KEEP/SET/CLEAR` 显式处理。
+
+删除是不可恢复、幂等的软删除。删除项不再出现在列表或后续 Runtime 配置中；删除前已经签发的未撤销 Runtime Grant 仍可解析其固定历史 revision。更新和删除不打断运行中的容器，只在下一次启动、恢复或显式重建时生效。
+
+Runtime 启动任务入队前必须持久化 `AgentRuntimeGrant`，精确绑定 Agent、Coding Agent generation（如适用）、StudioApplication（如适用）、RuntimeBinding、请求、过期时间和本次允许解析的 Binding revisions。入队失败必须撤销；Task 自动重试复用同一个 Grant。Grant 过期、撤销、Runtime 不匹配或 revision 不在授权集合时立即拒绝解析。
 
 ---
 
@@ -1650,9 +1658,9 @@ Agent Service 只保存：
 credentialRef
 ```
 
-Infra Service 或受信任的连接层负责在 Runtime 启动阶段注入凭证。
+Infra Service 通过 `authorizationRef` 调用 Agent 提供的内部 resolver 解析不可变 revision，再由受信任 Secret/Identity resolver 解析实际凭证并在 Runtime 启动阶段注入。Infrastructure、Task Worker 和 Docker Adapter 禁止直接读取 Agent 数据表。
 
-Agent Service API 不返回明文凭证。
+Agent Service API 不返回 `credentialRef` 或明文凭证；Task 参数、revision 快照、日志、审计、容器环境变量、命令参数和 `docker inspect` 可见字段均不得包含明文凭证。
 
 ---
 
@@ -1969,7 +1977,7 @@ Agent Service 不直接调用 Infra Service 的 Runtime 写接口；这些接口
 
 ## 23.3 Runtime 身份
 
-Agent Runtime 使用独立 Runtime Identity。
+Agent Runtime 使用 `AGENT_WORKLOAD` 类型的独立 Runtime Identity。用于平台 MCP 的 JWT 必须绑定 Agent、Coding Agent generation（如适用）、StudioApplication（如适用）、RuntimeBinding、Runtime Grant，固定 `aud=mcp`，且有效期不得超过 Runtime 和 Grant 生命周期。MCP Server 每次请求都重新校验 Grant 状态和对象范围。
 
 它只获得：
 
@@ -1980,7 +1988,7 @@ Agent Runtime 使用独立 Runtime Identity。
 * 当前模型凭证。
 * 当前用户授权的数据范围。
 
-Agent Runtime 不自动继承 Agent 创建者的全部平台权限。
+Agent Runtime 不自动继承 Agent 创建者的全部平台权限。AppStudio 默认平台 Binding 的 workload 权限固定为允许工具所需的最小集合，并限制到当前租户、owner、StudioApplication、Agent generation 和 Runtime；不得获得管理员角色，也不得上传素材、取消运行或执行删除操作。
 
 ---
 
@@ -2411,6 +2419,9 @@ AGENT_SKILL_NOT_FOUND
 AGENT_SKILL_NOT_SUPPORTED
 AGENT_SKILL_PERMISSION_DENIED
 AGENT_MCP_BINDING_INVALID
+AGENT_MCP_BINDING_NAME_CONFLICT
+AGENT_MCP_BINDING_VERSION_CONFLICT
+AGENT_MCP_BINDING_REVISION_UNAVAILABLE
 AGENT_MCP_TOOL_NOT_ALLOWED
 AGENT_MCP_CREDENTIAL_UNAVAILABLE
 ```
@@ -2587,6 +2598,18 @@ Agent 软删除、Runtime 生命周期和 Invocation 终态回写必须匹配当
 
 Runtime 启动和恢复必须在创建 RuntimeBinding 或 AtomicTask 前完成 ACTIVE primary ModelBinding 资格校验和短期 grant 签发；Infrastructure 只能以服务身份解析 grant 并在启动时注入模型配置与凭证。
 
+## R-AGENT-024
+
+MCP Binding 更新必须以资源版本乐观控制并原子写不可变 revision；软删除不影响已签发 Grant 固定的历史 revision，但更新、删除和启停只影响下一次 Runtime 启动、恢复或显式重建。
+
+## R-AGENT-025
+
+Runtime MCP 配置只能由 Infrastructure 使用 `authorizationRef` 解析 Grant 允许的 Binding revisions；Worker、Infrastructure 和 Provider 不得读取 Agent 私表，敏感值不得进入 Task、持久化快照、日志或容器 inspect 可见字段。
+
+## R-AGENT-026
+
+OpenCode Coding Agent 的平台 MCP workload 身份必须绑定 Agent generation、Application、Runtime 和 Grant，固定 `aud=mcp` 并使用最小对象权限；Hermes MCP 注入不属于当前 release。
+
 ---
 
 # 33. 最终职责总结
@@ -2663,7 +2686,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-AGENT-001`：用户可以管理持久化 Platform Agent、会话交互、记忆和受控 Runtime 生命周期，而无需选择或管理内部 Workspace；Coding Agent 由 AppStudio 创建和投影。
-- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding 和 Runtime Binding 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、18、19、20、21、23、24、28 节及 `R-AGENT-001..023`。
+- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding、MCP Binding/Revision、Runtime Binding 和 Runtime Grant 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、16、18、19、20、21、23、24、28 节及 `R-AGENT-001..026`。
 
 验收标准：
 
@@ -2680,3 +2703,6 @@ flowchart LR
 - `AC-AGENT-001-10`：Disable 停止 Runtime 但保留业务数据，Enable 只回到 `READY`；Close Session 拒绝新消息但不取消已经运行的 Invocation。
 - `AC-AGENT-001-11`：启动/恢复在创建 Task 或 RuntimeBinding 前校验 ACTIVE primary binding 并签发 grant；恢复先对账旧运行引用，重建 Runtime Session 后恢复 Session/Memory，旧 Task 结果不得乱序覆盖。
 - `AC-AGENT-001-12`：Hermes 与 OpenCode 分别通过已验证的 JSON-RPC/WebSocket 和 REST/SSE 协议 fixture 覆盖会话、消息、事件、取消和幂等，任何固定镜像不通过时对应 Profile 不得发布。
+- `AC-AGENT-001-14`：MCP Binding List/Create/PUT/Delete 必须执行 owner 隔离、活动名称唯一、`resource_version` 乐观锁、`KEEP/SET/CLEAR` 凭证语义、不可恢复幂等软删除和不可变 revision；所有响应隐藏凭证引用。
+- `AC-AGENT-001-15`：Runtime ensure 只选择启用且未删除 Binding，按 ID 稳定排序并固定当前 revision；超过 50 条失败。入队前持久化精确 Grant，入队失败撤销，重试复用，过期、越权和 revision 不可用均拒绝解析。
+- `AC-AGENT-001-16`：OpenCode MCP 配置只能由 Infrastructure resolver 在 Grant 授权下解析并安全写入 `/root/.config/opencode/opencode.json`；空 `allowed_tools` 拒绝全部工具，凭证不得出现在 Task、数据库明文、日志、API、环境变量、命令参数或 inspect 中。

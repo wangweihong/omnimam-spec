@@ -359,7 +359,8 @@ paths:
       x-permission: agent.manage
       x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      responses: {'200': {description: MCP Binding 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      x-error-codes: [ERR_AGENT_NOT_VISIBLE]
+      responses: {'200': {description: 未删除的 MCP Binding 列表或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/McpBindingListResponse'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
       tags: [agents]
       operationId: create_agent_mcp_binding
@@ -367,13 +368,35 @@ paths:
       x-permission: agent.manage
       x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016], source_sections: ['16 MCP Server Binding']}
       parameters: [{$ref: '#/components/parameters/agent_id'}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingRequest'}}}}
-      responses: {'200': {description: MCP Binding。, content: {application/json: {schema: {$ref: '#/components/schemas/McpBinding'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_MCP_BINDING_INVALID, ERR_AGENT_MCP_BINDING_NAME_CONFLICT]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingCreateRequest'}}}}
+      responses: {'200': {description: MCP Binding 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/McpBinding'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/agents/{agent_id}/mcp-bindings/{binding_id}:
+    put:
+      tags: [agents]
+      operationId: update_agent_mcp_binding
+      summary: 全量更新 MCP Binding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016, R-AGENT-024], source_sections: ['16 MCP Server Binding']}
+      x-error-codes: [ERR_AGENT_NOT_VISIBLE, ERR_AGENT_MCP_BINDING_INVALID, ERR_AGENT_MCP_BINDING_NAME_CONFLICT, ERR_AGENT_MCP_BINDING_VERSION_CONFLICT]
+      parameters: [{$ref: '#/components/parameters/agent_id'}, {$ref: '#/components/parameters/binding_id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/McpBindingUpdateRequest'}}}}
+      responses: {'200': {description: MCP Binding 或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/McpBinding'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+    delete:
+      tags: [agents]
+      operationId: delete_agent_mcp_binding
+      summary: 幂等软删除 MCP Binding
+      x-permission: agent.manage
+      x-s1-refs: {user_stories: [US-AGENT-001], business_rules: [R-AGENT-016, R-AGENT-024], source_sections: ['16 MCP Server Binding']}
+      x-error-codes: [ERR_AGENT_NOT_VISIBLE]
+      parameters: [{$ref: '#/components/parameters/agent_id'}, {$ref: '#/components/parameters/binding_id'}]
+      responses: {'200': {description: 删除结果或业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/OperationResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
     agent_id: {name: agent_id, in: path, required: true, schema: {type: string}}
+    binding_id: {name: binding_id, in: path, required: true, schema: {type: string}}
     session_id: {name: session_id, in: path, required: true, schema: {type: string}}
     invocation_id: {name: invocation_id, in: path, required: true, schema: {type: string}}
     memory_id: {name: memory_id, in: path, required: true, schema: {type: string}}
@@ -578,12 +601,28 @@ components:
       properties: {id: {type: string}, agent_id: {type: string}, skill_id: {type: string}, skill_version: {type: string}, enabled: {type: boolean}, configuration: {type: object, additionalProperties: true}}
     McpBinding:
       type: object
-      required: [id, agent_id, name, server_type, endpoint_ref, enabled]
-      properties: {id: {type: string}, agent_id: {type: string}, name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, allowed_tools: {type: array, items: {type: string}}, enabled: {type: boolean}}
-    McpBindingRequest:
+      additionalProperties: false
+      required: [id, agent_id, name, server_type, endpoint_ref, allowed_tools, configuration, enabled, resource_version, created_at, updated_at]
+      properties: {id: {type: string}, agent_id: {type: string}, name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, allowed_tools: {type: array, items: {type: string}}, configuration: {type: object, additionalProperties: true}, enabled: {type: boolean}, resource_version: {type: integer, minimum: 0}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+    McpBindingCreateRequest:
       type: object
+      additionalProperties: false
       required: [name, server_type, endpoint_ref]
-      properties: {name: {type: string}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string}, credential_ref: {type: string, nullable: true}, allowed_tools: {type: array, items: {type: string}}, configuration: {type: object, additionalProperties: true}}
+      properties: {name: {type: string, minLength: 1, maxLength: 200}, server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}, endpoint_ref: {type: string, minLength: 1}, credential_ref: {type: string, nullable: true, writeOnly: true}, allowed_tools: {type: array, maxItems: 200, items: {type: string}}, configuration: {type: object, additionalProperties: true}, enabled: {type: boolean, default: true}}
+    McpBindingUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, server_type, endpoint_ref, allowed_tools, configuration, enabled, resource_version, credential_ref_mode]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        server_type: {type: string, enum: [PLATFORM, REMOTE, RUNTIME_LOCAL]}
+        endpoint_ref: {type: string, minLength: 1}
+        allowed_tools: {type: array, maxItems: 200, items: {type: string}}
+        configuration: {type: object, additionalProperties: true}
+        enabled: {type: boolean}
+        resource_version: {type: integer, minimum: 0}
+        credential_ref_mode: {type: string, enum: [KEEP, SET, CLEAR]}
+        credential_ref: {type: string, nullable: true, writeOnly: true, description: credential_ref_mode=SET 时必填，KEEP/CLEAR 时不得提供。}
     ModelBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ModelBinding'}}}}
     SkillBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/SkillBinding'}}}}
     McpBindingListResponse: {type: object, required: [total, items], properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/McpBinding'}}}}

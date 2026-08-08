@@ -1230,6 +1230,7 @@ Agent Trace
 18. `BR-MCP-018`：所有请求必须携带可追踪审计上下文，且不得记录 Token、凭证、二进制或敏感输入。
 19. `BR-MCP-019`：当前无对应事实的 `input_required`、`tasks/update`、OAuth/PAT 和独立 AccessGrant 不得由 S2 或实现自行启用。
 20. `BR-MCP-020`：Tool/Resource 名称和逻辑字段经 S2 与 Release 固化后必须保持稳定；实现不得自行增加、重命名或扩展未发布能力。
+21. `BR-MCP-021`：除 USER JWT 外，MCP 可接受固定 `aud=mcp` 的 `AGENT_WORKLOAD` JWT；每次请求必须重新校验 Agent Runtime Grant、generation、Application、Runtime、对象范围和允许工具，不得继承创建者管理员权限。
 
 ### 26.2 用户故事
 
@@ -1288,6 +1289,7 @@ Agent Trace
 * `AC-MCP-007-01`：每个请求都有 Principal、request ID、trace ID、客户端和协议上下文。
 * `AC-MCP-007-02`：Tool 发现与调用都按当前权限过滤并执行资源二次校验。
 * `AC-MCP-007-03`：审计与日志不包含 Token、Provider Credential、受控 URL Query 或二进制。
+* `AC-MCP-007-04`：`AGENT_WORKLOAD` 只允许 Grant 固定的最小权限和对象范围；audience、generation、Runtime、Grant、工具或状态任一不匹配立即拒绝，普通 USER JWT 行为不回归。
 
 ---
 

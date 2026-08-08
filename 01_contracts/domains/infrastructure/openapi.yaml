@@ -1,10 +1,10 @@
-# Infrastructure S2 API contract released by spec-v1.17.2.
+# Infrastructure S2 API contract for the current release candidate.
 openapi: 3.0.3
 info:
   title: OmniMAM Infrastructure API
   version: 1.2.0
   description: >-
-    第一阶段单机 Docker 运行层契约，已由 spec-v1.17.2 发布。所有 Runtime 生命周期写操作只允许
+    第一阶段单机 Docker 运行层契约。所有 Runtime 生命周期写操作只允许
     Task Center Task Worker 的受信服务身份调用；AgentRuntimeAdapter 仅可调用受控只读 Endpoint resolve。
     Provider、宿主机路径、容器 ID、解析地址和明文 Secret 不进入普通响应。
 servers: [{url: /}]
@@ -275,8 +275,8 @@ components:
       required: [name, binding_type, reference]
       properties:
         name: {type: string}
-        binding_type: {type: string, enum: [PLAIN_CONFIG, MODEL_ACCESS, SECRET_REF, INTEGRATION_REF]}
-        reference: {type: string, description: SecretRef、ModelAccessSpec 或受控 IntegrationRef，不是明文值。}
+        binding_type: {type: string, enum: [PLAIN_CONFIG, MODEL_ACCESS, SECRET_REF, INTEGRATION_REF, MCP_SERVER_REF]}
+        reference: {type: string, description: 'SecretRef、ModelAccessSpec、受控 IntegrationRef 或 mcp-binding-revision://{binding_id}/{binding_revision}，不是明文值。'}
     ResourceRequirement:
       type: object
       properties: {cpu_cores: {type: number, minimum: 0}, memory_mb: {type: integer, minimum: 0}, disk_mb: {type: integer, minimum: 0}, gpu_count: {type: integer, minimum: 0}, gpu_memory_mb: {type: integer, minimum: 0}}

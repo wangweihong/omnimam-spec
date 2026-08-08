@@ -1212,9 +1212,15 @@ components:
       type: object
       required: [principal_type, principal_id, authorization_version, effective_roles, permission_codes, session_mode, allowed_actions]
       properties:
-        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT]}
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, AGENT_WORKLOAD]}
         principal_id: {type: string}
         actor_user_id: {type: string, nullable: true}
+        audience: {type: string, nullable: true}
+        agent_id: {type: string, nullable: true}
+        agent_generation: {type: integer, nullable: true, minimum: 1}
+        studio_application_id: {type: string, nullable: true}
+        runtime_binding_id: {type: string, nullable: true}
+        runtime_grant_id: {type: string, nullable: true}
         authorization_version: {type: integer}
         effective_roles: {type: array, items: {$ref: '#/components/schemas/EffectiveRole'}}
         permission_codes: {type: array, items: {type: string}}
@@ -1556,7 +1562,7 @@ components:
       type: object
       required: [principal_type, principal_id, authorization_version, results]
       properties:
-        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT]}
+        principal_type: {type: string, enum: [USER, SERVICE_ACCOUNT, AGENT_WORKLOAD]}
         principal_id: {type: string}
         actor_user_id: {type: string, nullable: true}
         authorization_version: {type: integer}

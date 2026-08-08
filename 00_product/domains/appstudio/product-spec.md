@@ -995,7 +995,7 @@ AgentSession
 首次 CODING AgentInvocation
 ```
 
-其中源码对象归 AppStudio；Coding Agent 和 AgentSession 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent。前端不得调用或替换该内部 Workspace 引用。
+其中源码对象归 AppStudio；Coding Agent、AgentSession 和 AgentMCPBinding 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent，并原子创建默认平台 MCP Binding。前端不得调用或替换该内部 Workspace 引用。
 
 ---
 
@@ -1043,7 +1043,7 @@ sequenceDiagram
     ST-->>U: READY Application + 当前 Agent + 首次 Invocation
 ```
 
-Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding 和选定的 ACTIVE primary ModelBinding 必须作为一个初始化事务提交。初始化失败时不得产生可用项目；同一 owner 与创建幂等键重试不得重复创建任何初始化对象。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
+Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding 必须作为一个初始化事务提交。初始化失败时不得产生可用项目；同一 owner 与创建幂等键重试不得重复创建任何初始化对象。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
 
 创建时不要求 Runtime 已经 READY，但初始需求会自动触发首次 Invocation 的 Task 驱动 Runtime gating。`codingModelSelection` 必须由用户明确选择并形成 Coding 用途的 ACTIVE primary ModelBinding，不得回退到用户默认模型或其他隐式模型。
 
@@ -1145,7 +1145,9 @@ validationSummary
 
 ## 7.5 挂起、恢复与替换
 
-挂起和恢复只代理到当前 generation 的 Coding Agent，并继承 Agent 的 Task、模型校验和 Session 恢复语义。替换必须创建新的 Coding Agent 和默认 Session，成功后原子递增 `codingAgentGeneration` 并切换当前引用；旧 Agent、Session、Invocation、Message、Memory 与 ChangeSet 审计历史保留且不改写。创建新 Agent 失败时继续保留旧引用，不能留下指向半创建 Agent 的 generation。
+挂起和恢复只代理到当前 generation 的 Coding Agent，并继承 Agent 的 Task、模型校验和 Session 恢复语义。替换必须创建新的 Coding Agent、默认 Session 和该 generation 的默认平台 MCP Binding，成功后原子递增 `codingAgentGeneration` 并切换当前引用；旧 Agent、Session、Invocation、Message、Memory、MCP Binding 与 ChangeSet 审计历史保留且不改写。创建新 Agent 失败时继续保留旧引用，不能留下指向半创建 Agent 的 generation。
+
+默认平台 Binding 固定为 `name=omnimam-platform`、`serverType=PLATFORM`、`endpointRef=platform-mcp://default`、`enabled=true`，工具白名单只包含 `omnimam.capabilities.list/get`、`omnimam.applications.list/get/run`、`omnimam.application_runs.get`、`omnimam.assets.search/get`。工作负载权限固定为 `mcp.protocol.access`、`aiapp.provider_capability.read`、`aiapp.application.read`、`aiapp.application.run` 和 `asset.read`，并继续执行对象范围校验；不得包含取消、上传或删除能力。已有当前 generation 的 Coding Agent 执行一次幂等回填；用户删除后本 generation 不再自动创建，下一 generation 再创建默认 Binding。
 
 ---
 
@@ -2646,3 +2648,4 @@ flowchart LR
 - `AC-APPSTUDIO-001-13`：应用级 Agent API 可返回稳定 Agent/Session/Invocation ID，但不得返回 Workspace；状态、消息、Invocation 查询/事件/取消、挂起和恢复始终代理当前 generation，Coding Agent 不进入公共 `/api/v1/agents`。
 - `AC-APPSTUDIO-001-14`：替换 Coding Agent 创建新 Agent/Session 并原子递增 generation；旧 Agent 历史保留，新建失败时旧引用保持当前且不改写源码、Build、Release 或 RuntimeInstance。
 - `AC-APPSTUDIO-001-15`：应用级 Invocation 投影以关联的 APPLIED ChangeSet 最大 `target_revision` 作为 `resulting_source_revision`；恢复该阶段必须调用既有 source restore API 创建新的 Restore ChangeSet/Revision，且保留 Session、Message、Invocation、原 ChangeSet 和 Revision 历史。
+- `AC-APPSTUDIO-001-16`：首次创建和 generation 替换必须在初始化事务中原子创建固定默认平台 MCP Binding；已有当前 generation 幂等回填一次，用户删除后同 generation 不重建，下一 generation 重新创建。任一步失败整笔事务回滚。

@@ -132,6 +132,54 @@
   deprecated: false
   related_rules: [BR-AGENT-001, R-AGENT-002]
   related_user_stories: [US-AGENT-001]
+- code: ERR_AGENT_MCP_BINDING_INVALID
+  value: 200206
+  http: 200
+  cn: MCP Binding 的类型、Endpoint、凭证模式、工具白名单或配置无效。
+  en: The MCP binding type, endpoint, credential mode, tool allowlist, or configuration is invalid.
+  owning_domain: agent
+  owning_module: agent-core
+  range: 200200-200399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AGENT-001, R-AGENT-016, R-AGENT-024]
+  related_user_stories: [US-AGENT-001]
+- code: ERR_AGENT_MCP_BINDING_NAME_CONFLICT
+  value: 200207
+  http: 200
+  cn: 当前 Agent 下存在同名的活动 MCP Binding。
+  en: An active MCP binding with the same name already exists for the Agent.
+  owning_domain: agent
+  owning_module: agent-core
+  range: 200200-200399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AGENT-001, R-AGENT-016, R-AGENT-024]
+  related_user_stories: [US-AGENT-001]
+- code: ERR_AGENT_MCP_BINDING_VERSION_CONFLICT
+  value: 200208
+  http: 200
+  cn: MCP Binding 已被更新，请刷新后重试。
+  en: The MCP binding was modified; refresh it and retry.
+  owning_domain: agent
+  owning_module: agent-core
+  range: 200200-200399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AGENT-001, R-AGENT-024]
+  related_user_stories: [US-AGENT-001]
+- code: ERR_AGENT_MCP_BINDING_REVISION_UNAVAILABLE
+  value: 200209
+  http: 200
+  cn: Runtime Grant 引用的 MCP Binding revision 不存在、过期或未获授权。
+  en: The MCP binding revision referenced by the runtime grant is missing, expired, or unauthorized.
+  owning_domain: agent
+  owning_module: agent-core
+  range: 200200-200399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AGENT-001, R-AGENT-024, R-AGENT-025]
+  related_user_stories: [US-AGENT-001]
 - code: ERR_AGENT_RUNTIME_NOT_VISIBLE
   value: 200800
   http: 200

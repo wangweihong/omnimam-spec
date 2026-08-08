@@ -6,7 +6,7 @@
 - 本合同覆盖 authn、session、user、rbac、principal、resource-access 和 service-account；认证配置与平台审计由 `platform-management` 拥有。
 - Identity S2 不提供 PAT、LDAP/SSO、OAuth2/OIDC、MFA、可信设备、动态用户组或角色继承/互斥。
 - schema.sql 是设计态 Schema，不是 migration；本域不定义业务 domain 的资源状态。
-- 相关 S1：BR-IAM-005、BR-IAM-009、BR-IAM-010、BR-IAM-011、BR-IAM-015、BR-IAM-019、BR-IAM-021、BR-IAM-022、BR-IAM-023、BR-IAM-024、BR-IAM-025、BR-IAM-026、BR-IAM-027、BR-IAM-028、BR-IAM-029、BR-IAM-030；US-IAM-006、US-IAM-008、US-IAM-009、US-IAM-011、US-IAM-013、US-IAM-014、US-IAM-015、US-IAM-016、US-IAM-017、US-IAM-018、US-IAM-019、US-IAM-020。
+- 相关 S1：BR-IAM-005、BR-IAM-009、BR-IAM-010、BR-IAM-011、BR-IAM-015、BR-IAM-019、BR-IAM-021、BR-IAM-022、BR-IAM-023、BR-IAM-024、BR-IAM-025、BR-IAM-026、BR-IAM-027、BR-IAM-028、BR-IAM-029、BR-IAM-030、BR-IAM-031；US-IAM-006、US-IAM-008、US-IAM-009、US-IAM-011、US-IAM-013、US-IAM-014、US-IAM-015、US-IAM-016、US-IAM-017、US-IAM-018、US-IAM-019、US-IAM-020。
 
 ## 2. 模块职责
 
@@ -16,7 +16,7 @@
 | session | AuthSession、TokenCredential、RefreshToken 生命周期、撤销和当前会话在线心跳 | 用户角色、业务资源状态 |
 | user | User 资料、状态、RegistrationApplication、注册审批、管理员创建和删除依赖检查协调 | 业务资源删除、业务资源 owner 转移 |
 | rbac | Role、PermissionDefinition、用户/组角色关系和有效权限缓存 | 业务 domain 的资源可见性 |
-| principal | 验证 USER/SERVICE_ACCOUNT、构建 PrincipalContext、受控委托和权限判定 | 直接读取其他 domain 私有表 |
+| principal | 验证 USER/SERVICE_ACCOUNT/AGENT_WORKLOAD、构建 PrincipalContext、受控委托和权限判定 | 直接读取其他 domain 私有表 |
 | resource-access | 已接入资源 domain 的 ResourceAccessGrant | 资源存在性、owner、visibility、版本和业务状态 |
 | service-account | ServiceAccount、直接角色、owner 受控校验、短期服务凭据、轮换、撤销和最小权限 | 普通用户登录、用户 Refresh Token、owner 私有事实 |
 | config-consumer | 读取 platform-management 当前生效的 SystemAuthConfig，并在认证流程中执行策略 | SystemAuthConfig 存储、配置管理 API 和配置版本事实 |
@@ -26,9 +26,15 @@
 
 Identity 为业务 domain 提供受验证的一跳上下文：
 
-principal_type: USER | SERVICE_ACCOUNT
+principal_type: USER | SERVICE_ACCOUNT | AGENT_WORKLOAD
 principal_id: string
 actor_user_id: string|null
+audience: string|null
+agent_id: string|null
+agent_generation: integer|null
+studio_application_id: string|null
+runtime_binding_id: string|null
+runtime_grant_id: string|null
 auth_session_id: string|null
 credential_version: integer
 authorization_version: integer
@@ -39,8 +45,10 @@ permission_results:
 规则：
 
 - principal_id 是实际认证主体；服务主体代表用户执行时才填写 actor_user_id。
+- `AGENT_WORKLOAD` 的 principal_id 是稳定 Runtime 工作负载 ID，`audience=mcp` 时必须同时包含 Agent、Runtime 和 Grant；Coding Agent 还必须包含 generation 与 StudioApplication。其有效期不得超过 Runtime/Grant，且没有 Refresh Token。
 - actor_user_id 必须由已验证的委托链产生，不能接受客户端任意请求字段。
 - PrincipalContext 不包含密码、Token 原文、完整角色图、共享授权全集、Secret 或目标 domain 私有数据。
+- Identity 只验证 workload JWT 本身；目标 MCP 请求必须通过 Agent resolver 每次重新校验 Grant ACTIVE、绑定对象、允许工具和过期状态，不能只依赖 Token 过期时间。
 - 每个业务请求必须重新校验 Token/凭据状态和当前权限；不能仅依赖 JWT 签名或旧缓存。
 - permission_results 只覆盖本次请求所需权限，不是完整权限列表。
 

@@ -188,8 +188,32 @@ CREATE TABLE agent_mcp_bindings (
   credential_ref TEXT,
   allowed_tools_json TEXT NOT NULL DEFAULT '[]',
   configuration_json TEXT NOT NULL DEFAULT '{}',
-  enabled BOOLEAN NOT NULL DEFAULT TRUE
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  deleted_at TIMESTAMPTZ
 );
+CREATE UNIQUE INDEX idx_agent_mcp_binding_active_name ON agent_mcp_bindings(agent_id, name) WHERE deleted_at IS NULL;
+
+-- s1_refs: R-AGENT-016, R-AGENT-024, R-AGENT-025; source: 16 MCP Server Binding, 23 Runtime 身份.
+CREATE TABLE agent_mcp_binding_revisions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+  binding_id TEXT NOT NULL REFERENCES agent_mcp_bindings(id),
+  binding_revision INTEGER NOT NULL CHECK (binding_revision >= 0),
+  agent_id TEXT NOT NULL REFERENCES agents(id),
+  server_type TEXT NOT NULL CHECK (server_type IN ('PLATFORM', 'REMOTE', 'RUNTIME_LOCAL')),
+  endpoint_ref TEXT NOT NULL,
+  credential_ref TEXT,
+  allowed_tools_json TEXT NOT NULL DEFAULT '[]',
+  configuration_json TEXT NOT NULL DEFAULT '{}',
+  enabled BOOLEAN NOT NULL,
+  UNIQUE (binding_id, binding_revision)
+);
+CREATE INDEX idx_agent_mcp_binding_revisions_agent ON agent_mcp_binding_revisions(agent_id, binding_id, binding_revision);
 
 -- s1_refs: R-AGENT-001, R-AGENT-003, R-AGENT-004, R-AGENT-018, R-AGENT-019; source: 8.8 AgentRuntime（AgentRuntimeBinding）, 9 Agent 状态模型, 20 异常恢复.
 CREATE TABLE agent_runtime_bindings (
@@ -216,6 +240,28 @@ CREATE TABLE agent_runtime_bindings (
 );
 CREATE UNIQUE INDEX idx_agent_runtime_current ON agent_runtime_bindings(agent_id) WHERE state <> 'DELETED';
 CREATE INDEX idx_agent_runtime_current_task ON agent_runtime_bindings(current_task_id) WHERE current_task_id IS NOT NULL;
+
+-- s1_refs: R-AGENT-024, R-AGENT-025, R-AGENT-026; source: 11 Runtime 启动, 16 MCP Server Binding, 23 Runtime 身份.
+CREATE TABLE agent_runtime_grants (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+  agent_id TEXT NOT NULL REFERENCES agents(id),
+  runtime_binding_id TEXT NOT NULL REFERENCES agent_runtime_bindings(id),
+  studio_application_id TEXT,
+  agent_generation INTEGER CHECK (agent_generation IS NULL OR agent_generation > 0),
+  request_id TEXT NOT NULL,
+  binding_revisions_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED', 'EXPIRED')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  UNIQUE (runtime_binding_id, request_id)
+);
+CREATE INDEX idx_agent_runtime_grants_active ON agent_runtime_grants(runtime_binding_id, expires_at) WHERE status = 'ACTIVE';
 
 -- s1_refs: R-AGENT-002, R-AGENT-014, R-AGENT-019; source: 28 事件.
 CREATE TABLE agent_operation_events (

@@ -2,7 +2,7 @@ schema_version: "1.0"
 description: Agent Runtime 固定镜像协议 fixture；用于发布前验证，不是运行时配置。
 x-s1-refs:
   user_stories: [US-AGENT-001]
-  business_rules: [BR-AGENT-001, R-AGENT-020, R-AGENT-021]
+  business_rules: [BR-AGENT-001, R-AGENT-020, R-AGENT-021, R-AGENT-024, R-AGENT-025, R-AGENT-026]
 profiles:
   - profile_id: agent.hermes
     image: nousresearch/hermes-agent:v2026.8.3
@@ -28,7 +28,11 @@ profiles:
       session_key: agent_session_id
       invocation_key: agent_invocation_id
       replay_rule: 复用已接受的 runtime_session_ref/runtime_invocation_ref，不重复提交 prompt。
+    mcp_configuration:
+      supported: false
+      reason: 当前 release 不定义 Hermes MCP 配置注入合同。
   - profile_id: agent.opencode
+    runtime_profile_contract: agent.coding@1.0
     image: ghcr.io/anomalyco/opencode:1.18.13
     manifest_digest: sha256:246ebd75d25380cde481b7507d38ed01ce813d541eb4c7412a25ba7d9bd1abe7
     headless_command: [opencode, serve, --hostname, 127.0.0.1, --port, "4096"]
@@ -44,6 +48,31 @@ profiles:
       session_key: agent_session_id
       invocation_key: agent_invocation_id
       replay_rule: 复用已接受的 session ID 和 Runtime Invocation 关联，不重复提交 message。
+    mcp_configuration:
+      supported: true
+      config_path: /root/.config/opencode/opencode.json
+      storage: tmpfs
+      file_mode: "0600"
+      server_key: binding_id
+      server_types: [PLATFORM, REMOTE, RUNTIME_LOCAL]
+      endpoint_rule: resolver 必须按 RuntimeProfile 与 Grant 生成受控 endpoint；禁止调用方提供任意内部 URL、宿主机命令或未授权网络目标。
+      credential_rule: 只允许受信 resolver 在容器启动门闩释放前注入；不得出现在环境变量、命令参数或 inspect 可见字段。
+      tool_allowlist:
+        empty_means: DENY_ALL
+        unknown_tool: DENY
+        matching: MCP server 返回的完整 tool name 必须逐项精确匹配 allowed_tools。
+      json_fixture:
+        mcp:
+          binding-001:
+            type: remote
+            url: https://resolved.invalid/mcp
+            enabled: true
+            headers:
+              Authorization: Bearer <runtime-only-secret>
+        tools:
+          binding-001_*: false
+          binding-001_omnimam.assets.search: true
+      startup_gate: 先启动等待配置的入口；完成 archive/exec 写入、校验 0600 后才释放门闩并启动 headless_command。
 release_gate:
-  required_checks: [image_manifest, headless_start, health, create_session, send_message, event_stream, cancel, idempotent_replay]
+  required_checks: [image_manifest, headless_start, health, create_session, send_message, event_stream, cancel, idempotent_replay, opencode_mcp_config, config_mode_0600, deny_unlisted_tool, secret_non_disclosure]
   failure_policy: 任一固定 Profile 未通过时不得发布或启用该 Profile 合同。

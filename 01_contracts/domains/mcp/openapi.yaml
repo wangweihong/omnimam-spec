@@ -75,7 +75,7 @@ paths:
       operationId: handle_mcp_request
       summary: 处理 MCP `2026-07-28` JSON-RPC 请求
       description: >-
-        已确认的 `/api/v1` 路径例外。每个请求重新携带版本、客户端能力和 JWT；
+        已确认的 `/api/v1` 路径例外。每个请求重新携带版本、客户端能力和 USER 或 `aud=mcp` AGENT_WORKLOAD JWT；
         不创建 Mcp-Session-Id。HTTP 400/403 仅用于 MCP 规范要求的传输拒绝，
         所有进入 JSON-RPC 调度的业务错误使用 HTTP 200。
       x-permission: mcp.protocol.access
@@ -137,7 +137,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      bearerFormat: JWT (USER or AGENT_WORKLOAD with aud=mcp)
 
   parameters:
     mcp_protocol_version:

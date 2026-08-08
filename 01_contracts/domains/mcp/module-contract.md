@@ -17,7 +17,7 @@ OpenAPI 可以为 MCP 规范强制的传输校验声明 HTTP 400，以及为非�
 | tool-registry | 11 个固定 Tool、JSON Schema 2020-12、权限过滤、结果 Schema 校验 | 动态 Capability Tool、Provider/Engine 路由、源领域私表 | BR-MCP-004、BR-MCP-005、BR-MCP-006、BR-MCP-007、BR-MCP-008、BR-MCP-016；US-MCP-001、US-MCP-002、US-MCP-005、US-MCP-006 |
 | resource-resolver | 6 类 `omnimam://` URI、解析、权限、短期 Resource Link | 素材搜索、媒体正文、永久 URL、递归摘要 | BR-MCP-014、BR-MCP-016；US-MCP-003、US-MCP-005 |
 | task-adapter | McpTaskBinding、Tasks 协商、状态映射、查询、协作取消、TTL 清理 | ApplicationRun/AtomicTask 状态、重试、任务队列、`tasks/update` | BR-MCP-009、BR-MCP-010、BR-MCP-011、BR-MCP-012、BR-MCP-013、BR-MCP-019；US-MCP-003、US-MCP-004 |
-| access | Identity Principal、MCP 权限与目标领域权限组合、存在性保护 | 用户、角色、JWT、OAuth/PAT 或目标资源事实 | BR-MCP-003、BR-MCP-016；US-MCP-007 |
+| access | Identity USER/AGENT_WORKLOAD Principal、Runtime Grant、MCP 权限与目标领域权限组合、存在性保护 | 用户、角色、JWT 签发、OAuth/PAT 或目标资源事实 | BR-MCP-003、BR-MCP-016、BR-MCP-021；US-MCP-007 |
 | audit | 请求审计上下文、脱敏和 platform-management audit 写入 | Platform AuditLog 存储、Token、完整 payload 或二进制 | BR-MCP-018；US-MCP-007 |
 | quota | MCP 速率、ApplicationRun 并发、上传大小和费用前置检查 | 源领域配额事实、已创建资源回滚 | BR-MCP-006、BR-MCP-017、BR-MCP-018；US-MCP-002、US-MCP-006、US-MCP-007 |
 | stdio-proxy | stdio/HTTP 转发、凭证读取和协议版本处理 | Tool 业务、权限决策、状态存储、素材读取 | BR-MCP-002、BR-MCP-003；US-MCP-004、US-MCP-007 |
@@ -48,6 +48,8 @@ transport validation
 → output schema validation
 → audit result
 ```
+
+USER JWT 保持现有权限与资源校验。`AGENT_WORKLOAD` JWT 额外要求 `aud=mcp`，并绑定 Agent、Coding generation/Application（如适用）、Runtime 和 Grant；每个请求在 Tool 过滤和调用前重新调用 Agent Grant resolver。Grant 失效、过期、对象越界或工具不在白名单时立即拒绝。工作负载权限只取受控 Grant 固定的最小集合，不继承创建者角色或管理员权限。
 
 目标领域权限映射以 `permissions.yaml` 末尾规范表为准。MCP 不把 `mcp.*` 权限当作绕过 `aiapp.*`、`task.*` 或 `asset.*` 的替代权限。
 

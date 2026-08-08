@@ -846,6 +846,7 @@ SECRET
 MODEL_ACCESS
 SERVICE_ENDPOINT
 PLATFORM_CONFIG
+MCP_SERVER_REF
 ```
 
 `injectionMode`：
@@ -856,6 +857,10 @@ CONFIG_FILE
 SECRET_FILE
 RUNTIME_ARGUMENT
 ```
+
+`MCP_SERVER_REF` 只接收 `binding_id + binding_revision` 的非敏感引用。Infrastructure 必须使用同一创建请求的 `authorizationRef` 调用 Agent 领域 resolver，校验 AgentRuntimeGrant 的状态、Runtime、请求、有效期和 revision 授权后，取得 endpoint、非敏感配置与 `credentialRef`；再由受信 Secret/Identity resolver 解析实际凭证。Infrastructure、Task Worker 和 Docker Provider 禁止直接读取 Agent 数据表。
+
+OpenCode 配置必须写入容器 tmpfs 的 `/root/.config/opencode/opencode.json`，文件权限 `0600`。Docker Provider 先以等待配置的入口启动容器，通过 Docker Archive/Exec 数据流写入并校验配置，再释放启动门闩；明文凭证禁止进入环境变量、命令参数、持久化、日志、Task 结果和 `docker inspect` 可见字段。
 
 ---
 
@@ -2262,6 +2267,10 @@ Docker Service 只能发布 RuntimeProfile Revision 声明的命名容器端口�
 
 Docker Job 只有在受控输出根内读取实际普通文件、计算准确大小与 SHA-256 并复制到 Infra staging 后，才能形成 `COLLECTED` RuntimeOutput 和 `infra-output://` 可信引用；Artifact 内容完成且 digest 一致后才允许回写 Artifact ID 和清理 staging。
 
+## R-INFRA-023
+
+Agent MCP 配置只能通过 `MCP_SERVER_REF + authorizationRef` 解析；Infrastructure、Task Worker 和 Provider 不得读取 Agent 私表。OpenCode 敏感配置必须在 tmpfs 内以 `0600` 写入并在释放启动门闩前完成，凭证不得进入环境变量、命令参数、持久化、日志或 inspect 可见字段。
+
 ---
 
 # 31. 最终职责总结
@@ -2323,7 +2332,7 @@ Infra Service 的最终边界是：
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-INFRA-001`：受信 Task Worker 可以创建、管理、对账第一阶段 Docker Job/Service 及其受控挂载和输出。
-- `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、28、29、30 节及 `R-INFRA-001..020`。
+- `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、28、29、30 节及 `R-INFRA-001..023`。
 
 验收标准：
 
@@ -2338,3 +2347,4 @@ Infra Service 的最终边界是：
 - `AC-INFRA-001-09`：Provider 创建成功但响应超时后，恢复必须依赖 requestId 和 Provider 引用对账，不得创建第二个 Runtime。
 - `AC-INFRA-001-10`：孤儿清理只能作用于有平台受控标记、稳定 owner 且超过宽限期的 Runtime；未知 Docker 对象只告警，不自动删除。
 - `AC-INFRA-001-11`：Agent Runtime 启动只接受短期 grant 引用；Infrastructure 以服务身份校验 owner/Agent/usage/config version/有效期后解析并注入，普通响应、事件、日志和持久化不得包含 grant、ModelAccessSpec 或明文凭证。
+- `AC-INFRA-001-12`：OpenCode MCP 只接受 `MCP_SERVER_REF`，通过 `authorizationRef` 解析固定 revision，并以 Docker Archive/Exec 写入 tmpfs `opencode.json`、设为 `0600` 后释放启动门闩；未授权目标和所有 inspect 可见凭证传递方式必须拒绝。

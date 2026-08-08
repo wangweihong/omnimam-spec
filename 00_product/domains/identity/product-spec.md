@@ -1823,8 +1823,16 @@ flowchart TB
 
 平台管理员访问全部资源也必须拥有显式 manage_all 权限。
 
-业务 domain 通过 PrincipalContext 消费用户或服务主体；系统当前不包含企业、租户、LDAP、OIDC、MFA 和 PAT。
+业务 domain 通过 PrincipalContext 消费用户、服务主体或受控 Agent 工作负载主体；系统当前不包含企业、租户、LDAP、OIDC、MFA 和 PAT。
 ```
+
+---
+
+## 23.1 Agent Workload JWT
+
+`AGENT_WORKLOAD` 是仅供受控 Agent Runtime 使用的短期主体类型，不是用户登录、ServiceAccount 或 Refresh Token。用于 OmniMAM MCP 的 Token 必须固定 `aud=mcp`，并包含不可伪造的 `agent_id`、可选 `agent_generation`、可选 `studio_application_id`、`runtime_binding_id`、`runtime_grant_id`、owner/tenant scope 和过期时间；有效期不得超过 Runtime 或 Grant 生命周期。
+
+Identity 验证签名、audience 和标准时效后构造最小 PrincipalContext；MCP 每次请求还必须向 Agent Grant resolver 重新校验 Grant ACTIVE、Runtime/Agent/generation/Application/object scope 和允许工具。工作负载权限由受控 Profile/Grant 固定，不继承创建者角色、管理员权限或可变用户权限全集，不提供 Refresh Token。
 
 ---
 
@@ -1845,7 +1853,7 @@ flowchart TB
 | `BR-IAM-007` | 当前登出、全局登出、密码修改、用户禁用必须撤销相应会话和凭据；旧凭据不得继续访问。 | 9.4、9.5、14.1、22.2 |
 | `BR-IAM-008` | 有效角色只来自用户直接角色和静态用户组角色，并过滤禁用、未生效或过期授权；当前不支持角色继承和互斥。 | 3.2、5.2、5.6-5.8、10 |
 | `BR-IAM-009` | 权限定义由各模块登记；各 domain 的 `default_roles` 必须由 Identity 聚合并物化为内置角色的 RolePermissionGrant，管理员只能分配已登记权限；后端必须按权限码判定，不得硬编码角色名称。 | 2.4、10、13、22.3 |
-| `BR-IAM-010` | PrincipalContext 区分 USER 与 SERVICE_ACCOUNT，并可携带受控 `actor_user_id`；客户端不得伪造委托用户。 | 5.13、13.1、15、23 |
+| `BR-IAM-010` | PrincipalContext 区分 USER、SERVICE_ACCOUNT 与 AGENT_WORKLOAD，并可携带受控 `actor_user_id`；客户端不得伪造委托用户或工作负载范围。 | 5.13、13.1、15、23 |
 | `BR-IAM-011` | 资源 domain 拥有 owner、created_by、visibility、project、namespace 和资源状态；owner 不得由客户端直接指定。 | 2.2、12.1、13.1、22.4 |
 | `BR-IAM-012` | ResourceAccessGrant 只对声明接入共享的资源 domain 生效；Identity 不凭该记录证明资源存在、可见或状态有效。 | 5.9、12.2-12.3、19.4、22.4 |
 | `BR-IAM-013` | 跨 owner 管理必须拥有目标 domain 登记的显式 manage_all 权限，并记录 principal、actor、owner、目标和结果。 | 12.3-12.4、13.1、21、22.4 |
@@ -1866,6 +1874,7 @@ flowchart TB
 | `BR-IAM-028` | 用户删除由 Identity 聚合各事实 domain 的受控摘要；资源转移、任务处理和 owner 校验由目标 domain 完成，删除必须使用最新完整检查并在提交前重验。 | 14.2、18.3、19.2、22.4 |
 | `BR-IAM-029` | 用户/组共享目录只返回最小摘要，资源共享只展示目标 domain 支持的等级；禁用、删除或过期主体不得继续产生有效访问。 | 12.3、18.6-18.7、22.4 |
 | `BR-IAM-030` | 认证策略和 AuditLog 页面、API 与事实属于 platform-management；Identity 只提供跨域入口、配置应用结果和脱敏审计提交失败边界。 | 4、5.1.2、18.8、21、22.6 |
+| `BR-IAM-031` | `AGENT_WORKLOAD` JWT 必须固定 audience、Agent/generation、Application、Runtime、Grant 和过期时间；不继承创建者角色、不提供 Refresh Token，资源服务每请求重新校验 Grant。 | 23.1 |
 
 ### 24.2 用户故事
 
