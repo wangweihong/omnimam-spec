@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..16` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、全量 CHAT/CODING Task-backed、软删除终结、模型/MCP grant 和 Workspace Tool 授权语义。
+当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..17` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、全量 CHAT/CODING Task-backed、软删除终结、模型/MCP grant、Workspace Tool 授权和 Invocation 事件持久化重放语义。
 
 ## 2. 模块边界
 
@@ -35,6 +35,8 @@
 - CHAT/CODING 必须使用 `agent.invocation.execute@1.0`；QUEUED 可在任务绑定提交前短暂没有 `atomic_task_id`，任何执行、取消或事件消费前必须绑定。API Server 不得启动 goroutine 或无 Task 降级执行。
 - Invocation Task arguments 只允许 Agent、Session、Invocation、RuntimeBinding、`invocation_type`、短期 `agent-invocation-grant://` 授权引用、预期资源版本和可选 runtime/event 恢复游标；禁止消息 ID/正文、owner、Workspace、Runtime Endpoint、模型凭证、用户密钥和 Provider 配置。grant 必须绑定 owner、Agent、Session、Invocation、RuntimeBinding、用途、资源版本和有效期；CODING 额外封装当前 Invocation 的 AppStudio Workspace Tool grant。Worker 只能按受信服务身份临时解析并执行协议，不得代表 Coding Agent 直接调用 `ApplyChangeSet`。
 - 未曾成功绑定 AtomicTask 的 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` Invocation，允许在同一业务幂等键下复用原 Message/Invocation、递增 submission generation/resource version 并重试 Task 提交；一旦绑定 Task，状态、取消和终态只能按当前 Task ID 与预期资源版本单调投影。
+- Agent 内部 `ListMessages` 必须支持 owner、Agent、Session 受限查询并按 `(created_at DESC, id DESC)` 稳定分页；AppStudio 只能查询其当前 Application/generation/session。Agent Service 必须在 Invocation 创建时提供稳定 `user_message_id/assistant_message_id`，并以相同 ID 关联 delta、完成事件和持久化消息。
+- AgentRuntimeAdapter 必须把 Runtime 原始输出规范化为 S1 第 12.3 节的 12 类完整事件 payload；事件按 Invocation 内 `sequence_no` 先持久化再推送。内部重放只返回游标之后的事件且无重复，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后关闭。
 - Runtime 启动/恢复前必须解析用途匹配的 ACTIVE primary binding 并签发短期 AgentModelAccessGrant；校验失败前不得创建 RuntimeBinding 或 AtomicTask。Infra 只接收 grant 引用并以服务身份解析注入。
 - MCP Binding 创建和 PUT 必须在同一事务写当前态与不可变 revision；PUT 全量替换可变字段并用 `resource_version` 乐观控制，凭证使用 `KEEP/SET/CLEAR`。DELETE 是不可恢复、幂等软删除；List 和新 Runtime 排除删除项，所有响应隐藏 `credential_ref`。
 - `agent.runtime.ensure` 提交前按 Binding ID 稳定选择最多 50 个启用且未删除 Binding 的当前 revision，并持久化精确绑定 Runtime/请求/Agent generation/Application/refs/有效期的 AgentRuntimeGrant；入队失败撤销，重试复用同一 Grant。
@@ -51,7 +53,7 @@
 | --- | --- | --- |
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
 | infrastructure | 通过 Task Center 间接创建/操作受控 Runtime；提供受 AgentRuntimeGrant 约束的 MCP revision resolver；AgentRuntimeAdapter 直接调用只读 Endpoint resolve | 直接读取 Agent 私表、调用其他 Infra API、Docker Socket 或 Provider API，持久化或传播解析地址/凭证 |
-| appstudio | 调用内部 `CreateCodingAgentForStudio`、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 AppStudio 私表、创建第二套 Session/Invocation、绕过 ChangeSet |
+| appstudio | 调用内部 `CreateCodingAgentForStudio`、owner-scoped `ListMessages`/Invocation 事件重放、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 Agent 私表、创建第二套 Session/Invocation/Message/Event、绕过 ChangeSet |
 | user-model/modelgateway | 按 `agent.chat`/`agent.coding` 校验模型并签发 grant，解析为 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
 
@@ -64,9 +66,10 @@
 - Runtime 恢复必须使用已有 `infra_runtime_id`、Task 幂等键和受控运行引用，禁止重启窗口重复创建 Docker Service。
 - API 列表使用 `total/items` 和统一分页；关联摘要最多一跳，目标不可见时保留 ID、摘要为 null。
 - 日志和事件只保留脱敏摘要，不记录 Token、Secret、Provider 原始响应、宿主路径、Host Port、`base_url`、私网地址或大型消息正文。
+- 高频 Invocation 事件只属于对应 Invocation 的短期 SSE/重放事实，不进入通用 `/api/v1/events/stream` 或 Notification 收件箱；heartbeat 只使用 SSE comment，不持久化、不占用事件序号。
 - 更新、删除或停用 MCP Binding 不中断当前容器，只影响下一次启动、恢复或显式重建；删除前 Grant 固定的历史 revision 在 Grant 有效期内继续可解析。
 - OpenCode 以 Binding ID 为稳定 MCP server key，配置写入 tmpfs 的 `/root/.config/opencode/opencode.json` 且权限 `0600`；空 `allowed_tools` 拒绝全部。Hermes MCP 注入不在本 release 范围。
 
 ## 6. S1 追溯
 
-主要规则：`R-AGENT-001..026`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、MCP（16）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、事件（28）。
+主要规则：`R-AGENT-001..027`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、MCP（16）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、事件（28）。

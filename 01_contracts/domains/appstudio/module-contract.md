@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..16` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、Coding Agent generation、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
+当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..17` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、Coding Agent generation、消息/事件 facade、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
 
 ## 2. 模块边界
 
@@ -23,6 +23,8 @@
 - 公共 `CreateStudioApplication` 接收初始需求、附件、显式 Coding 模型选择、可选 Agent Profile 和创建幂等键，但不接受 Workspace 输入。AppStudio 必须在初始化事务中创建 Application、唯一默认 Repository/StudioWorkspace revision 0，并通过 Agent 内部 `CreateCodingAgentForStudio` 创建固定绑定的 Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding。
 - 初始化事务失败时不得产生可用项目；同一 owner/创建幂等键重试不得重复初始化对象。初始化成功后 Application 保持 `READY`，再持久化首条 Message 和 CODING Invocation。首次 Task 提交失败只把该 Invocation 投影为 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE`；相同创建幂等键复用同一 Message/Invocation 重试提交，不删除项目或重复创建 Agent、Session、Binding。
 - StudioApplication 内部保存当前 `coding_agent_id/coding_session_id/coding_agent_generation`；应用级状态、消息、Invocation 查询/事件/取消、挂起、恢复和替换均通过 Agent 内部 owner-scoped 接口代理，响应不得返回 Workspace。
+- `ListStudioAgentMessages` 只能代理 Agent `ListMessages` 并限定当前 Application/generation/session，固定按 `(created_at DESC, id DESC)` 分页。AppStudio 不保存第二份 Message；Invocation 响应必须携带稳定 `user_message_id/assistant_message_id` 供发送、历史和 SSE 归并。
+- `StreamStudioAgentInvocationEvents` 只能代理 Agent 持久化的 12 类统一事件。SSE `id/event/data` 分别映射十进制 `sequence_no`、统一事件名和类型化 envelope；`Last-Event-ID` 只接受非负十进制并只重放更大序号。唯一终态事件 flush 后关闭，已终态 Invocation 补完重放后关闭，heartbeat 不占序号。
 - 替换成功后原子递增 generation 并切换新 Agent/Session；新 generation 原子创建默认平台 MCP Binding，旧 Agent 历史保留。已有当前 generation 执行一次幂等回填；用户删除后同 generation 不重建。替换失败继续使用旧引用，不得形成半切换 generation。
 - 应用级 Invocation 投影按 `agent_invocation_id` 聚合全部已应用 ChangeSet，`resulting_source_revision` 取最大 `target_revision`，`resulting_change_set_id` 取该 Revision 对应的最后一个 ChangeSet。恢复继续调用既有 source restore API，以当前 Revision 为 base 创建新的 Restore ChangeSet/Revision；Session、Message、Invocation、原 ChangeSet 和历史 Revision 全部保留。
 - 公共源码、Revision、ChangeSet、Snapshot 和 Preview API 只以 `studio_application_id` 寻址；公共 DTO、权限、错误、通知和 SSE 不得返回或要求 `workspace_id`。
@@ -38,7 +40,7 @@
 
 | 目标 | 允许调用 | 禁止行为 |
 | --- | --- | --- |
-| agent | 调用内部 `CreateCodingAgentForStudio` 和 owner-scoped Agent/Session/Invocation 操作，签发受控 Workspace Tool 授权 | 让前端调用内部创建语义、读取 Agent 私表、移除公共 Platform kind guard、建立第二套交互记录 |
+| agent | 调用内部 `CreateCodingAgentForStudio`、owner-scoped `ListMessages`/Invocation 事件重放和 Agent/Session/Invocation 操作，签发受控 Workspace Tool 授权 | 让前端调用内部创建语义、读取 Agent 私表、移除公共 Platform kind guard、建立第二套交互记录 |
 | task-center | 创建/查询/取消 Build/Preview/Production functionRef 任务，消费可靠状态 | 写 Task/Attempt/重试/超时终态 |
 | infrastructure | 通过 Task Center 间接使用 Revision/Snapshot/Artifact 受控 `source_ref` | 直接操作 Docker、宿主机路径或 Provider API |
 | asset-library | 受控创建/读取 Bundle Artifact 和批量摘要；通过 `POST /api/v1/studio-builds/batch-summaries` 读取 owner 与一跳 producer 投影 | 保存 Blob、storage_uri、写 Artifact 私表，或由 Asset Library 读取 AppStudio 私表 |
@@ -55,8 +57,9 @@
 - 新生产 Runtime 只有健康后才能切换入口；部署失败、健康失败或回滚失败不得破坏旧健康实例。
 - 回滚必须创建新的 StudioRelease 和候选 StudioRuntimeInstance，并引用目标历史 Release 的不可变内容；不得修改或重新激活旧 Release。
 - API/事件列表使用 `total/items`、统一分页和最多一跳摘要；文件正文按大小上限返回，禁止把源码大对象放进列表。
+- Coding Agent 高频 Invocation 事件不写 AppStudio Outbox、不进入通用 `/api/v1/events/stream`；AppStudio 只执行鉴权、当前 generation/session 范围校验和 DTO 投影。
 - `studio_workspaces`、Workspace Revision、ChangeSet、Snapshot 与 Preview 中的 Workspace 字段继续作为后端 canonical 事实，不因公共 API 内化而删除或改名。
 
 ## 6. S1 追溯
 
-主要规则：`R-STUDIO-001..024`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/RuntimeInstance（11-12）、权限/Secret（17-18）、事件（21）、错误与范围（22-25）。
+主要规则：`R-STUDIO-001..025`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/RuntimeInstance（11-12）、权限/Secret（17-18）、事件（21）、错误与范围（22-25）。

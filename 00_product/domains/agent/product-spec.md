@@ -1417,21 +1417,61 @@ invocation.canceled
 
 不同 Agent Runtime 的原始事件由 `AgentRuntimeAdapter` 转换为统一事件。
 
+每条统一事件具有以下公共 envelope：
+
+```text
+invocationId
+sequenceNo
+occurredAt
+event
+payload
+```
+
+`sequenceNo` 在单个 Invocation 内从 1 开始严格递增，是该 Invocation 的持久化事件顺序和恢复游标；`event` 必须与 SSE `event` 字段一致。Agent Service 必须先持久化完整 envelope，再向下游投影，Runtime 重连、Task 重试或客户端重放不得生成相同序号的重复事件。
+
+各事件 payload 的逻辑字段固定如下：
+
+| 事件 | payload |
+| --- | --- |
+| `invocation.started` | `status=RUNNING` |
+| `message.delta` | `messageId`、`delta` |
+| `message.completed` | `messageId`、`role=ASSISTANT`、`content`、`attachments`、`createdAt` |
+| `tool.requested` | `toolCallId`、`toolName`、可选脱敏 `inputSummary` |
+| `tool.started` | `toolCallId`、`toolName` |
+| `tool.progress` | `toolCallId`、`toolName`、`progressMessage`、可选 `progressPercent` |
+| `tool.completed` | `toolCallId`、`toolName`、可选脱敏 `outputSummary` |
+| `tool.failed` | `toolCallId`、`toolName`、`failureCode`、`failureMessage` |
+| `user.input_required` | `requestId`、`prompt` |
+| `invocation.completed` | `status=SUCCEEDED`、`assistantMessageId` |
+| `invocation.failed` | `status=FAILED`、`failureCode`、`failureMessage` |
+| `invocation.canceled` | `status=CANCELED`、可选 `reason` |
+
+`messageId` 必须使用 Invocation 预先关联的稳定 Assistant Message ID；`message.delta` 可以重复引用该 ID 并只携带新增片段，`message.completed` 必须携带最终完整内容。工具输入输出只能进入脱敏、限长摘要，不得携带凭证、Workspace、Runtime Endpoint、Provider 原始响应或大型正文。
+
 ---
 
 ## 12.4 Streaming
 
 S1 使用 SSE 返回 Agent 输出。
 
-建议接口：
+访问边界：
 
 ```text
-GET /agents/{agentId}/operations/{invocationId}/events
+Platform Agent -> 公共 Agent Invocation 事件接口
+Coding Agent   -> AppStudio StudioApplication facade
 ```
+
+Coding Agent 不得因共享统一事件协议而进入公共 Agent API。
 
 SSE 只负责当前 AgentInvocation 的实时事件。
 
+SSE `id` 固定为 `sequenceNo` 的十进制文本，SSE `event` 固定为统一事件名，SSE `data` 固定为该事件的类型化 JSON envelope。`Last-Event-ID` 只接受非负十进制序号；未提供时从当前可用历史起点重放，值为 `0` 时从第一条事件重放，提供其他值时只发送 `sequenceNo` 严格大于该值的事件。
+
+同一 Invocation 的历史重放和实时追加必须保持统一顺序且不重复。连接期间可以发送不带业务序号的 SSE comment heartbeat；heartbeat 不进入事件历史，也不改变恢复游标。`invocation.completed`、`invocation.failed`、`invocation.canceled` 只能出现一个；终态事件发送并 flush 后立即关闭连接，订阅已终态 Invocation 时在补完可用重放后立即关闭。
+
 需要跨页面提示的完成和失败事件，交给 Notification Center 或用户级事件通道。
+
+上述高频 Invocation 事件不进入通用 `/api/v1/events/stream`，也不由 Notification Center 保存为消息历史。
 
 ---
 
@@ -2610,6 +2650,10 @@ Runtime MCP 配置只能由 Infrastructure 使用 `authorizationRef` 解析 Gran
 
 OpenCode Coding Agent 的平台 MCP workload 身份必须绑定 Agent generation、Application、Runtime 和 Grant，固定 `aud=mcp` 并使用最小对象权限；Hermes MCP 注入不属于当前 release。
 
+## R-AGENT-027
+
+Agent Service 必须把统一 Invocation 事件完整持久化为 Invocation 内严格递增序列，并支持按非负恢复游标无重复重放；唯一终态事件 flush 后关闭 SSE。高频 Invocation 事件不得进入通用用户事件流。
+
 ---
 
 # 33. 最终职责总结
@@ -2686,7 +2730,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-AGENT-001`：用户可以管理持久化 Platform Agent、会话交互、记忆和受控 Runtime 生命周期，而无需选择或管理内部 Workspace；Coding Agent 由 AppStudio 创建和投影。
-- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding、MCP Binding/Revision、Runtime Binding 和 Runtime Grant 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、16、18、19、20、21、23、24、28 节及 `R-AGENT-001..026`。
+- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding、MCP Binding/Revision、Runtime Binding 和 Runtime Grant 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、16、18、19、20、21、23、24、28 节及 `R-AGENT-001..027`。
 
 验收标准：
 
@@ -2706,3 +2750,4 @@ flowchart LR
 - `AC-AGENT-001-14`：MCP Binding List/Create/PUT/Delete 必须执行 owner 隔离、活动名称唯一、`resource_version` 乐观锁、`KEEP/SET/CLEAR` 凭证语义、不可恢复幂等软删除和不可变 revision；所有响应隐藏凭证引用。
 - `AC-AGENT-001-15`：Runtime ensure 只选择启用且未删除 Binding，按 ID 稳定排序并固定当前 revision；超过 50 条失败。入队前持久化精确 Grant，入队失败撤销，重试复用，过期、越权和 revision 不可用均拒绝解析。
 - `AC-AGENT-001-16`：OpenCode MCP 配置只能由 Infrastructure resolver 在 Grant 授权下解析并安全写入 `/root/.config/opencode/opencode.json`；空 `allowed_tools` 拒绝全部工具，凭证不得出现在 Task、数据库明文、日志、API、环境变量、命令参数或 inspect 中。
+- `AC-AGENT-001-17`：12 类统一 Invocation 事件必须使用完整类型化 payload 和 Invocation 内递增序号持久化；重放只返回游标之后的事件且无重复，唯一终态事件发送并 flush 后关闭连接，已终态 Invocation 补完历史后立即关闭。

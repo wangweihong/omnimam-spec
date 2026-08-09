@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- AppStudio 新增当前 Coding Agent generation/session 的消息历史 facade，消息按 `(created_at DESC, id DESC)` 稳定分页；Invocation 新增稳定 `user_message_id/assistant_message_id`，供发送响应、历史和流式事件归并。
+- AppStudio Invocation SSE 从 raw string 升级为 12 类类型化事件 envelope；`sequence_no` 作为 Invocation 内十进制 SSE ID，`Last-Event-ID` 只重放更大序号，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。
+- Agent Runtime fixture 补齐统一事件 payload、先持久化后推送、无重复重放和终态关闭 release gate；高频 Invocation 事件保持在专用 SSE，不进入通用用户事件流。
 - 发布 `spec-v1.19.0`：补齐 Agent MCP Binding PUT/DELETE、活动名称唯一、乐观锁、显式凭证更新模式、不可变 revision、软删除和正式错误码；删除或更新只影响下一次 Runtime 启动、恢复或显式重建。
 - Runtime ensure 固定排序后的启用 Binding revision 并持久化精确 AgentRuntimeGrant；Infrastructure 新增 `MCP_SERVER_REF` consumer resolver，禁止 Worker/Infra/Provider 读取 Agent 私表。
 - 固化 OpenCode `agent.coding@1.0` 的 tmpfs `/root/.config/opencode/opencode.json`、`0600`、Docker Archive/Exec 和启动门闩合同；空工具白名单拒绝全部，Hermes MCP 注入暂不支持。

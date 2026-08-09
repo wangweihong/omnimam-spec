@@ -2,58 +2,59 @@
 
 ## 当前目标与状态
 
-- 目标：为 Agent MCP Binding 生命周期、不可变 revision、Runtime Grant、Infrastructure 解析注入、`AGENT_WORKLOAD` MCP 身份和 AppStudio 默认平台 Binding 补齐 S1/S2，并发布新的 SSOT release。
-- 状态：规范内容提交 `6e994e2` 已创建，`spec-v1.19.0` release 元数据已写入，正在创建发布提交/tag 并推送；Server 实现尚未开始，必须等待 release 发布并 pin。
-- 工作分支：`codex/agent-mcp-runtime`。
+- 目标：为 AppStudio Coding Agent 补齐持久化消息历史 facade、稳定消息 ID 归并和类型化 Invocation SSE 重放/关闭契约，形成 `spec-v1.20.0` 候选。
+- 状态：SSOT 契约草案和目标校验已完成并创建独立提交；尚未发布，正在等待用户明确确认 `spec-v1.20.0`，Server/Web 不得据此更新 pin 或实施正式契约。
+- 基线：annotated tag `spec-v1.19.0`，release commit `aa3f843e6ad4987f0441d882bfa0d05e02e05065`。
 
 ## 本次已完成
 
-- 已确认 `spec-v1.18.0` 只定义 MCP Binding 的 List/Create 和 `agent.runtime.ensure.mcp_binding_refs` 输入，尚未定义更新/删除、revision/grant、Infrastructure 解析端口、OpenCode 配置注入和 workload JWT。
-- 已确认首版只接入 AppStudio Coding Agent 的 OpenCode Runtime；Hermes 暂不接入 MCP 注入。
-- 已锁定默认平台 Binding、更新凭证模式、软删除、下一次 Runtime 生效和最小权限边界。
-- 已补齐 Agent S1/S2 的 MCP Binding PUT/DELETE、活动名称唯一、不可变 revision、Runtime Grant、错误码和 OpenCode Runtime fixture。
-- 已补齐 AppStudio 首次创建/代际替换的原子默认平台 Binding、已有 generation 幂等回填和删除后同代不重建语义。
-- 已补齐 Infrastructure `MCP_SERVER_REF` consumer resolver 与 Docker tmpfs/0600/启动门闩注入合同。
-- 已补齐 Identity `AGENT_WORKLOAD` PrincipalContext/JWT 和 MCP 每请求 Grant 复核、最小权限及 USER JWT 不回归合同。
-- 目标 YAML 解析、四个受影响 OpenAPI 本地 `$ref`、Agent 错误码唯一性/区间/追溯和 `git diff --check` 已通过。
-- 已创建规范内容提交 `6e994e2`，并以该准确 commit 生成 `spec-v1.19.0` Release 记录。
+- 已读取 Spec S1/S2 工作流规则，并确认只处理 Agent/AppStudio 当前 S1、S2、module contract 和直接相关 runtime protocol fixture。
+- 已确认 Coding Agent 仍只允许由 AppStudio facade 暴露，不进入公共 Agent API。
+- 已确认发布门禁：目标校验和草案提交完成后，必须取得用户明确确认，才能写入 release 元数据和创建 `spec-v1.20.0` tag。
+- 已补齐 Agent S1 的 12 类统一 Invocation 事件 payload、持久化序号、恢复游标、无重复重放和终态关闭语义。
+- 已补齐 AppStudio 当前 generation/session 消息 facade、稳定 `(created_at DESC, id DESC)` 分页和 Message ID 归并语义。
+- 已新增 AppStudio GET 消息接口、消息 DTO/列表、Invocation `user_message_id/assistant_message_id` 和 12 类可判别 SSE envelope。
+- 已同步 Agent/AppStudio module contract、Agent runtime protocol fixture 和 Unreleased changelog。
+- 已完成目标 YAML/OpenAPI、本地引用、事件集合、S1 追溯和格式校验；`RELEASE.md` 未修改。
+- 已创建 `feat(spec): define appstudio realtime agent stream` 草案提交；既有未跟踪内容未暂存。
 
 ## 当前进行中
 
-- 创建 release 元数据提交、annotated `spec-v1.19.0` tag，并推送分支与 tag。
+- 等待用户明确确认发布 `spec-v1.20.0`。
 
 ## 文件变化
 
-- Modified: Agent 的 `product-spec.md`、`openapi.yaml`、`schema.sql`、`errors.yaml`、`module-contract.md`、`runtime-protocol-fixtures.yaml`。
-- Modified: AppStudio 的 `product-spec.md`、`module-contract.md`。
-- Modified: Infrastructure 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`。
-- Modified: Identity 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`。
-- Modified: MCP 的 `product-spec.md`、`openapi.yaml`、`module-contract.md`；Modified: `RELEASE.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- Modified: Agent/AppStudio `product-spec.md`、`module-contract.md`，AppStudio `openapi.yaml`，Agent `runtime-protocol-fixtures.yaml`，`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 保留且不纳入提交：`archive/`、`docs/identity_fix.md`、`设计图/`。
 
 ## 关键决定
 
-- 目标 release 预计为 `spec-v1.19.0`，因为包含跨域 API、Schema、身份和 Runtime 协议新增。
-- 更新/删除不打断运行中的容器，只影响后续启动、恢复或显式重建。
-- Binding revision 不保存明文凭证；Infrastructure 只能通过授权引用解析，不得直接读取 Agent 数据表。
-- 空 `allowed_tools` 表示拒绝全部 MCP 工具。
+- 消息历史由 Agent Service 继续作为唯一事实来源，AppStudio 只提供当前应用、当前 Coding Agent generation/session 的受限 facade。
+- 消息列表按 `(created_at DESC, id DESC)` 稳定分页；Invocation 通过 `user_message_id`、`assistant_message_id` 与历史和流式消息归并。
+- SSE `id` 使用 Invocation 内递增十进制 `sequence_no`；`Last-Event-ID` 只接受非负十进制，并只重放更大序号。
+- 终态事件发送并 flush 后关闭；已终态 Invocation 补完重放后立即关闭。
 
 ## API、Schema、依赖或配置变化
 
-- 新增 MCP Binding item PUT/DELETE、Binding revision、Runtime Grant、`MCP_SERVER_REF`、OpenCode fixture 与 `AGENT_WORKLOAD` 身份契约；function registry 的既有 `mcp_binding_refs` schema 未改变。
+- 已新增 `GET /api/v1/studio-applications/{studio_application_id}/agent/messages`。
+- 已定义 AppStudio 消息 DTO、分页响应、Invocation 稳定消息 ID 和 12 类类型化 SSE envelope。
+- 不新增错误码、权限码、数据库表、公共 Agent API 或通用事件流事件。
 
 ## 验证与风险
 
-- 已完成目标结构验证；未运行全仓验证，符合任务读取/验证范围约束。
-- 风险：跨域权限、错误码、OpenAPI 和 schema 必须保持可追溯且与 function registry digest 一致。
+- 已通过目标 YAML 解析、AppStudio OpenAPI 90 个本地 `$ref` 解析、消息/稳定 ID/cursor/12 类事件结构断言、S1 引用追溯、Redocly 目标 lint 和 `git diff --check`。
+- Redocly 默认规则仍报告既有 `StudioBuildBatchSummaryItem` nullable error 和全文件 license/tag/4xx warnings；这些与本次变更无关，未修改。排除这些既有规则后的 Agent/AppStudio 目标 lint 通过。
+- 风险：Agent S1 的 runtime payload 与 AppStudio SSE DTO 必须保持单一语义，不能复制出冲突协议。
 
 ## 未完成事项
 
-- 完成 SSOT 修订、目标验证、release 元数据、提交和 tag/push。
-- 在 Server 仓库更新 submodule pin 与 `SSOT_VERSION` 后实施后端。
+- 取得用户明确发布确认后，按 release 规则写入 `RELEASE.md`、创建 release commit 和 annotated `spec-v1.20.0` tag；确认前不得执行。
+- 请求用户明确确认发布 `spec-v1.20.0`。
+- 发布后才允许 Server/Web 更新 submodule 和版本标记并实施。
 
 ## 推荐下一步
 
-完成 release 提交、tag 和 push；随后回到 Server 更新 submodule pin 与 `SSOT_VERSION`。
+等待用户明确回复确认发布 `spec-v1.20.0`；确认后写 release 元数据、创建 annotated tag，再更新 Server pin。
 
 Next Prompt:
 

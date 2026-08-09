@@ -64,6 +64,15 @@ paths:
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       responses: {'200': {description: 当前 generation 的 Coding Agent/Session 状态；不返回 Workspace 或 Runtime Endpoint。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/agent/messages:
+    get:
+      tags: [agent]
+      operationId: list_studio_agent_messages
+      summary: 查询当前 Coding Agent 消息历史
+      description: 仅返回当前 StudioApplication 的当前 Coding Agent generation/session，固定按 created_at DESC、id DESC 稳定排序。
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-020, R-STUDIO-025], source_sections: ['7.1 发送开发指令', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 当前 generation/session 的消息列表，newest-first。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentMessageListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
     post:
       tags: [agent]
       operationId: send_studio_agent_message
@@ -106,10 +115,11 @@ paths:
       tags: [agent]
       operationId: stream_studio_agent_invocation_events
       summary: 订阅 Coding Agent Invocation 事件
+      description: 按持久化 sequence_no 重放后继续实时推送；唯一终态事件 flush 后关闭，已终态 Invocation 补完重放后立即关闭。
       x-permission: appstudio.agent.read
-      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7.2 开发流程', '20.2 Agent 协作']}
-      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/agent_invocation_id'}, {name: Last-Event-ID, in: header, schema: {type: string}, x-naming-exception: 标准 SSE Header。}]
-      responses: {'200': {description: 标准 SSE 事件流；payload 不含 Workspace。, content: {text/event-stream: {schema: {type: string}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-003, R-STUDIO-020, R-STUDIO-025], source_sections: ['7.2 开发流程', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/agent_invocation_id'}, {$ref: '#/components/parameters/last_event_id'}]
+      responses: {'200': {description: 标准 SSE 事件流；id 为十进制 sequence_no，event 为统一事件名，data 为类型化 JSON envelope；payload 不含 Workspace。, content: {text/event-stream: {schema: {$ref: '#/components/schemas/StudioAgentInvocationEventEnvelope'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/agent/suspend:
     post:
       tags: [agent]
@@ -435,6 +445,7 @@ components:
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
     page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
     keyword: {name: keyword, in: query, schema: {type: string, maxLength: 256}}
+    last_event_id: {name: Last-Event-ID, in: header, required: false, schema: {type: string, pattern: '^(0|[1-9][0-9]*)$'}, description: 非负十进制恢复游标；只重放 sequence_no 严格大于该值的事件，0 表示从第一条开始；非法值按既有请求校验语义拒绝。, x-naming-exception: SSE 标准请求头，必须保留协议原始拼写。}
   responses: {UnexpectedError: {description: 未预期服务异常。, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}}
   schemas:
     StudioApplication:
@@ -499,10 +510,26 @@ components:
       properties:
         type: {type: string, enum: [ASSET, ARTIFACT, SOURCE_FILE, BUILD_LOG, PREVIEW_LOG]}
         reference_id: {type: string, minLength: 1}
+    StudioAgentMessage:
+      type: object
+      additionalProperties: false
+      required: [id, invocation_id, role, content, attachments, created_at]
+      properties:
+        id: {type: string}
+        invocation_id: {type: string, nullable: true}
+        role: {type: string, enum: [USER, ASSISTANT, SYSTEM, TOOL]}
+        content: {type: string}
+        attachments: {type: array, items: {$ref: '#/components/schemas/StudioAgentAttachment'}}
+        created_at: {type: string, format: date-time}
+    StudioAgentMessageListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, description: 固定按 created_at DESC、id DESC 排序。, items: {$ref: '#/components/schemas/StudioAgentMessage'}}}
     StudioAgentInvocation:
       type: object
       additionalProperties: false
-      required: [id, agent_id, session_id, generation, type, status, created_at, updated_at]
+      required: [id, agent_id, session_id, generation, type, status, user_message_id, assistant_message_id, created_at, updated_at]
       properties:
         id: {type: string}
         agent_id: {type: string}
@@ -510,6 +537,8 @@ components:
         generation: {type: integer, minimum: 1}
         type: {type: string, enum: [CODING]}
         status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, SUCCEEDED, FAILED, CANCELING, CANCELED]}
+        user_message_id: {type: string, description: 该 Invocation 的稳定用户消息 ID；发送响应和消息历史使用此 ID 归并。}
+        assistant_message_id: {type: string, description: 创建 Invocation 时预留的稳定助手消息 ID；delta、完成事件和消息历史使用此 ID 归并。}
         atomic_task_id: {type: string, nullable: true, description: 仅 QUEUED 在任务绑定提交前可短暂为空，执行前必须存在。}
         runtime_binding_id: {type: string, nullable: true}
         runtime_session_ref: {type: string, nullable: true}
@@ -527,6 +556,112 @@ components:
       additionalProperties: false
       required: [total, items]
       properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/StudioAgentInvocation'}}}
+    StudioAgentInvocationEventEnvelope:
+      oneOf:
+        - {$ref: '#/components/schemas/StudioAgentInvocationStartedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentMessageDeltaEvent'}
+        - {$ref: '#/components/schemas/StudioAgentMessageCompletedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentToolRequestedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentToolStartedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentToolProgressEvent'}
+        - {$ref: '#/components/schemas/StudioAgentToolCompletedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentToolFailedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentUserInputRequiredEvent'}
+        - {$ref: '#/components/schemas/StudioAgentInvocationCompletedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentInvocationFailedEvent'}
+        - {$ref: '#/components/schemas/StudioAgentInvocationCanceledEvent'}
+      discriminator: {propertyName: event}
+    StudioAgentInvocationEventBase:
+      type: object
+      required: [invocation_id, sequence_no, occurred_at]
+      properties:
+        invocation_id: {type: string}
+        sequence_no: {type: integer, format: int64, minimum: 1, description: Invocation 内严格递增的持久化序号；SSE id 使用其十进制文本。}
+        occurred_at: {type: string, format: date-time}
+    StudioAgentInvocationStartedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [invocation.started]}, payload: {$ref: '#/components/schemas/StudioAgentInvocationStartedPayload'}}}]
+    StudioAgentMessageDeltaEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [message.delta]}, payload: {$ref: '#/components/schemas/StudioAgentMessageDeltaPayload'}}}]
+    StudioAgentMessageCompletedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [message.completed]}, payload: {$ref: '#/components/schemas/StudioAgentMessageCompletedPayload'}}}]
+    StudioAgentToolRequestedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [tool.requested]}, payload: {$ref: '#/components/schemas/StudioAgentToolRequestedPayload'}}}]
+    StudioAgentToolStartedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [tool.started]}, payload: {$ref: '#/components/schemas/StudioAgentToolStartedPayload'}}}]
+    StudioAgentToolProgressEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [tool.progress]}, payload: {$ref: '#/components/schemas/StudioAgentToolProgressPayload'}}}]
+    StudioAgentToolCompletedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [tool.completed]}, payload: {$ref: '#/components/schemas/StudioAgentToolCompletedPayload'}}}]
+    StudioAgentToolFailedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [tool.failed]}, payload: {$ref: '#/components/schemas/StudioAgentToolFailedPayload'}}}]
+    StudioAgentUserInputRequiredEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [user.input_required]}, payload: {$ref: '#/components/schemas/StudioAgentUserInputRequiredPayload'}}}]
+    StudioAgentInvocationCompletedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [invocation.completed]}, payload: {$ref: '#/components/schemas/StudioAgentInvocationCompletedPayload'}}}]
+    StudioAgentInvocationFailedEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [invocation.failed]}, payload: {$ref: '#/components/schemas/StudioAgentInvocationFailedPayload'}}}]
+    StudioAgentInvocationCanceledEvent:
+      allOf: [{$ref: '#/components/schemas/StudioAgentInvocationEventBase'}, {type: object, required: [event, payload], properties: {event: {type: string, enum: [invocation.canceled]}, payload: {$ref: '#/components/schemas/StudioAgentInvocationCanceledPayload'}}}]
+    StudioAgentInvocationStartedPayload:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties: {status: {type: string, enum: [RUNNING]}}
+    StudioAgentMessageDeltaPayload:
+      type: object
+      additionalProperties: false
+      required: [message_id, delta]
+      properties: {message_id: {type: string}, delta: {type: string}}
+    StudioAgentMessageCompletedPayload:
+      type: object
+      additionalProperties: false
+      required: [message_id, role, content, attachments, created_at]
+      properties: {message_id: {type: string}, role: {type: string, enum: [ASSISTANT]}, content: {type: string}, attachments: {type: array, items: {$ref: '#/components/schemas/StudioAgentAttachment'}}, created_at: {type: string, format: date-time}}
+    StudioAgentToolRequestedPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_call_id, tool_name]
+      properties: {tool_call_id: {type: string}, tool_name: {type: string}, input_summary: {type: string, maxLength: 4000}}
+    StudioAgentToolStartedPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_call_id, tool_name]
+      properties: {tool_call_id: {type: string}, tool_name: {type: string}}
+    StudioAgentToolProgressPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_call_id, tool_name, progress_message]
+      properties: {tool_call_id: {type: string}, tool_name: {type: string}, progress_message: {type: string, maxLength: 4000}, progress_percent: {type: number, minimum: 0, maximum: 100}}
+    StudioAgentToolCompletedPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_call_id, tool_name]
+      properties: {tool_call_id: {type: string}, tool_name: {type: string}, output_summary: {type: string, maxLength: 4000}}
+    StudioAgentToolFailedPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_call_id, tool_name, failure_code, failure_message]
+      properties: {tool_call_id: {type: string}, tool_name: {type: string}, failure_code: {type: string}, failure_message: {type: string, maxLength: 4000}}
+    StudioAgentUserInputRequiredPayload:
+      type: object
+      additionalProperties: false
+      required: [request_id, prompt]
+      properties: {request_id: {type: string}, prompt: {type: string, maxLength: 20000}}
+    StudioAgentInvocationCompletedPayload:
+      type: object
+      additionalProperties: false
+      required: [status, assistant_message_id]
+      properties: {status: {type: string, enum: [SUCCEEDED]}, assistant_message_id: {type: string}}
+    StudioAgentInvocationFailedPayload:
+      type: object
+      additionalProperties: false
+      required: [status, failure_code, failure_message]
+      properties: {status: {type: string, enum: [FAILED]}, failure_code: {type: string}, failure_message: {type: string, maxLength: 4000}}
+    StudioAgentInvocationCanceledPayload:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties: {status: {type: string, enum: [CANCELED]}, reason: {type: string, maxLength: 4000}}
     StudioAgentReplaceRequest:
       type: object
       additionalProperties: false

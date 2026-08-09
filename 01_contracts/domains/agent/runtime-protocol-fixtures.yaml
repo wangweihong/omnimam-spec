@@ -1,8 +1,33 @@
-schema_version: "1.0"
+schema_version: "1.1"
 description: Agent Runtime 固定镜像协议 fixture；用于发布前验证，不是运行时配置。
 x-s1-refs:
   user_stories: [US-AGENT-001]
-  business_rules: [BR-AGENT-001, R-AGENT-020, R-AGENT-021, R-AGENT-024, R-AGENT-025, R-AGENT-026]
+  business_rules: [BR-AGENT-001, R-AGENT-020, R-AGENT-021, R-AGENT-024, R-AGENT-025, R-AGENT-026, R-AGENT-027]
+normalized_invocation_events:
+  sequence_scope: invocation
+  first_sequence_no: 1
+  persistence_rule: 完整 envelope 必须先持久化再推送；Task 重试或 Runtime 重连不得为同一事实生成重复序号。
+  sse_rule: id 使用 sequence_no 十进制文本，event 使用统一事件名，data 使用对应 JSON envelope；Last-Event-ID 只重放更大序号。
+  terminal_rule: invocation.completed、invocation.failed、invocation.canceled 只能出现一个；发送并 flush 后关闭，已终态 Invocation 补完重放后关闭。
+  envelope_fixture:
+    invocation_id: invocation-001
+    sequence_no: 1
+    occurred_at: "2026-08-09T12:00:00Z"
+    event: invocation.started
+    payload: {status: RUNNING}
+  payload_fixtures:
+    invocation.started: {status: RUNNING}
+    message.delta: {message_id: message-assistant-001, delta: hello}
+    message.completed: {message_id: message-assistant-001, role: ASSISTANT, content: hello, attachments: [], created_at: "2026-08-09T12:00:01Z"}
+    tool.requested: {tool_call_id: tool-call-001, tool_name: omnimam.assets.search, input_summary: redacted search request}
+    tool.started: {tool_call_id: tool-call-001, tool_name: omnimam.assets.search}
+    tool.progress: {tool_call_id: tool-call-001, tool_name: omnimam.assets.search, progress_message: searching, progress_percent: 50}
+    tool.completed: {tool_call_id: tool-call-001, tool_name: omnimam.assets.search, output_summary: 2 results}
+    tool.failed: {tool_call_id: tool-call-001, tool_name: omnimam.assets.search, failure_code: TOOL_EXECUTION_FAILED, failure_message: sanitized failure}
+    user.input_required: {request_id: input-001, prompt: Select a target file.}
+    invocation.completed: {status: SUCCEEDED, assistant_message_id: message-assistant-001}
+    invocation.failed: {status: FAILED, failure_code: INVOCATION_FAILED, failure_message: sanitized failure}
+    invocation.canceled: {status: CANCELED, reason: user requested cancellation}
 profiles:
   - profile_id: agent.hermes
     image: nousresearch/hermes-agent:v2026.8.3
@@ -74,5 +99,5 @@ profiles:
           binding-001_omnimam.assets.search: true
       startup_gate: 先启动等待配置的入口；完成 archive/exec 写入、校验 0600 后才释放门闩并启动 headless_command。
 release_gate:
-  required_checks: [image_manifest, headless_start, health, create_session, send_message, event_stream, cancel, idempotent_replay, opencode_mcp_config, config_mode_0600, deny_unlisted_tool, secret_non_disclosure]
+  required_checks: [image_manifest, headless_start, health, create_session, send_message, event_stream, typed_event_payloads, terminal_stream_close, cancel, idempotent_replay, opencode_mcp_config, config_mode_0600, deny_unlisted_tool, secret_non_disclosure]
   failure_policy: 任一固定 Profile 未通过时不得发布或启用该 Profile 合同。

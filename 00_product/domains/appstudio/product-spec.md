@@ -1064,7 +1064,20 @@ studioApplicationContext
 idempotencyKey
 ```
 
-用户通过应用级接口查看 Agent 状态、发送消息、查询 Invocation/事件、取消、挂起、恢复和替换。响应可以返回稳定 Agent/Session/Invocation ID 供诊断与导航，但不得返回 Workspace、Runtime Endpoint、模型凭证或 Infra 引用。
+用户通过应用级接口查看 Agent 状态、发送消息、查询当前 generation/session 的消息历史和 Invocation/事件、取消、挂起、恢复和替换。响应可以返回稳定 Agent/Session/Message/Invocation ID 供归并、诊断与导航，但不得返回 Workspace、Runtime Endpoint、模型凭证或 Infra 引用。
+
+消息历史只能通过 StudioApplication facade 查询，不得让前端使用公共 Agent API 读取 Coding Agent。列表固定按 `(createdAt DESC, id DESC)` 返回当前 generation 的当前 Session 消息；相同创建时间必须以稳定 Message ID 降序打破并列，分页不得因并列时间产生重复或遗漏。每条投影包含：
+
+```text
+id
+invocationId
+role
+content
+attachments
+createdAt
+```
+
+发送结果必须同时返回 Invocation 的稳定 `userMessageId` 和预留的 `assistantMessageId`。历史消息、发送响应和流式消息均使用这两个 ID 归并，不得根据内容、时间或数组位置猜测同一消息。
 
 附件可以包含：
 
@@ -1125,6 +1138,10 @@ sequenceDiagram
     AS-->>ST: AgentInvocation Result
 ```
 
+AppStudio 事件接口只投影 Agent S1 第 12.3 节定义的统一 Invocation 事件，不建立第二套事件事实。SSE `id` 使用 Invocation 内递增十进制 `sequenceNo`，`event` 使用统一事件名，`data` 使用包含 `invocationId`、`sequenceNo`、`occurredAt`、`event` 和对应 payload 的类型化 JSON envelope。
+
+`Last-Event-ID` 只接受非负十进制序号，并只重放严格大于该序号的持久化事件；未提供时从当前可用历史起点重放，`0` 表示从第一条事件开始。重放与实时推送必须保持同一 Invocation 顺序且无重复；终态事件发送并 flush 后关闭连接，已终态 Invocation 补完重放后立即关闭。heartbeat 仅使用 SSE comment，不占用序号。该流不进入通用 `/api/v1/events/stream`。
+
 ---
 
 ## 7.3 AppStudio 保存的信息
@@ -1139,7 +1156,7 @@ operations 摘要
 validationSummary
 ```
 
-详细 Agent 消息和事件归 Agent Service 所有。
+详细 Agent 消息和事件归 Agent Service 所有。AppStudio 只按当前 Application、Coding Agent generation 和 Session 调用 owner-scoped 查询/重放能力并映射公共 DTO，不保存第二份 Message 或 Invocation Event。
 
 应用级 Invocation 投影必须聚合其审计关联的全部 `APPLIED` StudioChangeSet：`resultingChangeSetId` 取最大 `targetRevision` 对应的最后一个 ChangeSet，`resultingSourceRevision` 取最大的 `targetRevision`；没有已应用 ChangeSet 时二者为空。用户选择历史 Invocation 恢复时，把该 `resultingSourceRevision` 传给既有 source restore API；AppStudio 以当前 Revision 为 `baseRevision` 创建新的 Restore ChangeSet 和新 Revision，不改写 Session、Message、Invocation、原 ChangeSet 或历史 Revision。后续 Coding Agent 在相同当前 Session 和新当前 Revision 上继续工作。
 
@@ -2020,6 +2037,7 @@ DeleteStudioApplication
 ```text
 SendStudioMessage
 GetStudioAgentStatus
+ListStudioAgentMessages
 GetStudioAgentInvocation
 ListStudioAgentInvocations
 StreamStudioAgentInvocationEvents
@@ -2524,6 +2542,10 @@ Preview、Build、Production 及其他 Infra-backed 操作必须先创建 Task C
 
 Preview 只能只读挂载启动时固定的 Workspace Revision；Build 只能只读挂载固定 StudioSourceSnapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace、Revision 或 Snapshot。
 
+## R-STUDIO-025
+
+Coding Agent 消息和 Invocation 事件的唯一事实来源是 Agent Service。AppStudio 只能按当前 Application、generation 和 Session 提供受限 facade；消息按 `(createdAt DESC, id DESC)` 稳定分页，SSE 按 Agent 统一事件序号无重复重放并在唯一终态事件 flush 后关闭，且不得进入公共 Agent API 或通用用户事件流。
+
 ---
 
 # 27. 最终职责总结
@@ -2629,7 +2651,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Revision、Snapshot、Build、Preview、Release 和 Runtime；Workspace 仅是后端内部事实。
-- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、20、21、22、26 节及 `R-STUDIO-001..024`。
+- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、20、21、22、26 节及 `R-STUDIO-001..025`。
 
 验收标准：
 
@@ -2649,3 +2671,4 @@ flowchart LR
 - `AC-APPSTUDIO-001-14`：替换 Coding Agent 创建新 Agent/Session 并原子递增 generation；旧 Agent 历史保留，新建失败时旧引用保持当前且不改写源码、Build、Release 或 RuntimeInstance。
 - `AC-APPSTUDIO-001-15`：应用级 Invocation 投影以关联的 APPLIED ChangeSet 最大 `target_revision` 作为 `resulting_source_revision`；恢复该阶段必须调用既有 source restore API 创建新的 Restore ChangeSet/Revision，且保留 Session、Message、Invocation、原 ChangeSet 和 Revision 历史。
 - `AC-APPSTUDIO-001-16`：首次创建和 generation 替换必须在初始化事务中原子创建固定默认平台 MCP Binding；已有当前 generation 幂等回填一次，用户删除后同 generation 不重建，下一 generation 重新创建。任一步失败整笔事务回滚。
+- `AC-APPSTUDIO-001-17`：应用级消息 facade 只返回当前 Coding Agent generation/session，并按 `(created_at DESC, id DESC)` 稳定分页；发送响应、历史和流式完成事件使用稳定 Message ID 归并。SSE 必须按 `Last-Event-ID` 无重复续传，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。
