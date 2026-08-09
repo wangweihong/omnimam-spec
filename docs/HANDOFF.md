@@ -2,8 +2,8 @@
 
 ## 当前目标与状态
 
-- 目标：为 AppStudio Coding Agent 补齐持久化消息历史 facade、稳定消息 ID 归并和类型化 Invocation SSE 重放/关闭契约，形成 `spec-v1.20.0` 候选。
-- 状态：SSOT 契约草案和目标校验已完成并创建独立提交；尚未发布，正在等待用户明确确认 `spec-v1.20.0`，Server/Web 不得据此更新 pin 或实施正式契约。
+- 目标：发布 AppStudio Coding Agent 持久化消息历史 facade、稳定消息 ID 归并和类型化 Invocation SSE 重放/关闭契约。
+- 状态：`spec-v1.20.0` 已发布；发布分支与 annotated tag 已推送到 `origin`，可作为 Server/Web 正式实现依据。
 - 基线：annotated tag `spec-v1.19.0`，release commit `aa3f843e6ad4987f0441d882bfa0d05e02e05065`。
 
 ## 本次已完成
@@ -17,14 +17,17 @@
 - 已同步 Agent/AppStudio module contract、Agent runtime protocol fixture 和 Unreleased changelog。
 - 已完成目标 YAML/OpenAPI、本地引用、事件集合、S1 追溯和格式校验；`RELEASE.md` 未修改。
 - 已创建 `feat(spec): define appstudio realtime agent stream` 草案提交；既有未跟踪内容未暂存。
+- 用户已明确确认发布 `spec-v1.20.0`；已写入 `RELEASE.md` 正式发布记录。
+- 已创建 release commit 与 annotated `spec-v1.20.0` tag，并推送发布分支和标签。
 
 ## 当前进行中
 
-- 等待用户明确确认发布 `spec-v1.20.0`。
+- 无；下游 Server/Web 正在更新 SSOT pin 并实施。
 
 ## 文件变化
 
-- Modified: Agent/AppStudio `product-spec.md`、`module-contract.md`，AppStudio `openapi.yaml`，Agent `runtime-protocol-fixtures.yaml`，`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 内容提交 `7903d5d` 修改 Agent/AppStudio `product-spec.md`、`module-contract.md`，AppStudio `openapi.yaml`，Agent `runtime-protocol-fixtures.yaml`，`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 发布提交包含 `RELEASE.md` 和本 handoff 更新。
 - 保留且不纳入提交：`archive/`、`docs/identity_fix.md`、`设计图/`。
 
 ## 关键决定
@@ -48,13 +51,11 @@
 
 ## 未完成事项
 
-- 取得用户明确发布确认后，按 release 规则写入 `RELEASE.md`、创建 release commit 和 annotated `spec-v1.20.0` tag；确认前不得执行。
-- 请求用户明确确认发布 `spec-v1.20.0`。
-- 发布后才允许 Server/Web 更新 submodule 和版本标记并实施。
+- 下游 Server/Web 更新 submodule 和版本标记并实施。
 
 ## 推荐下一步
 
-等待用户明确回复确认发布 `spec-v1.20.0`；确认后写 release 元数据、创建 annotated tag，再更新 Server pin。
+在 Server 更新 `ssot` submodule 到 `spec-v1.20.0`，生成目标类型并实现 AppStudio facade 与 SSE。
 
 Next Prompt:
 

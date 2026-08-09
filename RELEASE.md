@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.20.0
+
+- commit: 7903d5d
+- status: released
+- confirmed_by: user（2026-08-09 请求发布 spec-v1.20.0 并实施 Server 与 Web 的实际 SSE 接入）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/agent/runtime-protocol-fixtures.yaml
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+- implementation_gate: AppStudio 仅通过 application facade 暴露当前 Coding Agent generation/session 的消息历史，按 `(created_at DESC, id DESC)` 稳定分页，并使用 `user_message_id`、`assistant_message_id` 归并发送结果、历史和流式消息。Invocation SSE 使用 Invocation 内从 1 开始单调递增的十进制 `sequence_no` 作为事件 ID，支持严格校验 `Last-Event-ID`、仅重放更大序号、12 类 Agent S1 类型化事件、注释心跳和终态 flush 后关闭；Coding Agent 不进入公共 Agent API，事件不进入通用事件流。
+
 ## spec-v1.19.0
 
 - commit: 6e994e2
