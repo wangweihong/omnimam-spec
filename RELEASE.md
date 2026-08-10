@@ -1,5 +1,28 @@
 # Release Records
 
+## spec-v1.21.0
+
+- commit: b0dde387a39c1d8ce49137518ee013c70a831c7f
+- status: released
+- confirmed_by: user（2026-08-10 请求实施 Agent Runtime 诊断接口计划，明确要求先补齐并 release SSOT 后再实现 Server）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - appstudio
+  - infrastructure
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/permissions.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+- implementation_gate: AppStudio 提供当前 Coding Agent Runtime 详情、跨 generation 历史、最近 5000 行脱敏日志和投影/实时健康查询；详情、历史和健康使用 `appstudio.agent.read`，日志使用 `appstudio.agent.runtime.logs.read`。Agent Service 按 owner/Application/Agent/generation 查询 Runtime Binding 与最新非终态 Invocation，并通过注入的 RuntimeDiagnosticsReader 读取 owner-scoped Infrastructure 日志和健康。Infrastructure logs/health 必须校验 `owner_reference` 匹配 AgentRuntimeBinding 且 owner domain 为 agent；Docker Provider 只返回通用健康结果。所有公开响应禁止 Runtime Endpoint、Infra Runtime ID、容器、宿主路径、私网地址和 Provider 原始响应；不新增数据库表、错误码、事件或生命周期写权限。
+
 ## spec-v1.20.0
 
 - commit: 7903d5d
