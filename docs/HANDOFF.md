@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 Agent Runtime 详情、历史、日志和健康诊断契约，供 omnimam-server 正式实施。
-- 状态：内容提交 `b0dde387a39c1d8ce49137518ee013c70a831c7f` 已完成；`spec-v1.21.0` release 记录已写入，正在创建 release commit/tag 并推送。
+- 状态：`spec-v1.21.0` 已发布；release commit `5a654a1`、annotated tag 和分支均已推送到 `origin`，可作为 server 正式实现依据。
 - 基线：`spec-v1.20.0`，release commit `0e6300c8e776df08972a229f48775ed71ad5bff9`。
 
 ## 本次已完成
@@ -15,10 +15,11 @@
 - 新增 `appstudio.agent.runtime.logs.read`，默认授予 USER、ADMIN、SUPER_ADMIN。
 - 同步 Agent、AppStudio、Infrastructure module contract 和 Unreleased changelog。
 - 已创建内容提交 `b0dde387a39c1d8ce49137518ee013c70a831c7f`，并以用户本次明确实施请求作为 release 确认写入 `RELEASE.md`。
+- 已创建 release commit `5a654a1` 和 annotated `spec-v1.21.0` tag，并推送分支与标签。
 
 ## 当前进行中
 
-- 创建并推送 `spec-v1.21.0` release commit/tag。
+- 无；下游 server 正在更新 SSOT pin 并实施。
 
 ## 文件变化
 
@@ -44,17 +45,17 @@
 
 - 已通过 `yq` 解析三个修改的 YAML、operationId 重复检查和 `git diff --check`。
 - Redocly 首次检查发现并已修正新增 `current_task` 的 OpenAPI 3.0 `$ref`/nullable sibling；AppStudio 仍有既有 `StudioBuildBatchSummaryItem` nullable error 和全文件通用 warnings，本任务不修改无关 schema。
-- 尚需完成 tag/push 和下游 pin 验证；server 实现不得早于该步骤。
+- tag/push 已完成；尚需下游 server pin 验证。
 - OpenAPI `StudioAgentRuntime` 与 server DTO 必须保持 Endpoint/Infra/容器/Provider 信息不可见。
 
 ## 未完成事项
 
-- 创建 `spec-v1.21.0` release commit/tag 并推送分支/tag。
+- 下游 server 更新 submodule、`SSOT_VERSION` 并实施诊断接口。
 - 下游 server 更新 submodule 和 `SSOT_VERSION` 后实施。
 
 ## 推荐下一步
 
-提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.21.0` tag，并推送 `codex/agent-runtime-diagnostics` 与 tag。
+在 omnimam-server 将 `ssot` pin 到 `spec-v1.21.0`，核对 `SSOT_VERSION` 后实施四个 AppStudio Runtime 诊断 API。
 
 Next Prompt:
 
