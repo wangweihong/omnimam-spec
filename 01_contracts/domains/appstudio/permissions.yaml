@@ -26,14 +26,26 @@ appstudio.application.manage:
 appstudio.agent.read:
   domain: appstudio
   module: application-agent
-  resource: studio_application_agent, agent_invocation_projection
+  resource: studio_application_agent, agent_invocation_projection, agent_runtime_projection
   action: read, list, stream
   subject: owner, authorized_editor, system_admin
-  description: 查询 StudioApplication 当前 Coding Agent、Session 和 Invocation 投影。
-  frontend_usage: 应用工作台 Agent 状态、对话历史与事件流。
-  backend_enforcement: 先校验应用可见性，再通过当前 generation 的稳定 ID 调用 Agent 内部 owner-scoped 查询；不得返回 Workspace、Endpoint、Infra 引用或模型凭证，也不得使用公共 Platform Agent 查询绕过 kind guard。
+  description: 查询 StudioApplication 当前 Coding Agent、Session、Invocation 和 Runtime 脱敏投影。
+  frontend_usage: 应用工作台 Agent 状态、对话历史、事件流、Runtime 详情/历史和健康。
+  backend_enforcement: 先校验应用可见性，再通过当前 generation 的稳定 ID 调用 Agent 内部 owner-scoped 查询；Runtime 历史还必须按 Application grant 限定。不得返回 Workspace、Endpoint、Infra 引用、容器/Provider 信息或模型凭证，也不得使用公共 Platform Agent 查询绕过 kind guard。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-APPSTUDIO-001]
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-026]
+  related_user_stories: [US-APPSTUDIO-001]
+appstudio.agent.runtime.logs.read:
+  domain: appstudio
+  module: application-agent
+  resource: agent_runtime_log
+  action: read
+  subject: owner, authorized_editor, system_admin
+  description: 查询 StudioApplication 当前 Coding Agent Runtime 的脱敏日志。
+  frontend_usage: Agent Runtime 启动、OpenCode、MCP 和配置故障诊断。
+  backend_enforcement: 先校验应用可见性和当前 generation，再通过 Agent Service 与 Infrastructure owner_reference 双重校验；仅返回最近 5000 行快照中的 occurred_at、level、message，不得暴露 Docker source、Infra/容器 ID、路径、地址或 Provider 响应。
+  default_roles: [USER, ADMIN, SUPER_ADMIN]
+  related_rules: [BR-APPSTUDIO-001, R-STUDIO-026]
   related_user_stories: [US-APPSTUDIO-001]
 appstudio.agent.operate:
   domain: appstudio

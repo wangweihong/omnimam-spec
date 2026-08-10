@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..17` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、Coding Agent generation、消息/事件 facade、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
+当前 AppStudio S1 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`AC-APPSTUDIO-001-01..18` 及 `R-STUDIO-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、Coding Agent generation、消息/事件 facade、Runtime 脱敏诊断、canonical 源码谱系、Artifact 成功门禁和健康切换/回滚语义。
 
 ## 2. 模块边界
 
@@ -58,8 +58,10 @@
 - 回滚必须创建新的 StudioRelease 和候选 StudioRuntimeInstance，并引用目标历史 Release 的不可变内容；不得修改或重新激活旧 Release。
 - API/事件列表使用 `total/items`、统一分页和最多一跳摘要；文件正文按大小上限返回，禁止把源码大对象放进列表。
 - Coding Agent 高频 Invocation 事件不写 AppStudio Outbox、不进入通用 `/api/v1/events/stream`；AppStudio 只执行鉴权、当前 generation/session 范围校验和 DTO 投影。
+- Coding Agent Runtime 详情、历史、日志和健康由 Agent Service 提供。AppStudio 只执行应用所有权、当前 Agent/generation 范围校验和 DTO 投影；历史允许覆盖该 Application 已授权的旧 generation。日志额外要求 `appstudio.agent.runtime.logs.read`，其他诊断使用 `appstudio.agent.read`。
+- AppStudio 不得直接调用 Infrastructure 诊断 API、读取 Agent/Infrastructure 私表或保存第二份 Runtime/Invocation 投影；Runtime Endpoint、Infra Runtime ID、容器/Provider 信息、宿主路径和私网地址不得进入公共 DTO。
 - `studio_workspaces`、Workspace Revision、ChangeSet、Snapshot 与 Preview 中的 Workspace 字段继续作为后端 canonical 事实，不因公共 API 内化而删除或改名。
 
 ## 6. S1 追溯
 
-主要规则：`R-STUDIO-001..025`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/RuntimeInstance（11-12）、权限/Secret（17-18）、事件（21）、错误与范围（22-25）。
+主要规则：`R-STUDIO-001..026`。主要来源章节：应用分离（2）、源码/Workspace（3、5、7）、Preview（9）、Build（10）、Release/RuntimeInstance（11-12）、权限/Secret（17-18）、Agent 面板与接口（19-20）、事件（21）、错误与范围（22-25）。

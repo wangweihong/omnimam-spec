@@ -1030,6 +1030,12 @@ DELETED
 
 AgentRuntimeBinding 是 Agent Service 对 Infra Runtime 的业务绑定，不复制容器信息。`currentTaskId/currentOperation` 标识当前生命周期操作；Task 终态回写必须同时匹配 binding、当前 Task 和操作类型。旧 Task 的乱序、重复或迟到结果只能记录审计，不得覆盖新操作投影。
 
+Agent Service 必须提供受 owner、Agent、AppStudio Application 和 generation 约束的 Runtime 诊断读取能力。详情投影包含 Runtime Binding、状态、活跃状态、健康状态、启动/停止/最近健康时间、按策略固定的空闲超时和最大生命周期，以及当前非终态 `AgentInvocation` 摘要；不得把生命周期 `AtomicTask` 当作用户当前任务。Runtime 历史通过 `AgentRuntimeGrant` 关联 Application 与 generation，按 Runtime Binding 去重并稳定倒序；只有当前 generation 选中的最新 Runtime 标记为当前。
+
+运行时长从 `startedAt` 计算至 `stoppedAt` 或查询时刻，向下取整且不小于零；未启动时为零。非终态 Invocation 固定为 `QUEUED/STARTING/RUNNING/WAITING_FOR_TOOL/WAITING_FOR_USER/CANCELING`。
+
+Agent Service 可以通过消费方只读诊断边界读取 owner-scoped Runtime 日志和执行实时健康探测，但不得扩大 `AgentRuntimeAdapter` 的生命周期写权限，也不得读取 Provider 私有信息或向 AppStudio 泄漏 Runtime Endpoint、Infra Runtime ID、容器 ID、宿主路径、私网地址和 Provider 原始响应。
+
 ---
 
 # 9. Agent 状态模型
@@ -2104,6 +2110,8 @@ runtimeLogRef
 
 并可以提供经过权限校验的日志查询入口。
 
+面向 AppStudio 的日志入口只返回最近 5000 行脱敏快照内的分页结果，每项仅包含发生时间、级别和消息。读取失败统一映射为 Agent Runtime 操作失败，不得回传 Docker source、Provider 错误体、容器标识、地址或凭证。
+
 ---
 
 ## 25.3 指标
@@ -2654,6 +2662,10 @@ OpenCode Coding Agent 的平台 MCP workload 身份必须绑定 Agent generation
 
 Agent Service 必须把统一 Invocation 事件完整持久化为 Invocation 内严格递增序列，并支持按非负恢复游标无重复重放；唯一终态事件 flush 后关闭 SSE。高频 Invocation 事件不得进入通用用户事件流。
 
+## R-AGENT-028
+
+Agent Runtime 诊断必须按 owner、Agent、AppStudio Application 和 generation 校验可见性；当前详情、历史、日志和健康只返回脱敏业务投影。实时健康探测是只读操作，不得扩大 Runtime 生命周期写权限、泄漏 Endpoint/Infra/Provider 细节或把探测失败错误地投影为 Invocation 终态。
+
 ---
 
 # 33. 最终职责总结
@@ -2730,7 +2742,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-AGENT-001`：用户可以管理持久化 Platform Agent、会话交互、记忆和受控 Runtime 生命周期，而无需选择或管理内部 Workspace；Coding Agent 由 AppStudio 创建和投影。
-- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding、MCP Binding/Revision、Runtime Binding 和 Runtime Grant 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、16、18、19、20、21、23、24、28 节及 `R-AGENT-001..027`。
+- `BR-AGENT-001`：Agent、Session、Memory、Workspace Binding、MCP Binding/Revision、Runtime Binding 和 Runtime Grant 的事实归属与生命周期必须遵守本 S1 第 3、7、8、9、11、12、13、16、18、19、20、21、23、24、25、28 节及 `R-AGENT-001..028`。
 
 验收标准：
 
@@ -2751,3 +2763,4 @@ flowchart LR
 - `AC-AGENT-001-15`：Runtime ensure 只选择启用且未删除 Binding，按 ID 稳定排序并固定当前 revision；超过 50 条失败。入队前持久化精确 Grant，入队失败撤销，重试复用，过期、越权和 revision 不可用均拒绝解析。
 - `AC-AGENT-001-16`：OpenCode MCP 配置只能由 Infrastructure resolver 在 Grant 授权下解析并安全写入 `/root/.config/opencode/opencode.json`；空 `allowed_tools` 拒绝全部工具，凭证不得出现在 Task、数据库明文、日志、API、环境变量、命令参数或 inspect 中。
 - `AC-AGENT-001-17`：12 类统一 Invocation 事件必须使用完整类型化 payload 和 Invocation 内递增序号持久化；重放只返回游标之后的事件且无重复，唯一终态事件发送并 flush 后关闭连接，已终态 Invocation 补完历史后立即关闭。
+- `AC-AGENT-001-18`：Runtime 详情和历史必须按 Application、Agent、generation 与 owner 查询并隐藏 Infra/Endpoint/Provider 细节；当前任务只取最新非终态 Invocation。日志只返回最近 5000 行脱敏快照，投影健康与实时健康使用稳定状态和原因，实时探测失败按可判定性降级而不改变 Runtime 生命周期。

@@ -4,7 +4,7 @@
 
 ## 1. 追溯状态
 
-当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..17` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、全量 CHAT/CODING Task-backed、软删除终结、模型/MCP grant、Workspace Tool 授权和 Invocation 事件持久化重放语义。
+当前 Agent S1 使用 `US-AGENT-001`、`BR-AGENT-001`、`AC-AGENT-001-01..18` 及 `R-AGENT-*` 规则。OpenAPI、Schema、错误、权限和事件必须同时遵守 Workspace 后端内化、固定 Binding、全量 CHAT/CODING Task-backed、软删除终结、模型/MCP grant、Workspace Tool 授权、Invocation 事件持久化重放和 Runtime 脱敏诊断语义。
 
 ## 2. 模块边界
 
@@ -44,6 +44,8 @@
 - Infrastructure 只允许使用 `authorization_ref` 调用 Agent 内部 resolver 获取 Grant 授权的不可变 Binding revision；Grant 过期、撤销、Runtime 不匹配或 revision 越权立即拒绝。Worker、Infrastructure 和 Provider 不得读取 Agent 私表。
 - Binding 解析结果只在 Runtime 创建内存中使用；endpoint、非敏感配置和 credential ref 继续交给受信 Secret/Identity resolver。明文值不得进入 Task、Agent revision、普通持久化、API、事件、日志、环境变量、命令参数或 inspect。
 - RuntimeBinding 保存 `current_task_id/current_operation`；Task 结果只有同时匹配当前引用时才能单调投影。无 Runtime 删除立即写 `deleted_at`；有 Runtime 删除仅在 `agent.runtime.stop(action=DELETE)` 成功后事务写 Runtime `DELETED` 和 Agent `deleted_at`，失败保留 Infra 引用并回到可重试 `ERROR`。
+- Agent Service 必须提供 owner/Application/Agent/generation-scoped 的 Runtime 详情与历史查询，并通过 `AgentRuntimeGrant` 关联全部 generation、按 Runtime Binding 去重。当前任务只取最新非终态 AgentInvocation；策略时长固定投影为空闲 1800 秒、最大生命周期 28800 秒。
+- Agent Service 消费方定义 `RuntimeDiagnosticsReader`，只允许 owner-scoped 日志读取和实时健康探测；Infrastructure `Client` 实现该接口并由 bootstrap 注入。该边界不属于 `AgentRuntimeAdapter`，不得获得 Runtime 生命周期写权限或传播 Endpoint/Infra/Provider 数据。
 - Hermes adapter 固定使用 `/api/ws` JSON-RPC/WebSocket；OpenCode adapter 固定使用 session REST、`/event` SSE 和 abort。两者 fixture 必须覆盖 session/message/event/cancel/idempotency。
 - 固定镜像、manifest digest、headless command 和协议映射以 `runtime-protocol-fixtures.yaml` 为准；该文件验证失败时不得发布对应 Runtime Profile。
 
@@ -52,7 +54,7 @@
 | 目标 | 允许调用 | 禁止行为 |
 | --- | --- | --- |
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
-| infrastructure | 通过 Task Center 间接创建/操作受控 Runtime；提供受 AgentRuntimeGrant 约束的 MCP revision resolver；AgentRuntimeAdapter 直接调用只读 Endpoint resolve | 直接读取 Agent 私表、调用其他 Infra API、Docker Socket 或 Provider API，持久化或传播解析地址/凭证 |
+| infrastructure | 通过 Task Center 间接创建/操作受控 Runtime；提供受 AgentRuntimeGrant 约束的 MCP revision resolver；AgentRuntimeAdapter 直接调用只读 Endpoint resolve；RuntimeDiagnosticsReader 读取 owner-scoped 日志和实时健康 | 直接读取 Agent 私表、调用未授权 Infra API、Docker Socket 或 Provider API，持久化或传播解析地址/凭证，借诊断接口执行生命周期写操作 |
 | appstudio | 调用内部 `CreateCodingAgentForStudio`、owner-scoped `ListMessages`/Invocation 事件重放、校验 Coding Agent 固定 Workspace、使用 AppStudio Workspace Tool，并投影 Coding Agent 状态 | 允许前端调用内部创建语义、读取 Agent 私表、创建第二套 Session/Invocation/Message/Event、绕过 ChangeSet |
 | user-model/modelgateway | 按 `agent.chat`/`agent.coding` 校验模型并签发 grant，解析为 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
@@ -72,4 +74,4 @@
 
 ## 6. S1 追溯
 
-主要规则：`R-AGENT-001..027`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、MCP（16）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、事件（28）。
+主要规则：`R-AGENT-001..028`。主要来源章节：Provider/Adapter（7）、Agent/Session/Message/Invocation（8）、状态（9）、创建（10）、Runtime（11）、交互（12）、Memory（14）、MCP（16）、Workspace（18）、恢复（19-20）、Task Center（21）、权限（23）、Secret（24）、日志与可观测性（25）、事件（28）。

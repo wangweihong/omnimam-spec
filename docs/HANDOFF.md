@@ -2,60 +2,58 @@
 
 ## 当前目标与状态
 
-- 目标：发布 AppStudio Coding Agent 持久化消息历史 facade、稳定消息 ID 归并和类型化 Invocation SSE 重放/关闭契约。
-- 状态：`spec-v1.20.0` 已发布；发布分支与 annotated tag 已推送到 `origin`，可作为 Server/Web 正式实现依据。
-- 基线：annotated tag `spec-v1.19.0`，release commit `aa3f843e6ad4987f0441d882bfa0d05e02e05065`。
+- 目标：发布 Agent Runtime 详情、历史、日志和健康诊断契约，供 omnimam-server 正式实施。
+- 状态：契约草稿完成并通过基础 YAML/格式/唯一性校验；尚未创建内容提交、release 记录和 tag。
+- 基线：`spec-v1.20.0`，release commit `0e6300c8e776df08972a229f48775ed71ad5bff9`。
 
 ## 本次已完成
 
-- 已读取 Spec S1/S2 工作流规则，并确认只处理 Agent/AppStudio 当前 S1、S2、module contract 和直接相关 runtime protocol fixture。
-- 已确认 Coding Agent 仍只允许由 AppStudio facade 暴露，不进入公共 Agent API。
-- 已确认发布门禁：目标校验和草案提交完成后，必须取得用户明确确认，才能写入 release 元数据和创建 `spec-v1.20.0` tag。
-- 已补齐 Agent S1 的 12 类统一 Invocation 事件 payload、持久化序号、恢复游标、无重复重放和终态关闭语义。
-- 已补齐 AppStudio 当前 generation/session 消息 facade、稳定 `(created_at DESC, id DESC)` 分页和 Message ID 归并语义。
-- 已新增 AppStudio GET 消息接口、消息 DTO/列表、Invocation `user_message_id/assistant_message_id` 和 12 类可判别 SSE envelope。
-- 已同步 Agent/AppStudio module contract、Agent runtime protocol fixture 和 Unreleased changelog。
-- 已完成目标 YAML/OpenAPI、本地引用、事件集合、S1 追溯和格式校验；`RELEASE.md` 未修改。
-- 已创建 `feat(spec): define appstudio realtime agent stream` 草案提交；既有未跟踪内容未暂存。
-- 用户已明确确认发布 `spec-v1.20.0`；已写入 `RELEASE.md` 正式发布记录。
-- 已创建 release commit 与 annotated `spec-v1.20.0` tag，并推送发布分支和标签。
+- 新增 Agent Runtime 诊断 S1 语义、owner/Application/Agent/generation 可见性、当前 Invocation、运行时长和脱敏边界。
+- 新增 AppStudio 当前 Runtime、跨 generation 历史、最近 5000 行日志和投影/实时健康 facade 语义。
+- 新增 Infrastructure owner-scoped Runtime logs/health、通用健康结果和 Docker/Provider 信息隐藏语义。
+- AppStudio OpenAPI 新增四个 GET；Infrastructure logs 增加必填 `owner_reference`，并新增 health GET。
+- 新增 `appstudio.agent.runtime.logs.read`，默认授予 USER、ADMIN、SUPER_ADMIN。
+- 同步 Agent、AppStudio、Infrastructure module contract 和 Unreleased changelog。
 
 ## 当前进行中
 
-- 无；下游 Server/Web 正在更新 SSOT pin 并实施。
+- 创建 SSOT 内容提交，写入正式 release 记录，创建并推送 `spec-v1.21.0` release commit/tag。
 
 ## 文件变化
 
-- 内容提交 `7903d5d` 修改 Agent/AppStudio `product-spec.md`、`module-contract.md`，AppStudio `openapi.yaml`，Agent `runtime-protocol-fixtures.yaml`，`CHANGELOG.md`、`docs/HANDOFF.md`。
-- 发布提交包含 `RELEASE.md` 和本 handoff 更新。
-- 保留且不纳入提交：`archive/`、`docs/identity_fix.md`、`设计图/`。
+- 修改三个 Domain 的 `product-spec.md` 和 `module-contract.md`。
+- 修改 AppStudio `openapi.yaml`、`permissions.yaml`，Infrastructure `openapi.yaml`。
+- 修改 `CHANGELOG.md` 和 `docs/HANDOFF.md`。
+- 未修改 schema、errors、events、architecture 或其他 Domain。
 
 ## 关键决定
 
-- 消息历史由 Agent Service 继续作为唯一事实来源，AppStudio 只提供当前应用、当前 Coding Agent generation/session 的受限 facade。
-- 消息列表按 `(created_at DESC, id DESC)` 稳定分页；Invocation 通过 `user_message_id`、`assistant_message_id` 与历史和流式消息归并。
-- SSE `id` 使用 Invocation 内递增十进制 `sequence_no`；`Last-Event-ID` 只接受非负十进制，并只重放更大序号。
-- 终态事件发送并 flush 后关闭；已终态 Invocation 补完重放后立即关闭。
+- Runtime 历史经 AgentRuntimeGrant 关联 Application/generation，按 Runtime Binding 去重并稳定排序。
+- 当前任务是最新非终态 AgentInvocation，不是 AtomicTask。
+- 日志仅返回 occurred_at/level/message；健康只返回通用状态、来源、时间和稳定原因。
+- 共享服务 Token 只做服务认证；Infrastructure 仍必须校验 owner_reference 和 Agent Runtime 范围。
 
 ## API、Schema、依赖或配置变化
 
-- 已新增 `GET /api/v1/studio-applications/{studio_application_id}/agent/messages`。
-- 已定义 AppStudio 消息 DTO、分页响应、Invocation 稳定消息 ID 和 12 类类型化 SSE envelope。
-- 不新增错误码、权限码、数据库表、公共 Agent API 或通用事件流事件。
+- 新增四个 AppStudio Agent Runtime GET 和一个 Infrastructure Runtime health GET。
+- Infrastructure Runtime logs 新增必填 `owner_reference`。
+- 新增一个 AppStudio 权限码；不新增错误码、表、字段、事件、依赖或运行配置。
 
 ## 验证与风险
 
-- 已通过目标 YAML 解析、AppStudio OpenAPI 90 个本地 `$ref` 解析、消息/稳定 ID/cursor/12 类事件结构断言、S1 引用追溯、Redocly 目标 lint 和 `git diff --check`。
-- Redocly 默认规则仍报告既有 `StudioBuildBatchSummaryItem` nullable error 和全文件 license/tag/4xx warnings；这些与本次变更无关，未修改。排除这些既有规则后的 Agent/AppStudio 目标 lint 通过。
-- 风险：Agent S1 的 runtime payload 与 AppStudio SSE DTO 必须保持单一语义，不能复制出冲突协议。
+- 已通过 `yq` 解析三个修改的 YAML、operationId 重复检查和 `git diff --check`。
+- Redocly 首次检查发现并已修正新增 `current_task` 的 OpenAPI 3.0 `$ref`/nullable sibling；AppStudio 仍有既有 `StudioBuildBatchSummaryItem` nullable error 和全文件通用 warnings，本任务不修改无关 schema。
+- 尚需完成 release 后 pin 验证；server 实现不得早于该步骤。
+- OpenAPI `StudioAgentRuntime` 与 server DTO 必须保持 Endpoint/Infra/容器/Provider 信息不可见。
 
 ## 未完成事项
 
-- 下游 Server/Web 更新 submodule 和版本标记并实施。
+- 完成 `spec-v1.21.0` release 并推送分支/tag。
+- 下游 server 更新 submodule 和 `SSOT_VERSION` 后实施。
 
 ## 推荐下一步
 
-在 Server 更新 `ssot` submodule 到 `spec-v1.20.0`，生成目标类型并实现 AppStudio facade 与 SSE。
+复核目标 diff，创建 SSOT 内容提交；随后用该提交 ID 写入 `RELEASE.md` 并创建 `spec-v1.21.0` release commit/tag。
 
 Next Prompt:
 

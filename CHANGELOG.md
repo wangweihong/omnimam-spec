@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Agent/AppStudio 新增 Coding Agent Runtime 当前详情、跨 generation 历史、最近 5000 行脱敏日志和投影/实时健康诊断契约；Infrastructure logs/health 固定 `owner_reference` 资源授权、通用健康降级和 Provider/Docker 信息隐藏，新增 `appstudio.agent.runtime.logs.read`。
 - AppStudio 新增当前 Coding Agent generation/session 的消息历史 facade，消息按 `(created_at DESC, id DESC)` 稳定分页；Invocation 新增稳定 `user_message_id/assistant_message_id`，供发送响应、历史和流式事件归并。
 - AppStudio Invocation SSE 从 raw string 升级为 12 类类型化事件 envelope；`sequence_no` 作为 Invocation 内十进制 SSE ID，`Last-Event-ID` 只重放更大序号，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。
 - Agent Runtime fixture 补齐统一事件 payload、先持久化后推送、无重复重放和终态关闭 release gate；高频 Invocation 事件保持在专用 SSE，不进入通用用户事件流。

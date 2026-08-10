@@ -1503,6 +1503,10 @@ Infra Service 负责端口分配和冲突处理。地址只通过受控 Endpoint
 
 # 15. 健康检查
 
+Infra Service 必须维护 Runtime 健康投影，并为受信调用方提供 owner-scoped 的只读实时健康探测。调用方除 Runtime ID 外必须提交 `ownerReference`；Infra 必须确认 Runtime 存在、归属匹配且属于 Agent Runtime 场景，共享服务身份或 bearer token 本身不构成资源授权。
+
+实时探测返回通用 `HEALTHY/UNHEALTHY/UNKNOWN`、检查时间和稳定原因，不返回 Provider 原始结构。容器未运行、Runtime 内服务不可达或健康端点返回非 2xx 时为 `UNHEALTHY`；Docker daemon、Provider 或 Infra 依赖不可用以及无法确定时为 `UNKNOWN`。健康时不返回原因。探测失败是已处理的诊断结果，不触发 Runtime 生命周期写操作。
+
 支持：
 
 ```text
@@ -1537,6 +1541,8 @@ UNHEALTHY
 ---
 
 # 16. 日志管理
+
+Runtime 日志查询必须要求 `ownerReference` 并执行与健康探测相同的 Runtime/owner/Agent Runtime 范围校验。分页只在最近 5000 行有界快照内进行，对上层仅返回发生时间、级别和消息；不得包含 Docker stream/source、容器 ID、宿主路径、私网地址、Provider 原始响应或凭证。
 
 Infra Service 负责：
 
@@ -1894,6 +1900,7 @@ StopRuntime
 CancelJob
 DeleteRuntime
 GetRuntimeLogs
+ProbeRuntimeHealth
 ReconcileRuntime
 ```
 
@@ -2271,6 +2278,10 @@ Docker Job 只有在受控输出根内读取实际普通文件、计算准确大
 
 Agent MCP 配置只能通过 `MCP_SERVER_REF + authorizationRef` 解析；Infrastructure、Task Worker 和 Provider 不得读取 Agent 私表。OpenCode 敏感配置必须在 tmpfs 内以 `0600` 写入并在释放启动门闩前完成，凭证不得进入环境变量、命令参数、持久化、日志或 inspect 可见字段。
 
+## R-INFRA-024
+
+Agent Runtime 日志和实时健康探测必须同时校验 Runtime 存在、`ownerReference` 匹配 Agent Runtime Binding 且属于 Agent Runtime；Provider 只返回通用健康结果，Infrastructure 不得向上泄漏 Docker、Endpoint、网络或 Provider 原始信息。诊断读取不得执行 Runtime 生命周期写操作。
+
 ---
 
 # 31. 最终职责总结
@@ -2332,7 +2343,7 @@ Infra Service 的最终边界是：
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-INFRA-001`：受信 Task Worker 可以创建、管理、对账第一阶段 Docker Job/Service 及其受控挂载和输出。
-- `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、28、29、30 节及 `R-INFRA-001..023`。
+- `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态、诊断和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、27、28、29、30 节及 `R-INFRA-001..024`。
 
 验收标准：
 
@@ -2348,3 +2359,4 @@ Infra Service 的最终边界是：
 - `AC-INFRA-001-10`：孤儿清理只能作用于有平台受控标记、稳定 owner 且超过宽限期的 Runtime；未知 Docker 对象只告警，不自动删除。
 - `AC-INFRA-001-11`：Agent Runtime 启动只接受短期 grant 引用；Infrastructure 以服务身份校验 owner/Agent/usage/config version/有效期后解析并注入，普通响应、事件、日志和持久化不得包含 grant、ModelAccessSpec 或明文凭证。
 - `AC-INFRA-001-12`：OpenCode MCP 只接受 `MCP_SERVER_REF`，通过 `authorizationRef` 解析固定 revision，并以 Docker Archive/Exec 写入 tmpfs `opencode.json`、设为 `0600` 后释放启动门闩；未授权目标和所有 inspect 可见凭证传递方式必须拒绝。
+- `AC-INFRA-001-13`：Agent Runtime 日志和实时健康必须校验 Runtime 与 ownerReference/Agent Runtime 范围；日志在最近 5000 行快照内分页且脱敏。实时探测将停止、服务不可达和非 2xx 映射为 `UNHEALTHY`，Infra/Provider 不可用或无法判断映射为 `UNKNOWN`，并且不修改 Runtime 生命周期。

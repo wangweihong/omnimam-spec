@@ -1166,6 +1166,14 @@ validationSummary
 
 默认平台 Binding 固定为 `name=omnimam-platform`、`serverType=PLATFORM`、`endpointRef=platform-mcp://default`、`enabled=true`，工具白名单只包含 `omnimam.capabilities.list/get`、`omnimam.applications.list/get/run`、`omnimam.application_runs.get`、`omnimam.assets.search/get`。工作负载权限固定为 `mcp.protocol.access`、`aiapp.provider_capability.read`、`aiapp.application.read`、`aiapp.application.run` 和 `asset.read`，并继续执行对象范围校验；不得包含取消、上传或删除能力。已有当前 generation 的 Coding Agent 执行一次幂等回填；用户删除后本 generation 不再自动创建，下一 generation 再创建默认 Binding。
 
+## 7.6 Coding Agent Runtime 诊断
+
+应用所有者可以查看当前 Coding Agent generation 的 Runtime 详情、全部 generation 的 Runtime 历史、当前 Runtime 的脱敏日志和健康状态，用于识别启动卡住、挂起、替换后旧 Runtime 遗留及 OpenCode/MCP 配置故障。AppStudio 必须先校验应用所有权和当前 Coding Agent generation，再调用 Agent Service 的受限诊断能力；不得读取 Agent 或 Infrastructure 私表。
+
+当前 Runtime 详情包含稳定 Runtime/Agent ID、generation、状态、活跃状态、健康投影、启动/停止/最近健康时间、运行时长、空闲超时、最大生命周期和可空的当前 Invocation 摘要。历史分页覆盖经该 Application 授权的全部 generation，只有当前 generation 选中的最新 Runtime 标记 `isCurrent=true`。当前 generation 没有关联 Runtime 或 Runtime 不可见时，使用既有 Agent Runtime 不可见错误。
+
+日志只公开发生时间、级别和消息，并使用独立的敏感诊断权限；详情、历史和健康沿用 Agent 读取权限。健康查询默认读取持久化投影；显式实时探测只读调用 Infrastructure。容器停止、OpenCode 不可达或返回非成功状态时为 `UNHEALTHY`；Infrastructure/Provider 不可用或无法判断时为 `UNKNOWN`。探测失败仍返回健康 DTO，不得改变 Runtime 或 Invocation 状态。
+
 ---
 
 ## 7.4 Coding Agent 权限
@@ -1961,6 +1969,7 @@ SecretRef
 * Skills。
 * MCP。
 * 挂起和恢复。
+* Runtime 详情、历史、日志和健康诊断。
 
 Agent 面板不渲染 Workspace 名称、类型、ID 或绑定状态，也不提供相关跳转、选择或编辑入口。
 
@@ -2045,6 +2054,10 @@ CancelStudioAgentInvocation
 SuspendStudioAgent
 ResumeStudioAgent
 ReplaceStudioAgent
+GetStudioAgentRuntime
+ListStudioAgentRuntimes
+ListStudioAgentRuntimeLogs
+GetStudioAgentRuntimeHealth
 ```
 
 实际 Agent 操作转交 Agent Service。
@@ -2546,6 +2559,10 @@ Preview 只能只读挂载启动时固定的 Workspace Revision；Build 只能�
 
 Coding Agent 消息和 Invocation 事件的唯一事实来源是 Agent Service。AppStudio 只能按当前 Application、generation 和 Session 提供受限 facade；消息按 `(createdAt DESC, id DESC)` 稳定分页，SSE 按 Agent 统一事件序号无重复重放并在唯一终态事件 flush 后关闭，且不得进入公共 Agent API 或通用用户事件流。
 
+## R-STUDIO-026
+
+AppStudio 的 Coding Agent Runtime 诊断只能在应用所有权和 generation 校验后调用 Agent Service 的 owner-scoped 只读能力；不得复制 Runtime/Invocation 事实、直接调用 Provider、泄漏 Runtime Endpoint/Infra/容器信息或以共享服务 Token 替代资源授权。
+
 ---
 
 # 27. 最终职责总结
@@ -2651,7 +2668,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Revision、Snapshot、Build、Preview、Release 和 Runtime；Workspace 仅是后端内部事实。
-- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、20、21、22、26 节及 `R-STUDIO-001..025`。
+- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、19、20、21、22、26 节及 `R-STUDIO-001..026`。
 
 验收标准：
 
@@ -2672,3 +2689,4 @@ flowchart LR
 - `AC-APPSTUDIO-001-15`：应用级 Invocation 投影以关联的 APPLIED ChangeSet 最大 `target_revision` 作为 `resulting_source_revision`；恢复该阶段必须调用既有 source restore API 创建新的 Restore ChangeSet/Revision，且保留 Session、Message、Invocation、原 ChangeSet 和 Revision 历史。
 - `AC-APPSTUDIO-001-16`：首次创建和 generation 替换必须在初始化事务中原子创建固定默认平台 MCP Binding；已有当前 generation 幂等回填一次，用户删除后同 generation 不重建，下一 generation 重新创建。任一步失败整笔事务回滚。
 - `AC-APPSTUDIO-001-17`：应用级消息 facade 只返回当前 Coding Agent generation/session，并按 `(created_at DESC, id DESC)` 稳定分页；发送响应、历史和流式完成事件使用稳定 Message ID 归并。SSE 必须按 `Last-Event-ID` 无重复续传，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。
+- `AC-APPSTUDIO-001-18`：应用级 Runtime 详情只选择当前 generation 最新 Runtime，历史按 grant 覆盖全部 generation 并稳定去重分页；日志仅返回最近 5000 行脱敏快照。健康默认读取投影，`probe=true` 只读实时探测并把运行停止或 OpenCode 故障映射为 `UNHEALTHY`、无法判断映射为 `UNKNOWN`，所有响应禁止 Runtime Endpoint、Infra/容器/Provider 私有信息。

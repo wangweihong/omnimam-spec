@@ -125,10 +125,21 @@ paths:
       operationId: get_infra_runtime_logs
       summary: 查询脱敏 Runtime 日志
       x-permission: infra.runtime.read
-      x-service-auth: task-center
-      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-013], source_sections: ['16 日志管理', '27.3 日志']}
-      parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
-      responses: {'200': {description: 日志页；不返回 Provider 原始响应和凭证。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      x-service-auth: task-center, agent
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-013, R-INFRA-024], source_sections: ['16 日志管理', '21.2 请求方与业务归属', '27.3 日志']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/owner_reference'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 最近 5000 行有界快照内的脱敏日志页；不返回 Provider 原始响应、Docker source、地址或凭证。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/infra/runtimes/{runtime_id}/health:
+    get:
+      tags: [runtimes]
+      operationId: probe_infra_runtime_health
+      summary: owner-scoped 实时探测 Agent Runtime 健康
+      description: 只读实时探测。Runtime 不运行、服务不可达或非 2xx 返回 UNHEALTHY；Infrastructure/Provider 不可用或无法判断返回 UNKNOWN；不得返回 Provider 原始结构。
+      x-permission: infra.runtime.read
+      x-service-auth: agent
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-024], source_sections: ['15 健康检查', '21.2 请求方与业务归属']}
+      parameters: [{$ref: '#/components/parameters/runtime_id'}, {$ref: '#/components/parameters/owner_reference'}]
+      responses: {'200': {description: 通用实时健康结果。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeHealthResult'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/nodes:
     get:
       tags: [nodes]
@@ -221,6 +232,7 @@ components:
   securitySchemes: {serviceBearerAuth: {type: http, scheme: bearer, bearerFormat: service-jwt}}
   parameters:
     runtime_id: {name: runtime_id, in: path, required: true, schema: {type: string}}
+    owner_reference: {name: owner_reference, in: query, required: true, schema: {type: string, minLength: 1}, description: 必须匹配目标 AgentRuntimeBinding ID；共享服务身份不替代该资源授权。}
     endpoint_id: {name: endpoint_id, in: path, required: true, schema: {type: string}}
     output_id: {name: output_id, in: path, required: true, schema: {type: string}}
     profile_id: {name: profile_id, in: path, required: true, schema: {type: string}}
@@ -350,11 +362,19 @@ components:
     RuntimeLogListResponse:
       type: object
       required: [total, items]
-      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeLogEntry'}}}
+      properties: {total: {type: integer, minimum: 0, maximum: 5000}, items: {type: array, items: {$ref: '#/components/schemas/RuntimeLogEntry'}}}
     RuntimeLogEntry:
       type: object
       required: [occurred_at, level, message]
-      properties: {occurred_at: {type: string, format: date-time}, level: {type: string, enum: [INFO, WARN, ERROR]}, message: {type: string}, source: {type: string}}
+      properties: {occurred_at: {type: string, format: date-time}, level: {type: string, enum: [INFO, WARN, ERROR]}, message: {type: string}}
+    RuntimeHealthResult:
+      type: object
+      additionalProperties: false
+      required: [status, checked_at]
+      properties:
+        status: {type: string, enum: [HEALTHY, UNHEALTHY, UNKNOWN]}
+        checked_at: {type: string, format: date-time}
+        reason: {type: string, nullable: true, enum: [RUNTIME_NOT_RUNNING, RUNTIME_SERVICE_UNREACHABLE, RUNTIME_SERVICE_UNHEALTHY, INFRASTRUCTURE_UNAVAILABLE, PROBE_INDETERMINATE], description: HEALTHY 时省略或为空。}
     ActionRequest:
       type: object
       properties: {request_id: {type: string}, reason: {type: string, maxLength: 1000}}

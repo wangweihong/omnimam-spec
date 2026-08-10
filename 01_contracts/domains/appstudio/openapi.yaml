@@ -63,6 +63,46 @@ paths:
       x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001], source_sections: ['7 Coding Agent 开发', '20.2 Agent 协作']}
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       responses: {'200': {description: 当前 generation 的 Coding Agent/Session 状态；不返回 Workspace 或 Runtime Endpoint。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentStatus'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/runtime:
+    get:
+      tags: [agent]
+      operationId: get_studio_agent_runtime
+      summary: 查询当前 Coding Agent Runtime 详情
+      description: 选择当前 generation 的最新 Runtime Binding；无关联 Runtime 或不可见时返回既有 Agent Runtime 不可见业务错误。
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-020, R-STUDIO-026], source_sections: ['7.6 Coding Agent Runtime 诊断', '19.3 Agent 面板', '20.2 Agent 协作']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+      responses: {'200': {description: 当前 generation 的脱敏 Runtime 详情；不返回 Runtime Endpoint、Infra Runtime ID、容器或 Provider 信息。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/runtimes:
+    get:
+      tags: [agent]
+      operationId: list_studio_agent_runtimes
+      summary: 查询 Coding Agent Runtime 历史
+      description: 经 AgentRuntimeGrant 查询该 Application 全部 generation，按 Runtime Binding 去重，并按 generation、创建时间和 ID 稳定倒序。
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-020, R-STUDIO-026], source_sections: ['7.5 挂起、恢复与替换', '7.6 Coding Agent Runtime 诊断']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: Runtime 历史页；仅当前 generation 选中的最新 Runtime 标记 is_current。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentRuntimeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/runtime/logs:
+    get:
+      tags: [agent]
+      operationId: list_studio_agent_runtime_logs
+      summary: 查询当前 Coding Agent Runtime 脱敏日志
+      description: 在 Infrastructure 最近 5000 行有界快照内分页，仅公开 occurred_at、level 和 message。
+      x-permission: appstudio.agent.runtime.logs.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-020, R-STUDIO-026], source_sections: ['7.6 Coding Agent Runtime 诊断', '19.3 Agent 面板']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}]
+      responses: {'200': {description: 当前 Runtime 的脱敏日志页。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentRuntimeLogListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/agent/runtime/health:
+    get:
+      tags: [agent]
+      operationId: get_studio_agent_runtime_health
+      summary: 查询当前 Coding Agent Runtime 健康状态
+      description: probe=false 读取持久化投影；probe=true 执行只读实时探测。探测故障返回 UNHEALTHY 或 UNKNOWN 的 HTTP 200 DTO，不改变 Runtime 生命周期。
+      x-permission: appstudio.agent.read
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-020, R-STUDIO-026], source_sections: ['7.6 Coding Agent Runtime 诊断', '19.3 Agent 面板']}
+      parameters: [{$ref: '#/components/parameters/studio_application_id'}, {$ref: '#/components/parameters/runtime_health_probe'}]
+      responses: {'200': {description: 投影或实时健康结果；不返回 Endpoint、Infra 或 Provider 数据。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioAgentRuntimeHealth'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/agent/messages:
     get:
       tags: [agent]
@@ -444,6 +484,7 @@ components:
     environment: {name: environment, in: path, required: true, schema: {type: string, enum: [preview, production]}}
     page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
     page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+    runtime_health_probe: {name: probe, in: query, required: false, schema: {type: boolean, default: false}, description: false 读取持久化健康投影，true 执行只读实时探测。}
     keyword: {name: keyword, in: query, schema: {type: string, maxLength: 256}}
     last_event_id: {name: Last-Event-ID, in: header, required: false, schema: {type: string, pattern: '^(0|[1-9][0-9]*)$'}, description: 非负十进制恢复游标；只重放 sequence_no 严格大于该值的事件，0 表示从第一条开始；非法值按既有请求校验语义拒绝。, x-naming-exception: SSE 标准请求头，必须保留协议原始拼写。}
   responses: {UnexpectedError: {description: 未预期服务异常。, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}}
@@ -495,6 +536,64 @@ components:
         generation: {type: integer, minimum: 1}
         status: {type: string, enum: [CREATING, READY, STARTING, RUNNING, IDLE, SUSPENDED, ERROR, DISABLED, DELETING]}
         current_invocation_id: {type: string, nullable: true}
+    StudioAgentRuntime:
+      type: object
+      additionalProperties: false
+      required: [runtime_id, agent_id, generation, state, activity_state, health_status, uptime_seconds, idle_timeout_seconds, maximum_lifetime_seconds]
+      properties:
+        runtime_id: {type: string, description: AgentRuntimeBinding 稳定 ID；不是 Infrastructure Runtime ID。}
+        agent_id: {type: string}
+        generation: {type: integer, minimum: 1}
+        state: {type: string, enum: [CREATING, STARTING, READY, RUNNING, STOPPING, STOPPED, FAILED, DELETED]}
+        activity_state: {type: string, enum: [IDLE, ACTIVE]}
+        health_status: {type: string, enum: [HEALTHY, UNHEALTHY, UNKNOWN]}
+        started_at: {type: string, format: date-time, nullable: true}
+        stopped_at: {type: string, format: date-time, nullable: true}
+        last_health_at: {type: string, format: date-time, nullable: true}
+        uptime_seconds: {type: integer, format: int64, minimum: 0}
+        idle_timeout_seconds: {type: integer, format: int64, enum: [1800]}
+        maximum_lifetime_seconds: {type: integer, format: int64, enum: [28800]}
+        current_task: {$ref: '#/components/schemas/StudioAgentRuntimeCurrentTask'}
+    StudioAgentRuntimeHistoryItem:
+      allOf:
+        - {$ref: '#/components/schemas/StudioAgentRuntime'}
+        - type: object
+          additionalProperties: false
+          required: [is_current]
+          properties: {is_current: {type: boolean}}
+    StudioAgentRuntimeCurrentTask:
+      type: object
+      additionalProperties: false
+      required: [id, type, status]
+      properties:
+        id: {type: string}
+        type: {type: string, enum: [CHAT, CODING, TOOL_OPERATION, BACKGROUND_OPERATION]}
+        status: {type: string, enum: [QUEUED, STARTING, RUNNING, WAITING_FOR_TOOL, WAITING_FOR_USER, CANCELING]}
+        started_at: {type: string, format: date-time, nullable: true}
+    StudioAgentRuntimeListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0}, items: {type: array, items: {$ref: '#/components/schemas/StudioAgentRuntimeHistoryItem'}}}
+    StudioAgentRuntimeLogEntry:
+      type: object
+      additionalProperties: false
+      required: [occurred_at, level, message]
+      properties: {occurred_at: {type: string, format: date-time}, level: {type: string, enum: [INFO, WARN, ERROR]}, message: {type: string}}
+    StudioAgentRuntimeLogListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties: {total: {type: integer, minimum: 0, maximum: 5000}, items: {type: array, items: {$ref: '#/components/schemas/StudioAgentRuntimeLogEntry'}}}
+    StudioAgentRuntimeHealth:
+      type: object
+      additionalProperties: false
+      required: [status, source, checked_at]
+      properties:
+        status: {type: string, enum: [HEALTHY, UNHEALTHY, UNKNOWN]}
+        source: {type: string, enum: [PROJECTION, LIVE]}
+        checked_at: {type: string, format: date-time}
+        reason: {type: string, nullable: true, enum: [NO_HEALTH_OBSERVATION, RUNTIME_NOT_PROVISIONED, RUNTIME_NOT_RUNNING, RUNTIME_SERVICE_UNREACHABLE, RUNTIME_SERVICE_UNHEALTHY, INFRASTRUCTURE_UNAVAILABLE, PROBE_INDETERMINATE], description: 健康时省略或为空。}
     StudioAgentMessageRequest:
       type: object
       additionalProperties: false
