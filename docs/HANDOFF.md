@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 `spec-v1.23.0`，正式定义 AppStudio GitLab 第二阶段跨域契约。
-- 状态：内容 commit `7010953df6130caa1f59c8b19dd9feaa5e06d467` 已完成，`spec-v1.23.0` release record 已写入；正在创建 release commit/tag 并推送。
+- 状态：`spec-v1.23.0` 已发布；release commit/tag target 为 `ee0cf7f7732a74d1ca36cc1e73a5541a333ed025`，内容 commit 为 `7010953df6130caa1f59c8b19dd9feaa5e06d467`，远端分支与 tag 已验证。
 - 基线：`spec-v1.22.0` release commit `edcdbcebf8daecec8eaefd129338e829512b00fe`。
 
 ## 本次已完成
@@ -18,7 +18,7 @@
 
 ## 当前进行中
 
-- 创建 `spec-v1.23.0` release commit、annotated tag 和 push，并校验远端引用。
+- 无 SSOT 实现工作；等待下游 server pin 到 `spec-v1.23.0` 并实施。
 
 ## 文件变化
 
@@ -46,17 +46,16 @@
 
 - `yq` 已成功解析 GitLab OpenAPI；Redocly 验证有效，仅报告仓库 HTTP 200 业务错误策略及 license/tag 描述的 13 个非阻断 warning。
 - scoped `git diff --check` 通过；限定正式文件中的 Workspace Tool/`BUILT_IN` 旧术语为零匹配，新增 schema/API/模块契约关键字段定向检查通过。
-- 尚需 release commit、tag/push 和远端校验。
+- 远端 `refs/heads/codex/appstudio-gitlab-phase2` 与 `refs/tags/spec-v1.23.0^{}` 均已验证指向 release commit。
 - 规范发布后 server 必须先更新 submodule pin 与 `SSOT_VERSION`，再实施行为变更。
 
 ## 未完成事项
 
-- 创建 `spec-v1.23.0` release commit/tag 并推送。
-- 下游 server 更新 pin 后实施并验证。
+- 下游 server 更新 submodule gitlink/`SSOT_VERSION` 后实施并验证。
 
 ## 推荐下一步
 
-提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.23.0` tag，并推送当前分支与 tag。
+在 `omnimam-server` pin 到 `spec-v1.23.0` release commit，重新读取受影响 S1/S2 后开始实现；不要 pin 到此 post-release handoff commit。
 
 Next Prompt:
 
