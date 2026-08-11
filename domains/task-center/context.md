@@ -12,6 +12,7 @@
 - `DAGTaskGroup`：AtomicTask 节点和有向无环依赖组成的编排资源。
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
 - `Function Registry`：八个 Agent/AppStudio canonical functionRef 的版本化 I/O、能力、策略、执行/Infra 映射、输出交付与结果投影合同。
+- `gitlab.pipeline.run`：GitLab 领域拥有的非 Infra-backed 外部 handler，通过 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry。
 - `WorkflowRuntime`、`Task Worker`、`Infra Adapter`、`Agent Runtime Adapter`：内部运行时边界、已注册 handler 的执行者、Infra-backed 请求和 Agent Invocation 协议适配边界。
 
 ## 3. 核心规则
@@ -36,7 +37,7 @@
 
 ## 5. 上游与下游
 
-上游是 application-platform、modelgateway、workflow-canvas、asset-library、agent、appstudio 和系统维护模块提交的受控任务定义。Model Gateway 使用既有 system_key 注册 Engine 健康与 object-info ReconcileHandler；下游是 WorkflowRuntime/Task Worker/Infra Adapter 执行边界，以及消费任务事件的业务投影、notification-center、sse 和 infrastructure。Task Worker 执行业务 handler，但不拥有调用方的业务定义。
+上游是 application-platform、modelgateway、workflow-canvas、asset-library、agent、appstudio、gitlab 和系统维护模块提交的受控任务定义。Model Gateway 使用既有 system_key 注册 Engine 健康与 object-info ReconcileHandler；下游是 WorkflowRuntime/Task Worker/Infra Adapter 执行边界，以及消费任务事件的业务投影、notification-center、sse 和 infrastructure。Task Worker 执行业务 handler，但不拥有调用方的业务定义。
 
 ## 6. 正式事实源
 
@@ -57,6 +58,7 @@
 | --- | --- | --- |
 | 修改任务状态、重试或取消 | S1 product-spec | 涉及接口时读 OpenAPI，涉及事件时读 events |
 | 修改 functionRef、Task Worker 或 Infra Adapter | S1 product-spec | 必须读 function-registry、module-contract；涉及运行层再读 infrastructure Context |
+| 修改 GitLab Pipeline handler | S1 product-spec | 继续读 gitlab Context 与 GitLab module-contract；不得加载 AppStudio |
 | 修改 DAG 或 Schedule | S1 product-spec | 涉及运行时边界时读 module-contract/architecture |
 | 修改 Application 执行 | 当前 Context | 再读 application-platform Context |
 | 修改 Engine 健康或 object-info Schedule | 当前 Context | 再读 modelgateway Context |

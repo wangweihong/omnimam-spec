@@ -1,0 +1,45 @@
+# GitLab S2 permissions, introduced by spec-v1.22.0.
+gitlab.server.read:
+  domain: gitlab
+  module: server
+  resource: gitlab_server
+  action: read, list, test
+  subject: system_admin
+  description: 查询和检测 GitLabServer。
+  backend_enforcement: 仅 ADMIN/SUPER_ADMIN；响应不得包含 credential。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+  related_user_stories: [US-GITLAB-001]
+gitlab.server.manage:
+  domain: gitlab
+  module: server
+  resource: gitlab_server
+  action: create, update, delete, test
+  subject: system_admin
+  description: 管理 GitLabServer 连接和生命周期。
+  backend_enforcement: 仅 ADMIN/SUPER_ADMIN；有关联 Project 时不得删除。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-GITLAB-003, BR-GITLAB-006, BR-GITLAB-012]
+  related_user_stories: [US-GITLAB-001]
+gitlab.project.read:
+  domain: gitlab
+  module: project
+  resource: gitlab_project
+  action: read, list
+  subject: system_admin
+  description: 查询 GitLabProject 本地投影。
+  backend_enforcement: 仅 ADMIN/SUPER_ADMIN；只返回本地投影字段。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-GITLAB-005, BR-GITLAB-012]
+  related_user_stories: [US-GITLAB-001]
+gitlab.project.manage:
+  domain: gitlab
+  module: project
+  resource: gitlab_project
+  action: create, delete
+  subject: system_admin
+  description: 创建和删除远端 Project 及本地投影。
+  backend_enforcement: 仅 ADMIN/SUPER_ADMIN；创建固定使用 Server Namespace，删除先处理远端。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-GITLAB-004, BR-GITLAB-007, BR-GITLAB-008, BR-GITLAB-012]
+  related_user_stories: [US-GITLAB-001]

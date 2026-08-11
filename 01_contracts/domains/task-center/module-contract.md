@@ -81,6 +81,13 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 结果投影只能由 registry 的 `result_projection` 执行字段选择和状态 transform，再由来源领域消费 Task 结果更新自己的聚合；Task Worker、Task Center 和 Infra Adapter 都不得直接写 Agent/AppStudio 私表。
 - Registry 没有公开 CRUD API、权限码或领域事件。修改 functionRef、I/O schema、能力、策略、映射或 transform 必须提升 `contract_version` 并重新生成规范化摘要；禁止原地改变同版本合同。
 
+### 3.2 GitLab 外部 handler
+
+- `gitlab.pipeline.run` 是已注册的非 Infra-backed handler，精确输入和 GitLab 调用边界由 `01_contracts/domains/gitlab/module-contract.md` 定义。
+- 该 handler 不进入 Agent/AppStudio `function-registry.yaml`，不声明 Docker JOB/SERVICE、Infra Adapter、RuntimeProfile 或 Infra capability；Task Center 仍必须在创建 AtomicTask 前确认 functionRef 已注册。
+- Task Worker 首次创建远端 Pipeline 后将 Pipeline ID 写入 Attempt `external_job_id`；非终态返回 `IN_PROGRESS` 和 5 秒 callback，自动重试与重启恢复查询同一 Pipeline。
+- GitLab credential、API URL、远端 project ID、variables 回显、Jobs 原始响应和日志正文不得进入 AtomicTask arguments、output 或 Worker 日志。
+
 ## 4. 调度与巡检契约
 
 - MATERIALIZED TaskSchedule 只保存 AtomicTaskTemplate、TaskGroupTemplate 或 DAGTaskGroupTemplate，不得有 reconcile_spec。
@@ -125,6 +132,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - Agent 和 AppStudio 只能创建带业务授权快照的 AtomicTask；Infra 操作统一经过 `Task Center -> Task Worker -> infra-adapter -> Infra Service`。Task Center 不把 Agent/AppStudio 的任务输入直接透传为 Docker 请求。
 - Agent 的 `agent.invocation.execute`、`agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentInvocation、AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
+- GitLab 领域通过 `gitlab.pipeline.run` 使用 Task Center 的重试、取消和延迟回调；GitLabServer/GitLabProject 仍由 gitlab 拥有，Task Center 和 Worker 只能通过受控 GitLab Store 接口读取。
 - Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；StudioWorkspace 只能由 AppStudio 的受控授权产生；Preview 使用当前 Workspace Revision；Build 使用固定 Snapshot；Production 使用固定 Artifact。
 - `appstudio.build.execute@1.1` 将 registry 固定输出声明映射为 Infra `output_declarations`。Job 成功后先消费 RuntimeOutput descriptor，再鉴权流式读取字节并完成 Asset Library Artifact 内容，最后幂等回链 RuntimeOutput；Task Center 不缓存 staging 内容或把 `infra-output://` 暴露给来源领域。
 

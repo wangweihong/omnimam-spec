@@ -2,60 +2,57 @@
 
 ## 当前目标与状态
 
-- 目标：发布 Agent Runtime 详情、历史、日志和健康诊断契约，供 omnimam-server 正式实施。
-- 状态：`spec-v1.21.0` 已发布；release commit `5a654a1`、annotated tag 和分支均已推送到 `origin`，可作为 server 正式实现依据。
-- 基线：`spec-v1.20.0`，release commit `0e6300c8e776df08972a229f48775ed71ad5bff9`。
+- 目标：新增并发布独立 `gitlab` domain 第一阶段 S1/S2，供 omnimam-server 实施 GitLab Server、Project 和 Pipeline 任务。
+- 状态：GitLab 与 Task Center 最小契约已完成并通过结构校验；正在创建内容提交，尚未写 release 记录或 tag。
+- 基线：`spec-v1.21.0`，release commit `5a654a1c1e14c1f454e17a5b4190af379f13bb5c`。
 
 ## 本次已完成
 
-- 新增 Agent Runtime 诊断 S1 语义、owner/Application/Agent/generation 可见性、当前 Invocation、运行时长和脱敏边界。
-- 新增 AppStudio 当前 Runtime、跨 generation 历史、最近 5000 行日志和投影/实时健康 facade 语义。
-- 新增 Infrastructure owner-scoped Runtime logs/health、通用健康结果和 Docker/Provider 信息隐藏语义。
-- AppStudio OpenAPI 新增四个 GET；Infrastructure logs 增加必填 `owner_reference`，并新增 health GET。
-- 新增 `appstudio.agent.runtime.logs.read`，默认授予 USER、ADMIN、SUPER_ADMIN。
-- 同步 Agent、AppStudio、Infrastructure module contract 和 Unreleased changelog。
-- 已创建内容提交 `b0dde387a39c1d8ce49137518ee013c70a831c7f`，并以用户本次明确实施请求作为 release 确认写入 `RELEASE.md`。
-- 已创建 release commit `5a654a1` 和 annotated `spec-v1.21.0` tag，并推送分支与标签。
+- 用户确认 GitLab 是独立 domain，不得混入 AppStudio。
+- 用户确认 PAT 持久化在 GitLabServer credential 字段、Pipeline 使用回调式异步执行、API 仅管理员访问、有关联 Project 时阻止删除 Server。
+- 已核对当前 Task Center 的版本化 Agent/AppStudio Function Registry 仅适用于 Infra-backed JOB/SERVICE；`gitlab.pipeline.run` 将登记为非 Infra-backed 外部 AtomicTask，不伪造 Infra 映射。
+- 已新增 GitLab S1、Domain Context、OpenAPI、设计态 Schema、错误、权限、空事件和模块合同。
+- 已同步 Task Center S1/module contract/context、Global Context、Context Map、错误码索引和 Changelog，未修改 AppStudio 文件。
 
 ## 当前进行中
 
-- 无；下游 server 正在更新 SSOT pin 并实施。
+- 创建并推送 GitLab 内容提交与 `spec-v1.22.0` release。
 
 ## 文件变化
 
-- 修改三个 Domain 的 `product-spec.md` 和 `module-contract.md`。
-- 修改 AppStudio `openapi.yaml`、`permissions.yaml`，Infrastructure `openapi.yaml`。
-- 修改 `CHANGELOG.md` 和 `docs/HANDOFF.md`。
-- 未修改 schema、errors、events、architecture 或其他 Domain。
+- Added: `00_product/domains/gitlab/product-spec.md`、`domains/gitlab/context.md`、`01_contracts/domains/gitlab/*`。
+- Modified: Task Center S1/module contract/context、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`01_contracts/error-code-index.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
 
 ## 关键决定
 
-- Runtime 历史经 AgentRuntimeGrant 关联 Application/generation，按 Runtime Binding 去重并稳定排序。
-- 当前任务是最新非终态 AgentInvocation，不是 AtomicTask。
-- 日志仅返回 occurred_at/level/message；健康只返回通用状态、来源、时间和稳定原因。
-- 共享服务 Token 只做服务认证；Infrastructure 仍必须校验 owner_reference 和 Agent Runtime 范围。
+- GitLab 拥有 GitLabServer、GitLabProject、GitLabClient 与 Pipeline 外部执行语义。
+- AppStudio S1/S2、Schema、API 和创建流程保持不变。
+- GitLab Pipeline 终态由 Task Center AtomicTask/TaskAttempt 表达；GitLab 第一阶段不发布领域事件。
+- `gitlab.pipeline.run` 输入只使用内部 GitLabProject ID、ref 和 variables，不包含 URL、PAT 或远端 numeric project ID。
 
 ## API、Schema、依赖或配置变化
 
-- 新增四个 AppStudio Agent Runtime GET 和一个 Infrastructure Runtime health GET。
-- Infrastructure Runtime logs 新增必填 `owner_reference`。
-- 新增一个 AppStudio 权限码；不新增错误码、表、字段、事件、依赖或运行配置。
+- 计划新增 `/api/v1/gitlab/servers`、`/api/v1/gitlab/projects` 及 Server test action。
+- 计划新增 `gitlab_servers`、`gitlab_projects` 设计态表和 `250200-250999` 错误码区间。
+- 计划新增四个管理员权限；不新增依赖或运行配置。
 
 ## 验证与风险
 
-- 已通过 `yq` 解析三个修改的 YAML、operationId 重复检查和 `git diff --check`。
-- Redocly 首次检查发现并已修正新增 `current_task` 的 OpenAPI 3.0 `$ref`/nullable sibling；AppStudio 仍有既有 `StudioBuildBatchSummaryItem` nullable error 和全文件通用 warnings，本任务不修改无关 schema。
-- tag/push 已完成；尚需下游 server pin 验证。
-- OpenAPI `StudioAgentRuntime` 与 server DTO 必须保持 Endpoint/Infra/容器/Provider 信息不可见。
+- `yq` 已解析新增 YAML/OpenAPI；错误 code/value 无重复，四个权限仅默认授予 ADMIN/SUPER_ADMIN。
+- Redocly 确认 OpenAPI 有效；仅报告仓库 HTTP 200 规则对应的 4XX warning 及非阻断 license/tag warning。
+- 已确认 SQL 包含 `ON DELETE RESTRICT` 和两个 Server 内唯一约束，`git diff --check` 通过，AppStudio 文件无变更。
+- 尚需内容 commit、release record、tag/push 和远端校验。
+- spec worktree 既有未跟踪 `archive/`、`docs/identity_fix.md`、`设计图/`，本任务不得提交或修改。
 
 ## 未完成事项
 
-- 下游 server 更新 submodule、`SSOT_VERSION` 并实施诊断接口。
-- 下游 server 更新 submodule 和 `SSOT_VERSION` 后实施。
+- 完成并验证 GitLab/Task Center 契约。
+- 创建内容提交，记录并发布 `spec-v1.22.0`，推送 release commit 和 annotated tag。
+- 下游 server 更新 SSOT pin 后实施；devops 完成幂等用户和 PAT bootstrap。
 
 ## 推荐下一步
 
-在 omnimam-server 将 `ssot` pin 到 `spec-v1.21.0`，核对 `SSOT_VERSION` 后实施四个 AppStudio Runtime 诊断 API。
+只暂存本任务文件并创建 GitLab 内容提交，然后用该 commit 写入 `spec-v1.22.0` release 记录。
 
 Next Prompt:
 

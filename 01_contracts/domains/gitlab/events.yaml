@@ -1,0 +1,3 @@
+# GitLab S2 events, introduced by spec-v1.22.0.
+# 第一阶段不发布领域事件；Pipeline 状态由 Task Center AtomicTask/TaskAttempt 拥有。
+events: {}

@@ -340,6 +340,12 @@ Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`�
 
 `agent.runtime.stop` 使用受控目标动作区分挂起、停止和删除；`appstudio.production.reconcile` 使用部署原因区分首次部署、升级和回滚，但回滚输入必须引用 AppStudio 已创建的新 Release 与新候选 RuntimeInstance。Build 取消、Runtime ensure 取消及其他进行中操作统一使用 AtomicTask 取消语义，不创建 `*.cancel` functionRef。
 
+### 5.9 GitLab 外部 Pipeline 任务
+
+`gitlab.pipeline.run` 是 GitLab 领域拥有的非 Infra-backed 外部 AtomicTask。它不进入 Agent/AppStudio Infra Function Registry，也不得声明 Docker `JOB`/`SERVICE`、Infra capability、RuntimeProfile、source_ref 或 authorization_ref。
+
+Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Worker 通过本地 Project/Server 投影解析远端 project ID、API URL 与 credential；这些连接信息不得进入 AtomicTask arguments 或 output。首次提交后将 Pipeline ID 保存为 `external_job_id`，运行中返回 `IN_PROGRESS` 与 5 秒延迟回调，自动 Attempt 重试和重启恢复必须查询同一 Pipeline。取消任务时尽力取消远端 Pipeline，Task Center 仍拥有最终任务状态。
+
 ---
 
 ## 6. 查询与汇总
@@ -457,6 +463,7 @@ Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`�
 81. `BR-TASK-153`：第一阶段 Agent/AppStudio functionRef 必须来自第 5.8 节 canonical registry；Task Center 在创建任务前按精确输入 schema 校验，并固定合同版本与摘要。执行模式、能力、幂等、重试、取消、超时、Runtime/Infra 映射和结果 schema 只能来自该版本合同，registry 升级不得改写历史任务。
 82. `BR-TASK-154`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
 83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件，并将成功、失败、超时、取消和 execution 丢失终态通知 Agent observer。
+84. `BR-TASK-156`：`gitlab.pipeline.run` 是非 Infra-backed 外部 AtomicTask，只接收内部 GitLabProject ID、ref 和 variables；Worker 必须用 externalJobId、IN_PROGRESS 和延迟回调恢复同一远端 Pipeline，不得把 URL、credential 或远端 project ID 写入任务输入输出，也不得伪造 Infra JOB/SERVICE 映射。
 
 ---
 

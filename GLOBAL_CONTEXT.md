@@ -31,6 +31,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `appstudio` | 管理生成式 Web/BFF 应用的源码、Revision、构建、发布和运行实例；内部维护唯一默认 StudioWorkspace。 |
 | `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控 Endpoint 与 RuntimeOutput 内容交付。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
+| `gitlab` | 管理 GitLab API 连接、远端 Project 本地投影和可恢复 Pipeline 外部任务。 |
 
 当前工作区已将 Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康检测与 ComfyUI 当前 `object_info` 迁移到 `modelgateway`，并将 `model-management` 重构为 `user-model`。两项调整已由 `spec-v1.17.0` 按实施门禁确认为正式实现依据；历史 `RELEASE.md` 中的旧 domain 名称保持原样。`mcp` 已形成 S1、完整 S2 和架构参考，并由 `spec-v1.9.2` 允许按实施门禁作为正式实现依据。
 
@@ -71,10 +72,14 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `McpTaskBinding` | MCP Task 到已持久化 ApplicationRun 的协议映射；归 mcp，不拥有执行状态。 |
 | `SystemAuthConfig` | 平台注册模式、密码/登录保护、在线窗口和 Token 生命周期配置；归 platform-management，Identity 负责消费。 |
 | `AuditLog` | 跨 domain 的脱敏管理审计记录、查询和可靠事件；归 platform-management，来源 domain 提交上下文。 |
+| `GitLabServer` | GitLab API URL、固定 Namespace、PAT 和连接检测状态；归 gitlab。 |
+| `GitLabProject` | GitLab 远端 Project 的本地稳定投影；归 gitlab。 |
 
 ## 5. 全局事实归属
 
 当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消、Task Worker 分发和 RuntimeOutput 到 Artifact 的流式交付编排归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、RuntimeOutput descriptor、临时 staging、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 内容完成、处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+
+GitLab API 连接、远端 Project 投影和 GitLab Pipeline 外部调用语义归 `gitlab`；Pipeline 的 AtomicTask、TaskAttempt、重试、取消和终态仍归 `task-center`。AppStudio 第一阶段不引用 GitLab 对象。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -93,6 +98,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 - agent 和 appstudio 的所有 Infra-backed 操作都通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Task Worker 只回写稳定运行引用和小型结果，不拥有来源领域状态。
 - 上一条只约束 Runtime 生命周期写操作。AgentRuntimeAdapter 在校验 Agent、Session、Invocation 和 Runtime Binding 后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve 并同步访问 Hermes/OpenCode；短时 `base_url` 不得持久化或传播。
 - Task Center 使用版本化只读 Function Registry 校验第一阶段七个 Agent/AppStudio Infra-backed functionRef，并在 AtomicTask 创建时固定合同 version/digest；调用方不能覆盖执行模式、能力或 Infra 映射，registry 升级不能改写历史任务。
+- `gitlab.pipeline.run` 是独立 GitLab 领域的非 Infra-backed 外部 AtomicTask，使用 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry，也不修改 AppStudio 事实。
 - `appstudio.build.execute@1.1` 固定声明 `bundle.tar.gz`，Task Worker 从 Infrastructure 鉴权流式读取实际输出字节并双重校验大小/SHA-256，再完成 Asset Library Artifact 内容并幂等回链；`infra-output://` 不是 bearer 或任意外部 URL。
 - appstudio 通过 task-center 执行 Preview、Build 和 Production 发布/升级/回滚，并只保存 asset-library Artifact 的稳定 ID 与不可变 digest 快照；Build 只有在 Artifact READY 且 digest 一致后成功。
 - 新 StudioRuntimeInstance 健康后才能切换当前入口；回滚基于历史不可变内容创建新的 StudioRelease 和候选 RuntimeInstance，不修改或重新激活旧 Release。

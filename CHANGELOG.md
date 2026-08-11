@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 新增独立 `gitlab` domain 第一阶段 S1/S2：管理员 GitLabServer CRUD/Test、GitLabProject 创建/查询/删除、PAT 只写不读、关联删除保护和可恢复 `gitlab.pipeline.run` 外部 AtomicTask；AppStudio 契约保持不变。
 - Agent/AppStudio 新增 Coding Agent Runtime 当前详情、跨 generation 历史、最近 5000 行脱敏日志和投影/实时健康诊断契约；Infrastructure logs/health 固定 `owner_reference` 资源授权、通用健康降级和 Provider/Docker 信息隐藏，新增 `appstudio.agent.runtime.logs.read`。
 - AppStudio 新增当前 Coding Agent generation/session 的消息历史 facade，消息按 `(created_at DESC, id DESC)` 稳定分页；Invocation 新增稳定 `user_message_id/assistant_message_id`，供发送响应、历史和流式事件归并。
 - AppStudio Invocation SSE 从 raw string 升级为 12 类类型化事件 envelope；`sequence_no` 作为 Invocation 内十进制 SSE ID，`Last-Event-ID` 只重放更大序号，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。

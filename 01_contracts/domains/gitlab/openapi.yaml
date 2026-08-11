@@ -1,0 +1,320 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM GitLab API
+  version: 1.0.0
+  description: 独立 GitLab domain 第一阶段管理员 API。Credential 只允许写入，任何响应均不返回。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: gitlab-servers
+  - name: gitlab-projects
+paths:
+  /api/v1/gitlab/servers:
+    get:
+      tags: [gitlab-servers]
+      operationId: list_gitlab_servers
+      summary: 查询 GitLabServer 列表
+      x-permission: gitlab.server.read
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-012]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/server_sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - name: status
+          in: query
+          schema: {type: string, enum: [UNKNOWN, READY, ERROR]}
+      responses:
+        '200':
+          description: GitLabServer 列表；不包含 credential。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabServerListResponse'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [gitlab-servers]
+      operationId: create_gitlab_server
+      summary: 创建 GitLabServer
+      x-permission: gitlab.server.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateGitLabServerRequest'}
+      responses:
+        '200':
+          description: 新建 GitLabServer，初始状态为 UNKNOWN。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabServer'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/gitlab/servers/{server_id}:
+    parameters:
+      - $ref: '#/components/parameters/server_id'
+    get:
+      tags: [gitlab-servers]
+      operationId: get_gitlab_server
+      summary: 查询 GitLabServer
+      x-permission: gitlab.server.read
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-012]
+      responses:
+        '200':
+          description: GitLabServer；不包含 credential。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabServer'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    patch:
+      tags: [gitlab-servers]
+      operationId: update_gitlab_server
+      summary: 更新 GitLabServer
+      description: credential 省略时保留原值；API URL、Namespace Path 或 credential 改变时状态重置为 UNKNOWN。
+      x-permission: gitlab.server.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateGitLabServerRequest'}
+      responses:
+        '200':
+          description: 更新后的 GitLabServer。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabServer'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    delete:
+      tags: [gitlab-servers]
+      operationId: delete_gitlab_server
+      summary: 删除 GitLabServer
+      description: 仍有关联 GitLabProject 时返回 ERR_GITLAB_SERVER_HAS_PROJECTS。
+      x-permission: gitlab.server.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-006, BR-GITLAB-012]
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Empty'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/gitlab/servers/{server_id}/test:
+    post:
+      tags: [gitlab-servers]
+      operationId: test_gitlab_server
+      summary: 检测 GitLabServer 连接、credential 和 Namespace
+      x-permission: gitlab.server.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+      parameters:
+        - $ref: '#/components/parameters/server_id'
+      responses:
+        '200':
+          description: 检测后的 GitLabServer；检测失败也返回 status=ERROR 的资源。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabServer'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/gitlab/projects:
+    get:
+      tags: [gitlab-projects]
+      operationId: list_gitlab_projects
+      summary: 查询 GitLabProject 列表
+      x-permission: gitlab.project.read
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-005, BR-GITLAB-012]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/project_sort_field'
+        - $ref: '#/components/parameters/sort_order'
+        - name: gitlab_server_id
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: GitLabProject 列表。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabProjectListResponse'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    post:
+      tags: [gitlab-projects]
+      operationId: create_gitlab_project
+      summary: 在 READY GitLabServer 的固定 Namespace 创建 private Project
+      x-permission: gitlab.project.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-004, BR-GITLAB-005, BR-GITLAB-007, BR-GITLAB-012]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateGitLabProjectRequest'}
+      responses:
+        '200':
+          description: GitLab 返回并落库的 Project 投影。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabProject'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+  /api/v1/gitlab/projects/{project_id}:
+    parameters:
+      - $ref: '#/components/parameters/project_id'
+    get:
+      tags: [gitlab-projects]
+      operationId: get_gitlab_project
+      summary: 查询 GitLabProject
+      x-permission: gitlab.project.read
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-005, BR-GITLAB-012]
+      responses:
+        '200':
+          description: GitLabProject。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GitLabProject'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+    delete:
+      tags: [gitlab-projects]
+      operationId: delete_gitlab_project
+      summary: 删除远端 Project 和本地投影
+      description: 远端 404 视为已删除；其他远端错误保留本地投影。
+      x-permission: gitlab.project.manage
+      x-s1-refs:
+        user_stories: [US-GITLAB-001]
+        business_rules: [BR-GITLAB-008, BR-GITLAB-012]
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Empty'}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    server_id: {name: server_id, in: path, required: true, schema: {type: string}}
+    project_id: {name: project_id, in: path, required: true, schema: {type: string}}
+    page_num: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    page_size: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+    keyword: {name: keyword, in: query, schema: {type: string, maxLength: 200}}
+    server_sort_field: {name: sort_field, in: query, schema: {type: string, enum: [name, created_at, updated_at, status]}}
+    project_sort_field: {name: sort_field, in: query, schema: {type: string, enum: [name, created_at, updated_at]}}
+    sort_order: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+  schemas:
+    GitLabServer:
+      type: object
+      required: [id, name, api_url, external_url, namespace_path, status, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        api_url: {type: string, format: uri}
+        external_url: {type: string, format: uri}
+        namespace_path: {type: string}
+        status: {type: string, enum: [UNKNOWN, READY, ERROR]}
+        last_checked_at: {type: string, format: date-time, nullable: true}
+        last_error: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer, format: int64}
+    GitLabProject:
+      type: object
+      required: [id, gitlab_server_id, external_project_id, name, path, path_with_namespace, web_url, http_url_to_repo, default_branch, created_at, updated_at, resource_version]
+      properties:
+        id: {type: string}
+        gitlab_server_id: {type: string}
+        external_project_id: {type: integer, format: int64}
+        name: {type: string}
+        description: {type: string}
+        path: {type: string}
+        path_with_namespace: {type: string}
+        web_url: {type: string, format: uri}
+        http_url_to_repo: {type: string, format: uri}
+        ssh_url_to_repo: {type: string}
+        default_branch: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        resource_version: {type: integer, format: int64}
+    CreateGitLabServerRequest:
+      type: object
+      additionalProperties: false
+      required: [name, api_url, external_url, namespace_path, credential]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        api_url: {type: string, format: uri, maxLength: 2048}
+        external_url: {type: string, format: uri, maxLength: 2048}
+        namespace_path: {type: string, minLength: 1, maxLength: 255}
+        credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
+    UpdateGitLabServerRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 2000}
+        api_url: {type: string, format: uri, maxLength: 2048}
+        external_url: {type: string, format: uri, maxLength: 2048}
+        namespace_path: {type: string, minLength: 1, maxLength: 255}
+        credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
+        resource_version: {type: integer, format: int64, minimum: 1}
+    CreateGitLabProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [gitlab_server_id, name, path]
+      properties:
+        gitlab_server_id: {type: string, minLength: 1}
+        name: {type: string, minLength: 1, maxLength: 255}
+        path: {type: string, minLength: 1, maxLength: 255, pattern: '^[a-zA-Z0-9_.-]+$'}
+        description: {type: string, maxLength: 2000}
+    GitLabServerListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, format: int64, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/GitLabServer'}}
+    GitLabProjectListResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total: {type: integer, format: int64, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/GitLabProject'}}
+    Empty:
+      type: object
+      additionalProperties: false
+    ErrorResponse:
+      type: object
+      required: [code, value, message]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+  responses:
+    UnexpectedError:
+      description: 不可恢复服务器错误。
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}

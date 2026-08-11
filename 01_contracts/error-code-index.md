@@ -21,6 +21,7 @@
 | platform-management | `01_contracts/domains/platform-management/errors.yaml` | SystemAuthConfig、平台审计和跨 domain 管理边界错误码 |
 | identity | `01_contracts/domains/identity/errors.yaml` | 认证流程、用户、RBAC、资源授权、服务主体和 PrincipalContext 错误码 |
 | infrastructure | `01_contracts/domains/infrastructure/errors.yaml` | Docker Runtime、节点资源、挂载配置、Endpoint 和 Provider 对账错误码 |
+| gitlab | `01_contracts/domains/gitlab/errors.yaml` | GitLabServer、GitLabProject、Pipeline 和访问控制错误码 |
 
 ## 2. 错误码区间分配
 
@@ -89,6 +90,10 @@
 | 240400-240599 | infrastructure | placement | Docker 节点、CPU/内存/磁盘/GPU 资源错误 |
 | 240600-240799 | infrastructure | runtime | InfraRuntime 状态、Provider 操作、停止和对账错误 |
 | 240800-240999 | infrastructure | mount-config | 挂载、Secret/ModelAccessSpec 注入和 Endpoint 错误 |
+| 250200-250399 | gitlab | server | GitLabServer、连接、credential 检测和关联删除错误 |
+| 250400-250599 | gitlab | project | GitLabProject 远端操作与本地投影错误 |
+| 250600-250799 | gitlab | pipeline | Pipeline 输入、创建与终态错误 |
+| 250800-250999 | gitlab | access | GitLab 管理访问控制错误 |
 | 220200-220399 | identity | authn / session | 登录、Token、Refresh Token 和会话错误 |
 | 220400-220599 | identity | user | 用户注册、状态、删除和可见性错误 |
 | 220600-220799 | identity | rbac / principal | 角色、用户组、权限和 PrincipalContext 错误 |
