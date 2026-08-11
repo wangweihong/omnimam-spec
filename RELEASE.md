@@ -1,5 +1,42 @@
 # Release Records
 
+## spec-v1.23.0
+
+- commit: 7010953df6130caa1f59c8b19dd9feaa5e06d467
+- status: released
+- confirmed_by: user（2026-08-11 明确要求实施 AppStudio GitLab 第二阶段重构计划，并要求先发布 spec-v1.23.0、再更新 server pin 与实施）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - agent
+  - gitlab
+  - infrastructure
+  - task-center
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/gitlab/openapi.yaml
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+  - domains/appstudio/context.md
+  - domains/agent/context.md
+  - domains/gitlab/context.md
+  - domains/infrastructure/context.md
+  - domains/task-center/context.md
+- implementation_gate: GitLab 是 AppStudio 唯一源码正文 Provider；AppStudio 保留 Revision、ChangeSet、递增 revision number 和文件索引，以不可变 `commit_sha` 关联 Git commit。当前 `STATIC_WEB` 固定内置 `web-react@v1`，公共创建 API 不增加 Blueprint/GitLab 参数。只有唯一 READY 默认 GitLabServer 可初始化 AppStudio Project；AppStudio 只保存 GitLabProject 本地 ID。Coding Runtime 使用限时 project-scoped `write_repository` access、tmpfs credential helper 和可丢弃 `/workspace` clone，token 不得进入环境变量、Task、数据库、日志、错误或 Docker inspect。CODING Invocation 固定 base Revision/CommitSHA，成功必须产生恰好一个普通 fast-forward commit，Worker 在终态前幂等投影一个既有 ChangeSet 和下一条 Revision；无 commit、多 commit、分叉、force 语义或 base 漂移不推进 Revision。Preview/Build 按固定 CommitSHA 流式获取并校验 GitLab archive 后注入只读 tmpfs。删除旧 Workspace Tool 与 `BUILT_IN` 正文契约，不迁移旧数据，不新增错误码、权限码、事件、AppStudio 公共 API 或数据库表。
+
 ## spec-v1.22.0
 
 - commit: 78122d28b412a52279c69cc2ec239b41af2a47a1

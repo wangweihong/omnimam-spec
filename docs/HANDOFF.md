@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 `spec-v1.23.0`，正式定义 AppStudio GitLab 第二阶段跨域契约。
-- 状态：AppStudio、Agent、GitLab、Infrastructure、Task Center 的 S1/S2/Context 草稿和 release 前校验已完成；尚未提交或发布，不得作为正式实现依据。
+- 状态：内容 commit `7010953df6130caa1f59c8b19dd9feaa5e06d467` 已完成，`spec-v1.23.0` release record 已写入；正在创建 release commit/tag 并推送。
 - 基线：`spec-v1.22.0` release commit `edcdbcebf8daecec8eaefd129338e829512b00fe`。
 
 ## 本次已完成
@@ -14,10 +14,11 @@
 - Agent Invocation claims 固定 base Revision/CommitSHA、Blueprint 和 prompt kind；删除旧正文工具授权语义。
 - Coding Runtime 使用 Runtime-scoped Project Access Token、tmpfs credential helper 和可丢弃 `/workspace` clone；Preview/Build 按固定 commit archive 流式注入。
 - Task Worker 在 CODING Invocation 终态前校验恰好一个普通 fast-forward commit，并幂等投影一个 ChangeSet/Revision。
+- 已创建内容 commit `7010953df6130caa1f59c8b19dd9feaa5e06d467`，并以用户本次明确实施请求作为 release 确认写入 `RELEASE.md`。
 
 ## 当前进行中
 
-- 准备内容 commit、`RELEASE.md` 记录、release commit、annotated tag 和 push。
+- 创建 `spec-v1.23.0` release commit、annotated tag 和 push，并校验远端引用。
 
 ## 文件变化
 
@@ -45,18 +46,17 @@
 
 - `yq` 已成功解析 GitLab OpenAPI；Redocly 验证有效，仅报告仓库 HTTP 200 业务错误策略及 license/tag 描述的 13 个非阻断 warning。
 - scoped `git diff --check` 通过；限定正式文件中的 Workspace Tool/`BUILT_IN` 旧术语为零匹配，新增 schema/API/模块契约关键字段定向检查通过。
-- 尚需 content/release commit、tag/push 和远端校验。
+- 尚需 release commit、tag/push 和远端校验。
 - 规范发布后 server 必须先更新 submodule pin 与 `SSOT_VERSION`，再实施行为变更。
 
 ## 未完成事项
 
-- 完成 scoped 验证并创建内容 commit。
-- 写入 `spec-v1.23.0` release record，创建 release commit/tag 并推送。
+- 创建 `spec-v1.23.0` release commit/tag 并推送。
 - 下游 server 更新 pin 后实施并验证。
 
 ## 推荐下一步
 
-运行 scoped SSOT 校验，提交内容；用内容 commit 写入 `RELEASE.md` 后创建并推送 `spec-v1.23.0` release commit 与 tag。
+提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.23.0` tag，并推送当前分支与 tag。
 
 Next Prompt:
 
