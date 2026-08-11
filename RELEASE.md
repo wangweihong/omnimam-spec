@@ -1,5 +1,27 @@
 # Release Records
 
+## spec-v1.22.0
+
+- commit: 78122d28b412a52279c69cc2ec239b41af2a47a1
+- status: released
+- confirmed_by: user（2026-08-11 明确要求实施独立 GitLab domain 第一阶段，并要求修改、发布 SSOT 后实施 server 与 devops）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - gitlab
+  - task-center
+- S1:
+  - 00_product/domains/gitlab/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/gitlab/openapi.yaml
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/errors.yaml
+  - 01_contracts/domains/gitlab/permissions.yaml
+  - 01_contracts/domains/gitlab/events.yaml
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: GitLab 是独立 domain，拥有管理员 GitLabServer CRUD/Test、GitLabProject 创建/查询/删除、PAT 只写不读和 GitLab HTTP Client 语义。`gitlab.pipeline.run` 是非 Infra-backed 外部 AtomicTask，输入不含 URL/PAT/远端 project ID，使用 external_job_id、IN_PROGRESS 和 5 秒延迟回调恢复同一 Pipeline；它不进入 Agent/AppStudio Infra Function Registry，不修改 AppStudio S1/S2、Schema、API 或创建流程。仅 ADMIN/SUPER_ADMIN 获得 GitLab 管理权限；有关联 Project 时禁止删除 Server。
+
 ## spec-v1.21.0
 
 - commit: b0dde387a39c1d8ce49137518ee013c70a831c7f
