@@ -2,57 +2,61 @@
 
 ## 当前目标与状态
 
-- 目标：新增并发布独立 `gitlab` domain 第一阶段 S1/S2，供 omnimam-server 实施 GitLab Server、Project 和 Pipeline 任务。
-- 状态：内容提交 `78122d28b412a52279c69cc2ec239b41af2a47a1` 已完成；`spec-v1.22.0` release 记录已写入，正在创建 release commit/tag 并推送。
-- 基线：`spec-v1.21.0`，release commit `5a654a1c1e14c1f454e17a5b4190af379f13bb5c`。
+- 目标：发布 `spec-v1.23.0`，正式定义 AppStudio GitLab 第二阶段跨域契约。
+- 状态：AppStudio、Agent、GitLab、Infrastructure、Task Center 的 S1/S2/Context 草稿和 release 前校验已完成；尚未提交或发布，不得作为正式实现依据。
+- 基线：`spec-v1.22.0` release commit `edcdbcebf8daecec8eaefd129338e829512b00fe`。
 
 ## 本次已完成
 
-- 用户确认 GitLab 是独立 domain，不得混入 AppStudio。
-- 用户确认 PAT 持久化在 GitLabServer credential 字段、Pipeline 使用回调式异步执行、API 仅管理员访问、有关联 Project 时阻止删除 Server。
-- 已核对当前 Task Center 的版本化 Agent/AppStudio Function Registry 仅适用于 Infra-backed JOB/SERVICE；`gitlab.pipeline.run` 将登记为非 Infra-backed 外部 AtomicTask，不伪造 Infra 映射。
-- 已新增 GitLab S1、Domain Context、OpenAPI、设计态 Schema、错误、权限、空事件和模块合同。
-- 已同步 Task Center S1/module contract/context、Global Context、Context Map、错误码索引和 Changelog，未修改 AppStudio 文件。
-- 已创建内容提交 `78122d28b412a52279c69cc2ec239b41af2a47a1`，并以用户本次明确实施与发布请求作为 release 确认写入 `RELEASE.md`。
+- GitLab 已定义为 AppStudio 唯一源码正文 Provider；AppStudio Revision/ChangeSet 保持 canonical，并由 `commit_sha` 关联 Git commit。
+- 新增内置 `web-react@v1` Blueprint、固定 prompt 路由和 CI include 约束，不新增 Blueprint Service/API/表。
+- GitLabServer 增加唯一 READY AppStudio 默认标记；GitLab repository/token client 能力扩展为内部模块契约。
+- Agent Invocation claims 固定 base Revision/CommitSHA、Blueprint 和 prompt kind；删除旧正文工具授权语义。
+- Coding Runtime 使用 Runtime-scoped Project Access Token、tmpfs credential helper 和可丢弃 `/workspace` clone；Preview/Build 按固定 commit archive 流式注入。
+- Task Worker 在 CODING Invocation 终态前校验恰好一个普通 fast-forward commit，并幂等投影一个 ChangeSet/Revision。
 
 ## 当前进行中
 
-- 创建并推送 `spec-v1.22.0` release commit 和 annotated tag。
+- 准备内容 commit、`RELEASE.md` 记录、release commit、annotated tag 和 push。
 
 ## 文件变化
 
-- Added: `00_product/domains/gitlab/product-spec.md`、`domains/gitlab/context.md`、`01_contracts/domains/gitlab/*`。
-- Modified: Task Center S1/module contract/context、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`01_contracts/error-code-index.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- Modified: `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`。
+- Modified: `domains/{appstudio,agent,gitlab,infrastructure,task-center}/context.md`。
+- Modified: `00_product/domains/{appstudio,agent,gitlab,infrastructure,task-center}/product-spec.md`。
+- Modified: AppStudio schema/module contract、GitLab schema/OpenAPI/module contract、Agent/Infrastructure/Task Center module contracts。
 
 ## 关键决定
 
-- GitLab 拥有 GitLabServer、GitLabProject、GitLabClient 与 Pipeline 外部执行语义。
-- AppStudio S1/S2、Schema、API 和创建流程保持不变。
-- GitLab Pipeline 终态由 Task Center AtomicTask/TaskAttempt 表达；GitLab 第一阶段不发布领域事件。
-- `gitlab.pipeline.run` 输入只使用内部 GitLabProject ID、ref 和 variables，不包含 URL、PAT 或远端 numeric project ID。
+- AppStudio 只保存 GitLabProject 本地 ID，不保存远端 numeric ID、PAT 或 credential URL，也不建立跨 Domain 外键。
+- 公共 AppStudio 创建 API 不增加 Blueprint/GitLab 参数；`STATIC_WEB` 固定 `web-react@v1`。
+- Runtime token 明文不得进入环境变量、Task、数据库、日志、错误或 Docker inspect；停止、替换、到期时撤销，失败由到期兜底。
+- 同一 Workspace 同时只允许一个源码写事务；无 commit、多 commit、分叉、force 语义或 base 漂移均不推进 Revision。
+- 不迁移 `BUILT_IN` 旧数据；部署切换时清理 PostgreSQL 和旧 AppStudio source volume。
 
 ## API、Schema、依赖或配置变化
 
-- 计划新增 `/api/v1/gitlab/servers`、`/api/v1/gitlab/projects` 及 Server test action。
-- 计划新增 `gitlab_servers`、`gitlab_projects` 设计态表和 `250200-250999` 错误码区间。
-- 计划新增四个管理员权限；不新增依赖或运行配置。
+- GitLab 管理 API create/update/response 增加 `is_appstudio_default`。
+- `studio_applications` 增加 `blueprint_id/blueprint_version`；`studio_source_repositories` 增加 `gitlab_project_id` 且 provider 固定 `GITLAB`；`studio_workspace_revisions` 增加唯一 `commit_sha`。
+- `gitlab_servers` 增加 READY 状态约束的 `is_appstudio_default` 和 partial unique index。
+- 不新增错误码、权限码、事件、公开 AppStudio API、数据库表或运行依赖。
 
 ## 验证与风险
 
-- `yq` 已解析新增 YAML/OpenAPI；错误 code/value 无重复，四个权限仅默认授予 ADMIN/SUPER_ADMIN。
-- Redocly 确认 OpenAPI 有效；仅报告仓库 HTTP 200 规则对应的 4XX warning 及非阻断 license/tag warning。
-- 已确认 SQL 包含 `ON DELETE RESTRICT` 和两个 Server 内唯一约束，`git diff --check` 通过，AppStudio 文件无变更。
-- 内容 commit 与 release record 已完成；尚需 release commit、tag/push 和远端校验。
-- spec worktree 既有未跟踪 `archive/`、`docs/identity_fix.md`、`设计图/`，本任务不得提交或修改。
+- `yq` 已成功解析 GitLab OpenAPI；Redocly 验证有效，仅报告仓库 HTTP 200 业务错误策略及 license/tag 描述的 13 个非阻断 warning。
+- scoped `git diff --check` 通过；限定正式文件中的 Workspace Tool/`BUILT_IN` 旧术语为零匹配，新增 schema/API/模块契约关键字段定向检查通过。
+- 尚需 content/release commit、tag/push 和远端校验。
+- 规范发布后 server 必须先更新 submodule pin 与 `SSOT_VERSION`，再实施行为变更。
 
 ## 未完成事项
 
-- 创建并推送 `spec-v1.22.0` release commit 和 annotated tag。
-- 下游 server 更新 SSOT pin 后实施；devops 完成幂等用户和 PAT bootstrap。
+- 完成 scoped 验证并创建内容 commit。
+- 写入 `spec-v1.23.0` release record，创建 release commit/tag 并推送。
+- 下游 server 更新 pin 后实施并验证。
 
 ## 推荐下一步
 
-提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.22.0` tag，并推送 `master` 与 tag。
+运行 scoped SSOT 校验，提交内容；用内容 commit 写入 `RELEASE.md` 后创建并推送 `spec-v1.23.0` release commit 与 tag。
 
 Next Prompt:
 

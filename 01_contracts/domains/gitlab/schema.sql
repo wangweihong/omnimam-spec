@@ -14,11 +14,13 @@ CREATE TABLE gitlab_servers (
   namespace_path TEXT NOT NULL,
   credential TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK (status IN ('UNKNOWN', 'READY', 'ERROR')),
+  is_appstudio_default BOOLEAN NOT NULL DEFAULT FALSE CHECK (is_appstudio_default = FALSE OR status = 'READY'),
   last_checked_at TIMESTAMPTZ,
   last_error TEXT NOT NULL DEFAULT '',
   UNIQUE (name)
 );
 CREATE INDEX idx_gitlab_servers_status ON gitlab_servers(status, updated_at);
+CREATE UNIQUE INDEX idx_gitlab_servers_appstudio_default ON gitlab_servers(is_appstudio_default) WHERE is_appstudio_default = TRUE;
 
 CREATE TABLE gitlab_projects (
   id TEXT PRIMARY KEY,

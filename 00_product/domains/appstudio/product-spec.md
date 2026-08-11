@@ -105,7 +105,8 @@ Infra Service
     ↓ 创建 Agent Runtime
 Coding Agent Runtime
     ↓ 直接调用 LLM Provider
-    ↓ 使用 AppStudio Workspace Tool 提交 ChangeSet
+    ↓ 在 /workspace 修改 Git working tree、validation、commit 和 push
+    ↓ Worker 将 commit 投影为 ChangeSet / Revision
 ```
 
 AppStudio 只保存：
@@ -415,7 +416,7 @@ StudioApplication
     ↓
 固定绑定 StudioWorkspace 的 Coding Agent
     ↓
-AppStudio Workspace Tool
+AppStudio Source Gateway 与 GitLab Source Provider
 ```
 
 AppStudio 不直接调用 Coding Agent Runtime Endpoint。
@@ -424,7 +425,7 @@ AppStudio 不直接调用 Coding Agent Runtime Endpoint。
 
 ## 4.3 Source Repository 与 StudioWorkspace
 
-AppStudio 拥有逻辑源码仓库、内部默认 StudioWorkspace、文件索引、单调 Revision、StudioChangeSet 和不可变 StudioSourceSnapshot。底层存储 Provider 只实现存取，不形成第二个 Workspace 事实领域。用户语义只使用“源码”“代码版本”和“Revision”，不以 Workspace 作为导航层。
+AppStudio 拥有逻辑源码仓库、内部默认 StudioWorkspace、文件索引、单调 Revision、StudioChangeSet 和不可变 StudioSourceSnapshot。GitLab 是唯一文件正文 Provider；`StudioWorkspaceRevision.commit_sha` 固定对应 Git commit，但 Git commit 不替代 Revision/ChangeSet 业务事实。用户语义只使用“源码”“代码版本”和“Revision”，不以 Workspace 或 GitLab Project 作为导航层。
 
 Workspace 生命周期独立于：
 
@@ -437,14 +438,29 @@ Workspace 生命周期独立于：
 规则：
 
 * AgentWorkspace 由 Infra 按 Agent 的有效授权挂载。
-* Coding Agent 访问 StudioWorkspace 只能通过 AppStudio Workspace Tool 和受控授权；Agent/Infra 不得直接读取 AppStudio 私有存储。
-* 所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；只在当前 Revision 等于 `base_revision` 时原子应用并生成下一个 Revision。
+* Coding Runtime 使用 AppStudio 授权的 GitLab Project、Runtime-scoped token 和可丢弃 `/workspace`；不得直接读取 AppStudio 私有表或宿主机路径。
+* API Source 写入必须提交 `base_revision`、幂等键和完整操作集合；Coding Invocation 必须固定 base Revision/CommitSHA 并只产生一个普通 fast-forward commit。两类写入都只在当前 Revision 和 Git branch HEAD 同时匹配 base 时原子投影为下一个 Revision。
 * Revision 冲突、路径越权、操作无效或安全校验失败时，整个 ChangeSet 拒绝，不自动覆盖、不隐式合并、不部分应用。
 * Preview Runtime 只能挂载启动时授权的当前源码 Revision；源代码默认只读，临时写入使用隔离临时卷。
 * Build 只能只读挂载固定 StudioSourceSnapshot，不得读取持续变化的 Workspace。
 * Production Runtime 只能只读挂载固定 Artifact digest，禁止挂载可写 Workspace、Revision 或 Snapshot。
 * Agent 删除不自动删除 Workspace。
 * StudioApplication 发布不改变 Workspace 内容。
+
+---
+
+## 4.3.1 内置 Blueprint
+
+当前 `STATIC_WEB` 固定使用随 Server 发布的只读 `web-react@v1` Blueprint，不提供 Blueprint Service、管理 API 或创建请求选择字段。StudioApplication 必须保存 Blueprint ID/version，使后续 prompt 和 validation 不被 Server 新版本静默改写。
+
+`web-react@v1` 包含：
+
+* React、TypeScript、Vite 和 pnpm Starter Template 与 lockfile。
+* `system`、`initial`、`followup`、`fix` 四类 prompt；本阶段只路由 initial/followup，fix 作为版本化资产保留。
+* validation：`pnpm build`。
+* `.gitlab-ci.yml` 只 include `omnimam/appstudio-ci` 的 `main:/web-app.yml`，本领域不实现 CI job，也不把 Pipeline 终态自动投影为 Build/Preview。
+
+System Prompt 必须固定 `/workspace` 为当前 Git working tree，要求直接读写该目录、执行 validation、成功后创建并 push 一个普通 commit；必须禁止 Source API/MCP 读写、删除 `.git`、修改 remote/credential、force push 和重写受控 CI 架构。OmniMAM Platform MCP 仍只用于调用平台能力。
 
 ---
 
@@ -755,7 +771,7 @@ failureReason
 createdAt
 ```
 
-`operations` 只允许受控的 `CREATE`、`UPDATE`、`DELETE`、`MOVE`。提交时必须校验 Workspace、Tool 授权、路径、内容大小、安全限制和 `baseRevision`。只有全部校验通过才一次性应用并生成 `targetRevision=baseRevision+1`；任一项失败都不得修改 Workspace。
+`operations` 只允许受控的 `CREATE`、`UPDATE`、`DELETE`、`MOVE`。提交时必须校验 Workspace、调用授权、路径、内容大小、安全限制、`baseRevision` 和 base `commit_sha`。只有 Git commit 与数据库投影全部可恢复且校验通过才生成 `targetRevision=baseRevision+1`；任一项失败不得部分推进 Workspace。远端 commit 已成功而数据库未提交时，同一幂等键重试必须识别并复用该 commit。
 
 ---
 
@@ -1103,7 +1119,7 @@ sequenceDiagram
     participant INFRA as Infra Service
     participant AR as Coding Agent Runtime
     participant LLM as LLM Provider
-    participant WT as AppStudio Workspace Tool
+    participant GL as GitLab
 
     U->>ST: 描述应用需求
     ST->>AS: SendAgentMessage(CODING)
@@ -1118,15 +1134,15 @@ sequenceDiagram
         TC-->>AS: Runtime Ready 摘要
     end
 
-    AS->>AR: 发送开发指令
+    INFRA->>GL: 解析 Project access 并注入 tmpfs credential
+    INFRA->>AR: clone default branch 到 /workspace
+    AS->>AR: 发送 Blueprint system + initial/follow-up prompt
     AR->>LLM: 直接调用 LLM
-    AS->>ST: 请求当前 Invocation 的短期 Workspace Tool 授权
-    ST-->>AS: grantRef(principal/agent/session/invocation/workspace/actions/expiry)
-    AS->>AR: 转交当前 Invocation grantRef
-    AR->>WT: 按 Revision 读取源码
-    AR->>WT: Submit ChangeSet(base_revision, idempotency_key, operations)
-    WT->>WT: 原子校验并生成新 Revision
-    WT-->>AR: applied Revision 或完整拒绝
+    AR->>AR: 修改 /workspace 并执行 Blueprint validation
+    AR->>GL: 创建并 push 一个非 force commit
+    TW->>GL: 校验 base SHA、HEAD 和单 commit fast-forward
+    TW->>ST: SyncInvocationCommit(base_revision, base_sha, head_sha)
+    ST->>ST: 幂等生成 ChangeSet 和新 Revision
 
     loop Agent Invocation Event Stream
         AR-->>AS: 文件变更、日志、进度
@@ -1180,9 +1196,9 @@ validationSummary
 
 默认允许：
 
-* 通过短期 Source Tool 授权读取当前 Revision。
-* 提交带 `base_revision` 和幂等键的原子 ChangeSet。
-* 在 ChangeSet 内创建、修改、移动和删除受权文件。
+* 在受控 `/workspace` Git working tree 中读取当前 Revision。
+* 修改、创建、移动和删除 Blueprint 允许的文件，完成 validation 后创建并 push 一个普通 commit。
+* 由 Worker 将该 commit 幂等投影为带 `base_revision` 的原子 ChangeSet。
 * 执行受控开发命令。
 * 执行测试。
 * 读取 Build 日志。
@@ -1197,7 +1213,7 @@ validationSummary
 * 获取宿主机 Shell。
 * 访问其他用户的应用源码。
 * 直接挂载 StudioWorkspace 或读取 AppStudio 私有存储。
-* 绕过 ChangeSet 写文件、自动覆盖 Revision 冲突或部分应用操作。
+* force push、修改 remote/credential、删除 `.git`、自动覆盖 Revision/CommitSHA 冲突或部分投影操作。
 * 读取明文 Secret。
 * 修改不可变 Release。
 * 修改生产 Runtime。
@@ -1816,7 +1832,7 @@ StudioRuntimeInstance
 
 用户身份必须来自认证上下文。
 
-Workspace Tool 授权不得仅凭 `agentId`。每次授权必须同时绑定 Principal、Agent、Session、Invocation、Workspace、动作集合和有效期；AppStudio 每次读写都重新校验，且 Agent Runtime Identity 不自动继承应用所有者权限。
+Runtime Git access 不得仅凭 `agentId`。授权必须同时绑定 Principal、Agent、AgentRuntime、当前 generation、StudioApplication、Workspace、GitLabProject 和有效期；明文 token 只允许通过 Infrastructure resolver 写入 Runtime tmpfs。Invocation 同步还必须绑定 Agent、Session、Invocation、base Revision/CommitSHA，且 Agent Runtime Identity 不自动继承应用所有者权限。
 
 `appstudio.build.manage` 允许 owner、`authorized_editor` 和 `system_admin` 在各自授权范围内查看 StudioBuild，包括受控 Build 摘要投影；服务身份还必须携带原任务 `authorization_ref` 并按委托用户重新执行相同可见性校验，不能仅凭服务身份绕过用户权限。StudioBuild 可见性不授予其 Artifact 权限：`authorized_editor`、`system_admin` 或其他协作者若不是 `StudioBuild.owner_user_id` 对应的 Artifact owner，仍不能读取该 Artifact。
 
@@ -2409,7 +2425,7 @@ asset_blobs
 * StudioApplicationVersion。
 * Agent Service Coding Agent 集成。
 * AgentInvocation 事件展示。
-* 短期 Workspace Tool 授权。
+* Runtime-scoped GitLab Project access 与 Invocation base Revision/CommitSHA 栅栏。
 * StudioPreviewRuntime。
 * StudioBuild。
 * Build Gate。
@@ -2584,7 +2600,7 @@ Infra Service
     接收 Task Worker 的受控请求，创建实际 Runtime，并注入 Workspace、配置和 Secret
 
 Coding Agent Runtime
-    自行调用 LLM，执行 Agent Loop，并通过 AppStudio Workspace Tool 提交 ChangeSet
+    自行调用 LLM，在 /workspace 执行 Agent Loop、validation、commit/push，并由 Worker 投影 ChangeSet
 
 Task Center
     管理异步任务、重试、取消、依赖和进度
@@ -2614,7 +2630,7 @@ flowchart LR
     INFRA[Infra Service]
     AGENT[Coding Agent Runtime]
     LLM[LLM Provider]
-    WT[AppStudio Workspace Tool]
+    GL[GitLab Repository]
 
     USER --> STUDIO
     STUDIO --> AGENT_SERVICE
@@ -2629,7 +2645,8 @@ flowchart LR
     INFRA -->|注入模型配置与凭证| AGENT
 
     AGENT -->|直接调用| LLM
-    AGENT -->|ChangeSet| WT
+    AGENT -->|commit / push| GL
+    GL -->|HEAD / diff| STUDIO
 ```
 
 完整发布链路：
@@ -2672,9 +2689,9 @@ flowchart LR
 
 验收标准：
 
-- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace 输入；后端必须按 owner/创建幂等键原子创建 Application、Repository、唯一默认源码上下文 revision 0、固定绑定的 Coding Agent/Session/WorkspaceBinding 和用户显式选择的 ACTIVE primary Coding ModelBinding。初始化失败不得产生 READY 项目；初始化成功后自动创建首条 Message/CODING Invocation，Task 提交失败只令首次 Invocation 失败并允许同键复用重试，不删除 READY 项目或重复初始化对象。
+- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace、Blueprint 或 GitLab Server 输入；当前 STATIC_WEB 固定使用内置 `web-react@v1`，后端按 owner/创建幂等键在唯一 READY 默认 GitLabServer 中幂等创建 private Project 和 Starter Template commit，再原子完成 Application、Repository、唯一默认源码上下文 revision 0、固定 Coding Agent/Session/WorkspaceBinding 和 ACTIVE primary Coding ModelBinding。初始化失败不得产生 READY 项目；重试不得重复 Project、commit 或初始化对象。
 - `AC-APPSTUDIO-001-02`：所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；Revision 冲突、越权或校验失败时不覆盖、不隐式合并、不部分应用。
-- `AC-APPSTUDIO-001-03`：Coding Agent 每次源码访问都必须使用绑定 Principal、Agent、Session、Invocation、内部 Workspace、动作和有效期的短期 Tool 授权；用户侧不接触 Workspace 字段。
+- `AC-APPSTUDIO-001-03`：Coding Runtime 只能使用绑定 Principal、AgentRuntime、generation、Application、Workspace、GitLabProject 和有效期的 Runtime access；凭据只进入 tmpfs。Coding Invocation 必须固定 base Revision/CommitSHA，成功只允许 push 一个普通 fast-forward commit，Worker 幂等投影后才算产生新的 Source Revision；用户侧不接触 Workspace 或 GitLab 字段。
 - `AC-APPSTUDIO-001-04`：Preview 固定启动时的应用源码 Revision，后续源码变化不会隐式改变正在运行的 Preview。
 - `AC-APPSTUDIO-001-05`：Build 只读取 `READY` 的 StudioSourceSnapshot；源码上下文的后续 Revision 不影响进行中或历史 Build。
 - `AC-APPSTUDIO-001-06`：StudioBuild Bundle 必须以 `StudioBuild.id`、`studio-build:<studio_build_id>:bundle` 和 `StudioBuild.owner_user_id` 幂等登记；同一 Build 的自动 Attempt 命中同一 Artifact，新逻辑 Build 使用新 ID；AtomicTask 成功但 Artifact 未 READY、登记失败或 digest 不一致时，StudioBuild 不得进入 `SUCCEEDED`。

@@ -226,7 +226,7 @@ components:
   schemas:
     GitLabServer:
       type: object
-      required: [id, name, api_url, external_url, namespace_path, status, created_at, updated_at, resource_version]
+      required: [id, name, api_url, external_url, namespace_path, status, is_appstudio_default, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
@@ -235,6 +235,7 @@ components:
         external_url: {type: string, format: uri}
         namespace_path: {type: string}
         status: {type: string, enum: [UNKNOWN, READY, ERROR]}
+        is_appstudio_default: {type: boolean, description: 仅 READY Server 可为 true；全局最多一个 AppStudio 默认 Server。}
         last_checked_at: {type: string, format: date-time, nullable: true}
         last_error: {type: string}
         created_at: {type: string, format: date-time}
@@ -269,6 +270,7 @@ components:
         external_url: {type: string, format: uri, maxLength: 2048}
         namespace_path: {type: string, minLength: 1, maxLength: 255}
         credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
+        is_appstudio_default: {type: boolean, default: false, description: 新建 Server 初始为 UNKNOWN，因此仅允许 false。}
     UpdateGitLabServerRequest:
       type: object
       additionalProperties: false
@@ -280,6 +282,7 @@ components:
         external_url: {type: string, format: uri, maxLength: 2048}
         namespace_path: {type: string, minLength: 1, maxLength: 255}
         credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
+        is_appstudio_default: {type: boolean, description: 设为 true 时要求当前 Server 为 READY，并在同一事务清除旧默认值。}
         resource_version: {type: integer, format: int64, minimum: 1}
     CreateGitLabProjectRequest:
       type: object

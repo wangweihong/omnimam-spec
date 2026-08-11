@@ -79,7 +79,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 
 当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消、Task Worker 分发和 RuntimeOutput 到 Artifact 的流式交付编排归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、RuntimeOutput descriptor、临时 staging、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 内容完成、处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
-GitLab API 连接、远端 Project 投影和 GitLab Pipeline 外部调用语义归 `gitlab`；Pipeline 的 AtomicTask、TaskAttempt、重试、取消和终态仍归 `task-center`。AppStudio 第一阶段不引用 GitLab 对象。
+GitLab API 连接、远端 Project 投影、Repository HTTP 适配和 GitLab Pipeline 外部调用语义归 `gitlab`；Pipeline 的 AtomicTask、TaskAttempt、重试、取消和终态仍归 `task-center`。AppStudio 第二阶段只保存稳定 `GitLabProject` ID，并通过受控模块接口使用 Repository 与 Runtime access，不读取 GitLab 私表或持久化 PAT。
 
 跨域只能通过稳定 ID、权限裁剪的一跳摘要、不可变快照、受控模块接口或可靠事件协作，不得读取其他领域私有表，也不得用投影替代源领域事实。
 
@@ -92,13 +92,13 @@ GitLab API 连接、远端 Project 投影和 GitLab Pipeline 外部调用语义�
 - notification-center 消费已登记的可靠 source event，不从低层任务终态猜测上层 Application、Asset 或 Canvas 结果。
 - sse 只发送变化提示；客户端仍通过各事实源 REST API 重查完整状态。AI Chat token/delta 流属于 ai-chatting 请求协议，不进入通用 UserEvent 历史。
 - mcp 使用固定 Tool 和 Resource URI 向受权 Agent 投影领域事实；Capability 只读发现，异步执行只通过已发布 Application 创建 ApplicationRun，并将其 AtomicTask 映射为 MCP Task。
-- 用户侧 `CreateAgent` 固定创建 Platform Agent，并由后端原子创建 AgentWorkspace、默认 Session 和固定 Binding；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建并固定引用唯一默认 StudioWorkspace。Session、Invocation 和 Runtime 不得切换内部绑定，所有源码写入通过当前 Invocation 的短期 Tool 授权和带 `base_revision` 的 ChangeSet 完成。
-- `CreateStudioApplication` 不接受 Workspace 输入；后端创建 Repository、唯一默认编辑上下文、Coding Agent 和 Session。用户只通过 StudioApplication 级 Source/Revision、Snapshot 和 Preview 接口操作源码。
+- 用户侧 `CreateAgent` 固定创建 Platform Agent，并由后端原子创建 AgentWorkspace、默认 Session 和固定 Binding；Coding Agent 仅由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建并固定引用唯一默认 StudioWorkspace。Session、Invocation 和 Runtime 不得切换内部绑定。Coding Runtime 使用 Runtime-scoped GitLab Project Access Token 在 `/workspace` 直接操作 Git working tree；Worker 必须把一次 Invocation 的单个 fast-forward commit 幂等投影为带 `base_revision` 的 AppStudio ChangeSet 和下一个 Revision。
+- `CreateStudioApplication` 不接受 Workspace、Blueprint 或 GitLab Server 输入；当前 `STATIC_WEB` 固定使用内置 `web-react@v1`，后端使用唯一 READY 默认 GitLabServer 创建 Project、Starter Template commit、Repository、唯一默认编辑上下文、Coding Agent 和 Session。用户仍只通过 StudioApplication 级 Source/Revision、Snapshot 和 Preview 接口操作源码。
 - 纯 CHAT 且不启动 Runtime、工具或后台工作的 AgentInvocation 可以不创建 AtomicTask；其他 Invocation 和所有 Runtime 生命周期操作必须关联 AtomicTask。
 - agent 和 appstudio 的所有 Infra-backed 操作都通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；Task Worker 只回写稳定运行引用和小型结果，不拥有来源领域状态。
 - 上一条只约束 Runtime 生命周期写操作。AgentRuntimeAdapter 在校验 Agent、Session、Invocation 和 Runtime Binding 后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve 并同步访问 Hermes/OpenCode；短时 `base_url` 不得持久化或传播。
-- Task Center 使用版本化只读 Function Registry 校验第一阶段七个 Agent/AppStudio Infra-backed functionRef，并在 AtomicTask 创建时固定合同 version/digest；调用方不能覆盖执行模式、能力或 Infra 映射，registry 升级不能改写历史任务。
-- `gitlab.pipeline.run` 是独立 GitLab 领域的非 Infra-backed 外部 AtomicTask，使用 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry，也不修改 AppStudio 事实。
+- Task Center 使用版本化只读 Function Registry 校验第一阶段八个 Agent/AppStudio canonical functionRef，并在 AtomicTask 创建时固定合同 version/digest；调用方不能覆盖执行模式、能力或 Infra 映射，registry 升级不能改写历史任务。
+- `gitlab.pipeline.run` 仍是独立 GitLab 领域的非 Infra-backed 外部 AtomicTask，使用 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry。AppStudio 的 Git Repository 集成不自动创建 Pipeline、Build 或 Preview。
 - `appstudio.build.execute@1.1` 固定声明 `bundle.tar.gz`，Task Worker 从 Infrastructure 鉴权流式读取实际输出字节并双重校验大小/SHA-256，再完成 Asset Library Artifact 内容并幂等回链；`infra-output://` 不是 bearer 或任意外部 URL。
 - appstudio 通过 task-center 执行 Preview、Build 和 Production 发布/升级/回滚，并只保存 asset-library Artifact 的稳定 ID 与不可变 digest 快照；Build 只有在 Artifact READY 且 digest 一致后成功。
 - 新 StudioRuntimeInstance 健康后才能切换当前入口；回滚基于历史不可变内容创建新的 StudioRelease 和候选 RuntimeInstance，不修改或重新激活旧 Release。
@@ -117,6 +117,7 @@ GitLab API 连接、远端 Project 投影和 GitLab Pipeline 外部调用语义�
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
 - `agent` 的当前完整 S1/S2 和 AgentRuntimeAdapter 只读 Endpoint resolve 例外已由 `spec-v1.17.2` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，StudioBuild Artifact producer 与批量摘要投影已由 `spec-v1.17.1` 发布；Asset Library 对应 StudioBuild producer、owner、幂等与 owner-only 权限契约由 `spec-v1.17.1` 发布，Task Worker 受控 Infra 输出流交付合同由 `spec-v1.17.2` 发布；`infrastructure` 的当前 S1/S2 和 Endpoint/RuntimeOutput 闭环已由 `spec-v1.17.2` 发布。上述版本均允许按各自 implementation gate 作为正式实现依据。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
+- AppStudio GitLab 第二阶段由 `spec-v1.23.0` 发布：GitLab 成为唯一源码正文 Provider；AppStudio Revision/ChangeSet 仍为 canonical 业务事实并通过 `commit_sha` 关联 Git commit；Coding Runtime 的 clone、凭据文件和 `/workspace` 可丢弃，Preview/Build 源码按固定 commit 受控流式注入。
 - Infrastructure 普通摘要只返回 Runtime output descriptor 和非敏感 Endpoint 引用；Docker Job 必须收集实际输出字节后生成大小、SHA-256 和 `infra-output://`，Artifact 内容交付由 Task Worker 使用来源任务 producer context 调用 asset-library。
 - RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明端口并在健康检查后进入 READY。Endpoint 地址只可通过受工作负载身份、owner、状态和撤销校验的只读 resolve 短时取得；`USER_ACCESSIBLE` 必须受权，`PUBLIC` 第一阶段默认禁用。
 

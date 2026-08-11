@@ -2,9 +2,9 @@
 
 ## 1. 定位与目标
 
-`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影和通用 Pipeline 执行的独立领域。第一阶段只面向平台管理员提供连接与项目管理，并通过 Task Center 执行可恢复的 GitLab Pipeline AtomicTask。
+`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影、受控 Repository HTTP 适配和通用 Pipeline 执行的独立领域。管理 API 只面向平台管理员；AppStudio 第二阶段通过内部模块接口使用默认 Server、Project、Repository 和短期 Project Access Token。
 
-本领域不属于 AppStudio。AppStudio 的 StudioApplication、源码 Repository、Revision、Build、Preview 和 Release 事实保持不变；后续阶段如需关联，只能通过稳定的 GitLabProject ID 和受控模块接口协作。
+本领域不属于 AppStudio。AppStudio 的 StudioApplication、逻辑源码 Repository、Revision、ChangeSet、Build、Preview 和 Release 事实保持不变；跨域只保存稳定 GitLabProject ID 并使用受控模块接口，禁止共享私表、远端 numeric ID 或 PAT。
 
 ## 2. 核心对象
 
@@ -19,7 +19,9 @@ GitLabServer 表示一个由 OmniMAM 管理的 GitLab API 连接，包含：
 - 仅服务端持有的 Personal Access Token；
 - 最近一次连接检测状态、时间和脱敏错误。
 
-连接状态为 `UNKNOWN`、`READY` 或 `ERROR`。新建连接为 `UNKNOWN`；API URL、Namespace Path 或 credential 改变时必须重置为 `UNKNOWN`。External URL 或纯展示元数据变化不改变已验证连接状态。
+连接状态为 `UNKNOWN`、`READY` 或 `ERROR`。新建连接为 `UNKNOWN`；API URL、Namespace Path 或 credential 改变时必须重置为 `UNKNOWN` 并取消 AppStudio 默认标记。External URL 或纯展示元数据变化不改变已验证连接状态。
+
+最多一个 READY GitLabServer 可标记为 `is_appstudio_default=true`。设置新默认值必须在同一事务清除旧默认值；检测失败、连接参数变化或删除会留下“无默认 Server”状态，AppStudio 创建必须明确失败而不能任意选择其他 Server。
 
 Credential 是敏感值。创建和更新请求可以提交 credential，但任何列表、详情、测试响应、错误、日志、事件或任务输入输出都不得返回该值。
 
@@ -40,6 +42,12 @@ GitLabProject 是 GitLab 远端 Project 的本地受控投影，保存：
 `gitlab.pipeline.run` 是 Task Center 注册的非 Infra-backed 外部 AtomicTask。输入只包含 GitLabProject ID、ref 和可选 variables；Worker 必须从 GitLabProject 和 GitLabServer 解析远端 ID、API URL 与 credential。
 
 Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创建 Pipeline，后续延迟回调、自动重试和进程恢复必须查询同一 Pipeline，不得重复提交。运行中的 Pipeline 使用 `IN_PROGRESS` 和延迟回调，不长期占用 Worker。
+
+### 2.4 Repository 与 Runtime access
+
+GitLab Repository adapter 提供 Project tree/file/archive、默认分支 HEAD、commit compare/create 和 Project Access Token 创建/撤销能力。它只表达 GitLab HTTP 语义，不创建 AppStudio Revision 或 ChangeSet。
+
+AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private Project，并提交内置 Blueprint Starter Template。Runtime access 使用 project-scoped、带到期时间的 `write_repository` Token；明文只在创建响应到 Infrastructure tmpfs 注入的内存链路中存在，不进入 API、Task、数据库、事件、日志或容器环境。Runtime 停止、替换或到期时尽力撤销。
 
 ## 3. 角色与访问边界
 
@@ -65,6 +73,9 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 5. 删除 GitLabProject 时先删除远端 Project；远端返回 404 视为已达到目标状态，随后删除本地投影。
 6. 其他远端失败不得删除本地投影，便于管理员重试和排查。
 7. 第一阶段不提供 GitLabProject 更新 API。
+8. AppStudio 内部项目使用确定性 path 和本地 Project ID；重试必须复用已有远端 Project 和 Starter Template commit。
+9. Repository commit 必须接受 base SHA 与稳定幂等标记；HEAD 不匹配时拒绝，不自动 merge 或 force update。
+10. Project Access Token 只允许目标 Project、固定 Runtime、`write_repository` scope 和有限有效期；创建、解析、撤销错误必须脱敏。
 
 ## 6. Pipeline 执行规则
 
@@ -89,6 +100,10 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 - `BR-GITLAB-010`：Pipeline 必须通过 external_job_id、IN_PROGRESS 和延迟回调恢复，不长期占用 Worker。
 - `BR-GITLAB-011`：自动 Attempt 重试不得重复创建 Pipeline，手动重试创建新 AtomicTask。
 - `BR-GITLAB-012`：GitLab 管理 API 第一阶段仅对 ADMIN 和 SUPER_ADMIN 开放。
+- `BR-GITLAB-013`：最多一个 READY GitLabServer 可作为 AppStudio 默认 Server；连接变化或检测失败必须取消默认。
+- `BR-GITLAB-014`：AppStudio 只保存本地 GitLabProject ID，Repository adapter 不拥有 Revision/ChangeSet。
+- `BR-GITLAB-015`：Runtime Project Access Token 必须 project-scoped、限时、最小 scope、只经 tmpfs 注入并可撤销。
+- `BR-GITLAB-016`：Repository 写入必须使用 base SHA、稳定幂等标记和非 force 语义；HEAD 冲突不得自动合并。
 
 ## 8. 用户故事与验收
 
@@ -114,11 +129,22 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 - `AC-GITLAB-002-02`：Pipeline 成功、失败和取消分别映射为正确的 AtomicTask 终态。
 - `AC-GITLAB-002-03`：取消任务会尽力取消远端 Pipeline，输出不包含 credential、API URL 或原始响应。
 
-## 9. 第一阶段非目标
+### US-GITLAB-003 为 AppStudio 提供受控 Repository
 
-- 不修改 AppStudio、Coding Agent、Studio Source、Build、Preview 或 Release。
-- 不建立 StudioApplication 与 GitLabProject 的外键或 API 字段。
-- 不处理 Git push、Webhook、Blueprint、自动预览或自动发布。
+作为 AppStudio 内部流程，我可以在唯一默认 GitLabServer 中幂等初始化 Project，按 commit 读取源码，并为固定 Coding Runtime 获取限时 Git access，而不暴露 PAT 或改变 AppStudio Revision/ChangeSet 事实。
+
+验收标准：
+
+- `AC-GITLAB-003-01`：只有 READY 默认 Server 可用于 AppStudio 初始化，且同一创建幂等键不重复 Project 或 Starter commit。
+- `AC-GITLAB-003-02`：Repository file/archive/commit/compare 只接受本地 Project ID，经 Server/Project 投影解析远端参数。
+- `AC-GITLAB-003-03`：Runtime token 只绑定目标 Project 和 Runtime，有到期时间，明文不落库、不进环境、不出现在日志/错误，并在 Runtime 终止时尽力撤销。
+- `AC-GITLAB-003-04`：base SHA 不等于默认分支 HEAD、非单 commit fast-forward 或 force 语义时拒绝，AppStudio Revision 不推进。
+
+## 9. 当前非目标
+
+- 不让 GitLab 拥有 AppStudio Revision、ChangeSet、Build、Preview 或 Release。
+- 不建立 StudioApplication 与 GitLabProject 的数据库外键或公共 API 字段。
+- 不处理 Webhook、自动预览、自动 Build 或自动发布；Coding Runtime push 只触发当前 Invocation 的 Worker 同步。
 - 不管理 GitLab Server 进程的 start/stop/restart。
-- 不提供 GitLab Project PATCH、Repository 文件 API 或 Pipeline 日志 API。
+- 不提供公共 GitLab Project PATCH、Repository 文件 API 或 Pipeline 日志 API；Repository 能力仅为内部模块接口。
 - 不引入第二套 Secret Provider、Vault 或 GitLab OAuth。

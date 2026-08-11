@@ -9,7 +9,7 @@
 - Runtime 创建、停止、删除和其他生命周期写操作必须由 Task Center 的 Task Worker 通过受控 Infra Adapter 发起；唯一例外是 AgentRuntimeAdapter 在完整业务绑定校验后，以 Agent 工作负载身份调用只读 Endpoint resolve。
 - 第一阶段只支持 `DockerRuntimeProvider`，Kubernetes、Edge、Local Process 和多节点调度属于后续版本规划。
 - RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明的容器端口，并在映射建立和健康检查通过后把 Endpoint 标记为 `READY`。
-- `AgentWorkspace` 只能按 Agent 授权挂载；`StudioWorkspace` 只能通过 AppStudio 受控授权访问。
+- `AgentWorkspace` 只能按 Agent 授权挂载；Coding Runtime 不挂载 StudioWorkspace，而是接收 Git clone 非敏感配置、tmpfs credential helper 和可丢弃 `/workspace`；Preview/Build 源码按 AppStudio Revision/Snapshot 固定 commit 受控注入。
 - Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace。
 - Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。
 - Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
@@ -17,7 +17,7 @@
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
 - `USER_ACCESSIBLE` Endpoint 必须校验 owner 和当前授权，`PUBLIC` 第一阶段默认禁用；Host Port 和私网地址不得进入普通摘要。
 - Endpoint resolve 返回的短时 `base_url` 不得进入 Agent 表、Task 结果、事件、日志或普通 Endpoint 摘要。
-- Agent Invocation Worker 只能凭 Attempt-scoped authorization ref 解析 READY Runtime Endpoint；Infrastructure 不接收消息正文、用户模型凭证或 AppStudio Workspace Tool grant，也不拥有 Invocation 终态。
+- Agent Invocation Worker 只能凭 Attempt-scoped authorization ref 解析 READY Runtime Endpoint；Infrastructure 不接收消息正文、用户模型凭证或源码正文 Task 参数，也不拥有 Invocation 终态。Git credential 明文只能在授权 resolver 到 tmpfs stdin 注入的内存链路中存在。
 
 ## 3. 正式事实源
 

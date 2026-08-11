@@ -1,5 +1,5 @@
 -- AppStudio S2 design schema, v1.0.0-draft. This is not a migration.
--- 源码正文和存储定位属于 Source Service 私有边界；本 schema 只保存索引、摘要和业务引用。
+-- GitLab 是源码正文唯一事实源；本 schema 只保存文件索引、摘要、业务引用和 Revision 对应的 commit SHA。
 -- StudioWorkspace、default_workspace_id、workspace_id 与 workspace_revision 是后端 canonical 事实；公共 API、页面、通知和 SSE 只投影 StudioApplication/Source/Revision，不得暴露或要求用户传入这些字段。
 
 -- s1_refs: R-STUDIO-001, R-STUDIO-010, R-STUDIO-022; source: 2.1, 6 StudioApplication 创建, 16 Agent 与 StudioApplication 生命周期.
@@ -13,6 +13,8 @@ CREATE TABLE studio_applications (
   resource_version INTEGER NOT NULL DEFAULT 0,
   owner_user_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'ARCHIVED', 'ERROR')),
+  blueprint_id TEXT NOT NULL,
+  blueprint_version TEXT NOT NULL,
   default_workspace_id TEXT,
   current_version_id TEXT,
   coding_agent_id TEXT,
@@ -35,10 +37,12 @@ CREATE TABLE studio_source_repositories (
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0,
   studio_application_id TEXT NOT NULL REFERENCES studio_applications(id),
-  provider_type TEXT NOT NULL CHECK (provider_type IN ('BUILT_IN')),
+  provider_type TEXT NOT NULL CHECK (provider_type IN ('GITLAB')),
+  gitlab_project_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('CREATING', 'READY', 'ARCHIVED', 'ERROR')),
   current_revision INTEGER NOT NULL DEFAULT 0
 );
+CREATE UNIQUE INDEX idx_studio_source_repositories_gitlab_project ON studio_source_repositories(gitlab_project_id);
 
 -- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.3 StudioWorkspace, 7 Coding Agent 开发. Internal default editing context; no public Workspace resource API.
 CREATE TABLE studio_workspaces (
@@ -88,11 +92,13 @@ CREATE TABLE studio_workspace_revisions (
   resource_version INTEGER NOT NULL DEFAULT 0,
   workspace_id TEXT NOT NULL REFERENCES studio_workspaces(id),
   revision INTEGER NOT NULL,
+  commit_sha TEXT NOT NULL,
   content_digest TEXT NOT NULL,
   parent_revision INTEGER,
   created_by TEXT NOT NULL,
   change_set_id TEXT,
-  UNIQUE (workspace_id, revision)
+  UNIQUE (workspace_id, revision),
+  UNIQUE (workspace_id, commit_sha)
 );
 
 -- s1_refs: R-STUDIO-003, R-STUDIO-010, R-STUDIO-022; source: 5.4 StudioWorkspaceRevision 与 StudioChangeSet, 7 Coding Agent 开发.

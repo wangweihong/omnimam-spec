@@ -2,12 +2,13 @@
 
 ## 1. 领域职责
 
-`gitlab` 管理 GitLab API 连接、远端 Project 的本地投影和通用 Pipeline 外部任务语义。它是独立领域，不属于 AppStudio，也不拥有 StudioApplication、源码 Revision、Build 或 Release。
+`gitlab` 管理 GitLab API 连接、远端 Project 的本地投影、Repository HTTP 适配和通用 Pipeline 外部任务语义。它是独立领域，不属于 AppStudio，也不拥有 StudioApplication、源码 Revision、ChangeSet、Build 或 Release。
 
 ## 2. 核心对象
 
 - `GitLabServer`：API URL、External URL、固定 Namespace、PAT 和最近连接状态。
 - `GitLabProject`：GitLab 远端 Project 的本地稳定投影。
+- Repository adapter：按 Project 调用 tree/file/commit/archive/branch 和 Project Access Token API；不拥有 AppStudio Revision。
 - `gitlab.pipeline.run`：通过 Task Center/Task Worker 执行并用 external_job_id 恢复的外部 AtomicTask。
 
 ## 3. 核心规则
@@ -20,7 +21,7 @@
 
 ## 4. 领域边界
 
-GitLab 拥有连接、远端 Project 映射和 GitLab HTTP Client 语义。Task Center 拥有 AtomicTask、TaskAttempt、重试、取消和终态。Identity 提供管理员权限。AppStudio 第一阶段不引用 GitLab 对象。
+GitLab 拥有连接、远端 Project 映射、默认 AppStudio Server 选择和 GitLab HTTP Client 语义。Task Center 拥有 AtomicTask、TaskAttempt、重试、取消和终态。Identity 提供管理员权限。AppStudio 第二阶段只通过稳定 Project ID 和受控模块接口使用 Repository，不共享表或 PAT。
 
 ## 5. 正式事实源
 
@@ -38,4 +39,4 @@ GitLab 拥有连接、远端 Project 映射和 GitLab HTTP Client 语义。Task 
 
 ## 6. 当前状态
 
-本领域随 `spec-v1.22.0` 首次建立并发布。AppStudio 绑定、Webhook、自动构建和发布不在本阶段。
+本领域随 `spec-v1.22.0` 首次建立并发布；AppStudio Repository binding 和 Runtime access 由 `spec-v1.23.0` 发布。Webhook、自动构建、自动 Preview 和发布仍不在本阶段。
