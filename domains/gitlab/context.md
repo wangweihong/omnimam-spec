@@ -7,7 +7,7 @@
 ## 2. 核心对象
 
 - `GitLabServer`：API URL、External URL、固定 Namespace、PAT 和最近连接状态。
-- `GitLabProject`：GitLab 远端 Project 的本地稳定投影。
+- `GitLabProject`：GitLab 远端 Project 的本地稳定投影，支持远端调用前的 `CREATING` reservation 和完成后的 `READY/ERROR` 状态。
 - Repository adapter：按 Project 调用 tree/file/commit/archive/branch 和 Project Access Token API；不拥有 AppStudio Revision。
 - `gitlab.pipeline.run`：通过 Task Center/Task Worker 执行并用 external_job_id 恢复的外部 AtomicTask。
 
@@ -39,4 +39,4 @@ GitLab 拥有连接、远端 Project 映射、默认 AppStudio Server 选择和 
 
 ## 6. 当前状态
 
-本领域随 `spec-v1.22.0` 首次建立并发布；AppStudio Repository binding 和 Runtime access 由 `spec-v1.23.0` 发布。Webhook、自动构建、自动 Preview 和发布仍不在本阶段。
+本领域随 `spec-v1.22.0` 首次建立并发布；AppStudio Repository binding、Runtime access 和 pre-remote Project reservation 由 `spec-v1.23.1` 发布。Webhook、自动构建、自动 Preview 和发布仍不在本阶段。

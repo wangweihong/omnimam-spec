@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- 修正 AppStudio 初始化 reservation 合同：GitLabProject 支持远端调用前的 `CREATING` projection，远端 numeric ID/URL 可在 reservation 阶段为空，成功后切换 `READY`，失败保留 `ERROR` 以支持幂等恢复。
 - AppStudio GitLab 第二阶段：GitLab 成为唯一源码正文 Provider，新增 `web-react@v1` Blueprint、默认 GitLabServer、稳定 GitLabProject 引用、Revision CommitSHA、Runtime-scoped Git access、`/workspace` tmpfs clone、Preview/Build archive 注入和 Coding Invocation 单 commit fast-forward 投影；移除 Workspace Tool/BUILT_IN 正文契约，不新增错误码、权限码、事件或公共 AppStudio 创建参数。
 - 新增独立 `gitlab` domain 第一阶段 S1/S2：管理员 GitLabServer CRUD/Test、GitLabProject 创建/查询/删除、PAT 只写不读、关联删除保护和可恢复 `gitlab.pipeline.run` 外部 AtomicTask；AppStudio 契约保持不变。
 - Agent/AppStudio 新增 Coding Agent Runtime 当前详情、跨 generation 历史、最近 5000 行脱敏日志和投影/实时健康诊断契约；Infrastructure logs/health 固定 `owner_reference` 资源授权、通用健康降级和 Provider/Docker 信息隐藏，新增 `appstudio.agent.runtime.logs.read`。

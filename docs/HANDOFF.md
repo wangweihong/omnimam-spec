@@ -2,9 +2,8 @@
 
 ## 当前目标与状态
 
-- 目标：发布 `spec-v1.23.0`，正式定义 AppStudio GitLab 第二阶段跨域契约。
-- 状态：内容 commit `7010953df6130caa1f59c8b19dd9feaa5e06d467` 已完成，`spec-v1.23.0` release record 已写入；正在创建 release commit/tag 并推送。
-- 基线：`spec-v1.22.0` release commit `edcdbcebf8daecec8eaefd129338e829512b00fe`。
+- 目标：发布 `spec-v1.23.1`，修正 AppStudio 初始化必须先持久化 `CREATING` Project reservation 与 GitLabProject schema 不能表达该状态的冲突。
+- 状态：进行中。基线是已发布 `spec-v1.23.0` tag `ee0cf7f7732a74d1ca36cc1e73a5541a333ed025`。
 
 ## 本次已完成
 
@@ -18,14 +17,14 @@
 
 ## 当前进行中
 
-- 创建 `spec-v1.23.0` release commit、annotated tag 和 push，并校验远端引用。
+- 已完成 AppStudio/GitLab S1、GitLab schema、跨域 module contract、领域 Context、全局 release 导航和 changelog 修正；正在执行定向一致性检查并创建内容 commit，之后写 release record/tag/push。
 
 ## 文件变化
 
-- Modified: `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`CHANGELOG.md`。
-- Modified: `domains/{appstudio,agent,gitlab,infrastructure,task-center}/context.md`。
-- Modified: `00_product/domains/{appstudio,agent,gitlab,infrastructure,task-center}/product-spec.md`。
-- Modified: AppStudio schema/module contract、GitLab schema/OpenAPI/module contract、Agent/Infrastructure/Task Center module contracts。
+- Modified: `GLOBAL_CONTEXT.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- Modified: `domains/{appstudio,gitlab}/context.md`。
+- Modified: `00_product/domains/{appstudio,gitlab}/product-spec.md`。
+- Modified: `01_contracts/domains/gitlab/{schema.sql,module-contract.md}`。
 
 ## 关键决定
 
@@ -34,6 +33,7 @@
 - Runtime token 明文不得进入环境变量、Task、数据库、日志、错误或 Docker inspect；停止、替换、到期时撤销，失败由到期兜底。
 - 同一 Workspace 同时只允许一个源码写事务；无 commit、多 commit、分叉、force 语义或 base 漂移均不推进 Revision。
 - 不迁移 `BUILT_IN` 旧数据；部署切换时清理 PostgreSQL 和旧 AppStudio source volume。
+- GitLabProject 是唯一允许跨域引用的稳定 Project identity；其 `CREATING` reservation 可在远端创建前没有 numeric ID/URL，只有补全投影后的 `READY` Project 可被 Repository adapter 消费。
 
 ## API、Schema、依赖或配置变化
 
@@ -51,12 +51,12 @@
 
 ## 未完成事项
 
-- 创建 `spec-v1.23.0` release commit/tag 并推送。
-- 下游 server 更新 pin 后实施并验证。
+- 完成 `spec-v1.23.1` 内容 commit、release commit、annotated tag 与远端校验。
+- 下游 server 更新 pin、实现 reservation-to-READY 状态机并验证。
 
 ## 推荐下一步
 
-提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.23.0` tag，并推送当前分支与 tag。
+运行定向 `rg`/`git diff --check` 校验 reservation 的 S1/S2 一致性，提交内容 commit，然后使用该 SHA 写入 `RELEASE.md`。
 
 Next Prompt:
 

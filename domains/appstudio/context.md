@@ -6,7 +6,7 @@
 
 ## 2. 核心对象
 
-- `StudioApplication`、`StudioApplicationVersion`：生成应用身份及固定 Source Snapshot 的发布版本。
+- `StudioApplication`、`StudioApplicationVersion`：生成应用身份及固定 Source Snapshot 的发布版本；创建流程先持久化不可用的 `CREATING` reservation，完成 GitLab Project、源码 Revision 0 和内部 Agent 绑定后才进入 `READY`。
 - `StudioApplication` 当前 Coding Agent 投影：保存 Agent、默认 Session 和 generation；替换 Agent 创建新 generation，旧 Agent/Session/Invocation 历史保留。
 - `StudioSourceRepository`、`StudioWorkspace`、Revision、`StudioChangeSet`：内部逻辑源码仓库、默认编辑上下文和原子变更历史；GitLab 保存文件正文，Revision 通过 `commit_sha` 固定 Git commit，公共投影仍为应用级 Source/Revision。
 - `web-react@v1` Blueprint：随 Server 发布的内置只读 Starter Template、Prompt、validation 和外部 CI include 引用，不形成公共 Blueprint Service。
@@ -66,7 +66,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-AppStudio 既有 Source/Build/Release 基线分别由 `spec-v1.16.0`、`spec-v1.16.1` 和 `spec-v1.17.1` 发布；创建模型选择、Coding Agent generation/application facade、首次 Invocation 和 Invocation-to-Revision 恢复契约已由后续 release 发布；GitLab-only Source、`web-react@v1` Blueprint 与 Runtime Git workspace 由 `spec-v1.23.0` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio 既有 Source/Build/Release 基线分别由 `spec-v1.16.0`、`spec-v1.16.1` 和 `spec-v1.17.1` 发布；创建模型选择、Coding Agent generation/application facade、首次 Invocation 和 Invocation-to-Revision 恢复契约已由后续 release 发布；GitLab-only Source、`web-react@v1` Blueprint、Runtime Git workspace 与 pre-remote `CREATING` reservation 由 `spec-v1.23.1` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

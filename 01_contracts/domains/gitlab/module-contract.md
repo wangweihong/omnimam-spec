@@ -5,7 +5,7 @@
 | 模块 | 拥有事实 | 提供能力 | 不负责 |
 | --- | --- | --- | --- |
 | `server` | GitLabServer、credential、连接状态、AppStudio 默认标记 | Server CRUD、Test、默认 Server 解析和 Client Factory 输入 | GitLab 进程生命周期、Secret Provider |
-| `project` | GitLabProject 本地投影 | 远端 Project 幂等创建/读取/删除和投影维护 | AppStudio Revision/ChangeSet、Webhook |
+| `project` | GitLabProject 本地投影及 `CREATING -> READY/ERROR` reservation | 远端 Project 幂等创建/读取/删除、reservation 和投影维护 | AppStudio Revision/ChangeSet、Webhook |
 | `repository` | GitLab Repository 与 Project Access Token 协议适配 | tree/file/archive、HEAD、compare/commit、token create/revoke | AppStudio 业务事务、Runtime 生命周期 |
 | `client` | GitLab HTTP 协议适配 | version/user/namespace/project/repository/token/pipeline API | 业务权限、数据库事务、Task 状态 |
 | `pipeline-worker` | 一次 GitLab Pipeline Attempt 的外部调用 | create/get/cancel、external_job_id 恢复和小型结果 | AtomicTask 状态机、业务数据库直写、Infra/Docker |
@@ -32,6 +32,8 @@
 管理调用使用 `PRIVATE-TOKEN`；Runtime Git clone/push 只使用限时 Project Access Token。所有调用必须限制响应体或 archive 流大小，解析 GitLab `{message}` 错误并保留上下文取消。连接 Test 的单次外部操作和整体检测必须有明确 deadline。任何 token、credential 或带凭据 clone URL 都必须在日志和错误中脱敏。
 
 AppStudio 消费方定义 `SourceProvider`，GitLab domain 提供 `GitLabSourceProvider` adapter。该 adapter 只接受本地 GitLabProject ID 和结构化参数，提供确定性 Project 幂等初始化、按 commit SHA 的 file/tree/archive、带 base SHA 与稳定幂等标记的 commit、默认分支 HEAD/compare，以及 Runtime workspace access 创建/撤销。远端 numeric ID、PAT 和 credential URL 不得跨越该接口。
+
+AppStudio 初始化的顺序是：AppStudio 先持久化 `CREATING` Application/Repository/Workspace reservation；GitLab adapter 再以同一稳定本地 Project ID 和确定性 path 持久化 `CREATING` GitLabProject projection；只有 reservation 存在后才调用远端 Project API。远端成功时补全 numeric ID/URL 并切换 Project 为 `READY`；远端或补偿失败保留脱敏 `ERROR` reservation。重复调用必须复用 reservation、远端 Project 和 Starter commit。
 
 ## 4. Task Center 协作
 

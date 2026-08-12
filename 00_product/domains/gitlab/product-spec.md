@@ -27,7 +27,7 @@ Credential 是敏感值。创建和更新请求可以提交 credential，但任�
 
 ### 2.2 GitLabProject
 
-GitLabProject 是 GitLab 远端 Project 的本地受控投影，保存：
+GitLabProject 是 GitLab 远端 Project 的本地受控投影。为支持 AppStudio 崩溃恢复，它允许在远端调用前保存不可用的 `CREATING` reservation；此时只保存稳定本地 ID、Server、name/path、确定性完整 path 和默认分支，远端 numeric ID 与 URL 字段为空。远端创建及投影补全后状态变为 `READY`；不可恢复失败可标记 `ERROR`，不得被 Repository adapter 当作可用 Project 使用。READY Project 保存：
 
 - 所属 GitLabServer ID；
 - GitLab numeric project ID；
@@ -66,14 +66,14 @@ AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private 
 
 ## 5. Project 管理规则
 
-1. 只有状态为 `READY` 的 GitLabServer 可以创建远端 Project。
+1. 只有状态为 `READY` 的 GitLabServer 可以创建远端 Project；创建前允许为 AppStudio 持久化 `CREATING` GitLabProject reservation。
 2. Namespace 必须由 GitLabServer 的 Namespace Path 解析，客户端不能在创建请求中覆盖 namespace ID 或 path。
 3. 新项目固定为 private；name/path 来自受校验请求，其他投影字段使用 GitLab 实际响应。
-4. 远端创建成功但本地投影写入失败时，服务必须尽力删除刚创建的远端 Project；补偿失败需记录脱敏诊断并返回稳定业务错误。
+4. `CREATING` reservation 必须使用确定性本地 ID 和 path；远端创建成功后补全 numeric ID/URL 并原子切换为 `READY`。远端创建成功但投影补全失败时，服务必须尽力删除刚创建的远端 Project；补偿失败需保留脱敏 `ERROR` reservation 并返回稳定业务错误。
 5. 删除 GitLabProject 时先删除远端 Project；远端返回 404 视为已达到目标状态，随后删除本地投影。
 6. 其他远端失败不得删除本地投影，便于管理员重试和排查。
 7. 第一阶段不提供 GitLabProject 更新 API。
-8. AppStudio 内部项目使用确定性 path 和本地 Project ID；重试必须复用已有远端 Project 和 Starter Template commit。
+8. AppStudio 内部项目使用确定性 path 和本地 Project ID；重试必须复用已有 `CREATING`/`READY` reservation、远端 Project 和 Starter Template commit，不得把空 numeric ID 或空 URL 的 reservation 当作可读 Project。
 9. Repository commit 必须接受 base SHA 与稳定幂等标记；HEAD 不匹配时拒绝，不自动 merge 或 force update。
 10. Project Access Token 只允许目标 Project、固定 Runtime、`write_repository` scope 和有限有效期；创建、解析、撤销错误必须脱敏。
 
@@ -135,7 +135,7 @@ AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private 
 
 验收标准：
 
-- `AC-GITLAB-003-01`：只有 READY 默认 Server 可用于 AppStudio 初始化，且同一创建幂等键不重复 Project 或 Starter commit。
+- `AC-GITLAB-003-01`：只有 READY 默认 Server 可用于 AppStudio 初始化；远端调用前必须存在同一稳定 ID 的 `CREATING` GitLabProject reservation，同一创建幂等键重试不得重复 reservation、Project 或 Starter commit，成功后只返回 READY projection。
 - `AC-GITLAB-003-02`：Repository file/archive/commit/compare 只接受本地 Project ID，经 Server/Project 投影解析远端参数。
 - `AC-GITLAB-003-03`：Runtime token 只绑定目标 Project 和 Runtime，有到期时间，明文不落库、不进环境、不出现在日志/错误，并在 Runtime 终止时尽力撤销。
 - `AC-GITLAB-003-04`：base SHA 不等于默认分支 HEAD、非单 commit fast-forward 或 force 语义时拒绝，AppStudio Revision 不推进。

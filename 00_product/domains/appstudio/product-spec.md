@@ -1045,7 +1045,10 @@ sequenceDiagram
     participant AS as Agent Service
 
     U->>ST: CreateStudioApplication
-    ST->>ST: 原子创建 Application / Repository / 默认源码上下文(revision=0)
+    ST->>ST: 持久化 CREATING Application / Repository / Workspace reservation
+    ST->>GL: 持久化同 ID 的 CREATING GitLabProject reservation
+    GL->>GL: 幂等创建远端 private Project 和 Starter Template commit
+    ST->>ST: 原子完成 Revision 0 / Agent / Session / Bindings 并切换 READY
 
     ST->>AS: CreateCodingAgentForStudio(内部 Application/Workspace 引用)
     AS-->>ST: agentId
@@ -1059,7 +1062,9 @@ sequenceDiagram
     ST-->>U: READY Application + 当前 Agent + 首次 Invocation
 ```
 
-Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding 必须作为一个初始化事务提交。初始化失败时不得产生可用项目；同一 owner 与创建幂等键重试不得重复创建任何初始化对象。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
+创建先按 owner/幂等键确定 Application、Repository、Workspace、GitLabProject ID 和远端 path，并持久化不可用的 `CREATING` Application/Repository/Workspace reservation；GitLab domain 随后持久化同 ID 的 `CREATING` GitLabProject projection，再调用远端创建 Project 和 Starter Template commit。远端项目或 commit 成功时，重试必须复用同一 Project/commit，不得重复创建；初始化失败时保留不可用 reservation 供恢复，不得暴露为 READY。
+
+Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding 必须作为一个初始化事务提交，并将 Application/Repository/Workspace/GitLabProject projection 切换为 `READY`。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
 
 创建时不要求 Runtime 已经 READY，但初始需求会自动触发首次 Invocation 的 Task 驱动 Runtime gating。`codingModelSelection` 必须由用户明确选择并形成 Coding 用途的 ACTIVE primary ModelBinding，不得回退到用户默认模型或其他隐式模型。
 
@@ -2689,7 +2694,7 @@ flowchart LR
 
 验收标准：
 
-- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace、Blueprint 或 GitLab Server 输入；当前 STATIC_WEB 固定使用内置 `web-react@v1`，后端按 owner/创建幂等键在唯一 READY 默认 GitLabServer 中幂等创建 private Project 和 Starter Template commit，再原子完成 Application、Repository、唯一默认源码上下文 revision 0、固定 Coding Agent/Session/WorkspaceBinding 和 ACTIVE primary Coding ModelBinding。初始化失败不得产生 READY 项目；重试不得重复 Project、commit 或初始化对象。
+- `AC-APPSTUDIO-001-01`：`CreateStudioApplication` 不接受 Workspace、Blueprint 或 GitLab Server 输入；当前 STATIC_WEB 固定使用内置 `web-react@v1`。后端必须先按 owner/创建幂等键持久化不可用的 `CREATING` Application/Repository/Workspace reservation，并通过 GitLab domain 持久化同一稳定 ID 的 `CREATING` GitLabProject projection，再在唯一 READY 默认 GitLabServer 中幂等创建 private Project 和 Starter Template commit，最后原子完成 Revision 0、固定 Coding Agent/Session/WorkspaceBinding、ACTIVE primary Coding ModelBinding 和 READY 投影。初始化失败不得产生 READY 项目；重试不得重复 Project、commit 或初始化对象。
 - `AC-APPSTUDIO-001-02`：所有源码写入必须提交 `base_revision`、幂等键和完整操作集合；Revision 冲突、越权或校验失败时不覆盖、不隐式合并、不部分应用。
 - `AC-APPSTUDIO-001-03`：Coding Runtime 只能使用绑定 Principal、AgentRuntime、generation、Application、Workspace、GitLabProject 和有效期的 Runtime access；凭据只进入 tmpfs。Coding Invocation 必须固定 base Revision/CommitSHA，成功只允许 push 一个普通 fast-forward commit，Worker 幂等投影后才算产生新的 Source Revision；用户侧不接触 Workspace 或 GitLab 字段。
 - `AC-APPSTUDIO-001-04`：Preview 固定启动时的应用源码 Revision，后续源码变化不会隐式改变正在运行的 Preview。
