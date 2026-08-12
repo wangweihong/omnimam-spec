@@ -1,5 +1,31 @@
 # Release Records
 
+## spec-v1.23.3
+
+- commit: 31c9be36314153ea4f24be39866c93d5c295d7d2
+- status: released
+- confirmed_by: user（2026-08-12 明确要求发布 AppStudio 初始化诊断与显式恢复 `spec-v1.23.3` 并按计划修复）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+  - task-center
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/gitlab/errors.yaml
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+  - domains/task-center/context.md
+- implementation_gate: AppStudio 初始化固定公开 GitLab Project、Webhook、应用初始化和首次 Coding Invocation 四阶段，应用级接口只返回当前 DAG、0..1 进度、阶段状态/Attempt/失败时间/本地化安全错误，不泄漏 Workspace、credential、任务参数或原始 runtime payload。缺少唯一 READY 默认 GitLabServer 必须保留 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`，GitLab SourceProvider 同时保留连接、远端和 projection 结构化错误。仅 `ERROR` reservation 可按 Application ID 与 retry 幂等键稳定派生新 DAG；同 key 返回同轮结果，运行中不同 key 被拒绝，既有 Project/Hook/Repository/Workspace/Agent/Session/Message/Invocation 全部复用。Application 当前 DAG 引用、条件回滚和 `task.owner_id` fence 必须阻止旧 DAG 迟到事件覆盖新轮次；不新增数据库表、字段、权限码或事件。
+
 ## spec-v1.23.2
 
 - commit: 7710c26efff4466f62f2bf36a2fff5b1f63ddde2
