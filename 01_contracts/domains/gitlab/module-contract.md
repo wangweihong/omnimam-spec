@@ -18,6 +18,7 @@
 - Credential 只在服务端内存和 HTTP header 中短暂出现，不进入 JSON、日志、Task 参数、Task 输出或事件。
 - GitLab Client Factory 从 GitLabServer 构造带超时的 client；业务 service 不直接拼装 HTTP 请求。
 - `is_appstudio_default=true` 只允许 READY Server；更新默认值必须在一个数据库事务中清除旧默认。API URL、Namespace Path 或 credential 变化以及 Test 失败必须清除当前标记，partial unique index 保证全局最多一个默认 Server。
+- 默认 Server 解析找不到唯一 READY 且 `is_appstudio_default=true` 的 Server 时返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；不得任意选择其他 READY Server。
 
 ## 3. GitLab Client 接口
 
@@ -31,7 +32,7 @@
 
 管理调用使用 `PRIVATE-TOKEN`；Runtime Git clone/push 只使用限时 Project Access Token。所有调用必须限制响应体或 archive 流大小，解析 GitLab `{message}` 错误并保留上下文取消。连接 Test 的单次外部操作和整体检测必须有明确 deadline。任何 token、credential 或带凭据 clone URL 都必须在日志和错误中脱敏。
 
-AppStudio 消费方定义 `SourceProvider`，GitLab domain 提供 `GitLabSourceProvider` adapter。该 adapter 只接受本地 GitLabProject ID 和结构化参数，提供确定性 Project 幂等初始化、按 commit SHA 的 file/tree/archive、带 base SHA 与稳定幂等标记的 commit、默认分支 HEAD/compare，以及 Runtime workspace access 创建/撤销。远端 numeric ID、PAT 和 credential URL 不得跨越该接口。
+AppStudio 消费方定义 `SourceProvider`，GitLab domain 提供 `GitLabSourceProvider` adapter。该 adapter 只接受本地 GitLabProject ID 和结构化参数，提供确定性 Project 幂等初始化、按 commit SHA 的 file/tree/archive、带 base SHA 与稳定幂等标记的 commit、默认分支 HEAD/compare，以及 Runtime workspace access 创建/撤销。adapter 必须保留默认 Server 不可用、连接、远端 Project 和 projection 的结构化 GitLab 业务错误链，不得统一映射为 `ERR_APPSTUDIO_SOURCE_CHANGE_REJECTED`。远端 numeric ID、PAT 和 credential URL 不得跨越该接口。
 
 AppStudio 初始化的顺序是：AppStudio 先持久化 `CREATING` Application/Repository/Workspace reservation；GitLab adapter 再以同一稳定本地 Project ID 和确定性 path 持久化 `CREATING` GitLabProject projection；只有 reservation 存在后才调用远端 Project API。远端成功时补全 numeric ID/URL 并切换 Project 为 `READY`；远端或补偿失败保留脱敏 `ERROR` reservation。重复调用必须复用 reservation、远端 Project 和 Starter commit。
 
@@ -48,7 +49,7 @@ AppStudio Project Hook URL 只能来自服务端部署配置。adapter 生成或
 ## 5. 跨域与安全
 
 - AppStudio 只保存本地 GitLabProject ID，通过消费方 `SourceProvider` 使用内部能力；双方不共享表、不建立跨 Domain 外键，也不向 AppStudio 公共 API 增加 GitLab 字段。
-- AppStudio 初始化仅解析唯一 READY 默认 Server，使用稳定 Application/Repository/Workspace/Project ID 和确定性 path。远端 Project 或 Starter commit 已成功时，同一幂等键必须返回原 Project/commit，不得重复创建。
+- AppStudio 初始化仅解析唯一 READY 默认 Server，使用稳定 Application/Repository/Workspace/Project ID 和确定性 path。缺失默认 Server 返回专用结构化错误；远端 Project 或 Starter commit 已成功时，同一创建或恢复幂等链必须返回原 Project/commit，不得重复创建。
 - Runtime workspace access 只允许目标 Project、固定 Runtime/generation、`write_repository` 和有限有效期。明文 token 只返回给受信 Infrastructure resolver 的内存链路；停止、替换或到期时幂等撤销，撤销失败依靠到期兜底。
 - Identity 只提供 ADMIN/SUPER_ADMIN 权限校验；GitLab 不读取 Identity 私表。
 - GitLab 不调用 Infrastructure，不操作 Docker Socket，不写其他领域数据库。
@@ -56,4 +57,4 @@ AppStudio Project Hook URL 只能来自服务端部署配置。adapter 生成或
 
 ## 6. S1 追溯
 
-主要规则：`BR-GITLAB-001..016`；用户故事：`US-GITLAB-001..003`；验收：`AC-GITLAB-001-*`、`AC-GITLAB-002-*`、`AC-GITLAB-003-*`。
+主要规则：`BR-GITLAB-001..019`；用户故事：`US-GITLAB-001..003`；验收：`AC-GITLAB-001-*`、`AC-GITLAB-002-*`、`AC-GITLAB-003-*`。

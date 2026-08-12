@@ -21,7 +21,7 @@ GitLabServer 表示一个由 OmniMAM 管理的 GitLab API 连接，包含：
 
 连接状态为 `UNKNOWN`、`READY` 或 `ERROR`。新建连接为 `UNKNOWN`；API URL、Namespace Path 或 credential 改变时必须重置为 `UNKNOWN` 并取消 AppStudio 默认标记。External URL 或纯展示元数据变化不改变已验证连接状态。
 
-最多一个 READY GitLabServer 可标记为 `is_appstudio_default=true`。设置新默认值必须在同一事务清除旧默认值；检测失败、连接参数变化或删除会留下“无默认 Server”状态，AppStudio 创建必须明确失败而不能任意选择其他 Server。
+最多一个 READY GitLabServer 可标记为 `is_appstudio_default=true`。设置新默认值必须在同一事务清除旧默认值；检测失败、连接参数变化或删除会留下“无默认 Server”状态，AppStudio 创建或恢复必须返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`，不能任意选择其他 Server，也不能把该原因压缩为 AppStudio 通用 Source 错误。
 
 Credential 是敏感值。创建和更新请求可以提交 credential，但任何列表、详情、测试响应、错误、日志、事件或任务输入输出都不得返回该值。
 
@@ -115,6 +115,7 @@ Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 c
 - `BR-GITLAB-016`：Repository 写入必须使用 base SHA、稳定幂等标记和非 force 语义；HEAD 冲突不得自动合并。
 - `BR-GITLAB-017`：AppStudio Project Hook 使用每 Project 唯一 token，明文只发送给 GitLab且只保存 SHA-256 digest，重复初始化不得创建重复 Hook。
 - `BR-GITLAB-018`：Pipeline Hook 只加速投影，external_job_id polling 仍保证最终一致；Artifact 下载只接受本地 Project/Pipeline 与受控名称，不接受任意 URL。
+- `BR-GITLAB-019`：不存在唯一 READY AppStudio 默认 GitLabServer 时，Project 初始化必须返回专用可诊断错误；SourceProvider 必须保留该错误以及连接、远端和 projection 的结构化业务错误，不得统一改写为 AppStudio Source 错误。
 
 ## 8. 用户故事与验收
 
@@ -150,6 +151,7 @@ Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 c
 - `AC-GITLAB-003-02`：Repository file/archive/commit/compare 只接受本地 Project ID，经 Server/Project 投影解析远端参数。
 - `AC-GITLAB-003-03`：Runtime token 只绑定目标 Project 和 Runtime，有到期时间，明文不落库、不进环境、不出现在日志/错误，并在 Runtime 终止时尽力撤销。
 - `AC-GITLAB-003-04`：base SHA 不等于默认分支 HEAD、非单 commit fast-forward 或 force 语义时拒绝，AppStudio Revision 不推进。
+- `AC-GITLAB-003-05`：没有 READY 且标记为 AppStudio 默认的 Server 时，创建和恢复返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；管理员完成配置后重试原 Application reservation，既有 Project reservation 和已完成远端对象被幂等复用，连接、远端和 projection 失败仍保留各自 GitLab 错误码。
 
 ## 9. 当前非目标
 

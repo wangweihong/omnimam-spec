@@ -33,7 +33,7 @@
 - AppStudio 通过最多 200 项且保持顺序的批量 API 提供 `id/owner_user_id/name/status` 投影；Artifact 创建按原任务委托用户校验，列表/详情按当前调用者校验，不存在或不可见统一返回 null。
 - Build `authorized_editor` 和管理员角色可以按 AppStudio 授权查看 Build，但不继承 Asset Library Artifact 权限；服务身份也不能绕过委托用户权限。
 - StudioBuild 只有在 AtomicTask 成功、Artifact READY 且 digest 一致后才能成功；Task 成功不能单独推断 Artifact ready。
-- StudioApplication 创建先返回持久化的 `CREATING` reservation 与内部 DAGTaskGroup ID；初始化节点幂等完成 GitLab Project/Hook、Revision 0、Agent/Session/Bindings 和首次 Invocation 后才进入 `READY`。
+- StudioApplication 创建先返回持久化的 `CREATING` reservation 与内部 DAGTaskGroup ID；初始化固定聚合 GitLab Project、Webhook、应用初始化和首次 Invocation 四阶段，全部成功并通过当前 DAG owner fence 后才进入 `READY`。公共初始化接口只返回安全阶段诊断；`ERROR` reservation 通过显式幂等 retry 复用原对象创建新 DAG，旧 DAG 迟到事件不得覆盖当前轮次。
 - GitLab Push Hook 按 Project/CommitSHA 幂等触发 Snapshot -> StudioBuild -> Pipeline -> Bundle Artifact -> Preview DAG；CommitSHA 尚未投影为 canonical Revision 时只能有界重试，不能伪造 Revision。
 - 新 StudioRuntimeInstance 健康后才能切换当前入口；回滚必须基于历史不可变内容创建新的 StudioRelease 和候选 RuntimeInstance。
 - Agent 删除或挂起不影响 StudioWorkspace、Build、Release 或 StudioRuntimeInstance。
@@ -68,7 +68,7 @@ Context 只负责导航，Task Center 的任务执行契约和 infrastructure �
 
 ## 8. 当前状态
 
-AppStudio 既有 Source/Build/Release 基线分别由 `spec-v1.16.0`、`spec-v1.16.1` 和 `spec-v1.17.1` 发布；创建模型选择、Coding Agent generation/application facade、首次 Invocation 和 Invocation-to-Revision 恢复契约已由后续 release 发布；GitLab-only Source、`web-react@v1` Blueprint、Runtime Git workspace 与 pre-remote `CREATING` reservation 由 `spec-v1.23.1` 发布；异步初始化 DAG、Webhook 和 Push 自动 Build/Artifact/Preview 由 `spec-v1.23.2` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
+AppStudio 既有 Source/Build/Release 基线分别由 `spec-v1.16.0`、`spec-v1.16.1` 和 `spec-v1.17.1` 发布；创建模型选择、Coding Agent generation/application facade、首次 Invocation 和 Invocation-to-Revision 恢复契约已由后续 release 发布；GitLab-only Source、`web-react@v1` Blueprint、Runtime Git workspace 与 pre-remote `CREATING` reservation 由 `spec-v1.23.1` 发布；异步初始化 DAG、Webhook 和 Push 自动 Build/Artifact/Preview 由 `spec-v1.23.2` 发布；四阶段安全诊断、结构化失败原因、显式幂等恢复和 DAG owner fence 由 `spec-v1.23.3` 发布。S2 使用 `US-APPSTUDIO-001`、`BR-APPSTUDIO-001`、`R-STUDIO-*` 和源章节追溯。
 
 ## 9. 不在本领域定义的内容
 

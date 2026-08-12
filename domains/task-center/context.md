@@ -31,6 +31,7 @@
 - `appstudio.build.execute@1.1` 固定声明 Build 输出；Task Worker 从 Infra 鉴权流式读取实际字节，校验大小和 SHA-256，再按 `create -> upload -> complete -> attach` 完成 Artifact 交付。`infra-output://` 不是外部 URL，也不得进入 Task 结果。
 - 自动 TaskAttempt 重试按 StudioBuild producer key 复用既有 Artifact；内容 digest 不一致时失败，不重复创建 Artifact。
 - 可靠状态事件必须支持下游幂等消费，乱序事件不得回退较新投影。
+- AppStudio 初始化读取固定四节点的状态、进度、Attempt、时间和安全错误；Task Center 保留完整历史，AppStudio 必须按 AtomicTask owner 与当前 DAG ID fence 迟到事件。
 
 ## 4. 领域边界
 

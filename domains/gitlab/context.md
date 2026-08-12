@@ -15,6 +15,7 @@
 
 - credential 只写不读，不进入响应、日志、事件或任务输入输出。
 - 只有 READY Server 可以创建 private Project；namespace 由 Server 固定。
+- 不存在 READY AppStudio 默认 Server 时返回专用结构化错误；连接、远端和 projection 错误不得被 SourceProvider 压缩为 AppStudio 通用 Source 错误。
 - 有关联 Project 时禁止删除 Server；Project 远端 404 可清理本地投影。
 - Pipeline 回调和自动重试查询同一 external_job_id，不重复提交。
 - 管理 API 只授予 ADMIN 和 SUPER_ADMIN。
@@ -39,4 +40,4 @@ GitLab 拥有连接、远端 Project 映射、默认 AppStudio Server 选择和 
 
 ## 6. 当前状态
 
-本领域随 `spec-v1.22.0` 首次建立并发布；AppStudio Repository binding、Runtime access 和 pre-remote Project reservation 由 `spec-v1.23.1` 发布；Project Hook、Pipeline Hook 投影和受限 Pipeline artifact 下载由 `spec-v1.23.2` 发布。GitLab 不拥有 AppStudio Build、Preview 或发布状态。
+本领域随 `spec-v1.22.0` 首次建立并发布；AppStudio Repository binding、Runtime access 和 pre-remote Project reservation 由 `spec-v1.23.1` 发布；Project Hook、Pipeline Hook 投影和受限 Pipeline artifact 下载由 `spec-v1.23.2` 发布；AppStudio 默认 Server 专用错误与 SourceProvider 结构化错误保留由 `spec-v1.23.3` 发布。GitLab 不拥有 AppStudio Build、Preview 或发布状态。

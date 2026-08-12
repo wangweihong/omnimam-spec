@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- AppStudio 初始化新增应用级四阶段安全诊断与显式恢复：查询当前 DAG、0..1 总进度、阶段状态/Attempt/失败时间/本地化安全错误；`ERROR` reservation 按 Application ID 与 retry 幂等键稳定派生新 DAG，复用既有 Project、Hook、Repository、Workspace、Agent、Session、Message 和 Invocation。
+- 新增 `GET /api/v1/studio-applications/{id}/initialization`、`POST /api/v1/studio-applications/{id}/initialization/retry` 与 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；GitLab SourceProvider 保留默认 Server、连接、远端和 projection 的结构化错误，不再统一压缩为 AppStudio Source 错误。
+- 初始化投影增加当前 DAG owner fence、条件回滚和运行中不同 retry key 状态门禁；旧 DAG 迟到事件不得覆盖新轮次。无数据库 Schema、权限码或事件变化。
 - AppStudio 第三阶段：创建接口改为持久化 `CREATING` reservation 后返回 HTTP 200 与初始化 DAG ID；受信 DAG 幂等完成 GitLab Project/Hook、Revision 0、Agent/Session/Bindings 和首次 Invocation。
 - 新增 AppStudio GitLab Push/Pipeline Webhook 契约、每 Project token digest、固定 Revision 的 Push -> Snapshot -> Pipeline -> Bundle Artifact -> Preview DAG，并保留 polling 最终一致性与既有 StudioRelease 生产发布权威。
 - Task Center 新增受信 `CreateDomainDAGTaskGroup` 边界和 AppStudio 非 Infra handler 门禁；公共 DAG API 仍禁止 `gitlab.pipeline.run` 与 AppStudio 内部 functionRef。
@@ -18,7 +21,7 @@
 - 固化 OpenCode `agent.coding@1.0` 的 tmpfs `/root/.config/opencode/opencode.json`、`0600`、Docker Archive/Exec 和启动门闩合同；空工具白名单拒绝全部，Hermes MCP 注入暂不支持。
 - AppStudio 原子创建/回填每代默认平台 Binding；Identity/MCP 新增 `AGENT_WORKLOAD` `aud=mcp`、Agent generation/Application/Runtime/Grant 绑定、最小权限和逐请求 Grant 复核，USER JWT 行为保持不变。
 - 补齐 Agent/AppStudio Coding Agent 端到端契约：所有 CHAT/CODING 统一使用 `agent.invocation.execute@1.0`，Task 仅携带 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期授权引用、资源版本和恢复游标；消息正文、owner、Workspace、Runtime Endpoint、模型凭据、用户密钥和 Provider 配置不得进入 Task。
-- AppStudio 创建请求新增初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，初始化事务原子创建 Application、Repository、Revision 0、Coding Agent、默认 Session、WorkspaceBinding 与 ACTIVE primary ModelBinding；事务后自动创建首条 Message/Invocation，Task 提交失败时保留 READY 项目并允许幂等重试。
+- AppStudio 创建请求新增初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，初始化事务原子创建 Application、Repository、Revision 0、Coding Agent、默认 Session、WorkspaceBinding 与 ACTIVE primary ModelBinding；事务后自动创建首条 Message/Invocation。`spec-v1.23.3` 将首次 Task 提交纳入第四初始化阶段，失败时保留 reservation 并投影 Application `ERROR`，由显式 retry 幂等恢复。
 - 新增 AppStudio application-level Coding Agent 查询、消息、Invocation 查询/取消/SSE、suspend/resume/replace 契约和 generation 隔离；Invocation 聚合已应用 ChangeSet 的最终源码 Revision，历史阶段恢复继续调用 source restore 并创建新的 Restore ChangeSet/Revision，完整保留 Session、Message、Invocation、原 ChangeSet 与 Revision 历史。
 - 固化 Agent Model Access Grant、AppStudio Workspace Tool Grant、Task 终态单调投影和 Hermes/OpenCode 独立协议适配边界；Worker 只执行协议和投影结果，不得代替 Coding Agent 直接调用 AppStudio `ApplyChangeSet`。`agent.invocation.execute@1.0` 正式 digest 为 `sha256:7e076a03a291c331443bc9f8638ab355b2a4ac0c71711a148c9b1065a67e0868`。
 - 补齐 Hermes Endpoint 与 RuntimeOutput 契约闭环：AgentRuntimeAdapter 在 Agent、Session、Invocation 和 Runtime Binding 校验后，可用 Agent 工作负载身份调用 Infrastructure 只读 Endpoint resolve；Runtime 生命周期写操作仍统一经过 Task Center，普通 Endpoint 摘要、Agent/Task 数据、事件和日志均不得传播 `base_url`、Host Port 或私网地址。

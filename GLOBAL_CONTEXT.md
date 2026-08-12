@@ -119,6 +119,7 @@ GitLab API 连接、远端 Project/Hook 投影、Repository HTTP 适配、受控
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
 - AppStudio GitLab 第二阶段由 `spec-v1.23.1` 发布：GitLab 成为唯一源码正文 Provider；AppStudio Revision/ChangeSet 仍为 canonical 业务事实并通过 `commit_sha` 关联 Git commit；创建先持久化不可用的 Application/Repository/Workspace/GitLabProject `CREATING` reservation，再幂等创建远端 Project 和 Starter commit；Coding Runtime 的 clone、凭据文件和 `/workspace` 可丢弃，Preview/Build 源码按固定 commit 受控流式注入。
 - AppStudio 第三阶段由 `spec-v1.23.2` 发布：创建 reservation 后由受信初始化 DAG 完成 Project/Hook、Revision 0、Agent/Session/Bindings 与首次 Invocation；GitLab Push/Pipeline Hook 按 Project token digest 验证并幂等触发 canonical Revision -> Snapshot -> Pipeline -> Bundle Artifact -> Preview，CI 不直接调用 Infrastructure 或部署 Production。
+- AppStudio 初始化诊断与显式恢复由 `spec-v1.23.3` 发布：应用级接口只聚合当前 DAG 的 Project、Webhook、应用初始化和首次 Invocation 四阶段安全状态；缺少 READY 默认 GitLabServer 使用专用错误，`ERROR` reservation 按 retry 幂等键复用原对象创建新 DAG，并以当前 DAG owner fence 阻止旧轮次迟到事件覆盖。
 - Infrastructure 普通摘要只返回 Runtime output descriptor 和非敏感 Endpoint 引用；Docker Job 必须收集实际输出字节后生成大小、SHA-256 和 `infra-output://`，Artifact 内容交付由 Task Worker 使用来源任务 producer context 调用 asset-library。
 - RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明端口并在健康检查后进入 READY。Endpoint 地址只可通过受工作负载身份、owner、状态和撤销校验的只读 resolve 短时取得；`USER_ACCESSIBLE` 必须受权，`PUBLIC` 第一阶段默认禁用。
 

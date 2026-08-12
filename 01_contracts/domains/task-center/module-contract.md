@@ -94,6 +94,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - `appstudio.initialization.project.ensure`、`appstudio.initialization.webhook.ensure`、`appstudio.initialization.finalize`、`appstudio.initialization.invocation.start` 和 Push DAG 所需的 `appstudio.automation.snapshot.ensure`、`appstudio.automation.build.ensure`、`appstudio.automation.artifact.complete` 是受信非 Infra handler；只允许 AppStudio 领域 DAG使用，不进入公共 functionRef allowlist。
 - 每个 handler 输入只包含稳定 Application/Project/Revision/Build 引用和幂等 key；Project URL、token、源码、artifact 正文、Agent消息正文和 Provider 响应不得进入 Task。实际 Infra Preview 仍只由 registry 中的 `appstudio.preview.ensure` 执行。
+- AppStudio 初始化 DAG 的四个 handler 节点固定映射为 Project、Webhook、应用初始化和首次 Invocation 阶段。Task Center 保留完整 DAG/Attempt 事实；AppStudio 只读取公开阶段所需状态、进度、Attempt、时间和安全业务错误，并在投影终态前校验 AtomicTask `owner_id` 等于 Application 当前初始化 DAGTaskGroup ID。旧 DAG 不删除，但不得覆盖新轮次业务投影。
 
 ## 4. 调度与巡检契约
 

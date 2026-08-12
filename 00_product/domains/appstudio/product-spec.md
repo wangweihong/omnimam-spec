@@ -1014,7 +1014,7 @@ CREATING StudioApplication
 初始化 DAGTaskGroup ID
 ```
 
-初始化 DAG 成功后的最终结果为 StudioSourceRepository、内部默认 StudioWorkspace(revision=0)、Coding Agent、AgentSession 和首次 CODING AgentInvocation。调用方通过既有 Application、Task Center DAG 和应用级 Agent 查询接口观察进度，不在创建响应中等待这些对象。
+初始化 DAG 固定分为四个公开阶段：`GITLAB_PROJECT`（GitLab Project 与 Starter commit）、`GITLAB_WEBHOOK`（Project Hook）、`APPLICATION_INITIALIZATION`（Revision 0、Coding Agent、Session 与 Bindings）和 `FIRST_CODING_INVOCATION`（首次 Message/Invocation reservation 与 Task 提交）。调用方通过应用级初始化状态接口观察总进度、阶段状态和安全诊断；有 Task Center 权限时还可以按当前 DAGTaskGroup ID进入通用 DAG 详情。创建响应不等待这些对象。
 
 其中源码对象归 AppStudio；Coding Agent、AgentSession 和 AgentMCPBinding 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent，并原子创建默认平台 MCP Binding。前端不得调用或替换该内部 Workspace 引用。
 
@@ -1064,15 +1064,24 @@ sequenceDiagram
 
     ST->>ST: 保存 generation=1 的 Agent/Session 稳定引用并提交初始化事务
     ST->>AS: DAG 幂等创建首条 Message/Invocation 并提交任务
-    AS-->>ST: 首次 CODING Invocation 投影
+    AS-->>ST: 首次 CODING Invocation reservation 与 Task 已提交
+    ST->>ST: 校验当前 DAG owner fence 后切换 READY
     ST-->>U: READY Application + 当前 Agent + 首次 Invocation
 ```
 
 创建先按 owner/幂等键确定 Application、Repository、Workspace、GitLabProject ID 和远端 path，并持久化不可用的 `CREATING` Application/Repository/Workspace reservation；GitLab domain 随后持久化同 ID 的 `CREATING` GitLabProject projection，再调用远端创建 Project 和 Starter Template commit。远端项目或 commit 成功时，重试必须复用同一 Project/commit，不得重复创建；初始化失败时保留不可用 reservation 供恢复，不得暴露为 READY。
 
-Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding 必须作为一个初始化事务提交，并将 Application/Repository/Workspace/GitLabProject projection 切换为 `READY`。初始化成功后 Application 进入 `READY`，再以创建幂等键派生的稳定消息/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation。首次 Invocation 的 Task 提交失败不得删除或降级已 READY 的项目；该 Invocation 以 `ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` 标记 `FAILED`，同一创建幂等键只能复用同一 Message/Invocation 重试 Task 提交，不得重复创建项目、Agent、Session、Binding 或 Invocation。
+Application、Repository、默认源码上下文 revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding 和默认平台 MCP Binding 必须作为一个初始化事务提交。随后以创建幂等键派生的稳定 Message/Invocation 幂等键持久化初始需求并提交首次 CODING Invocation；第四阶段只等待 reservation 创建与 Task 提交成功，不等待 Coding 执行完成。四个阶段全部成功且终态事件所属 `task.owner_id` 等于 Application 当前 `initialization_dag_task_group_id` 后，才将 Application/Repository/Workspace/GitLabProject projection 切换为 `READY`。首次 Task 提交失败时保留同一 Message/Invocation reservation，将 Application 投影为 `ERROR`；显式重试必须复用该 reservation，不得重复创建 Project、Hook、commit、Agent、Session、Binding、Message 或 Invocation。Application 进入 `READY` 后，Invocation 后续执行失败只影响 Invocation，不回退已完成的初始化状态。
 
 创建时不要求 Runtime 已经 READY，但初始需求会自动触发首次 Invocation 的 Task 驱动 Runtime gating。`codingModelSelection` 必须由用户明确选择并形成 Coding 用途的 ACTIVE primary ModelBinding，不得回退到用户默认模型或其他隐式模型。
+
+## 6.4 初始化诊断与显式恢复
+
+应用级初始化状态接口按 Application 当前 `initialization_dag_task_group_id` 聚合 Task Center DAG，但只返回固定四阶段、当前 DAG ID/状态、0..1 总进度、每阶段状态、累计 Attempt 次数、失败时间、最新安全错误和更新时间。阶段状态只使用 `PENDING/RUNNING/SUCCESS/ERROR`；Task Center 的 BLOCKED/READY/RETRYING 等内部状态映射为 PENDING 或 RUNNING，FAILED/CANCELED/TIMEOUT 映射为 ERROR。安全错误只包含稳定业务 `code`、本地化 message 和发生时间，不得返回 credential、Workspace、内部 arguments、authorization reference、源码、Agent Message 正文、Provider 响应、Conductor 字段或原始 runtime payload。
+
+`CREATING` Application 持续读取当前轮次；`ERROR` Application 长期保留最后一次失败诊断，直到显式重试成功创建新一轮 DAG。缺少唯一 READY AppStudio 默认 GitLabServer 时，Project 阶段必须保留 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`，不得压缩为通用 Source 错误；远端 Project、连接和 projection 失败继续保留各自 GitLab 业务错误码。
+
+显式重试只允许 owner 可见且状态为 `ERROR` 的 Application。请求必须包含新的客户端 `idempotencyKey`；新初始化 DAG ID 由 Application ID 与该 key 稳定派生。同一 key 重复请求返回同一 DAG 和聚合结果，不重复创建远端 Project 或初始化对象。成功创建新 DAG 后更新 Application 当前 DAG 引用并切换为 `CREATING`；已有初始化运行期间使用不同 key 必须返回状态不允许错误。新 DAG 创建失败时，只能在 Application 仍引用该候选 DAG/轮次的条件下回滚为 `ERROR`，不得覆盖并发成功轮次。任何旧 DAG 迟到事件在 `task.owner_id` 不等于 Application 当前 DAG ID 时必须忽略。
 
 ---
 
@@ -2594,6 +2603,10 @@ Coding Agent 消息和 Invocation 事件的唯一事实来源是 Agent Service�
 
 AppStudio 的 Coding Agent Runtime 诊断只能在应用所有权和 generation 校验后调用 Agent Service 的 owner-scoped 只读能力；不得复制 Runtime/Invocation 事实、直接调用 Provider、泄漏 Runtime Endpoint/Infra/容器信息或以共享服务 Token 替代资源授权。
 
+## R-STUDIO-027
+
+AppStudio 初始化必须公开固定四阶段的安全聚合，并只允许 `ERROR` reservation 按 Application ID 与重试幂等键稳定派生新 DAG；当前 DAG 引用、条件回滚和 `task.owner_id` fence 必须阻止旧轮次迟到事件覆盖新轮次，重试不得重复远端 Project 或既有初始化对象。
+
 ---
 
 # 27. 最终职责总结
@@ -2700,7 +2713,7 @@ flowchart LR
 以下编号仅把本 S1 已有语义映射为可机器校验的 S2 追溯锚点，不新增业务能力：
 
 - `US-APPSTUDIO-001`：用户可以管理 StudioApplication 的源码、Revision、Snapshot、Build、Preview、Release 和 Runtime；Workspace 仅是后端内部事实。
-- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、19、20、21、22、26 节及 `R-STUDIO-001..026`。
+- `BR-APPSTUDIO-001`：StudioApplication、Coding Agent 投影、源码谱系、构建发布事实和实际运行的边界必须遵守本 S1 第 2、3、5、6、7、9、10、11、12、15、16、17、18、19、20、21、22、26 节及 `R-STUDIO-001..027`。
 
 验收标准：
 
@@ -2722,3 +2735,4 @@ flowchart LR
 - `AC-APPSTUDIO-001-16`：首次创建和 generation 替换必须在初始化事务中原子创建固定默认平台 MCP Binding；已有当前 generation 幂等回填一次，用户删除后同 generation 不重建，下一 generation 重新创建。任一步失败整笔事务回滚。
 - `AC-APPSTUDIO-001-17`：应用级消息 facade 只返回当前 Coding Agent generation/session，并按 `(created_at DESC, id DESC)` 稳定分页；发送响应、历史和流式完成事件使用稳定 Message ID 归并。SSE 必须按 `Last-Event-ID` 无重复续传，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后立即关闭。
 - `AC-APPSTUDIO-001-18`：应用级 Runtime 详情只选择当前 generation 最新 Runtime，历史按 grant 覆盖全部 generation 并稳定去重分页；日志仅返回最近 5000 行脱敏快照。健康默认读取投影，`probe=true` 只读实时探测并把运行停止或 OpenCode 故障映射为 `UNHEALTHY`、无法判断映射为 `UNKNOWN`，所有响应禁止 Runtime Endpoint、Infra/容器/Provider 私有信息。
+- `AC-APPSTUDIO-001-19`：初始化查询按当前 DAG 返回 Project、Webhook、应用初始化、首次 Invocation 四阶段的总进度、状态、Attempt、失败时间和安全错误；缺少默认 GitLabServer 保留专用 GitLab 错误。只有 `ERROR` reservation 可按新幂等键显式重试，同 key 返回同一 DAG，不同 key 在运行中被拒绝；新 DAG 失败条件回滚，旧 DAG owner 不匹配的迟到终态不得覆盖当前轮次，最终可从原 reservation 恢复到 `READY`。
