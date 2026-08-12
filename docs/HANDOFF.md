@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 `spec-v1.23.4`，修复 Coding Runtime Git access 函数合同遗漏，并规定 Attempt 失败日志输出脱敏后的具体原因。
-- 状态：进行中；内容 commit `0da3dd236d687643e0b34a71cc115b51f5de485f` 与 release record 已完成，待创建 release commit/tag/push。
+- 状态：已完成；release commit `e3e00349604d9700caba40c3c7f68ecf5cbc22ab`、远端分支和 annotated tag 均已发布并核验。
 
 ## 本次已完成
 
@@ -14,10 +14,11 @@
 - `US-TASK-022` 与 Task Center module contract 要求失败日志包含经过统一脱敏、单行化和长度限制的具体摘要，写入仍为 best-effort。
 - 更新 `CHANGELOG.md`；未修改 API、Schema、错误码、权限码、事件或 Context。
 - 已创建内容 commit `0da3dd236d687643e0b34a71cc115b51f5de485f`，并写入 `spec-v1.23.4` release record。
+- 已推送 `codex/spec-v1.23.4` 与 annotated tag；远端 `spec-v1.23.4^{}` 指向 `e3e00349604d9700caba40c3c7f68ecf5cbc22ab`。
 
 ## 当前进行中
 
-- 创建 release commit、annotated tag 并推送，随后核验远端 tag peeled commit。
+- 无；Server 仓库可更新 submodule pin 并正式实施。
 
 ## 文件变化
 
@@ -38,11 +39,11 @@
 - Passed: `agent.runtime.ensure@1.0` digest 保持 `sha256:5fff8cdcec364fea4c8d833b6c625b43c4e93c6b65bb46fb170f9d951eb8a4ec`。
 - Passed: `agent.runtime.ensure@1.1` digest 复算为 `sha256:48bb42c3793a3a4e3138d4b2108756addca8c751423d445f3264343b0a8d2d47`。
 - Passed: YAML/meta-schema、ACTIVE/RETAINED 唯一性和 `git diff --check`。
-- Remaining: release commit/tag/push 与远端 tag 指向核验。
+- Passed: 远端分支与 annotated tag 指向核验。
 
 ## 推荐下一步
 
-提交当前内容，写入 `spec-v1.23.4` release record，再创建并推送 release commit 与 annotated tag。
+在 Server 更新 `ssot` gitlink、`SSOT_VERSION` 和嵌入式 function registry，实施并验证失败日志诊断。
 
 Next Prompt:
 
