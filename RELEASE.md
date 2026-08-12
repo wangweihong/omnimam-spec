@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.23.4
+
+- commit: 0da3dd236d687643e0b34a71cc115b51f5de485f
+- status: released
+- confirmed_by: user（2026-08-12 明确要求发布 `spec-v1.23.4`，端到端修复首次 Coding Invocation 合同与失败日志诊断）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: 已发布 `agent.runtime.ensure@1.0` 的 input schema/ref/digest 保持不变并转为 RETAINED；新任务唯一使用 `agent.runtime.ensure@1.1` ACTIVE。Coding Agent 的 `runtime_git_access_ref` 必须是 `appstudio-runtime-git-access://` opaque secret reference，Platform Agent 不要求该字段，明文 clone URL、用户名和 token 不得进入 Task、日志或业务投影。Attempt 失败生命周期日志必须包含经过统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，不得改变任务结果、重试或取消语义。不新增 API、数据库结构、错误码、权限码或事件。
+
 ## spec-v1.23.3
 
 - commit: 31c9be36314153ea4f24be39866c93d5c295d7d2

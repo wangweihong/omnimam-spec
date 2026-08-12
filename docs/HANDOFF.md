@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 `spec-v1.23.4`，修复 Coding Runtime Git access 函数合同遗漏，并规定 Attempt 失败日志输出脱敏后的具体原因。
-- 状态：进行中；S1/S2 修订与定向验证已完成，待创建内容 commit 和 release commit/tag/push。
+- 状态：进行中；内容 commit `0da3dd236d687643e0b34a71cc115b51f5de485f` 与 release record 已完成，待创建 release commit/tag/push。
 
 ## 本次已完成
 
@@ -13,10 +13,11 @@
 - `1.1` 为 Coding Agent 条件必填 `runtime_git_access_ref`，并限制为 `^appstudio-runtime-git-access://`；Platform Agent 不要求该字段。
 - `US-TASK-022` 与 Task Center module contract 要求失败日志包含经过统一脱敏、单行化和长度限制的具体摘要，写入仍为 best-effort。
 - 更新 `CHANGELOG.md`；未修改 API、Schema、错误码、权限码、事件或 Context。
+- 已创建内容 commit `0da3dd236d687643e0b34a71cc115b51f5de485f`，并写入 `spec-v1.23.4` release record。
 
 ## 当前进行中
 
-- 创建内容 commit，将 commit 写入 `RELEASE.md`，随后创建 release commit、annotated tag 并推送。
+- 创建 release commit、annotated tag 并推送，随后核验远端 tag peeled commit。
 
 ## 文件变化
 
