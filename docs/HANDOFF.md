@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：定义并发布 AppStudio 第三阶段正式契约 `spec-v1.23.2`。
-- 状态：进行中。第三阶段 S1/S2 已落盘，正在执行定向验证；尚未提交、打 tag 或推送。
+- 状态：Spec 内容与 release record 已完成并通过定向验证，正在创建和推送 `spec-v1.23.2` tag。
 
 ## 本次已完成
 
@@ -11,10 +11,11 @@
 - 锁定异步创建 DAG、GitLab Push/Pipeline Webhook、自动 Build/Artifact/Preview、生产 Release 权威和破坏性迁移边界。
 - 确认创建成功保持 HTTP 200；Webhook token 只保存不可逆摘要；Snapshot 必须关联 canonical Revision。
 - 已更新四个目标 Domain 的 Context/S1/S2，定义创建响应、Webhook API、Schema 字段、受信 DAG handler 和 web-backend profile 边界。
+- 内容 commit：`7710c26efff4466f62f2bf36a2fff5b1f63ddde2`。
 
 ## 当前进行中
 
-- 验证当前契约并发布 `spec-v1.23.2`。
+- 创建 release commit/tag并推送远端。
 
 ## 文件变化
 
@@ -34,16 +35,16 @@
 
 ## 验证与风险
 
-- 已通过 `git diff --check`；其余定向校验待运行。
+- YAML 解析、AppStudio OpenAPI Redocly 定向 lint 和 `git diff --check` 已通过；Redocly 仅按既有口径跳过变更前的 `nullable-type-sibling` 规则。
 - 发布前必须确保无新增未定义 Blueprint、错误码、权限码或事件类型。
 
 ## 未完成事项
 
-- 完成定向验证、提交、创建并推送 `spec-v1.23.2` tag。
+- 创建并推送 `spec-v1.23.2` tag；随后下游 Server 更新 submodule pin。
 
 ## 推荐下一步
 
-解析变更后的 YAML/OpenAPI，检查正式文件一致性，然后创建内容提交与 release 提交/tag。
+提交 release record，创建并推送 `spec-v1.23.2` tag，然后在 Server 更新 SSOT pin。
 
 Next Prompt:
 

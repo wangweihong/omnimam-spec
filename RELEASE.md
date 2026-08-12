@@ -1,5 +1,38 @@
 # Release Records
 
+## spec-v1.23.2
+
+- commit: 7710c26efff4466f62f2bf36a2fff5b1f63ddde2
+- status: released
+- confirmed_by: user（2026-08-12 明确要求实施 AppStudio 第三阶段并先创建 spec-v1.23.2）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+  - task-center
+  - infrastructure
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/infrastructure/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+  - domains/task-center/context.md
+  - domains/infrastructure/context.md
+- implementation_gate: CreateStudioApplication 必须先持久化 CREATING reservation 和初始化 DAG ID并返回 HTTP 200；受信 DAG 幂等完成 Project/Starter/Hook、Revision 0、Agent/Session/Bindings 和首次 Invocation 后才进入 READY。Webhook 使用每 Project 随机 token且只保存 SHA-256 digest；Push 只在 CommitSHA 已有 canonical Revision 时创建 Snapshot/Build，并通过 gitlab.pipeline.run、受限 Bundle Artifact 和 appstudio.preview.ensure 自动预览。公共 DAG API 仍禁止 GitLab/AppStudio 内部 handler；CI 不直连 Infrastructure，Production 继续由 StudioRelease/Artifact/reconcile 管理。
+
 ## spec-v1.23.1
 
 - commit: 613399f3a18b01032aee38af7757904a073e41e9
