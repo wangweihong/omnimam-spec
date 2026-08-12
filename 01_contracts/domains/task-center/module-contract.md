@@ -45,7 +45,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 - Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
-- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
+- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。失败生命周期日志必须包含经统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，失败不得改变 handler 结果。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
 - Task Worker 只能接收 Task Center 已校验的不可变 `arguments` 和 `function_ref`，不得从 Agent、AppStudio 或客户端直接接收 Infra 请求。
 - Infra-backed `function_ref` 必须由 function-registry 声明 `execution_mode=JOB|SERVICE`、输入/输出 schema、required capabilities、幂等键、取消方式、超时边界和结果映射；首阶段只可路由到 DockerRuntimeProvider。
 - Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、宿主机路径、容器 ID、Host Port 或内部地址。
@@ -72,6 +72,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 服务启动必须先用 `function-registry.schema.yaml` 校验 registry，确认 `function_ref + contract_version` 唯一、每个 functionRef 恰有一个 `ACTIVE` 版本、所有 I/O schema ref 可解析、引用的错误码存在且 retryable 属性一致；校验失败时 Task Center 不进入就绪状态。新任务只选择 `ACTIVE`，`RETAINED` 仅供历史任务，`DISABLED` 不允许创建或恢复执行。
 - 创建 AtomicTask 时先校验调用服务身份与 `allowed_callers`，再按 input schema 校验 `arguments`。未注册或调用方不可用返回 `ERR_TASK_FUNCTION_REF_NOT_REGISTERED`，输入不合法返回 `ERR_TASK_FUNCTION_INPUT_INVALID`，两者都不得创建任务或调用 Infra。
 - `agent.invocation.execute@1.0` 的 arguments 只能包含 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期 `agent-invocation-grant://`、预期资源版本和可选 runtime/event 恢复游标。Task Worker agent-executor 仅可在当前 Attempt 内以受信身份解析该 grant，读取 Invocation/Session/消息上下文、Runtime Endpoint、ModelAccessSpec；CODING claims 还固定 StudioApplication/Workspace、base Revision/CommitSHA、Blueprint version 和 prompt kind，但不包含源码正文工具授权或明文 Git token。解析结果不得进入 Task arguments/result、事件、日志或持久化 Task 投影。
+- `agent.runtime.ensure@1.1` 是唯一 ACTIVE 版本；`1.0` 以原 schema/digest 保留为 RETAINED。`1.1` 的 Coding Agent arguments 必须携带 `appstudio-runtime-git-access://` opaque secret reference，Platform Agent 不要求该字段；Task、日志和业务投影不得包含其解析出的 clone URL、用户名或 token。
 - CODING Runtime 必须在 `/workspace` validation 后 push 恰好一个普通 commit。Task Worker 在投影 Invocation 终态前通过 AppStudio `WorkspaceGateway` 比较 base 与默认分支 HEAD：只有单 commit fast-forward 才按 Invocation 幂等生成一个既有 ChangeSet 和下一条 Revision。无 commit、多 commit、分叉、force 语义、base 不匹配或并发写冲突均投影为失败；Worker 在 push 后崩溃或重复 Attempt 时继续同步同一 commit，不创建第二条 ChangeSet/Revision。
 - `required_capabilities`、执行模式、默认重试、取消、超时和 Execution/Infra Adapter 映射由固定合同派生；调用方不得提交 capability、修改 handler、扩大 RuntimeProfile、传入镜像/命令或覆盖 source policy。允许的 retry/timeout 覆盖不能超过合同上限。
 - AtomicTask 保存 `function_contract_version` 和 registry 登记的规范化合同摘要，并保存派生后的 capabilities/retry/timeout/cancel 快照。摘要固定为 `sha256:<64 lowercase hex>`：对包含 `function_entry`、`input_schema`、`output_schema` 的对象执行 RFC 8785 JSON Canonicalization Scheme，其中 function entry 先将生命周期字段 `status` 规范化为 `ACTIVE`，再排除 `contract_digest` 和 `x-s1-refs`，I/O schema 使用已解析内容，最后计算 SHA-256。`status` 只控制新任务选择与历史恢复，不改变已发布合同摘要；启动加载和历史恢复都必须复算并比对登记值。服务必须保留所有非终态任务及历史保留期仍引用的 `ACTIVE/RETAINED` 合同，缺失或摘要不一致返回 `ERR_TASK_FUNCTION_CONTRACT_UNAVAILABLE`，不得回退到最新版本。

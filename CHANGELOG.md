@@ -57,6 +57,8 @@
 
 ## Unreleased
 
+- 修复 Coding Runtime 启动合同：保留 `agent.runtime.ensure@1.0` 原 schema/digest 为 RETAINED，新增 `@1.1` ACTIVE，并要求 Coding Agent 使用受 pattern 约束的 `appstudio-runtime-git-access://` opaque secret reference；明文 Git 凭据仍禁止进入 Task、日志和业务投影。
+- TaskAttempt 失败生命周期日志必须展示经过既有统一脱敏、单行化和长度限制的具体失败摘要，同时保持 best-effort，不改变任务结果或重试语义。
 - 补全 Platform Management S1：定义结构化 PasswordPolicy/LoginFailurePolicy、SystemAuthConfig 单例与 `resource_version` 乐观并发、配置/AuditLog/Outbox 原子提交，以及认证配置页面冲突恢复语义。
 - 补齐跨 domain AuditLog 合同：覆盖 Identity 登录、Token、密码、授权、服务账号和跨 owner 敏感操作，新增 `occurred_at`、来源服务主体校验、来源域复合幂等、内容冲突、detail 大小/嵌套限制和完整查询过滤；Identity 可靠事件不再重复充当平台审计写入通道。
 - Platform OpenAPI 升级为 `0.2.0-draft`，修正错误响应 `value` 类型和 500 响应，结构化认证策略 DTO，新增审计查询参数与 `ERR_PLATFORM_AUDIT_IDEMPOTENCY_CONFLICT`；overview 错误区间扩展为 `230600-230799`。
