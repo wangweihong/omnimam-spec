@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：发布 `spec-v1.23.1`，修正 AppStudio 初始化必须先持久化 `CREATING` Project reservation 与 GitLabProject schema 不能表达该状态的冲突。
-- 状态：进行中。基线是已发布 `spec-v1.23.0` tag `ee0cf7f7732a74d1ca36cc1e73a5541a333ed025`。
+- 状态：已完成。`spec-v1.23.1` tag `d1b24118091e52d60fc20a3faa4cf47647f467ab` 已推送，内容 commit 为 `613399f3a18b01032aee38af7757904a073e41e9`。
 
 ## 本次已完成
 
@@ -17,7 +17,7 @@
 
 ## 当前进行中
 
-- 内容 commit `613399f` 已完成并通过定向一致性检查；正在提交 `spec-v1.23.1` release record、创建 annotated tag 并推送。
+- 无进行中 Spec 工作。下游 server 应更新到 `spec-v1.23.1` 并实现 reservation-to-READY 状态机。
 
 ## 文件变化
 
@@ -46,17 +46,15 @@
 
 - `yq` 已成功解析 GitLab OpenAPI；Redocly 验证有效，仅报告仓库 HTTP 200 业务错误策略及 license/tag 描述的 13 个非阻断 warning。
 - scoped `git diff --check` 通过；限定正式文件中的 Workspace Tool/`BUILT_IN` 旧术语为零匹配，新增 schema/API/模块契约关键字段定向检查通过。
-- 尚需 release commit、tag/push 和远端校验。
-- 规范发布后 server 必须先更新 submodule pin 与 `SSOT_VERSION`，再实施行为变更。
+- 已校验远端 annotated tag 与 release record；下游 server 必须先更新 submodule pin 与 `SSOT_VERSION`，再实施行为变更。
 
 ## 未完成事项
 
-- 完成 `spec-v1.23.1` release commit、annotated tag 与远端校验。
 - 下游 server 更新 pin、实现 reservation-to-READY 状态机并验证。
 
 ## 推荐下一步
 
-提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.23.1` tag 并推送分支与 tag。
+在 `omnimam-server` 将 `ssot` gitlink 与 `SSOT_VERSION` 更新到 `spec-v1.23.1` tag `d1b24118091e52d60fc20a3faa4cf47647f467ab`，然后实现并验证 reservation-to-READY 状态机。
 
 Next Prompt:
 
