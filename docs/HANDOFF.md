@@ -17,7 +17,7 @@
 
 ## 当前进行中
 
-- 已完成 AppStudio/GitLab S1、GitLab schema、跨域 module contract、领域 Context、全局 release 导航和 changelog 修正；正在执行定向一致性检查并创建内容 commit，之后写 release record/tag/push。
+- 内容 commit `613399f` 已完成并通过定向一致性检查；正在提交 `spec-v1.23.1` release record、创建 annotated tag 并推送。
 
 ## 文件变化
 
@@ -51,12 +51,12 @@
 
 ## 未完成事项
 
-- 完成 `spec-v1.23.1` 内容 commit、release commit、annotated tag 与远端校验。
+- 完成 `spec-v1.23.1` release commit、annotated tag 与远端校验。
 - 下游 server 更新 pin、实现 reservation-to-READY 状态机并验证。
 
 ## 推荐下一步
 
-运行定向 `rg`/`git diff --check` 校验 reservation 的 S1/S2 一致性，提交内容 commit，然后使用该 SHA 写入 `RELEASE.md`。
+提交 `RELEASE.md` 和 handoff，创建 annotated `spec-v1.23.1` tag 并推送分支与 tag。
 
 Next Prompt:
 

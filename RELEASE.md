@@ -1,5 +1,26 @@
 # Release Records
 
+## spec-v1.23.1
+
+- commit: 613399f3a18b01032aee38af7757904a073e41e9
+- status: released
+- confirmed_by: user（2026-08-12 明确要求修正 reservation SSOT 冲突并发布 spec-v1.23.1，随后实施）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+- S2:
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+- implementation_gate: AppStudio 必须先持久化稳定 Application/Repository/Workspace `CREATING` reservation；GitLab adapter 必须随后以同一 ID/path 持久化 `CREATING` GitLabProject projection，且仅在 reservation 存在后调用远端 Project API。CREATING/ERROR Project 的 remote numeric ID 与 URL 可以为空，只有 READY Project 可供 Repository adapter 使用。远端或 Starter commit 成功后的重试必须复用同一 reservation、Project 和 commit；完成 Revision 0、Coding Agent/Session/Bindings 后在一个 AppStudio 事务中切换 Application/Repository/Workspace 为 READY，GitLab projection 同步为 READY。
+
 ## spec-v1.23.0
 
 - commit: 7010953df6130caa1f59c8b19dd9feaa5e06d467
