@@ -528,6 +528,7 @@ flowchart LR
 agent.hermes
 agent.coding
 appstudio.preview.web
+appstudio.preview.web-backend
 appstudio.build.web
 studioapp.runtime.web
 media.ffmpeg

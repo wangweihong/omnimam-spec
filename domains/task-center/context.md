@@ -13,6 +13,7 @@
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
 - `Function Registry`：八个 Agent/AppStudio canonical functionRef 的版本化 I/O、能力、策略、执行/Infra 映射、输出交付与结果投影合同。
 - `gitlab.pipeline.run`：GitLab 领域拥有的非 Infra-backed 外部 handler，通过 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry。
+- AppStudio 可通过受信任的领域内部入口提交包含 `gitlab.pipeline.run` 的固定 DAG；公共 DAG API 继续禁止用户选择该内部 functionRef。
 - `WorkflowRuntime`、`Task Worker`、`Infra Adapter`、`Agent Runtime Adapter`：内部运行时边界、已注册 handler 的执行者、Infra-backed 请求和 Agent Invocation 协议适配边界。
 
 ## 3. 核心规则

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- AppStudio 第三阶段：创建接口改为持久化 `CREATING` reservation 后返回 HTTP 200 与初始化 DAG ID；受信 DAG 幂等完成 GitLab Project/Hook、Revision 0、Agent/Session/Bindings 和首次 Invocation。
+- 新增 AppStudio GitLab Push/Pipeline Webhook 契约、每 Project token digest、固定 Revision 的 Push -> Snapshot -> Pipeline -> Bundle Artifact -> Preview DAG，并保留 polling 最终一致性与既有 StudioRelease 生产发布权威。
+- Task Center 新增受信 `CreateDomainDAGTaskGroup` 边界和 AppStudio 非 Infra handler 门禁；公共 DAG API 仍禁止 `gitlab.pipeline.run` 与 AppStudio 内部 functionRef。
+- Infrastructure 补齐既有 `appstudio.preview.web-backend` SourceArchive profile 语义；GitLab CI 只构建受控 Bundle，不直连 Infrastructure 或部署 Production。
 - 修正 AppStudio 初始化 reservation 合同：GitLabProject 支持远端调用前的 `CREATING` projection，远端 numeric ID/URL 可在 reservation 阶段为空，成功后切换 `READY`，失败保留 `ERROR` 以支持幂等恢复。
 - AppStudio GitLab 第二阶段：GitLab 成为唯一源码正文 Provider，新增 `web-react@v1` Blueprint、默认 GitLabServer、稳定 GitLabProject 引用、Revision CommitSHA、Runtime-scoped Git access、`/workspace` tmpfs clone、Preview/Build archive 注入和 Coding Invocation 单 commit fast-forward 投影；移除 Workspace Tool/BUILT_IN 正文契约，不新增错误码、权限码、事件或公共 AppStudio 创建参数。
 - 新增独立 `gitlab` domain 第一阶段 S1/S2：管理员 GitLabServer CRUD/Test、GitLabProject 创建/查询/删除、PAT 只写不读、关联删除保护和可恢复 `gitlab.pipeline.run` 外部 AtomicTask；AppStudio 契约保持不变。

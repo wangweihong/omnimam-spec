@@ -50,6 +50,7 @@
 - Coding Runtime 的 Git credential 复用现有 `SECRET_REF` 机制：Infrastructure 以 Runtime/generation/Project/expiry 约束解析 opaque access，在容器启动门闩前通过 Docker archive/stdin 把 credential helper 写入专用 tmpfs，并从默认分支 clone 到 `/workspace` tmpfs 后从该目录启动 OpenCode。Token、带凭据 URL 和 helper 内容不得进入 Env、Cmd、Task、数据库、日志、错误或 Docker inspect；恢复必须重新 clone，不持久化 `/workspace`。
 - Runtime 停止、替换或到期时 Infrastructure 必须触发 access 撤销；撤销失败记录脱敏诊断并依赖 token 到期兜底，不得把撤销错误中的 secret 写入投影。
 - Preview/Build 在授权后从 AppStudio source resolver 按固定 CommitSHA 获取 GitLab archive 流。Infrastructure 必须拒绝绝对路径、`..` 逃逸、符号/硬链接逃逸、重复冲突路径、超出文件/总大小限制和 digest 不一致；验证完成后通过 Docker archive/stdin 注入只读 tmpfs，archive 字节、GitLab URL 或凭证不落 Task 和数据库。
+- `appstudio.preview.web-backend` 必须像静态 Web Preview 一样执行固定 Revision SourceArchive 注入，并由 profile 固定启动命令、容器端口、健康检查和隔离临时目录；它不授权 AppStudio 开放新的 ApplicationType 或 Blueprint。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
 - RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
 - Endpoint resolve 从工作负载身份解析调用服务，只允许 agent 和必要的 task-center；校验 owner、Endpoint READY、Runtime RUNNING/健康、未过期和未撤销，返回短时地址。解析请求自报的服务身份不参与授权，解析结果不得持久化。

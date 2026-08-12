@@ -8,8 +8,22 @@ info:
     本文件只按当前 AppStudio S1 生成；旧版 S2 不属于本契约输入。
 servers: [{url: /}]
 security: [{bearerAuth: []}]
-tags: [{name: applications}, {name: agent}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
+tags: [{name: applications}, {name: webhook}, {name: agent}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
 paths:
+  /api/v1/appstudio/webhook:
+    post:
+      tags: [webhook]
+      operationId: receive_appstudio_gitlab_webhook
+      summary: 接收 AppStudio GitLab Push/Pipeline Hook
+      description: 按 GitLab Project numeric ID 定位本地 Project，以 X-Gitlab-Token 的 SHA-256 digest 常量时间验证；重复事件幂等返回。
+      x-errors: [ERR_APPSTUDIO_WEBHOOK_UNAUTHORIZED, ERR_APPSTUDIO_WEBHOOK_PAYLOAD_INVALID]
+      security: []
+      parameters:
+        - {name: X-Gitlab-Token, in: header, required: true, schema: {type: string, minLength: 32, maxLength: 512}, x-naming-exception: GitLab 协议标准请求头。}
+        - {name: X-Gitlab-Event, in: header, required: true, schema: {type: string, enum: [Push Hook, Pipeline Hook]}, x-naming-exception: GitLab 协议标准请求头。}
+        - {name: X-Gitlab-Event-UUID, in: header, required: false, schema: {type: string, maxLength: 200}, x-naming-exception: GitLab 协议标准请求头。}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GitLabWebhookPayload'}}}}
+      responses: {'200': {description: 已验证并幂等接受事件。, content: {application/json: {schema: {$ref: '#/components/schemas/GitLabWebhookAccepted'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications:
     get:
       tags: [applications]
@@ -26,7 +40,7 @@ paths:
       x-permission: appstudio.application.manage
       x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['6 StudioApplication 创建']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateRequest'}}}}
-      responses: {'200': {description: 后端已初始化 Repository、默认源码上下文、Coding Agent 和 Session，并返回首次 CODING Invocation 投影。首次 Task 提交失败不回滚 READY 应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      responses: {'200': {description: 已持久化 CREATING Application reservation 并提交初始化 DAG；调用方通过 DAG 与既有查询接口观察进度。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}:
     parameters: [{$ref: '#/components/parameters/studio_application_id'}]
     get:
@@ -510,11 +524,25 @@ components:
     StudioApplicationCreateResponse:
       type: object
       additionalProperties: false
-      required: [application, coding_agent, initial_invocation]
+      required: [application, dag_task_group_id]
       properties:
         application: {$ref: '#/components/schemas/StudioApplication'}
-        coding_agent: {$ref: '#/components/schemas/StudioAgentStatus'}
-        initial_invocation: {$ref: '#/components/schemas/StudioAgentInvocation'}
+        dag_task_group_id: {type: string}
+    GitLabWebhookPayload:
+      type: object
+      description: GitLab 原始 Push/Pipeline Hook 的受限接收 envelope；实现只解析 Project ID、ref/commit 或 Pipeline ID/status/web_url，忽略并不得持久化其他字段。
+      additionalProperties: true
+      required: [project]
+      properties:
+        project: {type: object, additionalProperties: true, required: [id], properties: {id: {type: integer, format: int64}}}
+        ref: {type: string, nullable: true}
+        checkout_sha: {type: string, nullable: true}
+        object_attributes: {type: object, nullable: true, additionalProperties: true}
+    GitLabWebhookAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted, duplicate]
+      properties: {accepted: {type: boolean, enum: [true]}, duplicate: {type: boolean}, dag_task_group_id: {type: string, nullable: true}}
     StudioCodingModelSelection:
       type: object
       additionalProperties: false
@@ -804,7 +832,7 @@ components:
     StudioSourceSnapshot:
       type: object
       required: [id, studio_application_id, source_revision, status, content_digest, manifest_digest, created_at]
-      properties: {id: {type: string}, studio_application_id: {type: string}, source_revision: {type: integer}, status: {type: string, enum: [PENDING, READY, FAILED]}, content_digest: {type: string, nullable: true}, manifest_digest: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
+      properties: {id: {type: string}, studio_application_id: {type: string}, source_revision: {type: integer}, commit_sha: {type: string}, git_ref: {type: string}, status: {type: string, enum: [PENDING, READY, FAILED]}, content_digest: {type: string, nullable: true}, manifest_digest: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
     StudioApplicationVersion:
       type: object
       required: [id, studio_application_id, source_snapshot_id, version, status]
@@ -816,7 +844,7 @@ components:
     StudioBuild:
       type: object
       required: [id, owner_user_id, name, studio_application_id, source_snapshot_id, status, created_at, updated_at]
-      properties: {id: {type: string}, owner_user_id: {type: string, readOnly: true}, name: {type: string}, studio_application_id: {type: string}, source_snapshot_id: {type: string}, atomic_task_id: {type: string, nullable: true}, artifact_id: {type: string, nullable: true}, artifact_digest: {type: string, nullable: true}, status: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELED]}, diagnostics_summary: {type: object, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+      properties: {id: {type: string}, owner_user_id: {type: string, readOnly: true}, name: {type: string}, studio_application_id: {type: string}, source_snapshot_id: {type: string}, atomic_task_id: {type: string, nullable: true}, pipeline_id: {type: integer, format: int64, nullable: true}, pipeline_url: {type: string, nullable: true}, commit_sha: {type: string}, artifact_id: {type: string, nullable: true}, artifact_digest: {type: string, nullable: true}, status: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELED]}, diagnostics_summary: {type: object, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
     StudioBuildBatchSummaryRequest:
       type: object
       additionalProperties: false

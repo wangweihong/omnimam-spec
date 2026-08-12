@@ -10,7 +10,7 @@
 
 | 模块 | 拥有 | 不拥有 |
 | --- | --- | --- |
-| application | StudioApplication 初始化、元数据、归档和内部默认 Workspace 引用 | AI 能力 Application、Agent Session、运行时容器、公共 Workspace 资源 |
+| application | StudioApplication reservation、初始化 DAG 引用、元数据、归档和内部默认 Workspace 引用 | AI 能力 Application、Agent Session、运行时容器、公共 Workspace 资源 |
 | source | 内部 Repository、Workspace、文件索引、Revision/CommitSHA、ChangeSet、Snapshot、Version、`SourceProvider` 消费接口及应用级源码投影 | GitLab 私表、远端 numeric ID/PAT、Agent 会话、生产 Runtime、Workspace 页面或选择器 |
 | preview | 基于当前 Workspace Revision 的 StudioPreviewRuntime 和诊断摘要 | 正式 Snapshot、Build Artifact、Release |
 | build | StudioBuild 业务投影、canonical owner、Build Gate、Task/Artifact 稳定引用和受控 producer 批量摘要 | TaskAttempt/重试状态、Artifact 内容、源码当前目录 |
@@ -21,7 +21,7 @@
 ## 3. 输入与输出
 
 - 公共 `CreateStudioApplication` 接收初始需求、附件、显式 Coding 模型选择、可选 Agent Profile 和创建幂等键，但不接受 Workspace、Blueprint 或 GitLab 参数；当前 `STATIC_WEB` 固定使用内置 `web-react@v1` 和 `agent.coding@1.0`。
-- 初始化先按 owner/创建幂等键持久化不可用的 `CREATING` Application/Repository/Workspace/Project 保留记录，全部 ID 和远端 path 均确定性派生；再通过唯一 READY 默认 GitLabServer 幂等创建 private Project 并提交 Starter Template。最后在一个数据库事务中创建 Revision 0、Coding Agent、默认 Session、WorkspaceBinding、选定的 ACTIVE primary ModelBinding、默认 Platform MCP Binding，并切换为 `READY`。崩溃重试必须复用同一 Project 和 commit，不得暴露半初始化项目。
+- 初始化先按 owner/创建幂等键在事务内持久化不可用的 `CREATING` Application/Repository/Workspace/Project 保留记录与初始化 DAG ID并提交受信 DAG，HTTP 200 返回 `application + dag_task_group_id`。DAG 节点依次幂等确保 private Project/Starter commit、Project Hook、Revision 0/Agent/Session/Bindings 和首次 Invocation；全部完成后才切换 `READY`。崩溃重试必须复用同一 Project、Hook、commit、Agent 和 Invocation。
 - 初始化成功后使用 Blueprint `system.md + initial.md` 持久化首条 Message 和 CODING Invocation；后续使用 `system.md + followup.md`，`fix.md` 随 Blueprint 发布但本阶段不路由。首次 Task 提交失败只把该 Invocation 投影为 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE`；相同创建幂等键复用同一 Message/Invocation 重试提交，不删除项目或重复创建 Agent、Session、Binding。
 - StudioApplication 内部保存当前 `coding_agent_id/coding_session_id/coding_agent_generation`；应用级状态、消息、Invocation 查询/事件/取消、挂起、恢复和替换均通过 Agent 内部 owner-scoped 接口代理，响应不得返回 Workspace。
 - `ListStudioAgentMessages` 只能代理 Agent `ListMessages` 并限定当前 Application/generation/session，固定按 `(created_at DESC, id DESC)` 分页。AppStudio 不保存第二份 Message；Invocation 响应必须携带稳定 `user_message_id/assistant_message_id` 供发送、历史和 SSE 归并。
@@ -33,6 +33,7 @@
 - 所有 API 源码写入必须带 `base_revision` 和幂等键；AppStudio 在内部解析唯一默认 Workspace、Revision CommitSHA 和 GitLab branch HEAD，通过带 base SHA 与稳定 ChangeSet 标记的 Git commit 应用。远端 commit 成功而数据库提交失败时重试必须识别并复用原 commit；冲突不得自动覆盖、部分应用或隐式合并。
 - 文件读取、列表、搜索、Restore、Snapshot 和正文 digest 均按目标 Revision 的 `commit_sha` 通过 `SourceProvider` 获取。Source Snapshot 是引用固定 Revision/CommitSHA 的不可变 Build 输入；Build 不得读取当前 Workspace。Production Release 固定 Artifact ID 和 digest，不得挂载 Workspace、Revision 或 Snapshot。
 - Build、Preview、Release/升级/回滚的实际运行均通过 Task Center -> Task Worker -> Infra Adapter -> Infrastructure。
+- GitLab Push/Pipeline Hook 使用 Project 专属 token digest 验证。Push 只按本地 Project/CommitSHA 提交固定领域 DAG；Snapshot 必须等待并绑定 canonical Revision。Pipeline 成功后从受限 artifact 流完成既有 StudioBuild Bundle lifecycle，再由 `appstudio.preview.ensure` 使用同一 Revision SourceArchive 创建 Preview。Production 不进入该 DAG。
 - Preview 创建/刷新与停止分别使用 `appstudio.preview.ensure/stop`，Build 使用 `appstudio.build.execute`，部署/升级/回滚与停止分别使用 `appstudio.production.reconcile/stop`；arguments、结果、能力和策略必须符合 Task Center `function-registry.yaml` 固定版本，AppStudio 不提交 Infra DTO。
 - AppStudio 只保存 Task ID、InfraRuntime ID、Endpoint 摘要、Artifact ID/digest 和脱敏诊断；不保存 TaskAttempt、容器 ID、Host Port、Provider response 或 storage_ref。
 - StudioBuild 的 `owner_user_id` 是 Bundle Artifact owner 的 canonical 来源。`appstudio.build.execute` Task Worker 创建 Artifact 时必须携带受信服务身份和原任务 `authorization_ref`；Bundle 固定声明 `producer_type=studio_build`、`producer_id=StudioBuild.id` 和 `producer_idempotency_key=studio-build:<studio_build_id>:bundle`。自动 TaskAttempt 重试复用同一 key；新逻辑构建创建新 StudioBuild ID。

@@ -2,7 +2,7 @@
 
 > 文档状态：S1 Draft
 > 文档版本：v1.2
-> 修订日期：2026-08-03
+> 修订日期：2026-08-12
 > 适用范围：StudioApplication 创建、Coding Agent 开发、源码版本、预览、构建、发布与运行管理
 >
 > 本文中的 `StudioApplication` 指 AppStudio 生成的独立应用，不等同于 `application-platform.Application`。
@@ -458,7 +458,7 @@ Workspace 生命周期独立于：
 * React、TypeScript、Vite 和 pnpm Starter Template 与 lockfile。
 * `system`、`initial`、`followup`、`fix` 四类 prompt；本阶段只路由 initial/followup，fix 作为版本化资产保留。
 * validation：`pnpm build`。
-* `.gitlab-ci.yml` 只 include `omnimam/appstudio-ci` 的 `main:/web-app.yml`，本领域不实现 CI job，也不把 Pipeline 终态自动投影为 Build/Preview。
+* `.gitlab-ci.yml` 只 include `omnimam/appstudio-ci` 的 `main:/web-app.yml`。CI 只执行受控 pnpm build 并发布 Bundle；AppStudio 通过 GitLab Pipeline 外部任务登记 Artifact，并在成功后从固定 Revision SourceArchive 启动 Preview。CI 不得直接调用 Infrastructure。
 
 System Prompt 必须固定 `/workspace` 为当前 Git working tree，要求直接读写该目录、执行 validation、成功后创建并 push 一个普通 commit；必须禁止 Source API/MCP 读写、删除 `.git`、修改 remote/credential、force push 和重写受控 CI 架构。OmniMAM Platform MCP 仍只用于调用平台能力。
 
@@ -676,6 +676,7 @@ currentVersionId
 codingAgentId
 codingSessionId
 codingAgentGeneration
+initializationDAGTaskGroupId
 createdAt
 updatedAt
 lastActivityAt
@@ -783,6 +784,8 @@ createdAt
 id
 workspaceId
 revision
+commitSHA
+gitRef
 contentDigest
 manifestDigest
 status
@@ -848,7 +851,9 @@ name
 studioApplicationId
 sourceSnapshotId
 atomicTaskId
-infraJobId
+pipelineId
+pipelineURL
+commitSHA
 status
 runtimeProfileId
 runtimeProfileRevision
@@ -871,6 +876,8 @@ CANCELED
 ```
 
 `ownerUserId` 是 StudioBuild 的 canonical 所属用户事实，创建后不可变，并作为 StudioBuild Bundle Artifact 的 owner 来源；Asset Library 不从 Task Worker、管理员角色或 Build 协作者推断 owner。
+
+Push 自动 Build 的 `commitSHA` 必须等于 SourceSnapshot 关联 Revision 的不可变 CommitSHA；`pipelineId/pipelineURL` 只是 GitLab Pipeline 的脱敏投影，不替代 AtomicTask、Artifact 或 Build 状态。
 
 `PREPARING/INSTALLING/BUILDING/VALIDATING` 可以作为 Task 进度阶段展示，但不是 AppStudio 自有状态机。StudioBuild 只有在 AtomicTask 成功、Asset Library 中 Artifact 已完成且其 digest 与 Build 返回值一致后才能进入 `SUCCEEDED`；Task 成功不能单独推断 Build 成功。
 
@@ -1000,16 +1007,14 @@ codingModelSelection
 idempotencyKey
 ```
 
-创建结果：
+创建请求成功后立即返回：
 
 ```text
-StudioApplication
-StudioSourceRepository
-内部默认 StudioWorkspace(revision=0)
-Coding Agent
-AgentSession
-首次 CODING AgentInvocation
+CREATING StudioApplication
+初始化 DAGTaskGroup ID
 ```
+
+初始化 DAG 成功后的最终结果为 StudioSourceRepository、内部默认 StudioWorkspace(revision=0)、Coding Agent、AgentSession 和首次 CODING AgentInvocation。调用方通过既有 Application、Task Center DAG 和应用级 Agent 查询接口观察进度，不在创建响应中等待这些对象。
 
 其中源码对象归 AppStudio；Coding Agent、AgentSession 和 AgentMCPBinding 由 Agent Service 创建。`CreateStudioApplication` 不接受 Workspace 输入；AppStudio 创建唯一默认 StudioWorkspace 后，通过内部 `CreateCodingAgentForStudio` 请求 Agent Service 固定绑定 Coding Agent，并原子创建默认平台 MCP Binding。前端不得调用或替换该内部 Workspace 引用。
 
@@ -1046,9 +1051,10 @@ sequenceDiagram
 
     U->>ST: CreateStudioApplication
     ST->>ST: 持久化 CREATING Application / Repository / Workspace reservation
-    ST->>GL: 持久化同 ID 的 CREATING GitLabProject reservation
-    GL->>GL: 幂等创建远端 private Project 和 Starter Template commit
-    ST->>ST: 原子完成 Revision 0 / Agent / Session / Bindings 并切换 READY
+    ST->>ST: 创建并提交受信初始化 DAG
+    ST-->>U: HTTP 200 / CREATING Application / DAG ID
+    ST->>GL: DAG 幂等创建 Project、Starter commit 和 Project Hook
+    ST->>ST: DAG 原子完成 Revision 0 / Agent / Session / Bindings
 
     ST->>AS: CreateCodingAgentForStudio(内部 Application/Workspace 引用)
     AS-->>ST: agentId
@@ -1057,7 +1063,7 @@ sequenceDiagram
     AS-->>ST: agentSessionId
 
     ST->>ST: 保存 generation=1 的 Agent/Session 稳定引用并提交初始化事务
-    ST->>AS: SendAgentMessage(initialRequirement, attachments, create idempotency key)
+    ST->>AS: DAG 幂等创建首条 Message/Invocation 并提交任务
     AS-->>ST: 首次 CODING Invocation 投影
     ST-->>U: READY Application + 当前 Agent + 首次 Invocation
 ```
@@ -1464,6 +1470,10 @@ sequenceDiagram
     ST->>AL: 复核 Artifact READY 与 digest
     ST->>ST: StudioBuild SUCCEEDED
 ```
+
+Coding Invocation push 后，AppStudio Webhook 只按 `push-{gitlab_project_id}-{commit_sha}` 提交一次受信领域 DAG。若 Invocation terminal projector 尚未为该 commit 创建 Revision，Snapshot 节点执行有界延迟重试；超过合同窗口后失败并保留可诊断 DAG，不得绕过 Revision 创建 Snapshot。DAG 依次创建固定 Revision Snapshot 和 StudioBuild、执行 `gitlab.pipeline.run`、下载受限 Bundle 并通过既有 Asset Library lifecycle 完成 Artifact，最后调用 `appstudio.preview.ensure` 从同一 Revision SourceArchive 创建 Preview。
+
+Pipeline Hook 可以提前更新同一 Project/Pipeline 的小型状态，但不能单独把 Build 标记成功；Worker polling、Bundle 下载、Artifact READY 和 digest 一致仍是成功门禁。Production 不属于该 DAG。
 
 ---
 

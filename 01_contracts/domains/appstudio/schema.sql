@@ -20,6 +20,7 @@ CREATE TABLE studio_applications (
   coding_agent_id TEXT,
   coding_session_id TEXT,
   coding_agent_generation INTEGER NOT NULL DEFAULT 0 CHECK (coding_agent_generation >= 0),
+  initialization_dag_task_group_id TEXT NOT NULL,
   create_idempotency_key TEXT NOT NULL,
   CHECK ((coding_agent_id IS NULL AND coding_session_id IS NULL) OR (coding_agent_id IS NOT NULL AND coding_session_id IS NOT NULL AND coding_agent_generation > 0))
 );
@@ -137,6 +138,8 @@ CREATE TABLE studio_source_snapshots (
   studio_application_id TEXT NOT NULL REFERENCES studio_applications(id),
   workspace_id TEXT NOT NULL REFERENCES studio_workspaces(id),
   workspace_revision INTEGER NOT NULL,
+  commit_sha TEXT NOT NULL,
+  git_ref TEXT NOT NULL,
   content_digest TEXT,
   manifest_digest TEXT,
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'READY', 'FAILED')),
@@ -216,6 +219,9 @@ CREATE TABLE studio_builds (
   source_snapshot_id TEXT NOT NULL REFERENCES studio_source_snapshots(id),
   studio_application_version_id TEXT REFERENCES studio_application_versions(id),
   atomic_task_id TEXT,
+  pipeline_id BIGINT,
+  pipeline_url TEXT,
+  commit_sha TEXT NOT NULL,
   artifact_id TEXT,
   artifact_digest TEXT,
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELED')),

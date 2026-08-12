@@ -39,6 +39,9 @@ CREATE TABLE gitlab_projects (
   http_url_to_repo TEXT NOT NULL DEFAULT '',
   ssh_url_to_repo TEXT NOT NULL DEFAULT '',
   default_branch TEXT NOT NULL DEFAULT 'main',
+  appstudio_webhook_id BIGINT,
+  appstudio_webhook_token_digest TEXT,
+  CHECK (appstudio_webhook_token_digest IS NULL OR appstudio_webhook_token_digest ~ '^sha256:[0-9a-f]{64}$'),
   UNIQUE (gitlab_server_id, external_project_id),
   UNIQUE (gitlab_server_id, path_with_namespace)
 );

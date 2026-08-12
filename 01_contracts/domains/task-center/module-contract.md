@@ -37,6 +37,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - AtomicTask 是唯一 Worker handler 执行的业务资源；handler 按受控 `function_ref` 路由。
 - SERIAL Group 编译为顺序 SIMPLE task；PARALLEL 编译为 Fork/Join，并应用 `max_parallelism` 门禁。
 - DAGTaskGroup 发布前校验无环、key 唯一、引用完整和规模限制；普通节点编译为 SIMPLE，动态批量节点编译为 Dynamic Fork/Join。
+- 公共 DAG 创建继续应用用户 functionRef allowlist，拒绝 `gitlab.pipeline.run` 和 `appstudio.initialization.*`/`appstudio.automation.*`。受信 AppStudio 服务可调用 `CreateDomainDAGTaskGroup(caller, request)` 提交固定模板；caller 必须是经认证的 appstudio 服务，且仍执行注册、I/O schema、无环、规模和幂等校验。
 - Workflow Canvas 可以提交按固定 count 预先展开的 serial、batch 或 cascade 静态节点；Task Center 只校验并执行展开后的无环依赖，不解析 Canvas loop 配置，也不维护 iteration 状态机。
 - DAG 详情查询以声明节点为主键聚合实际 AtomicTask。`dag_node_key` 保存声明节点 key，静态节点使用唯一主任务，动态 fan-out 的全部实际任务共享该值；动态节点按活动优先和确定性终态优先级计算状态，并在摘要外保留按 node_key 分页读取实际任务的能力。
 - DAG 触发来源在创建时保存 API/SCHEDULE/CANVAS/DOMAIN_EVENT/RETRY 类型、触发时间及可选来源 ID/名称快照；来源删除或不可见不回查改写历史。
@@ -88,6 +89,11 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 该 handler 不进入 Agent/AppStudio `function-registry.yaml`，不声明 Docker JOB/SERVICE、Infra Adapter、RuntimeProfile 或 Infra capability；Task Center 仍必须在创建 AtomicTask 前确认 functionRef 已注册。
 - Task Worker 首次创建远端 Pipeline 后将 Pipeline ID 写入 Attempt `external_job_id`；非终态返回 `IN_PROGRESS` 和 5 秒 callback，自动重试与重启恢复查询同一 Pipeline。
 - GitLab credential、API URL、远端 project ID、variables 回显、Jobs 原始响应和日志正文不得进入 AtomicTask arguments、output 或 Worker 日志。
+
+### 3.3 AppStudio 领域 handler
+
+- `appstudio.initialization.project.ensure`、`appstudio.initialization.webhook.ensure`、`appstudio.initialization.finalize`、`appstudio.initialization.invocation.start` 和 Push DAG 所需的 `appstudio.automation.snapshot.ensure`、`appstudio.automation.build.ensure`、`appstudio.automation.artifact.complete` 是受信非 Infra handler；只允许 AppStudio 领域 DAG使用，不进入公共 functionRef allowlist。
+- 每个 handler 输入只包含稳定 Application/Project/Revision/Build 引用和幂等 key；Project URL、token、源码、artifact 正文、Agent消息正文和 Provider 响应不得进入 Task。实际 Infra Preview 仍只由 registry 中的 `appstudio.preview.ensure` 执行。
 
 ## 4. 调度与巡检契约
 

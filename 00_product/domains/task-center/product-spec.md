@@ -464,6 +464,7 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 82. `BR-TASK-154`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
 83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件。CODING 只有在 base Revision/CommitSHA 到 GitLab HEAD 恰好一个普通 fast-forward commit并已幂等投影一个 ChangeSet/Revision 后才能成功；异常分支不推进 Revision。成功、失败、超时、取消和 execution 丢失终态均通知 Agent observer。
 84. `BR-TASK-156`：`gitlab.pipeline.run` 是非 Infra-backed 外部 AtomicTask，只接收内部 GitLabProject ID、ref 和 variables；Worker 必须用 externalJobId、IN_PROGRESS 和延迟回调恢复同一远端 Pipeline，不得把 URL、credential 或远端 project ID 写入任务输入输出，也不得伪造 Infra JOB/SERVICE 映射。
+85. `BR-TASK-157`：公共 DAG 创建入口不得接受用户选择 `gitlab.pipeline.run` 或 AppStudio 内部初始化/投影 functionRef；AppStudio 可通过携带受信 caller identity 的领域内部入口提交固定模板 DAG，Task Center 仍执行相同 functionRef 注册、输入 schema、DAG 无环、规模和幂等校验。
 
 ---
 

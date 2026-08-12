@@ -2,7 +2,7 @@
 
 ## 1. 定位与目标
 
-`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影、受控 Repository HTTP 适配和通用 Pipeline 执行的独立领域。管理 API 只面向平台管理员；AppStudio 第二阶段通过内部模块接口使用默认 Server、Project、Repository 和短期 Project Access Token。
+`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影、受控 Repository HTTP 适配、Project Hook 和通用 Pipeline 执行的独立领域。管理 API 只面向平台管理员；AppStudio 通过内部模块接口使用默认 Server、Project、Repository、Hook、Pipeline artifact 和短期 Project Access Token。
 
 本领域不属于 AppStudio。AppStudio 的 StudioApplication、逻辑源码 Repository、Revision、ChangeSet、Build、Preview 和 Release 事实保持不变；跨域只保存稳定 GitLabProject ID 并使用受控模块接口，禁止共享私表、远端 numeric ID 或 PAT。
 
@@ -34,6 +34,7 @@ GitLabProject 是 GitLab 远端 Project 的本地受控投影。为支持 AppStu
 - name、path、path_with_namespace；
 - Web URL、HTTP/SSH clone URL；
 - GitLab 返回的 default branch。
+- AppStudio Project Hook ID 与 webhook token 的 SHA-256 digest；明文 token 不持久化。
 
 本地 ID 是 OmniMAM 的稳定身份。其他领域如后续需要引用，只能保存本地 GitLabProject ID，不得直接以 GitLab numeric ID、URL 或 PAT 建立跨域关系。
 
@@ -48,6 +49,12 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 GitLab Repository adapter 提供 Project tree/file/archive、默认分支 HEAD、commit compare/create 和 Project Access Token 创建/撤销能力。它只表达 GitLab HTTP 语义，不创建 AppStudio Revision 或 ChangeSet。
 
 AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private Project，并提交内置 Blueprint Starter Template。Runtime access 使用 project-scoped、带到期时间的 `write_repository` Token；明文只在创建响应到 Infrastructure tmpfs 注入的内存链路中存在，不进入 API、Task、数据库、事件、日志或容器环境。Runtime 停止、替换或到期时尽力撤销。
+
+### 2.5 Project Hook 与 Pipeline artifact
+
+AppStudio 初始化为每个 Project 注册唯一 Push/Pipeline Hook。token 使用密码学安全随机源生成，明文只在当前注册调用内存中发送给 GitLab，本地仅保存 SHA-256 digest；验证使用常量时间比较。重复初始化必须复用已有 Hook，远端 Hook 丢失时可幂等重建并轮换 digest。
+
+Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 callback/polling 仍是最终一致性来源。Pipeline 成功后，GitLab adapter 可按本地 Project ID、Pipeline ID 和受控 job/artifact name 流式下载有大小上限的 Bundle；不得接受任意 URL，也不得把正文、PAT 或原始 job 响应写入 Task。
 
 ## 3. 角色与访问边界
 
@@ -76,6 +83,8 @@ AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private 
 8. AppStudio 内部项目使用确定性 path 和本地 Project ID；重试必须复用已有 `CREATING`/`READY` reservation、远端 Project 和 Starter Template commit，不得把空 numeric ID 或空 URL 的 reservation 当作可读 Project。
 9. Repository commit 必须接受 base SHA 与稳定幂等标记；HEAD 不匹配时拒绝，不自动 merge 或 force update。
 10. Project Access Token 只允许目标 Project、固定 Runtime、`write_repository` scope 和有限有效期；创建、解析、撤销错误必须脱敏。
+11. Project Hook 创建、读取和删除只接受本地 Project ID；Hook URL 由平台配置提供，不得来自用户请求。
+12. Hook token 明文不得落库或进入日志、错误、事件、Task/API DTO；本地只保存固定格式 digest。
 
 ## 6. Pipeline 执行规则
 
@@ -104,6 +113,8 @@ AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private 
 - `BR-GITLAB-014`：AppStudio 只保存本地 GitLabProject ID，Repository adapter 不拥有 Revision/ChangeSet。
 - `BR-GITLAB-015`：Runtime Project Access Token 必须 project-scoped、限时、最小 scope、只经 tmpfs 注入并可撤销。
 - `BR-GITLAB-016`：Repository 写入必须使用 base SHA、稳定幂等标记和非 force 语义；HEAD 冲突不得自动合并。
+- `BR-GITLAB-017`：AppStudio Project Hook 使用每 Project 唯一 token，明文只发送给 GitLab且只保存 SHA-256 digest，重复初始化不得创建重复 Hook。
+- `BR-GITLAB-018`：Pipeline Hook 只加速投影，external_job_id polling 仍保证最终一致；Artifact 下载只接受本地 Project/Pipeline 与受控名称，不接受任意 URL。
 
 ## 8. 用户故事与验收
 
@@ -144,7 +155,8 @@ AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private 
 
 - 不让 GitLab 拥有 AppStudio Revision、ChangeSet、Build、Preview 或 Release。
 - 不建立 StudioApplication 与 GitLabProject 的数据库外键或公共 API 字段。
-- 不处理 Webhook、自动预览、自动 Build 或自动发布；Coding Runtime push 只触发当前 Invocation 的 Worker 同步。
+- 不让 GitLab Webhook 直接创建 AppStudio Revision、Build、Preview 或 Release；它只经 AppStudio 受信入口触发领域 DAG或更新 Pipeline 投影。
+- 不让 GitLab CI 直接部署 Preview/Production；Production 继续由 AppStudio Release/Artifact 状态机拥有。
 - 不管理 GitLab Server 进程的 start/stop/restart。
 - 不提供公共 GitLab Project PATCH、Repository 文件 API 或 Pipeline 日志 API；Repository 能力仅为内部模块接口。
 - 不引入第二套 Secret Provider、Vault 或 GitLab OAuth。

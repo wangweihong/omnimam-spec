@@ -11,6 +11,7 @@
 - RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明的容器端口，并在映射建立和健康检查通过后把 Endpoint 标记为 `READY`。
 - `AgentWorkspace` 只能按 Agent 授权挂载；Coding Runtime 不挂载 StudioWorkspace，而是接收 Git clone 非敏感配置、tmpfs credential helper 和可丢弃 `/workspace`；Preview/Build 源码按 AppStudio Revision/Snapshot 固定 commit 受控注入。
 - Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace。
+- `appstudio.preview.web-backend` 是现有 Preview profile；它与静态 Web Preview 一样只接收固定 Revision CommitSHA archive，但当前 AppStudio 不开放 `WEB_WITH_LIGHT_BACKEND` 创建。
 - Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。
 - Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
 - Task Worker 从 Infra 鉴权流式读取字节，双重校验大小和 digest，完成 Asset Library Artifact 内容后幂等回链；Infra 不生成 Artifact ready 事实。
