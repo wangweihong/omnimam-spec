@@ -27,7 +27,7 @@
 | `appstudio` | `domains/appstudio/context.md` | 生成应用源码、Revision、构建、Build owner/摘要、发布与运行 | StudioApplication、Source、Revision、StudioBuild、StudioRelease |
 | `infrastructure` | `domains/infrastructure/context.md` | 第一阶段单机 Docker 运行层与受控挂载 | InfraRuntime、Docker Job/Service、RuntimeMount、Task Worker、Workspace 挂载 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
-| `gitlab` | `domains/gitlab/context.md` | GitLab 连接、远端 Project 投影和 Pipeline 外部任务 | GitLabServer、GitLabProject、PAT、Pipeline |
+| `gitlab` | `domains/gitlab/context.md` | GitLab 连接、远端 Project 投影、Repository HTTP 适配和 Pipeline 外部任务 | GitLabServer、GitLabProject、PAT、Repository、Pipeline |
 
 `modelgateway` 与 `user-model` 的本次重构已由 `spec-v1.17.0` 按实施门禁发布。Engine、Adapter、Executor、`ProviderCapability`、Binding、平台健康和 ComfyUI 当前 `object_info` 先读 `domains/modelgateway/context.md`；用户 Provider、模型清单、默认模型和用户模型健康先读 `domains/user-model/context.md`；应用与工作流消费行为再读 application-platform。`mcp` 已由 `spec-v1.9.2` 发布 S1、完整 S2、Domain Context 和架构参考；协议、Tool/Resource/Task、错误、权限和持久化任务先读 `domains/mcp/context.md`，再按导航读取必要 S1/S2。
 
@@ -60,7 +60,7 @@
 | StudioApplication、Source、Revision、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改或内部 StudioWorkspace 绑定再读 agent |
 | StudioBuild、StudioBuild batch summary、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行与 Attempt 重试再读 task-center；Artifact owner/权限再读 asset-library |
 | InfraRuntime、Docker Job、Docker Service、RuntimeMount、DockerRuntimeProvider、Task Worker 调用 Infra | `domains/infrastructure/context.md` | 必须继续读 task-center；涉及 AgentWorkspace 读 agent，涉及 StudioWorkspace/Revision/Snapshot/Artifact 读 appstudio |
-| GitLabServer、GitLabProject、PRIVATE-TOKEN、gitlab.pipeline.run | `domains/gitlab/context.md` | Pipeline 执行继续读 task-center；不得因此读取 appstudio |
+| GitLabServer、GitLabProject、PRIVATE-TOKEN、Repository API、gitlab.pipeline.run | `domains/gitlab/context.md` | Pipeline 执行继续读 task-center；AppStudio source binding 同时读 appstudio、agent 与 infrastructure |
 
 ## 4. 跨域任务映射
 
@@ -78,6 +78,7 @@
 | Agent 通过 MCP 运行应用 | mcp、application-platform | task-center、modelgateway、asset-library |
 | Agent 通过 MCP 查询或上传素材 | mcp、asset-library | identity |
 | Coding Agent 修改 StudioApplication | agent、appstudio | task-center |
+| AppStudio GitLab Source 与 Coding Runtime Git workspace | appstudio、gitlab、agent、infrastructure | task-center |
 | StudioApplication 构建与发布 | appstudio、task-center | asset-library、notification-center |
 | Agent/AppStudio 调用基础设施 | task-center、infrastructure | agent、appstudio、asset-library |
 | StudioBuild 交付 Artifact、producer owner 与一跳摘要 | appstudio、asset-library、task-center | 无 |

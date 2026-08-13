@@ -14,11 +14,13 @@ CREATE TABLE gitlab_servers (
   namespace_path TEXT NOT NULL,
   credential TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK (status IN ('UNKNOWN', 'READY', 'ERROR')),
+  is_appstudio_default BOOLEAN NOT NULL DEFAULT FALSE CHECK (is_appstudio_default = FALSE OR status = 'READY'),
   last_checked_at TIMESTAMPTZ,
   last_error TEXT NOT NULL DEFAULT '',
   UNIQUE (name)
 );
 CREATE INDEX idx_gitlab_servers_status ON gitlab_servers(status, updated_at);
+CREATE UNIQUE INDEX idx_gitlab_servers_appstudio_default ON gitlab_servers(is_appstudio_default) WHERE is_appstudio_default = TRUE;
 
 CREATE TABLE gitlab_projects (
   id TEXT PRIMARY KEY,
@@ -29,13 +31,17 @@ CREATE TABLE gitlab_projects (
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0,
   gitlab_server_id TEXT NOT NULL REFERENCES gitlab_servers(id) ON DELETE RESTRICT,
-  external_project_id BIGINT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'CREATING' CHECK (status IN ('CREATING', 'READY', 'ERROR')),
+  external_project_id BIGINT,
   path TEXT NOT NULL,
   path_with_namespace TEXT NOT NULL,
-  web_url TEXT NOT NULL,
-  http_url_to_repo TEXT NOT NULL,
+  web_url TEXT NOT NULL DEFAULT '',
+  http_url_to_repo TEXT NOT NULL DEFAULT '',
   ssh_url_to_repo TEXT NOT NULL DEFAULT '',
   default_branch TEXT NOT NULL DEFAULT 'main',
+  appstudio_webhook_id BIGINT,
+  appstudio_webhook_token_digest TEXT,
+  CHECK (appstudio_webhook_token_digest IS NULL OR appstudio_webhook_token_digest ~ '^sha256:[0-9a-f]{64}$'),
   UNIQUE (gitlab_server_id, external_project_id),
   UNIQUE (gitlab_server_id, path_with_namespace)
 );

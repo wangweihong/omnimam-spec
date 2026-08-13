@@ -119,7 +119,7 @@ Agent Service 只向 Task Center 提交已注册的 Runtime 任务；Task Worker
 ```text
 启动 `agent.coding`
 Platform Agent 挂载经授权的 AgentWorkspace
-Coding Agent 配置 AppStudio Workspace Tool Endpoint，禁止挂载 StudioWorkspace
+Coding Agent 配置受控 Git workspace 与 AppStudio Source Gateway，禁止挂载 StudioWorkspace
 注入模型配置
 注入 Skill 与 MCP 配置
 分配指定资源
@@ -151,7 +151,7 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 1. Agent Service 根据 Agent 的 ModelBinding 确定模型引用。
 2. `user-model` 解析用户私有模型选择。
 3. `modelgateway` 将模型引用解析为 `ModelAccessSpec`。
-4. Agent Service 将 `ModelAccessSpec`、Platform Agent 的授权挂载要求或 Coding Agent 的 Workspace Tool 配置写入 Agent Runtime Task。
+4. Agent Service 将 `ModelAccessSpec`、Platform Agent 的授权挂载要求或 Coding Agent 的 Runtime Git access 引用写入 Agent Runtime Task。
 5. Task Worker 的 Infra Adapter 调用 Infra Service；Infra Service 解析 CredentialRef 并注入 Runtime。
 6. Agent Runtime 自行调用 LLM Provider。
 
@@ -223,7 +223,7 @@ Workspace 是后端内部运行与持久化事实，不是用户侧资源。用�
 * Coding Agent 只能由 AppStudio 通过受控内部模块接口创建，用户不得在 Agent 页面独立创建。
 * 用户侧 Agent 列表、详情、创建和编辑页面不展示 Workspace 类型、ID、Binding 或授权摘要。
 
-多个 Coding Agent 可以引用同一个 StudioWorkspace，但这不授予 Runtime 直接挂载或修改 AppStudio 私有存储的权限。Coding Agent 只能使用与 Principal、Agent、Session、Invocation、StudioWorkspace、允许动作和过期时间绑定的短期 Workspace Tool 授权；所有写入必须由 AppStudio 形成带 `base_revision` 的原子 `StudioChangeSet`。
+多个 Coding Agent 可以引用同一个 StudioWorkspace，但同一 Workspace 同时只允许一个源码写事务，且不授予 Runtime 直接挂载或修改 AppStudio 私有存储的权限。Coding Runtime 使用绑定 Principal、AgentRuntime、generation、StudioWorkspace、GitLabProject 和有效期的 Runtime access；每次 Coding Invocation 固定 base Revision/CommitSHA，写入必须由 Worker 将一个普通 fast-forward commit 投影成带 `base_revision` 的原子 `StudioChangeSet`。
 
 Agent 删除或 Runtime 删除时，不自动删除 AgentWorkspace 或 StudioWorkspace。需要更换 Workspace 时必须创建新的 Agent，不能修改既有 Agent 的固定绑定。
 
@@ -261,7 +261,8 @@ Invocation 只保存 `atomicTaskId` 和业务投影；`QUEUED` 可在同一提�
 
 ```mermaid
 flowchart TB
-    USER[User / AppStudio]
+    USER[User]
+    STUDIO[AppStudio]
     API[omni-apiserver]
 
     AS[Agent Service]
@@ -990,7 +991,7 @@ Coding Agent 的固定 Workspace Binding 可以声明：
 READ_WRITE
 ```
 
-每个 Agent 恰好一个 Binding。`accessMode` 表达业务授权上限，不等于 Infra 挂载权限；Coding Agent 即使为 `READ_WRITE`，也只能通过 AppStudio Workspace Tool 提交 ChangeSet，不能获得 StudioWorkspace 的可写文件系统挂载。
+每个 Agent 恰好一个 Binding。`accessMode` 表达业务授权上限，不等于 Infra 挂载权限；Coding Agent 即使为 `READ_WRITE`，也只能在受控 `/workspace` Git clone 中写入并由 Worker 投影 ChangeSet，不能获得 StudioWorkspace 的文件系统挂载。
 
 ---
 
@@ -1296,7 +1297,7 @@ Agent Service 在启动前解析：
 }
 ```
 
-该示例为 Coding Agent，因此不得携带 StudioWorkspace 文件系统挂载。每个 MCP Binding revision 以 `MCP_SERVER_REF` configuration binding 和同一个 `authorizationRef` 交给 Infrastructure 解析；Task、Worker 和 Provider 不得直接读取 Agent 数据表。Workspace Tool 的短期授权在每个 Invocation 开始时单独签发；Platform Agent 才可以按固定 AgentWorkspace Binding 生成受控 `agent-workspace://...` 挂载引用。
+该示例为 Coding Agent，因此不得携带 StudioWorkspace 文件系统挂载。每个 MCP Binding revision 以 `MCP_SERVER_REF` configuration binding 和同一个 `authorizationRef` 交给 Infrastructure 解析；Task、Worker 和 Provider 不得直接读取 Agent 数据表。Git access 在 Runtime 创建/恢复时解析为非敏感 clone 配置和 tmpfs credential；Platform Agent 才可以按固定 AgentWorkspace Binding 生成受控 `agent-workspace://...` 挂载引用。
 
 Agent Service 不接收明文模型密钥。
 
@@ -1350,7 +1351,7 @@ sequenceDiagram
 5. 创建并绑定 `agent.invocation.execute@1.0` AtomicTask；任务绑定失败则 Invocation 失败且不执行 Runtime 请求。
 6. 如 Agent 为 READY 或 SUSPENDED，则通过关联 Task 启动或恢复 Runtime。
 7. 确保 Runtime Session 已建立。
-8. 为 Coding Agent 签发当前 Invocation 专用的短期 Workspace Tool 授权。
+8. 为 Coding Agent 固定当前 Invocation 的 StudioApplication、Workspace、base Revision/CommitSHA、Blueprint version 和 prompt kind。
 9. 校验 AgentRuntimeBinding 的 owner、Runtime 和 Endpoint 引用，调用 Infrastructure 受控只读 resolve。
 10. 通过 AgentRuntimeAdapter 使用短时地址发送消息。
 11. 接收 Agent Invocation Event Stream。
@@ -1763,22 +1764,22 @@ Coding Agent 的 Binding 可以授予源码写入能力上限：
 READ_WRITE
 ```
 
-实际执行时只允许通过 AppStudio Workspace Tool：
+实际执行时只允许通过受控 Git working tree 和 AppStudio Source Gateway：
 
-* 按当前 Revision 读取文件。
-* 提交带 `base_revision` 和幂等键的原子 ChangeSet。
-* 创建、修改、移动或删除 ChangeSet 中明确列出的文件。
+* 从当前 Revision.CommitSHA clone/fetch 默认分支。
+* 在 `/workspace` 创建、修改、移动或删除文件并执行 Blueprint validation。
+* 创建并 push 一个普通 fast-forward commit，由 Worker 提交带 `base_revision` 和幂等键的原子 ChangeSet 投影。
 * 运行受控测试。
 * 读取 Build 日志。
 * 读取 Preview 日志。
 
-每份 Tool 授权必须绑定 Principal、Agent、Session、Invocation、StudioWorkspace、允许动作和有效期；过期、越权、Workspace 不匹配或 Revision 冲突时必须拒绝，且不得部分应用 ChangeSet。
+Runtime access 必须绑定 Principal、AgentRuntime、generation、StudioApplication、StudioWorkspace、GitLabProject 和有效期；Invocation 同步必须绑定 Agent、Session、Invocation、base Revision/CommitSHA。过期、越权、Workspace 不匹配、非 fast-forward、多 commit 或 Revision 冲突时必须拒绝，且不得部分应用 ChangeSet。
 
 禁止：
 
 * 访问其他 Workspace。
 * 直接挂载 StudioWorkspace 或读取 AppStudio 私有存储。
-* 绕过 ChangeSet 直接写文件。
+* force push、修改 Git remote/credential、删除 `.git` 或绕过 Worker 投影。
 * 直接修改生产 Runtime。
 * 直接修改不可变 Release。
 * 将 Secret 写入 Workspace。
@@ -1856,7 +1857,7 @@ sequenceDiagram
 1. 重新解析 ModelBinding。
 2. 重新签发短期 Agent model access grant 并解析 ModelAccessSpec；任何失败都不得先创建 Task 或 RuntimeBinding。
 3. 创建恢复 AtomicTask，由 Task Worker 通过 Infra Adapter 创建或启动 Runtime。
-4. 重新加载 AgentWorkspace 挂载，或为 StudioWorkspace 配置 AppStudio Workspace Tool，并加载 Skills。
+4. Platform Agent 重新加载 AgentWorkspace 挂载；Coding Agent 重新解析 Runtime Git access 并 clone 固定 base commit 到可丢弃 `/workspace`，同时加载 Skills。
 5. 创建 Runtime Session。
 6. 恢复 Session 摘要和 Memory。
 7. Agent 状态变为 IDLE。
@@ -2514,7 +2515,7 @@ AgentRuntimeBinding
 * AgentRuntimeProvider 与 AgentRuntimeAdapter。
 * 固定 Workspace Binding。
 * Platform AgentWorkspace。
-* Coding Agent 通过短期 AppStudio Workspace Tool 授权提交 ChangeSet。
+* Coding Agent 使用 Runtime-scoped Git access 在 `/workspace` 创建并 push 一个普通 commit，由 Worker 幂等投影 ChangeSet/Revision。
 * Agent Skills。
 * MCP Server Binding。
 * 工具权限。
@@ -2592,7 +2593,7 @@ AgentRuntimeAdapter 只负责 Agent Runtime 交互协议及已绑定 Endpoint �
 
 每个 Agent 必须固定一个与类型匹配的 Workspace；Session、Invocation 和 Runtime 不得切换。Workspace 生命周期独立于 Runtime 生命周期。
 
-Coding Agent 不得直接挂载 StudioWorkspace；源码读写必须使用当前 Invocation 的短期 AppStudio Workspace Tool 授权，并通过带 `base_revision` 的原子 ChangeSet 完成。
+Coding Agent 不得直接挂载 StudioWorkspace；源码读写必须使用 Runtime-scoped GitLab access 和当前 Invocation 固定的 base Revision/CommitSHA，并通过 Worker 投影的带 `base_revision` 原子 ChangeSet 完成。
 
 ## R-AGENT-011
 
@@ -2690,7 +2691,7 @@ Task Center
     管理复杂异步操作、重试、取消和依赖
 
 AppStudio
-    拥有 StudioWorkspace，并通过 Workspace Tool 接收 Coding Agent ChangeSet
+    拥有 StudioWorkspace、Revision 和 ChangeSet，并把 Coding Agent commit 幂等投影为新 Revision
 
 Application Platform
     提供 Agent 可调用的 ApplicationVersion
@@ -2714,10 +2715,11 @@ flowchart LR
     AGENT[Agent Runtime]
     LLM[LLM Provider]
     AWS[AgentWorkspace]
-    ST[AppStudio Workspace Tool]
+    GL[GitLab Repository]
     TC[Task Center]
 
     USER --> AS
+    STUDIO --> AS
 
     AS --> MM
     AS --> MG
@@ -2730,7 +2732,9 @@ flowchart LR
     INFRA -->|注入 ModelAccessSpec 与 Secret| AGENT
 
     AGENT -->|直接调用| LLM
-    AGENT -->|Coding Agent 受控读写| ST
+    AGENT -->|Coding Agent commit / push| GL
+    GL -->|HEAD / compare| WORKER
+    WORKER -->|幂等投影 ChangeSet / Revision| STUDIO
 ```
 
 最终边界为：
@@ -2748,8 +2752,8 @@ flowchart LR
 
 - `AC-AGENT-001-01`：用户创建 Agent 时请求不得包含 `kind/workspaceType/workspaceId`；系统固定创建 Platform Agent，并原子创建和绑定 AgentWorkspace，任一步失败均不得产生可用 Agent。
 - `AC-AGENT-001-02`：Coding Agent 只能由 AppStudio 通过 `CreateCodingAgentForStudio` 内部语义创建；用户侧 Agent 页面和公共 API 不得创建 Coding Agent 或查询 Workspace Binding。
-- `AC-AGENT-001-03`：Coding Agent 源码读写必须携带绑定 Principal、Agent、Session、Invocation、StudioWorkspace、动作和有效期的 Tool 授权；授权不匹配或过期时不得执行。
-- `AC-AGENT-001-04`：Coding Agent 写入必须由 AppStudio 原子应用带 `base_revision` 的 ChangeSet；Revision 冲突时不自动覆盖、不隐式合并、不部分应用。
+- `AC-AGENT-001-03`：Coding Runtime Git access 必须绑定 Principal、AgentRuntime、generation、StudioApplication、StudioWorkspace、GitLabProject 和有效期；Invocation 必须固定 Agent、Session、Invocation、base Revision/CommitSHA，任一授权不匹配或过期时不得执行或同步。
+- `AC-AGENT-001-04`：Coding Agent 写入只允许一个普通 fast-forward commit，并由 Worker 幂等投影为 AppStudio 带 `base_revision` 的 ChangeSet；Revision/CommitSHA 冲突、无 commit、多 commit、分叉或 force push 时不自动覆盖、不隐式合并、不部分应用。
 - `AC-AGENT-001-05`：CHAT/CODING 使用 `agent.invocation.execute@1.0`，TOOL_OPERATION、BACKGROUND_OPERATION 以及 Runtime 启停恢复也必须关联 AtomicTask；Agent 不复制 TaskAttempt、重试、超时或取消状态机。
 - `AC-AGENT-001-06`：QUEUED Invocation 可在任务绑定前短暂为空，但执行前必须绑定 AtomicTask；创建失败进入明确失败终态，API Server 不得启动 goroutine 或降级直接执行。
 - `AC-AGENT-001-13`：CHAT/CODING Task 统一使用 `agent.invocation.execute@1.0`，arguments 只包含 Agent/Session/Invocation/RuntimeBinding、类型、短期授权引用、预期资源版本和恢复游标；消息、owner、Workspace、Endpoint、模型凭证、用户密钥和 Provider 配置不得进入 Task。未绑定过 Task 的提交失败可复用同一 Invocation 重试；绑定后只接受当前 Task ID 和资源版本的单调投影。

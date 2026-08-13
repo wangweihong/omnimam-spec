@@ -37,6 +37,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - AtomicTask 是唯一 Worker handler 执行的业务资源；handler 按受控 `function_ref` 路由。
 - SERIAL Group 编译为顺序 SIMPLE task；PARALLEL 编译为 Fork/Join，并应用 `max_parallelism` 门禁。
 - DAGTaskGroup 发布前校验无环、key 唯一、引用完整和规模限制；普通节点编译为 SIMPLE，动态批量节点编译为 Dynamic Fork/Join。
+- 公共 DAG 创建继续应用用户 functionRef allowlist，拒绝 `gitlab.pipeline.run` 和 `appstudio.initialization.*`/`appstudio.automation.*`。受信 AppStudio 服务可调用 `CreateDomainDAGTaskGroup(caller, request)` 提交固定模板；caller 必须是经认证的 appstudio 服务，且仍执行注册、I/O schema、无环、规模和幂等校验。
 - Workflow Canvas 可以提交按固定 count 预先展开的 serial、batch 或 cascade 静态节点；Task Center 只校验并执行展开后的无环依赖，不解析 Canvas loop 配置，也不维护 iteration 状态机。
 - DAG 详情查询以声明节点为主键聚合实际 AtomicTask。`dag_node_key` 保存声明节点 key，静态节点使用唯一主任务，动态 fan-out 的全部实际任务共享该值；动态节点按活动优先和确定性终态优先级计算状态，并在摘要外保留按 node_key 分页读取实际任务的能力。
 - DAG 触发来源在创建时保存 API/SCHEDULE/CANVAS/DOMAIN_EVENT/RETRY 类型、触发时间及可选来源 ID/名称快照；来源删除或不可见不回查改写历史。
@@ -44,7 +45,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 - Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
-- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
+- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。失败生命周期日志必须包含经统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，失败不得改变 handler 结果。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
 - Task Worker 只能接收 Task Center 已校验的不可变 `arguments` 和 `function_ref`，不得从 Agent、AppStudio 或客户端直接接收 Infra 请求。
 - Infra-backed `function_ref` 必须由 function-registry 声明 `execution_mode=JOB|SERVICE`、输入/输出 schema、required capabilities、幂等键、取消方式、超时边界和结果映射；首阶段只可路由到 DockerRuntimeProvider。
 - Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、宿主机路径、容器 ID、Host Port 或内部地址。
@@ -70,7 +71,9 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 - 服务启动必须先用 `function-registry.schema.yaml` 校验 registry，确认 `function_ref + contract_version` 唯一、每个 functionRef 恰有一个 `ACTIVE` 版本、所有 I/O schema ref 可解析、引用的错误码存在且 retryable 属性一致；校验失败时 Task Center 不进入就绪状态。新任务只选择 `ACTIVE`，`RETAINED` 仅供历史任务，`DISABLED` 不允许创建或恢复执行。
 - 创建 AtomicTask 时先校验调用服务身份与 `allowed_callers`，再按 input schema 校验 `arguments`。未注册或调用方不可用返回 `ERR_TASK_FUNCTION_REF_NOT_REGISTERED`，输入不合法返回 `ERR_TASK_FUNCTION_INPUT_INVALID`，两者都不得创建任务或调用 Infra。
-- `agent.invocation.execute@1.0` 的 arguments 只能包含 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期 `agent-invocation-grant://`、预期资源版本和可选 runtime/event 恢复游标。Task Worker agent-executor 仅可在当前 Attempt 内以受信身份解析该 grant，读取 Invocation/Session/消息上下文、Runtime Endpoint、ModelAccessSpec 和 CODING Workspace Tool grant；解析结果不得进入 Task arguments/result、事件、日志或持久化投影。Coding Runtime 必须通过 Workspace Tool 自行提交 ChangeSet，Task Worker 不得调用 AppStudio `ApplyChangeSet`。
+- `agent.invocation.execute@1.0` 的 arguments 只能包含 Agent、Session、Invocation、RuntimeBinding、Invocation 类型、短期 `agent-invocation-grant://`、预期资源版本和可选 runtime/event 恢复游标。Task Worker agent-executor 仅可在当前 Attempt 内以受信身份解析该 grant，读取 Invocation/Session/消息上下文、Runtime Endpoint、ModelAccessSpec；CODING claims 还固定 StudioApplication/Workspace、base Revision/CommitSHA、Blueprint version 和 prompt kind，但不包含源码正文工具授权或明文 Git token。解析结果不得进入 Task arguments/result、事件、日志或持久化 Task 投影。
+- `agent.runtime.ensure@1.1` 是唯一 ACTIVE 版本；`1.0` 以原 schema/digest 保留为 RETAINED。`1.1` 的 Coding Agent arguments 必须携带 `appstudio-runtime-git-access://` opaque secret reference，Platform Agent 不要求该字段；Task、日志和业务投影不得包含其解析出的 clone URL、用户名或 token。
+- CODING Runtime 必须在 `/workspace` validation 后 push 恰好一个普通 commit。Task Worker 在投影 Invocation 终态前通过 AppStudio `WorkspaceGateway` 比较 base 与默认分支 HEAD：只有单 commit fast-forward 才按 Invocation 幂等生成一个既有 ChangeSet 和下一条 Revision。无 commit、多 commit、分叉、force 语义、base 不匹配或并发写冲突均投影为失败；Worker 在 push 后崩溃或重复 Attempt 时继续同步同一 commit，不创建第二条 ChangeSet/Revision。
 - `required_capabilities`、执行模式、默认重试、取消、超时和 Execution/Infra Adapter 映射由固定合同派生；调用方不得提交 capability、修改 handler、扩大 RuntimeProfile、传入镜像/命令或覆盖 source policy。允许的 retry/timeout 覆盖不能超过合同上限。
 - AtomicTask 保存 `function_contract_version` 和 registry 登记的规范化合同摘要，并保存派生后的 capabilities/retry/timeout/cancel 快照。摘要固定为 `sha256:<64 lowercase hex>`：对包含 `function_entry`、`input_schema`、`output_schema` 的对象执行 RFC 8785 JSON Canonicalization Scheme，其中 function entry 先将生命周期字段 `status` 规范化为 `ACTIVE`，再排除 `contract_digest` 和 `x-s1-refs`，I/O schema 使用已解析内容，最后计算 SHA-256。`status` 只控制新任务选择与历史恢复，不改变已发布合同摘要；启动加载和历史恢复都必须复算并比对登记值。服务必须保留所有非终态任务及历史保留期仍引用的 `ACTIVE/RETAINED` 合同，缺失或摘要不一致返回 `ERR_TASK_FUNCTION_CONTRACT_UNAVAILABLE`，不得回退到最新版本。
 - Task Worker 只在满足固定 capability 集时接收任务；没有合格 Worker 返回可重试 `ERR_TASK_FUNCTION_CAPABILITY_UNAVAILABLE`。Worker 返回的 `TaskOutput.result` 必须按固定 output schema 校验，失败返回 `ERR_TASK_FUNCTION_OUTPUT_INVALID`，不得把不合法结果投影为业务成功。
@@ -87,6 +90,12 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 该 handler 不进入 Agent/AppStudio `function-registry.yaml`，不声明 Docker JOB/SERVICE、Infra Adapter、RuntimeProfile 或 Infra capability；Task Center 仍必须在创建 AtomicTask 前确认 functionRef 已注册。
 - Task Worker 首次创建远端 Pipeline 后将 Pipeline ID 写入 Attempt `external_job_id`；非终态返回 `IN_PROGRESS` 和 5 秒 callback，自动重试与重启恢复查询同一 Pipeline。
 - GitLab credential、API URL、远端 project ID、variables 回显、Jobs 原始响应和日志正文不得进入 AtomicTask arguments、output 或 Worker 日志。
+
+### 3.3 AppStudio 领域 handler
+
+- `appstudio.initialization.project.ensure`、`appstudio.initialization.webhook.ensure`、`appstudio.initialization.finalize`、`appstudio.initialization.invocation.start` 和 Push DAG 所需的 `appstudio.automation.snapshot.ensure`、`appstudio.automation.build.ensure`、`appstudio.automation.artifact.complete` 是受信非 Infra handler；只允许 AppStudio 领域 DAG使用，不进入公共 functionRef allowlist。
+- 每个 handler 输入只包含稳定 Application/Project/Revision/Build 引用和幂等 key；Project URL、token、源码、artifact 正文、Agent消息正文和 Provider 响应不得进入 Task。实际 Infra Preview 仍只由 registry 中的 `appstudio.preview.ensure` 执行。
+- AppStudio 初始化 DAG 的四个 handler 节点固定映射为 Project、Webhook、应用初始化和首次 Invocation 阶段。Task Center 保留完整 DAG/Attempt 事实；AppStudio 只读取公开阶段所需状态、进度、Attempt、时间和安全业务错误，并在投影终态前校验 AtomicTask `owner_id` 等于 Application 当前初始化 DAGTaskGroup ID。旧 DAG 不删除，但不得覆盖新轮次业务投影。
 
 ## 4. 调度与巡检契约
 
@@ -133,7 +142,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Agent 和 AppStudio 只能创建带业务授权快照的 AtomicTask；Infra 操作统一经过 `Task Center -> Task Worker -> infra-adapter -> Infra Service`。Task Center 不把 Agent/AppStudio 的任务输入直接透传为 Docker 请求。
 - Agent 的 `agent.invocation.execute`、`agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentInvocation、AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
 - GitLab 领域通过 `gitlab.pipeline.run` 使用 Task Center 的重试、取消和延迟回调；GitLabServer/GitLabProject 仍由 gitlab 拥有，Task Center 和 Worker 只能通过受控 GitLab Store 接口读取。
-- Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；StudioWorkspace 只能由 AppStudio 的受控授权产生；Preview 使用当前 Workspace Revision；Build 使用固定 Snapshot；Production 使用固定 Artifact。
+- Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；Coding Runtime 使用 AppStudio 签发的 Runtime Git access `SECRET_REF`；Preview 使用当前 Workspace Revision/CommitSHA archive；Build 使用固定 Snapshot 对应的 CommitSHA archive；Production 使用固定 Artifact。任何 token、archive 正文、GitLab URL 或远端 project ID 都不得进入 AtomicTask arguments/result。
 - `appstudio.build.execute@1.1` 将 registry 固定输出声明映射为 Infra `output_declarations`。Job 成功后先消费 RuntimeOutput descriptor，再鉴权流式读取字节并完成 Asset Library Artifact 内容，最后幂等回链 RuntimeOutput；Task Center 不缓存 staging 内容或把 `infra-output://` 暴露给来源领域。
 
 - 独立应用运行由 application-platform 创建 `application-platform.run` AtomicTask；Canvas Application 节点由 Workflow Canvas 创建 DAG 内同名 AtomicTask，Application Platform 只能通过受控绑定接口把 ApplicationRun 绑定到该现有任务，不得创建第二个任务。

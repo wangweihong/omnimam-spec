@@ -1,5 +1,138 @@
 # Release Records
 
+## spec-v1.23.4
+
+- commit: 0da3dd236d687643e0b34a71cc115b51f5de485f
+- status: released
+- confirmed_by: user（2026-08-12 明确要求发布 `spec-v1.23.4`，端到端修复首次 Coding Invocation 合同与失败日志诊断）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: 已发布 `agent.runtime.ensure@1.0` 的 input schema/ref/digest 保持不变并转为 RETAINED；新任务唯一使用 `agent.runtime.ensure@1.1` ACTIVE。Coding Agent 的 `runtime_git_access_ref` 必须是 `appstudio-runtime-git-access://` opaque secret reference，Platform Agent 不要求该字段，明文 clone URL、用户名和 token 不得进入 Task、日志或业务投影。Attempt 失败生命周期日志必须包含经过统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，不得改变任务结果、重试或取消语义。不新增 API、数据库结构、错误码、权限码或事件。
+
+## spec-v1.23.3
+
+- commit: 31c9be36314153ea4f24be39866c93d5c295d7d2
+- status: released
+- confirmed_by: user（2026-08-12 明确要求发布 AppStudio 初始化诊断与显式恢复 `spec-v1.23.3` 并按计划修复）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+  - task-center
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/gitlab/errors.yaml
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+  - domains/task-center/context.md
+- implementation_gate: AppStudio 初始化固定公开 GitLab Project、Webhook、应用初始化和首次 Coding Invocation 四阶段，应用级接口只返回当前 DAG、0..1 进度、阶段状态/Attempt/失败时间/本地化安全错误，不泄漏 Workspace、credential、任务参数或原始 runtime payload。缺少唯一 READY 默认 GitLabServer 必须保留 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`，GitLab SourceProvider 同时保留连接、远端和 projection 结构化错误。仅 `ERROR` reservation 可按 Application ID 与 retry 幂等键稳定派生新 DAG；同 key 返回同轮结果，运行中不同 key 被拒绝，既有 Project/Hook/Repository/Workspace/Agent/Session/Message/Invocation 全部复用。Application 当前 DAG 引用、条件回滚和 `task.owner_id` fence 必须阻止旧 DAG 迟到事件覆盖新轮次；不新增数据库表、字段、权限码或事件。
+
+## spec-v1.23.2
+
+- commit: 7710c26efff4466f62f2bf36a2fff5b1f63ddde2
+- status: released
+- confirmed_by: user（2026-08-12 明确要求实施 AppStudio 第三阶段并先创建 spec-v1.23.2）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+  - task-center
+  - infrastructure
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/errors.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/infrastructure/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+  - domains/task-center/context.md
+  - domains/infrastructure/context.md
+- implementation_gate: CreateStudioApplication 必须先持久化 CREATING reservation 和初始化 DAG ID并返回 HTTP 200；受信 DAG 幂等完成 Project/Starter/Hook、Revision 0、Agent/Session/Bindings 和首次 Invocation 后才进入 READY。Webhook 使用每 Project 随机 token且只保存 SHA-256 digest；Push 只在 CommitSHA 已有 canonical Revision 时创建 Snapshot/Build，并通过 gitlab.pipeline.run、受限 Bundle Artifact 和 appstudio.preview.ensure 自动预览。公共 DAG API 仍禁止 GitLab/AppStudio 内部 handler；CI 不直连 Infrastructure，Production 继续由 StudioRelease/Artifact/reconcile 管理。
+
+## spec-v1.23.1
+
+- commit: 613399f3a18b01032aee38af7757904a073e41e9
+- status: released
+- confirmed_by: user（2026-08-12 明确要求修正 reservation SSOT 冲突并发布 spec-v1.23.1，随后实施）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - gitlab
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+- S2:
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - domains/appstudio/context.md
+  - domains/gitlab/context.md
+- implementation_gate: AppStudio 必须先持久化稳定 Application/Repository/Workspace `CREATING` reservation；GitLab adapter 必须随后以同一 ID/path 持久化 `CREATING` GitLabProject projection，且仅在 reservation 存在后调用远端 Project API。CREATING/ERROR Project 的 remote numeric ID 与 URL 可以为空，只有 READY Project 可供 Repository adapter 使用。远端或 Starter commit 成功后的重试必须复用同一 reservation、Project 和 commit；完成 Revision 0、Coding Agent/Session/Bindings 后在一个 AppStudio 事务中切换 Application/Repository/Workspace 为 READY，GitLab projection 同步为 READY。
+
+## spec-v1.23.0
+
+- commit: 7010953df6130caa1f59c8b19dd9feaa5e06d467
+- status: released
+- confirmed_by: user（2026-08-11 明确要求实施 AppStudio GitLab 第二阶段重构计划，并要求先发布 spec-v1.23.0、再更新 server pin 与实施）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - agent
+  - gitlab
+  - infrastructure
+  - task-center
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/gitlab/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/schema.sql
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/agent/module-contract.md
+  - 01_contracts/domains/gitlab/openapi.yaml
+  - 01_contracts/domains/gitlab/schema.sql
+  - 01_contracts/domains/gitlab/module-contract.md
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/domains/task-center/module-contract.md
+- context:
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+  - domains/appstudio/context.md
+  - domains/agent/context.md
+  - domains/gitlab/context.md
+  - domains/infrastructure/context.md
+  - domains/task-center/context.md
+- implementation_gate: GitLab 是 AppStudio 唯一源码正文 Provider；AppStudio 保留 Revision、ChangeSet、递增 revision number 和文件索引，以不可变 `commit_sha` 关联 Git commit。当前 `STATIC_WEB` 固定内置 `web-react@v1`，公共创建 API 不增加 Blueprint/GitLab 参数。只有唯一 READY 默认 GitLabServer 可初始化 AppStudio Project；AppStudio 只保存 GitLabProject 本地 ID。Coding Runtime 使用限时 project-scoped `write_repository` access、tmpfs credential helper 和可丢弃 `/workspace` clone，token 不得进入环境变量、Task、数据库、日志、错误或 Docker inspect。CODING Invocation 固定 base Revision/CommitSHA，成功必须产生恰好一个普通 fast-forward commit，Worker 在终态前幂等投影一个既有 ChangeSet 和下一条 Revision；无 commit、多 commit、分叉、force 语义或 base 漂移不推进 Revision。Preview/Build 按固定 CommitSHA 流式获取并校验 GitLab archive 后注入只读 tmpfs。删除旧 Workspace Tool 与 `BUILT_IN` 正文契约，不迁移旧数据，不新增错误码、权限码、事件、AppStudio 公共 API 或数据库表。
+
 ## spec-v1.22.0
 
 - commit: 78122d28b412a52279c69cc2ec239b41af2a47a1

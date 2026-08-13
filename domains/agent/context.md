@@ -20,10 +20,10 @@
 - Coding Agent 只能由 AppStudio 通过内部 `CreateCodingAgentForStudio` 创建；用户侧 Agent 页面、公共 API、通知和 SSE 不展示 Coding Agent 的 Workspace 或 Binding。
 - Agent 创建后内部 Workspace 固定；Session 和 Invocation 不得切换。
 - 多个 Coding Agent 可以引用同一 StudioWorkspace，但写入必须经过 AppStudio ChangeSet 和 `base_revision` 校验。
-- Coding Agent 不直接挂载 AppStudio 存储，只使用当前 AgentInvocation 的受控 Workspace Tool 授权；Runtime 挂载请求必须经 Task Center、Task Worker 和 Infra Adapter。
+- Coding Agent 不挂载 AppStudio 私有存储；Coding Runtime 使用受控 GitLab clone、Runtime-scoped credential 和可丢弃 `/workspace`，Runtime 请求仍必须经 Task Center、Task Worker 和 Infra Adapter。
 - Agent 删除、挂起或 Runtime 重建不得改写 StudioWorkspace、StudioBuild、StudioRelease 或 StudioRuntimeInstance。
 - 所有 `CHAT` 和 `CODING` AgentInvocation 统一使用 `agent.invocation.execute@1.0` AtomicTask；任务尝试、重试、取消、超时和调度并发均以 task-center 当前事实源为准，API Server 不得进程内执行或降级绕过 Task。
-- Invocation 执行前必须存在 ACTIVE primary ModelBinding，并通过 Attempt-scoped Model Access Grant 解析模型访问；Coding 还必须使用短期 AppStudio Workspace Tool Grant，Worker 不得代表 Coding Agent 直接调用 `ApplyChangeSet`。
+- Invocation 执行前必须存在 ACTIVE primary ModelBinding，并通过 Attempt-scoped Model Access Grant 解析模型访问；Coding Invocation 还必须固定 AppStudio base Revision/CommitSHA。Worker 只能把 Runtime 已 push 的一个 fast-forward commit 投影为原有 ChangeSet/Revision，不得伪造源码操作或绕过 AppStudio 并发栅栏。
 - AgentRuntime 的创建、停止、删除和恢复写操作仍经 Task Center；AgentRuntimeAdapter 仅可用 Agent 工作负载身份调用 Infrastructure 的只读 Endpoint resolve，解析地址只用于当次 Hermes/OpenCode 调用且不得持久化或传播。
 - AgentRuntimeProvider 当前只承载 Hermes/OpenCode 的业务生命周期和 Task 编排；Infrastructure RuntimeProvider 第一阶段只承载 Docker，两者不得混用。
 
@@ -33,7 +33,7 @@
 
 ## 5. 上游与下游
 
-上游是用户创建 Platform Agent、AppStudio 内部创建 Coding Agent，以及受权平台入口发起 Invocation。下游包括 AgentRuntimeProvider、Task Center/Task Worker、AppStudio Workspace Tool、infrastructure，以及消费不含 Workspace 字段的可靠 Agent 事件的 notification-center 和 sse。
+上游是用户创建 Platform Agent、AppStudio 内部创建 Coding Agent，以及受权平台入口发起 Invocation。下游包括 AgentRuntimeProvider、Task Center/Task Worker、AppStudio Source Gateway、GitLab、infrastructure，以及消费不含 Workspace 字段的可靠 Agent 事件的 notification-center 和 sse。
 
 ## 6. 正式事实源
 

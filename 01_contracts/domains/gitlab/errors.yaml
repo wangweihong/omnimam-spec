@@ -47,6 +47,18 @@
   deprecated: false
   related_rules: [BR-GITLAB-006]
   related_user_stories: [US-GITLAB-001]
+- code: ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE
+  value: 250204
+  http: 200
+  cn: 没有 READY 且标记为 AppStudio 默认的 GitLabServer，请先完成代码仓库配置和连接检测。
+  en: No READY GitLabServer is configured as the AppStudio default. Configure and test a repository connection first.
+  owning_domain: gitlab
+  owning_module: server
+  range: 250200-250399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-GITLAB-013, BR-GITLAB-019]
+  related_user_stories: [US-GITLAB-003]
 - code: ERR_GITLAB_PROJECT_NOT_FOUND
   value: 250400
   http: 200

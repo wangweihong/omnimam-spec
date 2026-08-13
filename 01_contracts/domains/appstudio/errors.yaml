@@ -72,6 +72,30 @@
   deprecated: false
   related_rules: [BR-APPSTUDIO-001]
   related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_WEBHOOK_UNAUTHORIZED
+  value: 210206
+  http: 200
+  cn: AppStudio GitLab Webhook token 无效或 Project 不可用。
+  en: The AppStudio GitLab webhook token is invalid or the project is unavailable.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
+- code: ERR_APPSTUDIO_WEBHOOK_PAYLOAD_INVALID
+  value: 210207
+  http: 200
+  cn: AppStudio GitLab Webhook 事件类型或载荷无效。
+  en: The AppStudio GitLab webhook event type or payload is invalid.
+  owning_domain: appstudio
+  owning_module: application
+  range: 210200-210399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-APPSTUDIO-001]
+  related_user_stories: [US-APPSTUDIO-001]
 - code: ERR_APPSTUDIO_SOURCE_NOT_VISIBLE
   value: 210400
   http: 200

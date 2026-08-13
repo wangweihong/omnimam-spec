@@ -8,8 +8,22 @@ info:
     本文件只按当前 AppStudio S1 生成；旧版 S2 不属于本契约输入。
 servers: [{url: /}]
 security: [{bearerAuth: []}]
-tags: [{name: applications}, {name: agent}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
+tags: [{name: applications}, {name: webhook}, {name: agent}, {name: source}, {name: builds}, {name: preview}, {name: releases}, {name: runtime}]
 paths:
+  /api/v1/appstudio/webhook:
+    post:
+      tags: [webhook]
+      operationId: receive_appstudio_gitlab_webhook
+      summary: 接收 AppStudio GitLab Push/Pipeline Hook
+      description: 按 GitLab Project numeric ID 定位本地 Project，以 X-Gitlab-Token 的 SHA-256 digest 常量时间验证；重复事件幂等返回。
+      x-errors: [ERR_APPSTUDIO_WEBHOOK_UNAUTHORIZED, ERR_APPSTUDIO_WEBHOOK_PAYLOAD_INVALID]
+      security: []
+      parameters:
+        - {name: X-Gitlab-Token, in: header, required: true, schema: {type: string, minLength: 32, maxLength: 512}, x-naming-exception: GitLab 协议标准请求头。}
+        - {name: X-Gitlab-Event, in: header, required: true, schema: {type: string, enum: [Push Hook, Pipeline Hook]}, x-naming-exception: GitLab 协议标准请求头。}
+        - {name: X-Gitlab-Event-UUID, in: header, required: false, schema: {type: string, maxLength: 200}, x-naming-exception: GitLab 协议标准请求头。}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/GitLabWebhookPayload'}}}}
+      responses: {'200': {description: 已验证并幂等接受事件。, content: {application/json: {schema: {$ref: '#/components/schemas/GitLabWebhookAccepted'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications:
     get:
       tags: [applications]
@@ -26,7 +40,7 @@ paths:
       x-permission: appstudio.application.manage
       x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['6 StudioApplication 创建']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateRequest'}}}}
-      responses: {'200': {description: 后端已初始化 Repository、默认源码上下文、Coding Agent 和 Session，并返回首次 CODING Invocation 投影。首次 Task 提交失败不回滚 READY 应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+      responses: {'200': {description: 已持久化 CREATING Application reservation 并提交初始化 DAG；调用方通过 DAG 与既有查询接口观察进度。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationCreateResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}:
     parameters: [{$ref: '#/components/parameters/studio_application_id'}]
     get:
@@ -44,6 +58,29 @@ paths:
       x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-001, R-STUDIO-010], source_sections: ['5.1 StudioApplication', '16 Agent 与 StudioApplication 生命周期']}
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationUpdateRequest'}}}}
       responses: {'200': {description: 更新后的应用。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplication'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/initialization:
+    parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+    get:
+      tags: [applications]
+      operationId: get_studio_application_initialization
+      summary: 查询 StudioApplication 初始化进度与安全诊断
+      description: 按 Application 当前初始化 DAG 聚合固定四阶段；不返回 Workspace、credential、任务 arguments、authorization reference、Agent Message 正文、Provider 响应或原始 runtime payload。
+      x-permission: appstudio.application.read
+      x-errors: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE]
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, R-STUDIO-027], source_sections: ['6.4 初始化诊断与显式恢复']}
+      responses: {'200': {description: 当前初始化 DAG 的四阶段安全聚合；ERROR 诊断长期保留。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationInitialization'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/initialization/retry:
+    parameters: [{$ref: '#/components/parameters/studio_application_id'}]
+    post:
+      tags: [applications]
+      operationId: retry_studio_application_initialization
+      summary: 显式重试 ERROR StudioApplication 的初始化
+      description: 复用原 Application reservation，以 Application ID 与 idempotency_key 稳定派生新 DAG；同 key 返回同一轮次，不重复创建远端 Project 或初始化对象。
+      x-permission: appstudio.application.manage
+      x-errors: [ERR_APPSTUDIO_APPLICATION_NOT_VISIBLE, ERR_APPSTUDIO_APPLICATION_INVALID_STATE]
+      x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [BR-APPSTUDIO-001, R-STUDIO-027], source_sections: ['6.4 初始化诊断与显式恢复']}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationInitializationRetryRequest'}}}}
+      responses: {'200': {description: Application 已切换为 CREATING，并返回新的或同幂等键既有初始化 DAG 安全聚合。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioApplicationInitialization'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/studio-applications/{studio_application_id}/archive:
     post:
       tags: [applications]
@@ -510,11 +547,74 @@ components:
     StudioApplicationCreateResponse:
       type: object
       additionalProperties: false
-      required: [application, coding_agent, initial_invocation]
+      required: [application, dag_task_group_id]
       properties:
         application: {$ref: '#/components/schemas/StudioApplication'}
-        coding_agent: {$ref: '#/components/schemas/StudioAgentStatus'}
-        initial_invocation: {$ref: '#/components/schemas/StudioAgentInvocation'}
+        dag_task_group_id: {type: string}
+    StudioApplicationInitializationRetryRequest:
+      type: object
+      additionalProperties: false
+      required: [idempotency_key]
+      properties:
+        idempotency_key: {type: string, minLength: 1, maxLength: 200}
+    StudioApplicationInitialization:
+      type: object
+      additionalProperties: false
+      required: [studio_application_id, dag_task_group_id, status, progress, stages, updated_at]
+      properties:
+        studio_application_id: {type: string}
+        dag_task_group_id: {type: string, description: Application 当前初始化 DAGTaskGroup 稳定 ID；有 Task Center 权限的客户端可用于导航通用 DAG 详情。}
+        status: {$ref: '#/components/schemas/StudioApplicationInitializationStatus'}
+        progress: {type: number, minimum: 0, maximum: 1}
+        stages: {type: array, minItems: 4, maxItems: 4, items: {$ref: '#/components/schemas/StudioApplicationInitializationStage'}}
+        updated_at: {type: string, format: date-time}
+    StudioApplicationInitializationStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCESS, ERROR]
+    StudioApplicationInitializationStage:
+      type: object
+      additionalProperties: false
+      required: [stage, status, attempt_count, updated_at]
+      properties:
+        stage: {type: string, enum: [GITLAB_PROJECT, GITLAB_WEBHOOK, APPLICATION_INITIALIZATION, FIRST_CODING_INVOCATION]}
+        status: {$ref: '#/components/schemas/StudioApplicationInitializationStatus'}
+        attempt_count: {type: integer, minimum: 0}
+        failed_at: {type: string, format: date-time, nullable: true}
+        latest_error:
+          allOf: [{$ref: '#/components/schemas/StudioApplicationInitializationSafeError'}]
+          nullable: true
+        updated_at: {type: string, format: date-time}
+    StudioApplicationInitializationSafeError:
+      type: object
+      additionalProperties: false
+      required: [code, message, messages, occurred_at]
+      description: 仅公开稳定业务码与本地化安全文案；禁止携带 credential、内部 ID/参数、原始 Provider 或 runtime payload。
+      properties:
+        code: {type: string}
+        message: {type: string}
+        messages:
+          type: object
+          additionalProperties: false
+          required: [zh-CN, en-US]
+          properties:
+            zh-CN: {type: string}
+            en-US: {type: string}
+        occurred_at: {type: string, format: date-time}
+    GitLabWebhookPayload:
+      type: object
+      description: GitLab 原始 Push/Pipeline Hook 的受限接收 envelope；实现只解析 Project ID、ref/commit 或 Pipeline ID/status/web_url，忽略并不得持久化其他字段。
+      additionalProperties: true
+      required: [project]
+      properties:
+        project: {type: object, additionalProperties: true, required: [id], properties: {id: {type: integer, format: int64}}}
+        ref: {type: string, nullable: true}
+        checkout_sha: {type: string, nullable: true}
+        object_attributes: {type: object, nullable: true, additionalProperties: true}
+    GitLabWebhookAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted, duplicate]
+      properties: {accepted: {type: boolean, enum: [true]}, duplicate: {type: boolean}, dag_task_group_id: {type: string, nullable: true}}
     StudioCodingModelSelection:
       type: object
       additionalProperties: false
@@ -804,7 +904,7 @@ components:
     StudioSourceSnapshot:
       type: object
       required: [id, studio_application_id, source_revision, status, content_digest, manifest_digest, created_at]
-      properties: {id: {type: string}, studio_application_id: {type: string}, source_revision: {type: integer}, status: {type: string, enum: [PENDING, READY, FAILED]}, content_digest: {type: string, nullable: true}, manifest_digest: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
+      properties: {id: {type: string}, studio_application_id: {type: string}, source_revision: {type: integer}, commit_sha: {type: string}, git_ref: {type: string}, status: {type: string, enum: [PENDING, READY, FAILED]}, content_digest: {type: string, nullable: true}, manifest_digest: {type: string, nullable: true}, created_at: {type: string, format: date-time}}
     StudioApplicationVersion:
       type: object
       required: [id, studio_application_id, source_snapshot_id, version, status]
@@ -816,7 +916,7 @@ components:
     StudioBuild:
       type: object
       required: [id, owner_user_id, name, studio_application_id, source_snapshot_id, status, created_at, updated_at]
-      properties: {id: {type: string}, owner_user_id: {type: string, readOnly: true}, name: {type: string}, studio_application_id: {type: string}, source_snapshot_id: {type: string}, atomic_task_id: {type: string, nullable: true}, artifact_id: {type: string, nullable: true}, artifact_digest: {type: string, nullable: true}, status: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELED]}, diagnostics_summary: {type: object, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
+      properties: {id: {type: string}, owner_user_id: {type: string, readOnly: true}, name: {type: string}, studio_application_id: {type: string}, source_snapshot_id: {type: string}, atomic_task_id: {type: string, nullable: true}, pipeline_id: {type: integer, format: int64, nullable: true}, pipeline_url: {type: string, nullable: true}, commit_sha: {type: string}, artifact_id: {type: string, nullable: true}, artifact_digest: {type: string, nullable: true}, status: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELED]}, diagnostics_summary: {type: object, additionalProperties: true}, created_at: {type: string, format: date-time}, updated_at: {type: string, format: date-time}}
     StudioBuildBatchSummaryRequest:
       type: object
       additionalProperties: false

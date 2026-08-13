@@ -528,6 +528,7 @@ flowchart LR
 agent.hermes
 agent.coding
 appstudio.preview.web
+appstudio.preview.web-backend
 appstudio.build.web
 studioapp.runtime.web
 media.ffmpeg
@@ -1003,9 +1004,10 @@ Job 完成后 Infra 只返回包含准确 `sizeBytes`、`contentDigest` 和 `inf
       }
     },
     {
-      "name": "appstudio-workspace-tool-endpoint",
-      "type": "SERVICE_ENDPOINT",
-      "valueRef": "service://appstudio/workspace-tool"
+      "name": "appstudio-git-workspace-access",
+      "type": "SECRET",
+      "valueRef": "appstudio-runtime-git-access://runtime-binding-001",
+      "injectionMode": "SECRET_FILE"
     }
   ],
   "resources": {
@@ -1043,7 +1045,7 @@ Job 完成后 Infra 只返回包含准确 `sizeBytes`、`contentDigest` 和 `inf
 }
 ```
 
-该示例为 Coding Agent，因此 `sourceBindings` 为空：StudioWorkspace 不得作为文件系统挂载进入 Agent Runtime。Runtime 通过 AppStudio Workspace Tool 使用每个 Invocation 单独签发的短期授权。Platform Agent 的 AgentWorkspace 挂载必须使用来源领域签发的 `agent-workspace://...` sourceRef，并包含目标路径、读写上限和授权上下文。
+该示例为 Coding Agent，因此 `sourceBindings` 不包含 StudioWorkspace 文件系统挂载。Infrastructure 解析 Runtime-scoped Git access，把非敏感 clone URL/branch 配置和 Project Access Token credential helper 分别注入 Runtime，创建可丢弃 `/workspace` 并 clone Git working tree。Platform Agent 的 AgentWorkspace 挂载仍必须使用来源领域签发的 `agent-workspace://...` sourceRef。
 
 ---
 
@@ -1273,14 +1275,14 @@ Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sour
 | 运行场景 | 允许输入 | 挂载规则 | 业务事实 owner |
 | --- | --- | --- | --- |
 | AgentRuntime | `AgentWorkspace` | Infra 只能依据 Agent 的有效授权挂载；读写范围由 Agent Workspace Binding 限制；Runtime 删除不删除 Workspace | `agent` |
-| Coding Agent Runtime | 受控 `StudioWorkspace` 引用 | 只能通过 AppStudio Workspace Tool 和受控授权访问；Infra 不得直接读取 AppStudio 私有存储 | `appstudio` |
+| Coding Agent Runtime | GitLab Project access 与 `/workspace` | 只能通过 AppStudio/Agent 授权 resolver 获取；credential 只写 tmpfs，Infra 不得读取 AppStudio 私表 | `appstudio`、`gitlab`、`agent` |
 | Preview Runtime | 当前 `Workspace Revision` | 只能挂载启动时授权的当前 Revision；源代码默认只读，临时写入必须落到隔离临时卷；不得创建或改写 Release | `appstudio` |
 | Build Runtime | 固定 `StudioSourceSnapshot` | 只读挂载固定 Snapshot digest；Build 不得读取持续变化的 Workspace 或后续 Revision | `appstudio` |
 | Production Runtime | 固定 `Artifact` 和 digest | 只读挂载固定 Artifact；禁止挂载可写 Workspace、Workspace Revision 或 Snapshot | `appstudio` |
 
 所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把它解释为宿主机路径。`StudioWorkspace`、Workspace Revision、StudioSourceSnapshot 与 Artifact 的物理存储位置不得进入 Infra 普通查询、事件或日志。
 
-挂载策略的优先级为：`Production Artifact` > `Build StudioSourceSnapshot` > `Preview Workspace Revision` > `AgentWorkspace` 授权。Coding Agent 的 StudioWorkspace Tool 授权不是文件系统挂载。任何低层挂载请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使同时收到 Workspace 引用，也必须拒绝该请求。
+源码策略的优先级为：`Production Artifact` > `Build StudioSourceSnapshot commit` > `Preview Workspace Revision commit` > `Coding Runtime Git clone` > `AgentWorkspace` 授权。Coding Agent Git clone 不是 StudioWorkspace 文件系统挂载。任何低层请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使收到 Workspace 或 Git 引用也必须拒绝。
 
 ---
 
@@ -2220,7 +2222,7 @@ Infra Service 不理解 Agent、ApplicationVersion、StudioRelease、StudioRunti
 
 ## R-INFRA-009
 
-AgentRuntime 只能按 Agent 授权挂载 AgentWorkspace；Coding Agent 只能通过 AppStudio Workspace Tool 访问 StudioWorkspace，且不得形成文件系统挂载；Preview 只能挂载启动时固定的 Workspace Revision；Build 只能只读挂载固定 StudioSourceSnapshot；Production 只能只读使用固定 Artifact，禁止挂载可写 Workspace。
+AgentRuntime 只能按 Agent 授权挂载 AgentWorkspace；Coding Agent 只能使用 Runtime-scoped Git access 和可丢弃 `/workspace`，不得形成 StudioWorkspace 挂载；Preview 只能注入启动时固定 Revision.CommitSHA 的只读源码；Build 只能注入固定 Snapshot 对应 commit；Production 只能只读使用固定 Artifact，禁止使用 Workspace 或 Git credential。
 
 ## R-INFRA-010
 

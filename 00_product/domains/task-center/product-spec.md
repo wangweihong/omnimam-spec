@@ -334,9 +334,9 @@ Agent 和 AppStudio 只提交业务任务定义，不提交 Infra 请求。第�
 | appstudio | `appstudio.production.reconcile` | 以新 Release 和候选 RuntimeInstance 执行部署、升级或回滚 | `infra_runtime_id`、`endpoint_ref`、健康摘要 | StudioRuntimeInstance |
 | appstudio | `appstudio.production.stop` | 停止固定 StudioRuntimeInstance 并撤销当前入口 | `infra_runtime_id`、停止状态 | StudioRuntimeInstance |
 
-这些名称表示注册函数，不是允许用户直接调用的 HTTP 路径。`agent.invocation.execute@1.0` 固定绑定 Agent/Session/Invocation/Runtime Binding；其幂等键按 Invocation 固定，自动 Attempt 必须复用 Runtime 接受后的稳定引用。取消调用对应 Runtime adapter，超时、失败、取消和 execution 丢失都必须形成 Task 终态并通知 Agent terminal observer；事件只按单调序号/版本推进，重复或乱序事件不得回退投影。
+这些名称表示注册函数，不是允许用户直接调用的 HTTP 路径。`agent.invocation.execute@1.0` 固定绑定 Agent/Session/Invocation/Runtime Binding；其幂等键按 Invocation 固定，自动 Attempt 必须复用 Runtime 接受后的稳定引用。CODING claims 在 opaque grant 中固定 StudioApplication/Workspace、base Revision/CommitSHA、Blueprint version 和 prompt kind，不把这些内部值或 Git token展开到 Task arguments/result。Runtime 成功前，Worker 必须确认默认分支相对 base 恰好一个普通 fast-forward commit，并通过 AppStudio 幂等生成一个 ChangeSet/Revision；无 commit、多 commit、分叉、force 语义、base 漂移或并发写冲突均失败且不推进 Revision，push 后崩溃恢复继续同步同一 commit。取消调用对应 Runtime adapter，超时、失败、取消和 execution 丢失都必须形成 Task 终态并通知 Agent terminal observer；事件只按单调序号/版本推进，重复或乱序事件不得回退投影。
 
-Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`，并从业务输入中的授权引用生成 Infra 的受控 `source_ref`；不得把业务域的 Workspace、Snapshot 或 Artifact ID 直接解释成任意宿主机路径。
+Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`，并从业务输入中的授权引用生成 Infra 的受控 `source_ref`；Coding Runtime 使用 Runtime Git access `SECRET_REF`，Preview/Build 使用固定 CommitSHA archive access，Production 使用固定 Artifact。不得把业务域的 Workspace、Snapshot、GitLab Project 或 Artifact ID 直接解释成任意宿主机路径，也不得把 token、archive 字节或 GitLab URL 写入 Task。
 
 `agent.runtime.stop` 使用受控目标动作区分挂起、停止和删除；`appstudio.production.reconcile` 使用部署原因区分首次部署、升级和回滚，但回滚输入必须引用 AppStudio 已创建的新 Release 与新候选 RuntimeInstance。Build 取消、Runtime ensure 取消及其他进行中操作统一使用 AtomicTask 取消语义，不创建 `*.cancel` functionRef。
 
@@ -458,12 +458,13 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 76. `BR-TASK-148`：Infra-backed functionRef 必须声明输入/输出 schema、JOB/SERVICE 执行模式、能力、幂等键、取消和结果映射；第一阶段只允许 Docker Job 或 Docker Service。
 77. `BR-TASK-149`：Task Worker 不拥有 AgentRuntime、StudioPreviewRuntime、StudioBuild、StudioRuntimeInstance、InfraRuntime 或 Artifact 业务状态，只回写稳定运行引用、小型结果和脱敏错误。
 78. `BR-TASK-150`：Task Worker 必须通过唯一 Infra Adapter 调用 Infra Service，不得直接操作 Docker Socket、Provider 私有 API、宿主机路径或其他业务数据库。
-79. `BR-TASK-151`：AgentRuntime、Preview、Build 和 Production 的 Infra 操作必须使用业务域授权生成的 Workspace、Revision、Snapshot 或 Artifact `source_ref`；Task Worker 不得把用户输入解释为任意挂载路径。
+79. `BR-TASK-151`：Platform AgentRuntime、Coding Runtime、Preview、Build 和 Production 的 Infra 操作必须分别使用业务域授权生成的 AgentWorkspace、Runtime Git access、Revision/Snapshot CommitSHA archive 或 Artifact `source_ref`；Task Worker 不得把用户输入解释为任意挂载路径，也不得持久化 token 或源码 archive。
 80. `BR-TASK-152`：Infra-backed Task Worker 在取消、超时、重试和重启后必须依据稳定幂等键及已有运行引用恢复或清理，不得重复创建 Docker Job/Service。
 81. `BR-TASK-153`：第一阶段 Agent/AppStudio functionRef 必须来自第 5.8 节 canonical registry；Task Center 在创建任务前按精确输入 schema 校验，并固定合同版本与摘要。执行模式、能力、幂等、重试、取消、超时、Runtime/Infra 映射和结果 schema 只能来自该版本合同，registry 升级不得改写历史任务。
 82. `BR-TASK-154`：Task Center 可以执行 Workflow Canvas 按固定 count 展开的有限静态 AtomicTask DAG；展开后的每个节点和依赖必须在 DAG 创建前确定且计入现有规模限制，Task Center 不接受实际回边、条件退出、无限循环或运行中追加静态节点。
-83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件，并将成功、失败、超时、取消和 execution 丢失终态通知 Agent observer。
+83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件。CODING 只有在 base Revision/CommitSHA 到 GitLab HEAD 恰好一个普通 fast-forward commit并已幂等投影一个 ChangeSet/Revision 后才能成功；异常分支不推进 Revision。成功、失败、超时、取消和 execution 丢失终态均通知 Agent observer。
 84. `BR-TASK-156`：`gitlab.pipeline.run` 是非 Infra-backed 外部 AtomicTask，只接收内部 GitLabProject ID、ref 和 variables；Worker 必须用 externalJobId、IN_PROGRESS 和延迟回调恢复同一远端 Pipeline，不得把 URL、credential 或远端 project ID 写入任务输入输出，也不得伪造 Infra JOB/SERVICE 映射。
+85. `BR-TASK-157`：公共 DAG 创建入口不得接受用户选择 `gitlab.pipeline.run` 或 AppStudio 内部初始化/投影 functionRef；AppStudio 可通过携带受信 caller identity 的领域内部入口提交固定模板 DAG，Task Center 仍执行相同 functionRef 注册、输入 schema、DAG 无环、规模和幂等校验。
 
 ---
 
@@ -589,6 +590,7 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 - `AC-TASK-022-02`：IN_PROGRESS 延迟回调期间日志可查询，自动重试的每个 Attempt 使用各自的日志历史，手动重试使用新 AtomicTask 的日志链。
 - `AC-TASK-022-03`：日志中的鉴权信息、凭证、URL、Provider 原始响应、文件路径和大型正文不会对用户暴露，重复生命周期记录在查询投影中去重。
 - `AC-TASK-022-04`：日志写入失败不影响任务结果；运行时不可用与历史已清理分别返回可重试和不可重试的稳定业务错误。
+- `AC-TASK-022-05`：Attempt 失败生命周期日志包含经过统一脱敏、单行化和长度限制的具体失败摘要，使输入合同、外部依赖和执行器错误可直接定位；不得暴露鉴权信息、凭证、URL、文件路径、Provider 原始响应或大型正文。
 
 ### US-TASK-023 可视化排查 DAG 运行
 
@@ -626,7 +628,7 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 - `AC-TASK-026-02`：八个第一阶段 Agent/AppStudio functionRef 均明确声明输入、输出、执行模式、能力、幂等、重试、取消、超时、Runtime/Infra Adapter 映射和来源领域结果投影。
 - `AC-TASK-026-03`：AtomicTask 固定 function contract version/digest；自动重试、延迟回调和重启恢复使用同一版本，registry 新版本不改变历史任务。
 - `AC-TASK-026-04`：Task Worker 输出只包含合同允许的小型引用和脱敏摘要；源码、Artifact 内容、Secret、宿主路径、容器信息、Provider 原始响应和业务状态仍由各事实领域拥有。
-- `AC-TASK-026-05`：CHAT/CODING 创建后执行前绑定 AtomicTask；重复 Attempt 不重复提交已接受消息，取消调用对应 adapter，所有终态及 execution 丢失均由 reconciler 单调通知 Agent observer。
+- `AC-TASK-026-05`：CHAT/CODING 创建后执行前绑定 AtomicTask；重复 Attempt 不重复提交已接受消息。CODING push 后崩溃或重复 Attempt 只同步同一 commit；无 commit、多 commit、分叉、force 语义或 base 不匹配时失败且不推进 Revision。取消调用对应 adapter，所有终态及 execution 丢失均由 reconciler 单调通知 Agent observer。
 
 ---
 

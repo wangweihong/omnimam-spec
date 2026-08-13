@@ -2,9 +2,9 @@
 
 ## 1. 定位与目标
 
-`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影和通用 Pipeline 执行的独立领域。第一阶段只面向平台管理员提供连接与项目管理，并通过 Task Center 执行可恢复的 GitLab Pipeline AtomicTask。
+`gitlab` 是 OmniMAM 管理 GitLab 连接、远端项目投影、受控 Repository HTTP 适配、Project Hook 和通用 Pipeline 执行的独立领域。管理 API 只面向平台管理员；AppStudio 通过内部模块接口使用默认 Server、Project、Repository、Hook、Pipeline artifact 和短期 Project Access Token。
 
-本领域不属于 AppStudio。AppStudio 的 StudioApplication、源码 Repository、Revision、Build、Preview 和 Release 事实保持不变；后续阶段如需关联，只能通过稳定的 GitLabProject ID 和受控模块接口协作。
+本领域不属于 AppStudio。AppStudio 的 StudioApplication、逻辑源码 Repository、Revision、ChangeSet、Build、Preview 和 Release 事实保持不变；跨域只保存稳定 GitLabProject ID 并使用受控模块接口，禁止共享私表、远端 numeric ID 或 PAT。
 
 ## 2. 核心对象
 
@@ -19,19 +19,22 @@ GitLabServer 表示一个由 OmniMAM 管理的 GitLab API 连接，包含：
 - 仅服务端持有的 Personal Access Token；
 - 最近一次连接检测状态、时间和脱敏错误。
 
-连接状态为 `UNKNOWN`、`READY` 或 `ERROR`。新建连接为 `UNKNOWN`；API URL、Namespace Path 或 credential 改变时必须重置为 `UNKNOWN`。External URL 或纯展示元数据变化不改变已验证连接状态。
+连接状态为 `UNKNOWN`、`READY` 或 `ERROR`。新建连接为 `UNKNOWN`；API URL、Namespace Path 或 credential 改变时必须重置为 `UNKNOWN` 并取消 AppStudio 默认标记。External URL 或纯展示元数据变化不改变已验证连接状态。
+
+最多一个 READY GitLabServer 可标记为 `is_appstudio_default=true`。设置新默认值必须在同一事务清除旧默认值；检测失败、连接参数变化或删除会留下“无默认 Server”状态，AppStudio 创建或恢复必须返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`，不能任意选择其他 Server，也不能把该原因压缩为 AppStudio 通用 Source 错误。
 
 Credential 是敏感值。创建和更新请求可以提交 credential，但任何列表、详情、测试响应、错误、日志、事件或任务输入输出都不得返回该值。
 
 ### 2.2 GitLabProject
 
-GitLabProject 是 GitLab 远端 Project 的本地受控投影，保存：
+GitLabProject 是 GitLab 远端 Project 的本地受控投影。为支持 AppStudio 崩溃恢复，它允许在远端调用前保存不可用的 `CREATING` reservation；此时只保存稳定本地 ID、Server、name/path、确定性完整 path 和默认分支，远端 numeric ID 与 URL 字段为空。远端创建及投影补全后状态变为 `READY`；不可恢复失败可标记 `ERROR`，不得被 Repository adapter 当作可用 Project 使用。READY Project 保存：
 
 - 所属 GitLabServer ID；
 - GitLab numeric project ID；
 - name、path、path_with_namespace；
 - Web URL、HTTP/SSH clone URL；
 - GitLab 返回的 default branch。
+- AppStudio Project Hook ID 与 webhook token 的 SHA-256 digest；明文 token 不持久化。
 
 本地 ID 是 OmniMAM 的稳定身份。其他领域如后续需要引用，只能保存本地 GitLabProject ID，不得直接以 GitLab numeric ID、URL 或 PAT 建立跨域关系。
 
@@ -40,6 +43,18 @@ GitLabProject 是 GitLab 远端 Project 的本地受控投影，保存：
 `gitlab.pipeline.run` 是 Task Center 注册的非 Infra-backed 外部 AtomicTask。输入只包含 GitLabProject ID、ref 和可选 variables；Worker 必须从 GitLabProject 和 GitLabServer 解析远端 ID、API URL 与 credential。
 
 Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创建 Pipeline，后续延迟回调、自动重试和进程恢复必须查询同一 Pipeline，不得重复提交。运行中的 Pipeline 使用 `IN_PROGRESS` 和延迟回调，不长期占用 Worker。
+
+### 2.4 Repository 与 Runtime access
+
+GitLab Repository adapter 提供 Project tree/file/archive、默认分支 HEAD、commit compare/create 和 Project Access Token 创建/撤销能力。它只表达 GitLab HTTP 语义，不创建 AppStudio Revision 或 ChangeSet。
+
+AppStudio 初始化在默认 Server 的固定 Namespace 中幂等创建 private Project，并提交内置 Blueprint Starter Template。Runtime access 使用 project-scoped、带到期时间的 `write_repository` Token；明文只在创建响应到 Infrastructure tmpfs 注入的内存链路中存在，不进入 API、Task、数据库、事件、日志或容器环境。Runtime 停止、替换或到期时尽力撤销。
+
+### 2.5 Project Hook 与 Pipeline artifact
+
+AppStudio 初始化为每个 Project 注册唯一 Push/Pipeline Hook。token 使用密码学安全随机源生成，明文只在当前注册调用内存中发送给 GitLab，本地仅保存 SHA-256 digest；验证使用常量时间比较。重复初始化必须复用已有 Hook，远端 Hook 丢失时可幂等重建并轮换 digest。
+
+Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 callback/polling 仍是最终一致性来源。Pipeline 成功后，GitLab adapter 可按本地 Project ID、Pipeline ID 和受控 job/artifact name 流式下载有大小上限的 Bundle；不得接受任意 URL，也不得把正文、PAT 或原始 job 响应写入 Task。
 
 ## 3. 角色与访问边界
 
@@ -58,13 +73,18 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 
 ## 5. Project 管理规则
 
-1. 只有状态为 `READY` 的 GitLabServer 可以创建远端 Project。
+1. 只有状态为 `READY` 的 GitLabServer 可以创建远端 Project；创建前允许为 AppStudio 持久化 `CREATING` GitLabProject reservation。
 2. Namespace 必须由 GitLabServer 的 Namespace Path 解析，客户端不能在创建请求中覆盖 namespace ID 或 path。
 3. 新项目固定为 private；name/path 来自受校验请求，其他投影字段使用 GitLab 实际响应。
-4. 远端创建成功但本地投影写入失败时，服务必须尽力删除刚创建的远端 Project；补偿失败需记录脱敏诊断并返回稳定业务错误。
+4. `CREATING` reservation 必须使用确定性本地 ID 和 path；远端创建成功后补全 numeric ID/URL 并原子切换为 `READY`。远端创建成功但投影补全失败时，服务必须尽力删除刚创建的远端 Project；补偿失败需保留脱敏 `ERROR` reservation 并返回稳定业务错误。
 5. 删除 GitLabProject 时先删除远端 Project；远端返回 404 视为已达到目标状态，随后删除本地投影。
 6. 其他远端失败不得删除本地投影，便于管理员重试和排查。
 7. 第一阶段不提供 GitLabProject 更新 API。
+8. AppStudio 内部项目使用确定性 path 和本地 Project ID；重试必须复用已有 `CREATING`/`READY` reservation、远端 Project 和 Starter Template commit，不得把空 numeric ID 或空 URL 的 reservation 当作可读 Project。
+9. Repository commit 必须接受 base SHA 与稳定幂等标记；HEAD 不匹配时拒绝，不自动 merge 或 force update。
+10. Project Access Token 只允许目标 Project、固定 Runtime、`write_repository` scope 和有限有效期；创建、解析、撤销错误必须脱敏。
+11. Project Hook 创建、读取和删除只接受本地 Project ID；Hook URL 由平台配置提供，不得来自用户请求。
+12. Hook token 明文不得落库或进入日志、错误、事件、Task/API DTO；本地只保存固定格式 digest。
 
 ## 6. Pipeline 执行规则
 
@@ -89,6 +109,13 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 - `BR-GITLAB-010`：Pipeline 必须通过 external_job_id、IN_PROGRESS 和延迟回调恢复，不长期占用 Worker。
 - `BR-GITLAB-011`：自动 Attempt 重试不得重复创建 Pipeline，手动重试创建新 AtomicTask。
 - `BR-GITLAB-012`：GitLab 管理 API 第一阶段仅对 ADMIN 和 SUPER_ADMIN 开放。
+- `BR-GITLAB-013`：最多一个 READY GitLabServer 可作为 AppStudio 默认 Server；连接变化或检测失败必须取消默认。
+- `BR-GITLAB-014`：AppStudio 只保存本地 GitLabProject ID，Repository adapter 不拥有 Revision/ChangeSet。
+- `BR-GITLAB-015`：Runtime Project Access Token 必须 project-scoped、限时、最小 scope、只经 tmpfs 注入并可撤销。
+- `BR-GITLAB-016`：Repository 写入必须使用 base SHA、稳定幂等标记和非 force 语义；HEAD 冲突不得自动合并。
+- `BR-GITLAB-017`：AppStudio Project Hook 使用每 Project 唯一 token，明文只发送给 GitLab且只保存 SHA-256 digest，重复初始化不得创建重复 Hook。
+- `BR-GITLAB-018`：Pipeline Hook 只加速投影，external_job_id polling 仍保证最终一致；Artifact 下载只接受本地 Project/Pipeline 与受控名称，不接受任意 URL。
+- `BR-GITLAB-019`：不存在唯一 READY AppStudio 默认 GitLabServer 时，Project 初始化必须返回专用可诊断错误；SourceProvider 必须保留该错误以及连接、远端和 projection 的结构化业务错误，不得统一改写为 AppStudio Source 错误。
 
 ## 8. 用户故事与验收
 
@@ -114,11 +141,24 @@ Pipeline ID 保存为 TaskAttempt 的 `external_job_id`。Worker 首次调用创
 - `AC-GITLAB-002-02`：Pipeline 成功、失败和取消分别映射为正确的 AtomicTask 终态。
 - `AC-GITLAB-002-03`：取消任务会尽力取消远端 Pipeline，输出不包含 credential、API URL 或原始响应。
 
-## 9. 第一阶段非目标
+### US-GITLAB-003 为 AppStudio 提供受控 Repository
 
-- 不修改 AppStudio、Coding Agent、Studio Source、Build、Preview 或 Release。
-- 不建立 StudioApplication 与 GitLabProject 的外键或 API 字段。
-- 不处理 Git push、Webhook、Blueprint、自动预览或自动发布。
+作为 AppStudio 内部流程，我可以在唯一默认 GitLabServer 中幂等初始化 Project，按 commit 读取源码，并为固定 Coding Runtime 获取限时 Git access，而不暴露 PAT 或改变 AppStudio Revision/ChangeSet 事实。
+
+验收标准：
+
+- `AC-GITLAB-003-01`：只有 READY 默认 Server 可用于 AppStudio 初始化；远端调用前必须存在同一稳定 ID 的 `CREATING` GitLabProject reservation，同一创建幂等键重试不得重复 reservation、Project 或 Starter commit，成功后只返回 READY projection。
+- `AC-GITLAB-003-02`：Repository file/archive/commit/compare 只接受本地 Project ID，经 Server/Project 投影解析远端参数。
+- `AC-GITLAB-003-03`：Runtime token 只绑定目标 Project 和 Runtime，有到期时间，明文不落库、不进环境、不出现在日志/错误，并在 Runtime 终止时尽力撤销。
+- `AC-GITLAB-003-04`：base SHA 不等于默认分支 HEAD、非单 commit fast-forward 或 force 语义时拒绝，AppStudio Revision 不推进。
+- `AC-GITLAB-003-05`：没有 READY 且标记为 AppStudio 默认的 Server 时，创建和恢复返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；管理员完成配置后重试原 Application reservation，既有 Project reservation 和已完成远端对象被幂等复用，连接、远端和 projection 失败仍保留各自 GitLab 错误码。
+
+## 9. 当前非目标
+
+- 不让 GitLab 拥有 AppStudio Revision、ChangeSet、Build、Preview 或 Release。
+- 不建立 StudioApplication 与 GitLabProject 的数据库外键或公共 API 字段。
+- 不让 GitLab Webhook 直接创建 AppStudio Revision、Build、Preview 或 Release；它只经 AppStudio 受信入口触发领域 DAG或更新 Pipeline 投影。
+- 不让 GitLab CI 直接部署 Preview/Production；Production 继续由 AppStudio Release/Artifact 状态机拥有。
 - 不管理 GitLab Server 进程的 start/stop/restart。
-- 不提供 GitLab Project PATCH、Repository 文件 API 或 Pipeline 日志 API。
+- 不提供公共 GitLab Project PATCH、Repository 文件 API 或 Pipeline 日志 API；Repository 能力仅为内部模块接口。
 - 不引入第二套 Secret Provider、Vault 或 GitLab OAuth。
