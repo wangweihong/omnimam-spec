@@ -2,7 +2,7 @@
 
 ## spec-v1.23.5
 
-- commit: pending
+- commit: 8ecab35
 - status: released
 - confirmed_by: user（2026-08-13 明确要求补充并发布 v1.23.5 后实施 AppStudio Preview HTTP(S) 访问修复）
 - allowed_as_formal_implementation_basis: true
