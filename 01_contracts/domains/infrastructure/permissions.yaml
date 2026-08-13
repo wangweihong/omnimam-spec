@@ -77,11 +77,11 @@ infra.endpoint.resolve:
   resource: runtime_endpoint
   action: resolve
   subject: agent_runtime_adapter, task_center_worker
-  description: 解析 READY INTERNAL Endpoint 的短时平台内部地址。
+  description: 解析 READY Endpoint 的短时平台内部地址；AppStudio Preview Proxy 仅用于已完成 owner/visibility 校验的 USER_ACCESSIBLE/PUBLIC Preview。
   frontend_usage: 无直接前端入口。
-  backend_enforcement: 从工作负载身份确认 agent 或必要的 task-center 调用方；校验固定 purpose、ownerReference、Endpoint READY、Runtime RUNNING/健康且未撤销。base_url 禁止进入持久化、普通响应、事件和日志。
-  default_roles: [SERVICE_AGENT, SERVICE_TASK_CENTER]
-  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008, R-INFRA-015, R-INFRA-021]
+  backend_enforcement: 从服务身份确认 agent、AppStudio API Server 或必要的 task-center 调用方；校验固定 purpose、ownerReference、Endpoint READY、Runtime RUNNING/健康且未撤销。base_url 禁止进入持久化、普通响应、事件和日志。
+  default_roles: [SERVICE_AGENT, SERVICE_APPSTUDIO_API, SERVICE_TASK_CENTER]
+  related_rules: [BR-INFRA-001, R-INFRA-002, R-INFRA-008, R-INFRA-015, R-INFRA-021, R-INFRA-025]
   related_user_stories: [US-INFRA-001]
 infra.node.read:
   domain: infrastructure

@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.23.5
+
+- commit: pending
+- status: released
+- confirmed_by: user（2026-08-13 明确要求补充并发布 v1.23.5 后实施 AppStudio Preview HTTP(S) 访问修复）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - appstudio
+  - infrastructure
+- S1:
+  - 00_product/domains/appstudio/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/permissions.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+
 ## spec-v1.23.4
 
 - commit: 0da3dd236d687643e0b34a71cc115b51f5de485f

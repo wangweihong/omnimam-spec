@@ -1393,13 +1393,11 @@ Infra Service
 
 ## 9.4 Preview 访问地址
 
-第一阶段：
+Preview 对当前受权用户提供同源受控 HTTP(S) 访问入口。AppStudio 保存受控 `endpointRef` 和权限裁剪后的 Endpoint 摘要；`displayRef` 为 API Server 生成的同源代理路径，不是 Host Port、私网地址或 Provider `base_url`。
 
-```text
-http://<host-ip>:<allocated-port>
-```
+浏览器访问必须经过 API Server Preview Proxy。Proxy 按当前用户、StudioApplication owner、Preview `RUNNING` 状态、Endpoint `READY` 状态和 `USER_ACCESSIBLE`/`PUBLIC` visibility 校验后，在内存中通过 Infrastructure 的短时 Preview Proxy resolve 获取目标地址并转发请求。解析地址不得持久化、返回给浏览器或写入日志。
 
-AppStudio 保存受控 `endpointRef` 和权限裁剪后的 Endpoint 摘要，而非将 Host Port 作为业务主键。Preview 默认只能由当前受权用户访问；不得因为分配了 Host Port 就自动成为公开 Endpoint。
+Proxy 支持静态资源和轻后端 Preview 所需的 GET、HEAD、POST、PUT、PATCH、DELETE 请求，保留查询参数、请求体和安全响应头，移除 hop-by-hop headers；禁止任意目标 URL、Host 注入、跨站写请求、WebSocket Upgrade 和未授权跨应用访问。Endpoint 失效、Preview 停止、owner 不匹配或解析失败时，Proxy 返回稳定业务错误，不能泄漏 Provider 原因、容器信息、Host Port 或私网地址。
 
 ---
 
@@ -2606,6 +2604,14 @@ AppStudio 的 Coding Agent Runtime 诊断只能在应用所有权和 generation 
 ## R-STUDIO-027
 
 AppStudio 初始化必须公开固定四阶段的安全聚合，并只允许 `ERROR` reservation 按 Application ID 与重试幂等键稳定派生新 DAG；当前 DAG 引用、条件回滚和 `task.owner_id` fence 必须阻止旧轮次迟到事件覆盖新轮次，重试不得重复远端 Project 或既有初始化对象。
+
+## R-STUDIO-028
+
+Preview 浏览器访问必须通过 AppStudio API Server 的 owner-scoped 同源 Preview Proxy；Proxy 只能代理当前用户可访问且 `RUNNING`/`READY` 的 `USER_ACCESSIBLE` 或 `PUBLIC` Endpoint，不得向浏览器暴露 Host Port、私网地址、Provider `base_url` 或凭证。
+
+## R-STUDIO-029
+
+Preview Proxy 只允许有限 HTTP 方法和受控请求大小/超时，必须移除 hop-by-hop headers、拒绝任意目标地址和 WebSocket Upgrade，并在跨站写请求、Endpoint 失效、owner 不匹配或 Preview 非运行状态时拒绝访问。
 
 ---
 

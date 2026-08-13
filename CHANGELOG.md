@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- AppStudio Preview 新增 owner-scoped 同源 HTTP(S) Preview Proxy；`display_ref` 使用 API Server 代理路径，支持 GET/HEAD/POST/PUT/PATCH/DELETE，隐藏 Host Port、私网地址和 Provider `base_url`。Infrastructure Endpoint resolve 增加 `APPSTUDIO_PREVIEW_PROXY` purpose；不新增数据库字段、错误码或事件。
+
 - AppStudio 初始化新增应用级四阶段安全诊断与显式恢复：查询当前 DAG、0..1 总进度、阶段状态/Attempt/失败时间/本地化安全错误；`ERROR` reservation 按 Application ID 与 retry 幂等键稳定派生新 DAG，复用既有 Project、Hook、Repository、Workspace、Agent、Session、Message 和 Invocation。
 - 新增 `GET /api/v1/studio-applications/{id}/initialization`、`POST /api/v1/studio-applications/{id}/initialization/retry` 与 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；GitLab SourceProvider 保留默认 Server、连接、远端和 projection 的结构化错误，不再统一压缩为 AppStudio Source 错误。
 - 初始化投影增加当前 DAG owner fence、条件回滚和运行中不同 retry key 状态门禁；旧 DAG 迟到事件不得覆盖新轮次。无数据库 Schema、权限码或事件变化。

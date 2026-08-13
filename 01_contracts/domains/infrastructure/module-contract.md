@@ -23,7 +23,7 @@
 ## 3. 调用边界
 
 - Runtime 创建、启动、停止、取消、删除和对账的唯一受信调用链为 `Agent/AppStudio -> Task Center -> Task Worker -> Infra Adapter -> Infra Service -> DockerRuntimeProvider`。
-- 只读例外为 `AgentRuntimeAdapter -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Hermes/OpenCode`。AgentRuntimeAdapter 必须先校验 Agent、Session、Invocation 与 Runtime Binding，并使用 Agent 工作负载身份；其他 Infra API 仍禁止直调。
+- 只读例外为 `AgentRuntimeAdapter -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Hermes/OpenCode`，以及 `AppStudio API Server -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Preview Proxy`。两者必须先完成各自 owner/资源授权校验并使用受信服务身份；其他 Infra API 仍禁止直调。
 - 第二个只读例外为 Agent Service 的 `RuntimeDiagnosticsReader` 调用 Runtime logs/health。两者必须确认 Runtime 存在、`owner_reference` 与 AgentRuntimeBinding ID 匹配且 `owner_domain=agent`；共享 bearer token 本身不构成资源授权。
 - Infra 写 API 必须验证 `requesting_service=task-center`、`owner_domain`、`owner_reference`、`request_id` 和有效 RuntimeProfile。
 - 业务域只提交已注册 functionRef 的业务参数和授权引用；Task Worker/Infra Adapter 负责生成受控 Infra 请求。Infra 不解析 Agent、StudioWorkspace、Snapshot 或 Artifact 私表。
@@ -53,7 +53,7 @@
 - `appstudio.preview.web-backend` 必须像静态 Web Preview 一样执行固定 Revision SourceArchive 注入，并由 profile 固定启动命令、容器端口、健康检查和隔离临时目录；它不授权 AppStudio 开放新的 ApplicationType 或 Blueprint。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
 - RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
-- Endpoint resolve 从工作负载身份解析调用服务，只允许 agent 和必要的 task-center；校验 owner、Endpoint READY、Runtime RUNNING/健康、未过期和未撤销，返回短时地址。解析请求自报的服务身份不参与授权，解析结果不得持久化。
+- Endpoint resolve 从服务身份解析调用服务，只允许 agent、AppStudio API Server 和必要的 task-center；purpose 固定为 `AGENT_RUNTIME_ADAPTER` 或 `APPSTUDIO_PREVIEW_PROXY`。校验 owner、Endpoint READY、Runtime RUNNING/健康、未过期和未撤销，返回短时地址。解析请求自报的服务身份不参与授权，解析结果不得持久化。
 - RuntimeOutput 的声明相对路径必须匹配固定 RuntimeProfile Revision。Docker Provider 拒绝目录、符号链接和输出根逃逸，读取实际字节、计算 `size_bytes` 与 `sha256:<64 hex>`，复制到隔离 staging 后才设置 `COLLECTED` 和 `infra-output://<output_id>`。
 - `infra-output://` 不携带授权。只有原执行链路 Task Worker 可流式读取 staging；读取响应必须使用实际 Content-Length、Content-Type 和 digest。读取失败、中断或校验不一致不得完成 Artifact。
 - Infra 不创建 Artifact。Task Worker 通过 Asset Library 既有 `create -> content upload -> complete` 完成内容后，调用幂等 attach-artifact；Infra 校验 Artifact 完成状态、大小和 digest 后回写 `artifact_id`，此后才允许清理 staging。

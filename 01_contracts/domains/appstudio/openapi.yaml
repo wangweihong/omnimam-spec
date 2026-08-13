@@ -371,6 +371,23 @@ paths:
       parameters: [{$ref: '#/components/parameters/studio_application_id'}]
       requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
       responses: {'200': {description: 停止请求后的 PreviewRuntime。, content: {application/json: {schema: {$ref: '#/components/schemas/StudioPreviewRuntime'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
+  /api/v1/studio-applications/{studio_application_id}/preview-runtime/proxy/{preview_path}:
+    parameters:
+      - {$ref: '#/components/parameters/studio_application_id'}
+      - {name: preview_path, in: path, required: true, schema: {type: string}, description: Preview 内部相对路径；不得包含绝对 URL 或路径逃逸。}
+    x-methods: [GET, HEAD, POST, PUT, PATCH, DELETE]
+    x-permission: appstudio.preview.operate
+    x-s1-refs: {user_stories: [US-APPSTUDIO-001], business_rules: [R-STUDIO-009, R-STUDIO-023, R-STUDIO-024, R-STUDIO-028, R-STUDIO-029], source_sections: ['9 Preview']}
+    get:
+      operationId: proxy_studio_preview
+      summary: 通过同源代理访问 Preview
+      description: >-
+        仅代理当前用户有权访问且状态为 RUNNING、Endpoint 为 READY 的 USER_ACCESSIBLE/PUBLIC Preview。
+        代理在服务端短时解析 Endpoint，浏览器只能看到同源 display_ref；不得返回 Host Port、私网地址、Provider base_url 或凭证。
+        支持 GET、HEAD、POST、PUT、PATCH、DELETE；不支持 WebSocket Upgrade。
+      responses:
+        '200': {description: Preview 上游响应（状态码、Content-Type 和受控响应头按代理规则转发）。}
+        '500': {$ref: '#/components/responses/UnexpectedError'}
   /api/v1/studio-application-versions/{studio_application_version_id}/runtime-configs/{environment}:
     parameters: [{$ref: '#/components/parameters/studio_application_version_id'}, {$ref: '#/components/parameters/environment'}]
     get:

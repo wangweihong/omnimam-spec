@@ -1499,7 +1499,7 @@ Infra Service 负责端口分配和冲突处理。地址只通过受控 Endpoint
 
 上层只保存 `endpointRef` 和权限裁剪摘要，不直接保存 Host Port 作为业务事实。Endpoint 授权失效、Runtime 停止或 owner 不再可访问时，解析必须立即拒绝。
 
-第一阶段 Docker Provider 只能把 RuntimeProfile 声明的命名容器端口动态绑定到平台内部接口；上层不得选择 `publishedHost` 或 `publishedPort`。受控解析请求必须携带 `ownerReference`、固定目的 `AGENT_RUNTIME_ADAPTER` 和审计关联 ID，但调用服务必须从工作负载身份解析，不能信任请求体自报身份。仅 AgentRuntimeAdapter 和必要的 Task Center 内部流程可解析；Endpoint 必须为 READY，所属 Runtime 必须为 RUNNING 且健康，owner 匹配并且 Endpoint 未撤销，返回地址具有短有效期。
+第一阶段 Docker Provider 只能把 RuntimeProfile 声明的命名容器端口动态绑定到平台内部接口；上层不得选择 `publishedHost` 或 `publishedPort`。受控解析请求必须携带 `ownerReference`、固定目的 `AGENT_RUNTIME_ADAPTER` 或 `APPSTUDIO_PREVIEW_PROXY` 和审计关联 ID，但调用服务必须从服务身份解析，不能信任请求体自报身份。仅 AgentRuntimeAdapter、AppStudio API Server 和必要的 Task Center 内部流程可解析；Endpoint 必须为 READY，所属 Runtime 必须为 RUNNING 且健康，owner 匹配并且 Endpoint 未撤销，返回地址具有短有效期。
 
 ---
 
@@ -2283,6 +2283,10 @@ Agent MCP 配置只能通过 `MCP_SERVER_REF + authorizationRef` 解析；Infras
 ## R-INFRA-024
 
 Agent Runtime 日志和实时健康探测必须同时校验 Runtime 存在、`ownerReference` 匹配 Agent Runtime Binding 且属于 Agent Runtime；Provider 只返回通用健康结果，Infrastructure 不得向上泄漏 Docker、Endpoint、网络或 Provider 原始信息。诊断读取不得执行 Runtime 生命周期写操作。
+
+## R-INFRA-025
+
+Infrastructure 允许 AppStudio API Server 以 `APPSTUDIO_PREVIEW_PROXY` purpose 解析 `USER_ACCESSIBLE`/`PUBLIC` Preview Endpoint。解析前必须由 AppStudio 完成应用 owner、Preview/Endpoint 状态和 visibility 校验；Infrastructure 只校验自身 Runtime/Endpoint owner、READY、RUNNING/健康、有效期和撤销状态，并且只在当前请求内返回短时地址。
 
 ---
 

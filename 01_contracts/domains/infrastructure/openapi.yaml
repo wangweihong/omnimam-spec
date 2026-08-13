@@ -109,13 +109,13 @@ paths:
       operationId: resolve_infra_runtime_endpoint
       summary: 为受信工作负载解析短时内部 Endpoint 地址
       description: >-
-        调用服务从工作负载身份解析，不信任请求声明。仅 agent AgentRuntimeAdapter 和必要的 task-center 内部流程可调用；
+        调用服务从受信服务身份解析，不信任请求声明。仅 agent AgentRuntimeAdapter、AppStudio API Server Preview Proxy 和必要的 task-center 内部流程可调用；
         Endpoint 必须 READY、所属 Runtime 必须 RUNNING 且健康、owner_reference 必须匹配，并且 Endpoint 未过期或撤销。
         base_url 只允许在当前同步调用内使用，不得写入 Agent/Task 数据、普通摘要、事件或日志。
         非允许服务身份或 owner 不匹配返回 ERR_INFRA_ENDPOINT_ACCESS_DENIED；Endpoint/Runtime 未就绪、已停止、过期或撤销返回 ERR_INFRA_ENDPOINT_NOT_READY。
       x-permission: infra.endpoint.resolve
-      x-service-auth: [agent, task-center]
-      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-021], source_sections: ['5.3 agent', '8.3 RuntimeEndpoint', '14 网络管理', '24.2 Endpoint']}
+      x-service-auth: [agent, appstudio-api-server, task-center]
+      x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-002, R-INFRA-008, R-INFRA-021, R-INFRA-025], source_sections: ['5.3 agent', '8.3 RuntimeEndpoint', '14 网络管理', '24.2 Endpoint']}
       parameters: [{$ref: '#/components/parameters/endpoint_id'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResolveEndpointRequest'}}}}
       responses: {'200': {description: 短时 Endpoint 解析结果或稳定业务错误。, content: {application/json: {schema: {oneOf: [{$ref: '#/components/schemas/ResolvedEndpoint'}, {$ref: '#/components/schemas/ErrorResponse'}]}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -325,7 +325,7 @@ components:
       required: [owner_reference, purpose, audit_correlation_id]
       properties:
         owner_reference: {type: string, minLength: 1}
-        purpose: {type: string, enum: [AGENT_RUNTIME_ADAPTER]}
+        purpose: {type: string, enum: [AGENT_RUNTIME_ADAPTER, APPSTUDIO_PREVIEW_PROXY]}
         audit_correlation_id: {type: string, minLength: 1, description: Invocation ID、trace ID 或等价稳定审计关联 ID。}
     ResolvedEndpoint:
       type: object

@@ -69,6 +69,8 @@
 - Coding Agent 高频 Invocation 事件不写 AppStudio Outbox、不进入通用 `/api/v1/events/stream`；AppStudio 只执行鉴权、当前 generation/session 范围校验和 DTO 投影。
 - Coding Agent Runtime 详情、历史、日志和健康由 Agent Service 提供。AppStudio 只执行应用所有权、当前 Agent/generation 范围校验和 DTO 投影；历史允许覆盖该 Application 已授权的旧 generation。日志额外要求 `appstudio.agent.runtime.logs.read`，其他诊断使用 `appstudio.agent.read`。
 - AppStudio 不得直接调用 Infrastructure 诊断 API、读取 Agent/Infrastructure 私表或保存第二份 Runtime/Invocation 投影；Runtime Endpoint、Infra Runtime ID、容器/Provider 信息、宿主路径和私网地址不得进入公共 DTO。
+- Preview 浏览器访问通过 owner-scoped 同源 Preview Proxy；公共 `display_ref` 只能是代理路径。Proxy 复用 `appstudio.preview.operate` 权限，内部以受信 API Server 身份调用 Infrastructure Preview Proxy resolve，短时地址只在内存中使用。
+- Proxy 支持 GET/HEAD/POST/PUT/PATCH/DELETE 的 Preview 请求，必须校验 Preview/Endpoint 状态和 visibility，过滤 hop-by-hop/Host/绝对地址，拒绝路径逃逸、跨站写请求和 WebSocket Upgrade；不新增 AppStudio 表字段。
 - `studio_workspaces`、Workspace Revision、ChangeSet、Snapshot 与 Preview 中的 Workspace 字段继续作为后端 canonical 事实，不因公共 API 内化而删除或改名。
 
 ## 6. S1 追溯
