@@ -3,7 +3,7 @@
 ## 当前目标与状态
 
 - 目标：清理旧分支未提交草稿，并将已发布 `spec-v1.23.3`、`spec-v1.23.4` 同步到 `master`。
-- 状态：已完成本地清理与内容合并；正在完成合并提交和远端 `master` 同步核验。
+- 状态：已完成；旧草稿已清理，v1.23.3/4 发布链已合并并推送到 `master`。
 
 ## 本次已完成
 
@@ -12,10 +12,11 @@
 - 确认 `master` 仅有独立的 `spec-v1.22.0` handoff 提交，无法 fast-forward；采用普通合并保留双方历史。
 - 合入 `origin/codex/spec-v1.23.4`，该提交链完整包含 v1.23.3 和 v1.23.4。
 - `docs/HANDOFF.md` 的唯一冲突按最新发布状态解决；其余 S1/S2、Context、Release 与 Changelog 自动合并。
+- 已创建 merge commit `230cf74` 并推送 `origin/master`。
 
 ## 当前进行中
 
-- 完成 merge commit，推送并核验 `origin/master`。
+- 无。
 
 ## 文件变化
 
@@ -37,11 +38,11 @@
 
 - 已确认 v1.23.3 内容/release commit 为 `31c9be3` / `6e292e8`。
 - 已确认 v1.23.4 内容/release commit 为 `0da3dd2` / `e3e0034`，发布分支最新 handoff commit 为 `8bc0aa1`。
-- 合并完成后需核验工作区干净、两个 tag 均为 `master` 祖先、`origin/master` 与本地 `master` 一致。
+- 已核验两个 tag 均为 `master` 祖先；最终 handoff commit 推送后再次核验工作区和远端指针。
 
 ## 未完成事项
 
-- 推送并完成上述最终核验。
+- 无。
 
 ## 推荐下一步
 
