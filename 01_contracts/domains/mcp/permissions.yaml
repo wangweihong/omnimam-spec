@@ -72,4 +72,5 @@ mcp.task.cancel:
 # - omnimam.application_runs.cancel: aiapp.application.run + task.atomic.operate
 # - omnimam.assets.search/get: asset.read; content/resource links also require asset.content.read
 # - omnimam.assets.prepare_upload/complete_upload: asset.upload
+# - omnimam.assets.delete: asset.delete
 # - Artifact resource reads: asset.artifact.read

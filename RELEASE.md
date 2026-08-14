@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.23.9
+
+- status: pending release
+- confirmed_by: user（2026-08-14 明确要求发布 Hermes Agent 素材上传、挂载和 MCP 软删除小版本）
+- allowed_as_formal_implementation_basis: false
+- domains:
+  - mcp
+  - agent
+  - asset-library
+- S1:
+  - 00_product/domains/mcp/product-spec.md
+  - 00_product/domains/agent/product-spec.md
+- S2:
+  - 01_contracts/domains/mcp/openapi.yaml
+  - 01_contracts/domains/mcp/permissions.yaml
+  - 01_contracts/domains/mcp/module-contract.md
+  - 01_contracts/domains/agent/module-contract.md
+- implementation_gate: MCP `omnimam.assets.delete` 只执行既有 Asset Library 软删除并复用 `asset.delete`；默认 Platform MCP Binding 必须包含 Asset search/get/prepare_upload/complete_upload/delete，Agent workload grant 必须包含 asset.read/asset.upload/asset.delete；不新增永久删除 API、数据库结构、错误码、权限码或事件。
+
 ## spec-v1.23.8
 
 - commit: e2958267cd65230e612143fe6d4ef9fc524996b7

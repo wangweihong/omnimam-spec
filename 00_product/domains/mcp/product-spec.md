@@ -13,7 +13,7 @@
 - 原型路径：`00_product/domains/mcp/product-spec.md` 本次整理前的 S0 Draft。
 - 原型目标：验证 OmniMAM 通过标准 MCP 协议向本地和远程 Agent 暴露应用、能力目录、素材与异步运行投影的可行性。
 - 用户确认状态：已确认将当前 Draft 直接整理为 S1，并于 `spec-v1.9.2` 确认 Release。
-- 沉淀范围：MCP `2026-07-28`、Streamable HTTP、stdio Proxy、固定 Tools、Resources、Tasks 扩展、Capability 只读发现、Application 查询与运行、ApplicationRun 查询与取消、Asset 查询与受控上传、JWT/RBAC、审计、限流和追踪。
+- 沉淀范围：MCP `2026-07-28`、Streamable HTTP、stdio Proxy、固定 Tools、Resources、Tasks 扩展、Capability 只读发现、Application 查询与运行、ApplicationRun 查询与取消、Asset 查询、受控上传和软删除、JWT/RBAC、审计、限流和追踪。
 - 未沉淀内容：直接 Capability 执行、泛化 Invocation、OAuth 2.1 授权服务器与外部 OAuth Subject、Personal Access Token、独立 MCP Scope/AccessGrant、交互式 `input_required`、`tasks/update`、MCP Prompts、MCP Apps、Sampling、动态 Tool、Provider/Engine 管理、任意 ComfyUI Workflow 提交、Canvas 编辑、直接 S3/MinIO 上传与生产代码结构。
 
 S0 是本文件的整理输入，不是事实源。本次整理完成后，以当前 S1 的产品语义为准；精确协议 Schema、错误码、权限码、持久化和模块合同以 MCP S2 为准。S1/S2 均需用户 Release 后才能作为正式实现依据。
@@ -354,6 +354,7 @@ tasks/cancel
 | `omnimam.assets.get` | 查询 Asset、当前版本和 Representation |
 | `omnimam.assets.prepare_upload` | 创建 Asset Library 上传会话 |
 | `omnimam.assets.complete_upload` | 完成上传并获得 Asset 处理状态 |
+| `omnimam.assets.delete` | 将当前主体拥有的 Asset 移入回收站 |
 
 Tool 名称使用点号分隔。输入输出逻辑字段和示例由本 S1 描述；精确 JSON Schema 2020-12 合同在后续 S2 中定义。
 
@@ -696,6 +697,30 @@ MCP JSON-RPC 不传输大型二进制。该 Tool 通过 Asset Library 创建上�
 
 处理、扫描或 Representation 生成尚未完成时必须返回真实 `processing` 状态，不能因为上传完成而伪造 `ready`。重复 complete 必须沿用 Asset Library 幂等语义。
 
+### 11.5 `omnimam.assets.delete`
+
+Agent 可以请求删除当前主体拥有且当前可见的 Asset：
+
+```json
+{
+  "asset_id": "asset_01K2IMAGE",
+  "idempotency_key": "asset-delete-001"
+}
+```
+
+该 Tool 只执行 Asset Library 已发布的软删除语义，将素材移入回收站；MCP 不暴露永久删除、清空回收站或绕过引用保护的能力。请求必须复用既有 `asset.delete` 权限、所有权和状态校验，资源不可见时沿用 Asset Library 的不可见/不存在业务错误。相同主体、素材和幂等键的重复请求返回同一删除结果，不得重复写入删除事实。
+
+示例输出：
+
+```json
+{
+  "asset_id": "asset_01K2IMAGE",
+  "deleted": true,
+  "status": "archived",
+  "uri": "omnimam://assets/asset_01K2IMAGE"
+}
+```
+
 ---
 
 ## 12. MCP Resources
@@ -872,11 +897,11 @@ MCP 不定义一套与 OmniMAM RBAC 并行的 Scope。每个 Tool 映射到对�
 | Capability 查询 | Model Gateway 公共目录读取权限 |
 | Application 查询与运行 | Application Platform 可见性、`run_enabled` 和运行权限 |
 | ApplicationRun 查询与取消 | Application Platform 所有权/可见性与 Task Center 取消权限 |
-| Asset/Artifact 查询与上传 | Asset Library 所有权、状态与读取/写入权限 |
+| Asset/Artifact 查询、上传与删除 | Asset Library 所有权、状态与读取/写入/删除权限 |
 
 ### 15.2 Tool List 权限过滤
 
-`tools/list` 可以按当前请求的 JWT 权限隐藏不可执行 Tool。仅有素材读取权限的主体不应看到应用运行、运行取消或素材上传 Tool。Tool 可见不等于资源可访问，每次调用仍需执行对象级校验。
+`tools/list` 可以按当前请求的 JWT 权限隐藏不可执行 Tool。仅有素材读取权限的主体不应看到应用运行、运行取消、素材上传或素材删除 Tool。Tool 可见不等于资源可访问，每次调用仍需执行对象级校验。
 
 ### 15.3 二次资源校验
 
@@ -1196,7 +1221,7 @@ Agent Trace
 
 当前已建立并由 `spec-v1.9.2` Release 的 MCP S2：
 
-* `openapi.yaml` 定义 `POST /mcp`、JSON-RPC、Header、SSE、11 个固定 Tool、6 类 Resource URI 和 MCP Tasks。
+* `openapi.yaml` 定义 `POST /mcp`、JSON-RPC、Header、SSE、12 个固定 Tool、6 类 Resource URI 和 MCP Tasks。
 * `schema.sql` 只定义 `McpTaskBinding` 设计态持久化、TTL 和幂等约束。
 * `errors.yaml`、`permissions.yaml` 定义 MCP 自有错误和协议权限，并保留目标领域错误/权限。
 * `events.yaml` 显式声明 v1 无 MCP 领域事件；业务事件继续由源领域拥有。
@@ -1231,6 +1256,7 @@ Agent Trace
 19. `BR-MCP-019`：当前无对应事实的 `input_required`、`tasks/update`、OAuth/PAT 和独立 AccessGrant 不得由 S2 或实现自行启用。
 20. `BR-MCP-020`：Tool/Resource 名称和逻辑字段经 S2 与 Release 固化后必须保持稳定；实现不得自行增加、重命名或扩展未发布能力。
 21. `BR-MCP-021`：除 USER JWT 外，MCP 可接受固定 `aud=mcp` 的 `AGENT_WORKLOAD` JWT；每次请求必须重新校验 Agent Runtime Grant、generation、Application、Runtime、对象范围和允许工具，不得继承创建者管理员权限。
+22. `BR-MCP-022`：`omnimam.assets.delete` 只允许通过既有 `asset.delete` 权限执行 Asset Library 软删除；MCP 不提供永久删除，重复幂等请求返回同一删除结果。
 
 ### 26.2 用户故事
 
@@ -1281,6 +1307,14 @@ Agent Trace
 * `AC-MCP-006-01`：prepare 创建 Asset Library UploadSession，并返回 OmniMAM 受控内容端点。
 * `AC-MCP-006-02`：上传和 complete 校验 JWT、所有权、大小、Checksum、MIME 和会话状态。
 * `AC-MCP-006-03`：处理未完成时返回真实 processing，不能伪造 ready。
+
+#### US-MCP-008 Agent 管理执行素材
+
+Agent 可以在授权范围内上传、引用和移除执行素材；素材正文仍由 Asset Library 拥有，消息只保存稳定 `AssetReference`。
+
+* `AC-MCP-008-01`：Agent workload 只有在 Grant 同时包含 `asset.upload` 和 `asset.delete` 且 Tool 在 allow-list 中时，才能发现并调用对应写 Tool。
+* `AC-MCP-008-02`：删除只将当前主体拥有的 Asset 移入回收站，永久删除仍需 Asset Library 显式确认流程。
+* `AC-MCP-008-03`：同一主体、素材和幂等键重复删除返回同一结果；不可见素材不得通过错误差异泄漏存在性。
 
 #### US-MCP-007 安全审计
 

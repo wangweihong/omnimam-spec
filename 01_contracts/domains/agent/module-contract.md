@@ -73,6 +73,7 @@
 - 高频 Invocation 事件只属于对应 Invocation 的短期 SSE/重放事实，不进入通用 `/api/v1/events/stream` 或 Notification 收件箱；heartbeat 只使用 SSE comment，不持久化、不占用事件序号。
 - 更新、删除或停用 MCP Binding 不中断当前容器，只影响下一次启动、恢复或显式重建；删除前 Grant 固定的历史 revision 在 Grant 有效期内继续可解析。
 - OpenCode 以 Binding ID 为稳定 MCP server key，配置写入 tmpfs 的 `/root/.config/opencode/opencode.json` 且权限 `0600`；空 `allowed_tools` 拒绝全部。Hermes MCP 注入不在本 release 范围。
+- 默认 Platform MCP Binding 的允许工具固定包含 `omnimam.assets.search`、`omnimam.assets.get`、`omnimam.assets.prepare_upload`、`omnimam.assets.complete_upload` 和 `omnimam.assets.delete`；对应 Agent workload grant 至少包含 `asset.read`、`asset.upload` 和 `asset.delete`，仍受每请求 Grant 与对象级校验约束。
 
 ## 6. S1 追溯
 

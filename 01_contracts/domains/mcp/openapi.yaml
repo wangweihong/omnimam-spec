@@ -4,7 +4,7 @@ info:
   title: OmniMAM MCP Server API
   version: 0.1.0
   description: >-
-    OmniMAM MCP `2026-07-28` Streamable HTTP、11 个固定 Tool、6 类 Resource
+    OmniMAM MCP `2026-07-28` Streamable HTTP、12 个固定 Tool、6 类 Resource
     和 MCP Tasks 映射合同。Capability 只读发现；唯一异步业务执行入口是已发布
     Application。OAuth/PAT、直接 Capability 执行、泛化 Invocation、
     input_required、tasks/update、动态 Tool 和直接 StorageBackend 上传未开放。
@@ -67,6 +67,10 @@ x-mcp-tool-contracts:
     input_schema: {$ref: '#/components/schemas/AssetsCompleteUploadArguments'}
     output_schema: {$ref: '#/components/schemas/AssetUploadCompleted'}
     delegated_permissions: [asset.upload]
+  omnimam.assets.delete:
+    input_schema: {$ref: '#/components/schemas/AssetsDeleteArguments'}
+    output_schema: {$ref: '#/components/schemas/AssetDeleteResult'}
+    delegated_permissions: [asset.delete]
 
 paths:
   /mcp:
@@ -86,8 +90,8 @@ paths:
         task_cancel: mcp.task.cancel + aiapp.application.run + task.atomic.operate
         tool_call: 见根级 x-mcp-tool-contracts
       x-s1-refs:
-        user_stories: [US-MCP-001, US-MCP-002, US-MCP-003, US-MCP-004, US-MCP-005, US-MCP-006, US-MCP-007]
-        business_rules: [BR-MCP-001, BR-MCP-002, BR-MCP-003, BR-MCP-004, BR-MCP-005, BR-MCP-006, BR-MCP-007, BR-MCP-008, BR-MCP-009, BR-MCP-010, BR-MCP-011, BR-MCP-012, BR-MCP-013, BR-MCP-014, BR-MCP-015, BR-MCP-016, BR-MCP-017, BR-MCP-018, BR-MCP-019, BR-MCP-020]
+        user_stories: [US-MCP-001, US-MCP-002, US-MCP-003, US-MCP-004, US-MCP-005, US-MCP-006, US-MCP-007, US-MCP-008]
+        business_rules: [BR-MCP-001, BR-MCP-002, BR-MCP-003, BR-MCP-004, BR-MCP-005, BR-MCP-006, BR-MCP-007, BR-MCP-008, BR-MCP-009, BR-MCP-010, BR-MCP-011, BR-MCP-012, BR-MCP-013, BR-MCP-014, BR-MCP-015, BR-MCP-016, BR-MCP-017, BR-MCP-018, BR-MCP-019, BR-MCP-020, BR-MCP-021, BR-MCP-022]
       parameters:
         - $ref: '#/components/parameters/mcp_protocol_version'
         - $ref: '#/components/parameters/mcp_method'
@@ -312,6 +316,7 @@ components:
                 - $ref: '#/components/schemas/CallAssetsGetParams'
                 - $ref: '#/components/schemas/CallAssetsPrepareUploadParams'
                 - $ref: '#/components/schemas/CallAssetsCompleteUploadParams'
+                - $ref: '#/components/schemas/CallAssetsDeleteParams'
               discriminator:
                 propertyName: name
 
@@ -443,6 +448,13 @@ components:
           properties:
             name: {const: omnimam.assets.complete_upload}
             arguments: {$ref: '#/components/schemas/AssetsCompleteUploadArguments'}
+    CallAssetsDeleteParams:
+      allOf:
+        - $ref: '#/components/schemas/ToolCallParamsBase'
+        - type: object
+          properties:
+            name: {const: omnimam.assets.delete}
+            arguments: {$ref: '#/components/schemas/AssetsDeleteArguments'}
 
     CapabilitiesListArguments:
       type: object
@@ -559,6 +571,14 @@ components:
       required: [upload_id, idempotency_key]
       properties:
         upload_id: {type: string, minLength: 1, maxLength: 255}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+
+    AssetsDeleteArguments:
+      type: object
+      additionalProperties: false
+      required: [asset_id, idempotency_key]
+      properties:
+        asset_id: {type: string, minLength: 1, maxLength: 255}
         idempotency_key: {type: string, minLength: 1, maxLength: 128}
 
     Checksum:
@@ -685,7 +705,7 @@ components:
         resultType: {type: string, const: complete}
         tools:
           type: array
-          maxItems: 11
+          maxItems: 12
           items: {$ref: '#/components/schemas/McpToolDefinition'}
         nextCursor: {type: string, maxLength: 512}
 
@@ -707,6 +727,7 @@ components:
             - omnimam.assets.get
             - omnimam.assets.prepare_upload
             - omnimam.assets.complete_upload
+            - omnimam.assets.delete
         title: {type: string, maxLength: 255}
         description: {type: string, maxLength: 2000}
         inputSchema: {$ref: '#/components/schemas/JsonSchema202012'}
@@ -747,6 +768,7 @@ components:
             - $ref: '#/components/schemas/AssetDetailProjection'
             - $ref: '#/components/schemas/AssetUploadPrepared'
             - $ref: '#/components/schemas/AssetUploadCompleted'
+            - $ref: '#/components/schemas/AssetDeleteResult'
             - $ref: '#/components/schemas/McpBusinessError'
         isError: {type: boolean}
 
@@ -1047,6 +1069,16 @@ components:
         upload_id: {type: string}
         asset: {$ref: '#/components/schemas/AssetSummary'}
         status: {type: string, enum: [processing, ready, ready_with_warnings, failed]}
+        uri: {type: string, format: uri}
+
+    AssetDeleteResult:
+      type: object
+      additionalProperties: false
+      required: [asset_id, deleted, status, uri]
+      properties:
+        asset_id: {type: string}
+        deleted: {type: boolean, const: true}
+        status: {type: string, const: archived}
         uri: {type: string, format: uri}
 
     MediaType:

@@ -2,8 +2,8 @@
 
 ## Current goal and status
 
-- Goal: publish the GitLab guided connection contract as `spec-v1.23.8`.
-- Status: complete. The release commit, annotated tag, push, and remote ref verification succeeded; downstream Server/Web repositories may pin it.
+- Goal: publish the Hermes Agent asset upload/attachment/MCP soft-delete contract as `spec-v1.23.9`.
+- Status: content changes complete and locally validated; release commit/tag is the next action. Downstream Server/Web must wait for the released tag.
 
 ## Work completed in this session
 
@@ -40,11 +40,13 @@
 - Parsed GitLab OpenAPI successfully; resolved all 39 local refs and verified all operation S1 anchors.
 - Asserted create/update request field constraints and passed `git diff --check` before release.
 - Verified remote `master=79c83efdc407d24cbafec91405a9d774de2c5e87`, tag object `e0e44e5bbe9c03161c679f28d98e5e5f3d23af45`, and peeled `spec-v1.23.8^{}=79c83efdc407d24cbafec91405a9d774de2c5e87`.
-- Remaining verification belongs to downstream Server/Web implementation.
+- Added `omnimam.assets.delete` as a soft-delete-only MCP Tool, expanded the fixed Tool count to 12, and added Agent acceptance language for AssetReference attachments and the default Platform MCP Binding.
+- Parsed the changed MCP OpenAPI and permissions YAML with `python3` and passed `git diff --check`.
+- Remaining verification: commit the content change, create the `spec-v1.23.9` release commit/tag, then pin Server/Web and implement the released contract.
 
 ## Outstanding tasks
 
-- Pin Server and Web to `spec-v1.23.8`, implement the contract, run focused tests, rebuild, and perform browser acceptance.
+- Commit and tag `spec-v1.23.9`, then update Server/Web SSOT pins and implement the focused MCP/Agent/Web changes.
 
 ## Known issues and risks
 

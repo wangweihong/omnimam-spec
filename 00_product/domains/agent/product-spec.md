@@ -833,6 +833,8 @@ WorkspaceFileReference
 
 不得保存底层物理路径。
 
+Platform Agent Session 可以先通过 Asset Library 受控上传获得 Asset，再把 `AssetReference` 附加到用户消息。发送前从草稿移除附件只移除本次消息引用，不删除 Asset；Agent 只有在默认 Platform MCP Binding 和当前 Runtime Grant 同时允许 `omnimam.assets.delete` 与 `asset.delete` 时，才可将当前主体拥有的 Asset 软删除到回收站。永久删除不属于 Agent Session 或 MCP 能力。
+
 ---
 
 ## 8.4 AgentInvocation
@@ -2768,3 +2770,4 @@ flowchart LR
 - `AC-AGENT-001-16`：OpenCode MCP 配置只能由 Infrastructure resolver 在 Grant 授权下解析并安全写入 `/root/.config/opencode/opencode.json`；空 `allowed_tools` 拒绝全部工具，凭证不得出现在 Task、数据库明文、日志、API、环境变量、命令参数或 inspect 中。
 - `AC-AGENT-001-17`：12 类统一 Invocation 事件必须使用完整类型化 payload 和 Invocation 内递增序号持久化；重放只返回游标之后的事件且无重复，唯一终态事件发送并 flush 后关闭连接，已终态 Invocation 补完历史后立即关闭。
 - `AC-AGENT-001-18`：Runtime 详情和历史必须按 Application、Agent、generation 与 owner 查询并隐藏 Infra/Endpoint/Provider 细节；当前任务只取最新非终态 Invocation。日志只返回最近 5000 行脱敏快照，投影健康与实时健康使用稳定状态和原因，实时探测失败按可判定性降级而不改变 Runtime 生命周期。
+- `AC-AGENT-001-19`：Platform Agent 默认 MCP Binding 必须包含 Asset search/get/prepare_upload/complete_upload/delete；Session 上传素材后只把 `AssetReference` 写入消息，草稿移除不删除素材，MCP 删除只执行当前主体拥有素材的软删除。

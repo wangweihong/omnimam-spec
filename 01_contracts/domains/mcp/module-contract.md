@@ -14,7 +14,7 @@ OpenAPI 可以为 MCP 规范强制的传输校验声明 HTTP 400，以及为非�
 | --- | --- | --- | --- |
 | transport | `POST /mcp`、Content-Type/Accept、协议 Header、Origin、HTTP JSON/SSE 响应 | JWT 事实、业务错误、Tool 逻辑、MCP Session | BR-MCP-002、BR-MCP-003、BR-MCP-018；US-MCP-007 |
 | protocol | JSON-RPC 2.0、`server/discover`、method/name Header 对齐、官方字段命名例外 | legacy initialize、Prompts、Sampling、Apps、日志订阅 | BR-MCP-002、BR-MCP-019；US-MCP-001、US-MCP-004 |
-| tool-registry | 11 个固定 Tool、JSON Schema 2020-12、权限过滤、结果 Schema 校验 | 动态 Capability Tool、Provider/Engine 路由、源领域私表 | BR-MCP-004、BR-MCP-005、BR-MCP-006、BR-MCP-007、BR-MCP-008、BR-MCP-016；US-MCP-001、US-MCP-002、US-MCP-005、US-MCP-006 |
+| tool-registry | 12 个固定 Tool、JSON Schema 2020-12、权限过滤、结果 Schema 校验 | 动态 Capability Tool、Provider/Engine 路由、源领域私表 | BR-MCP-004、BR-MCP-005、BR-MCP-006、BR-MCP-007、BR-MCP-008、BR-MCP-016、BR-MCP-022；US-MCP-001、US-MCP-002、US-MCP-005、US-MCP-006、US-MCP-008 |
 | resource-resolver | 6 类 `omnimam://` URI、解析、权限、短期 Resource Link | 素材搜索、媒体正文、永久 URL、递归摘要 | BR-MCP-014、BR-MCP-016；US-MCP-003、US-MCP-005 |
 | task-adapter | McpTaskBinding、Tasks 协商、状态映射、查询、协作取消、TTL 清理 | ApplicationRun/AtomicTask 状态、重试、任务队列、`tasks/update` | BR-MCP-009、BR-MCP-010、BR-MCP-011、BR-MCP-012、BR-MCP-013、BR-MCP-019；US-MCP-003、US-MCP-004 |
 | access | Identity USER/AGENT_WORKLOAD Principal、Runtime Grant、MCP 权限与目标领域权限组合、存在性保护 | 用户、角色、JWT 签发、OAuth/PAT 或目标资源事实 | BR-MCP-003、BR-MCP-016、BR-MCP-021；US-MCP-007 |
@@ -106,6 +106,7 @@ MCP 不比较 ApplicationRun、AtomicTask 和 Artifact 的不同 `resource_versi
 - Agent 对内容端点使用同一 JWT。二进制不经过 JSON-RPC，也不写入 MCP audit payload。
 - `complete_upload` 委托 Asset Library 完成会话；处理未完成时返回真实 processing，不从上传完成推断 AssetVersion ready。
 - 重复 prepare/complete 将幂等键传给 Asset Library，不建立 MCP 自有素材幂等表。
+- `delete` 委托 Asset Library 执行既有软删除；只接受 `asset_id` 和 `idempotency_key`，使用 `asset.delete` 权限，不提供永久删除；重复请求沿用 Asset Library 幂等结果。
 
 ## 11. 审计与失败策略
 
@@ -116,7 +117,7 @@ MCP 不比较 ApplicationRun、AtomicTask 和 Artifact 的不同 `resource_versi
 
 ## 12. 关联摘要与查询预算
 
-- Tool 列表固定 11 项，不读取业务资源。
+- Tool 列表固定 12 项，不读取业务资源。
 - Capability/Application/Asset 搜索使用目标领域分页 API；MCP 只转换当前页，不逐项追加跨域查询。
 - ApplicationRun 详情复用 Application Platform 已提供的一跳 Application、Version、Engine、AtomicTask 和 Artifact 投影，不再逐 Artifact 查询。
 - Resource read 是单对象调用；Representation 内容 URL 通过 Asset Library 受控能力生成。
