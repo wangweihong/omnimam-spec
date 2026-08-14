@@ -1,5 +1,21 @@
 # Release Records
 
+## spec-v1.23.6
+
+- commit: 8924ab681d1c5b3de693d8b315ed80df241d390c
+- status: released
+- confirmed_by: user（2026-08-14 明确要求发布 Task Center 业务资源关联与结构化诊断 `spec-v1.23.6`，再依次更新 Server 和 Web SSOT pin）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/openapi.yaml
+  - 01_contracts/domains/task-center/schema.sql
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: AtomicTask 仅保存来源领域在既有权限校验后提供的单一不可变 `primary_resource` 快照；公开创建 API 不得设置，禁止从 functionRef/arguments 推断，重试、重跑和幂等恢复保留原快照。WorkflowRuntime 日志 envelope 升级为 v2 并兼容 v1/纯文本，只允许固定阶段与封闭 context；所有字符串继续双重脱敏、单行化和 4096 字节限制，不得暴露 DEBUG、Stack/Cause/RawCode、任意 URL、凭证或 Provider 原始响应。Conductor 继续拥有日志正文，不新增日志表、Attempt 表字段、错误码、权限码、事件或 Domain Context。
+
 ## spec-v1.23.5
 
 - commit: 8ecab35
