@@ -43,9 +43,11 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - DAG 触发来源在创建时保存 API/SCHEDULE/CANVAS/DOMAIN_EVENT/RETRY 类型、触发时间及可选来源 ID/名称快照；来源删除或不可见不回查改写历史。
 - Group/DAG 创建时在一个业务事务中写根资源和全部静态 AtomicTask；运行时启动失败保留可恢复投影，不切换到本地 Dispatcher。
 - 自动重试由运行时执行，但每次尝试必须投影为独立 TaskAttempt；手动重试创建新的业务资源。
+- AtomicTask 内部创建请求可携带一个 `primary_resource` 非敏感快照，公开 JSON 请求不得设置。来源领域必须先完成既有权限校验，再按 `asset-library/ASSET|ARTIFACT`、`application-platform/APPLICATION`、`workflow-canvas/CANVAS`、`appstudio/STUDIO_APPLICATION`、`agent/AGENT` 或 `gitlab/GITLAB_PROJECT` 提供稳定 ID 与可选创建时名称；Task Center 校验组合、ID 和长度，禁止从 `function_ref` 或 `arguments` 推断。
+- 自动 Attempt 重试、手动 AtomicTask 重试、Group/DAG 重跑和幂等恢复保留创建时 `primary_resource`。同一幂等键对应不同快照时返回既有幂等冲突，不覆盖旧快照；历史空快照保持为空。
 - 外部异步 handler 必须持久化 `external_job_id` 并支持恢复；poll 使用延迟回调或等价非占用等待。
 - Artifact 和 AssetRepresentation 内容事实归 asset-library。handler 输出只保存小型 `artifact_refs` 或 `representation_refs`，不得保存媒体正文、Provider 响应、凭证、任意 URL 或私网地址。
-- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。失败生命周期日志必须包含经统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，失败不得改变 handler 结果。运行时日志使用版本化 envelope；Task Center 读取时兼容纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
+- Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。失败生命周期日志必须包含经统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，失败不得改变 handler 结果。运行时日志 envelope v2 可携带 `event_key`、固定 `stage`、安全 `error_code` 和封闭 `context`，Task Center 读取时兼容 v1 与纯文本历史、按时间与原始顺序稳定排序，并按生命周期 event key 去重。
 - Task Worker 只能接收 Task Center 已校验的不可变 `arguments` 和 `function_ref`，不得从 Agent、AppStudio 或客户端直接接收 Infra 请求。
 - Infra-backed `function_ref` 必须由 function-registry 声明 `execution_mode=JOB|SERVICE`、输入/输出 schema、required capabilities、幂等键、取消方式、超时边界和结果映射；首阶段只可路由到 DockerRuntimeProvider。
 - Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、宿主机路径、容器 ID、Host Port 或内部地址。
@@ -132,7 +134,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 创建业务资源与 outbox 同事务提交；运行时启动使用可重放命令和稳定 correlation/idempotency key。
 - AtomicTask、TaskAttempt、Group、DAG 和 MATERIALIZED ScheduleExecution 历史不得物理覆盖。RECONCILE 轻量历史可依契约物理清理，但 ScheduleReconcileState 累计统计不得回退。
 - TaskAttempt 的 `logs_ref` 固定为 `task-attempt-log:<task_attempt_id>`，不携带运行时地址且不作为客户端可解析 URL。日志正文继续属于 WorkflowRuntime 历史，Task Center 只做受权代理；运行时历史清理后返回 `ERR_TASK_ATTEMPT_LOG_UNAVAILABLE`。
-- Attempt 日志列表与下载共享同一读取管线，列表支持不透明 cursor 与前后方向，并统一应用关键字、级别、来源、排序、授权、脱敏和 retention；下载不能成为绕过日志不可用错误的旁路。
+- Attempt 日志列表与下载共享同一读取管线，列表支持不透明 cursor 与前后方向，并统一应用关键字、级别、来源、排序、授权、脱敏和 retention；下载不能成为绕过日志不可用错误的旁路。UTF-8 文本下载保留 `occurred_at`、`source`、`level`、`message` 前四列，并依次追加 `event_key`、`stage`、`error_code`、`attempt_no`、`duration_ms`、`progress`、`item_count`、`output_count`、`operation`、`external_status`、`retryable`。
 - DAG 用户事件和时间线从 `runtime_projection_events` 与任务/Attempt 投影规范化生成，不新增第二套运行历史表。事件只映射白名单字段；时间线按实际 AtomicTask 返回 DEPENDENCY_WAIT、QUEUE_WAIT、RUNNING、RETRY_WAIT，并以 `complete=false` 表达历史缺口。
 - 已有 DAG 数据升级时必须以 `created_at` 回填缺失的 `triggered_at`，并依据可验证的 schedule/canvas/retry 关系回填 trigger type；无法证明来源时使用 API，不得猜测 source ID 或名称。
 - AtomicTask 创建/状态、TaskAttempt 状态与 TaskGroup/DAGTaskGroup 汇总变化分别发布可重放事件；事件带 `created_by`、`project_id`、`namespace`、`resource_version` 和 correlation，供 SSE 等投影消费者按所有者路由并幂等处理。相关 S1：US-TASK-018、BR-TASK-120。
@@ -140,6 +142,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 ## 6. 跨域协作
 
 - Agent 和 AppStudio 只能创建带业务授权快照的 AtomicTask；Infra 操作统一经过 `Task Center -> Task Worker -> infra-adapter -> Infra Service`。Task Center 不把 Agent/AppStudio 的任务输入直接透传为 Docker 请求。
+- 来源领域在完成既有权限校验后提供主业务资源：AppStudio 任务统一关联 StudioApplication，Agent 任务关联 Agent，应用运行关联 Application，Canvas 任务关联 Canvas，素材任务关联 Asset 或 Artifact，GitLab Pipeline 关联 GitLabProject。名称只保存当时可可靠取得的非敏感值，不回查可变名称改写历史。
 - Agent 的 `agent.invocation.execute`、`agent.runtime.*` 与 AppStudio 的 `appstudio.preview.*`、`appstudio.build.*`、`appstudio.production.*` 只是受控 functionRef 注册项。AgentInvocation、AgentRuntime、StudioPreviewRuntime、StudioBuild 和 StudioRuntimeInstance 的业务投影仍由来源领域拥有，InfraRuntime 由 infrastructure 拥有。
 - GitLab 领域通过 `gitlab.pipeline.run` 使用 Task Center 的重试、取消和延迟回调；GitLabServer/GitLabProject 仍由 gitlab 拥有，Task Center 和 Worker 只能通过受控 GitLab Store 接口读取。
 - Task Worker 依据来源领域提供的授权引用生成 Infra `source_ref`：AgentWorkspace 只能由 agent 的授权绑定产生；Coding Runtime 使用 AppStudio 签发的 Runtime Git access `SECRET_REF`；Preview 使用当前 Workspace Revision/CommitSHA archive；Build 使用固定 Snapshot 对应的 CommitSHA archive；Production 使用固定 Artifact。任何 token、archive 正文、GitLab URL 或远端 project ID 都不得进入 AtomicTask arguments/result。
@@ -169,7 +172,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 用户输入只能选择已注册 functionRef，不得传入 Worker 名、Conductor task type、任意 HTTP、INLINE、脚本、凭证或内部 endpoint。
 - 默认最多 1000 个节点、5000 条边、单次 Dynamic Fork 1000 个子任务；服务可配置更低限制，不得静默提高全局上限。
 - Conductor UI 和 API 只供内部运维，且不能替代 Task Center 权限、审计和租户隔离。
-- 日志消息在 Worker 写入和 Task Center 读取边界双重脱敏并限制为 4096 字节；禁止自动捕获全局进程日志，禁止记录鉴权信息、凭证、Provider 原始响应、任意 URL、文件路径或大型正文。
+- 日志 envelope v2 的 `stage` 只允许 PREPARE、EXECUTE、WAIT、POST_PROCESS、CLEANUP；`context` 只允许 attempt_no、duration_ms、progress、item_count、output_count、operation、external_status、retryable。所有日志字符串字段在 Worker 写入和 Task Center 读取边界双重脱敏、单行化并限制为 4096 字节；禁止 DEBUG、Stack、Cause、RawCode、自动捕获全局进程日志、鉴权信息、凭证、Provider 原始响应、任意 URL、文件路径或大型正文。
 - 普通 Task Worker 结果不得暴露 Docker container ID、Host Port、节点、宿主机路径或 Provider runtime ID；`endpoint_ref` 只能由来源领域按其授权和展示规则投影。
 - 巡检指标固定包含 `reconcile_runs_total{ref,status}`、`reconcile_scanned_total{ref}`、`reconcile_findings_total{ref}`、`reconcile_actions_total{ref}`、`reconcile_duration_seconds{ref}`、`reconcile_checkpoint_age_seconds{ref}`、`reconcile_overlap_skipped_total{ref}` 和 `reconcile_retention_failures_total{backend}`。label 不得包含 schedule ID、engine ID 等无界值。
 

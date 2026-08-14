@@ -1,52 +1,57 @@
 # OmniMAM Spec Handoff
 
-## 当前目标与状态
+## Current goal and status
 
-- 目标：清理旧分支未提交草稿，并将已发布 `spec-v1.23.3`、`spec-v1.23.4` 同步到 `master`。
-- 状态：已完成；旧草稿已清理，v1.23.3/4 发布链已合并并推送到 `master`。
+- Goal: publish the Task Center business-resource association and structured diagnostic contract as `spec-v1.23.6`.
+- Status: in progress. The approved v1.23.6 S1/S2 content is implemented and locally validated; the content commit and release record/tag remain.
 
-## 本次已完成
+## Work completed in this session
 
-- 清除旧分支 10 个已跟踪修改，以及未跟踪的 `archive/`、`docs/identity_fix.md`、`设计图/`。
-- 切换到 `master`，拉取并核验远端 `spec-v1.23.3`、`spec-v1.23.4` annotated tag。
-- 确认 `master` 仅有独立的 `spec-v1.22.0` handoff 提交，无法 fast-forward；采用普通合并保留双方历史。
-- 合入 `origin/codex/spec-v1.23.4`，该提交链完整包含 v1.23.3 和 v1.23.4。
-- `docs/HANDOFF.md` 的唯一冲突按最新发布状态解决；其余 S1/S2、Context、Release 与 Changelog 自动合并。
-- 已创建 merge commit `230cf74` 并推送 `origin/master`。
+- Re-read the Spec S1/S2 workflow rules and confirmed the approved v1.23.6 scope.
+- Resumed from the existing checkpoint and verified local `master`, cached `origin/master`, and annotated `spec-v1.23.5` all point to `476d976`.
+- Loaded the required Spec S1/S2 workflow rules before content changes.
+- Verified through HTTPS `git ls-remote` that remote `master` and peeled `spec-v1.23.5` both point to `476d976`; no push was necessary.
+- Added `US-TASK-027`, `BR-TASK-158..163`, `TaskBusinessResourceSummary`, `TaskLogContext`, optional task resource projections, four `atomic_tasks` snapshot columns, the partial composite index, and WorkflowRuntime log envelope v2 compatibility/security/download rules.
+- Updated `CHANGELOG.md`; no errors, permissions, events, Domain Context, new tables, or Attempt persistence were changed.
 
-## 当前进行中
+## Current in-progress work
 
-- 无。
+- Create the v1.23.6 content commit without modifying `RELEASE.md`, then record that commit in the release entry.
 
-## 文件变化
+## Files added, modified, renamed, or removed
 
-- 合并带入 v1.23.0 至 v1.23.4 的 AppStudio、GitLab、Agent、Task Center、Infrastructure 相关 S1/S2、Context、`CHANGELOG.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md` 与 `RELEASE.md`。
-- 本次手工解决：`docs/HANDOFF.md`。
-- 未保留旧分支未提交草稿和三个未跟踪项。
+- Modified: `docs/HANDOFF.md`.
+- Modified: `00_product/domains/task-center/product-spec.md`, `01_contracts/domains/task-center/openapi.yaml`, `01_contracts/domains/task-center/schema.sql`, `01_contracts/domains/task-center/module-contract.md`, and `CHANGELOG.md`.
 
-## 关键决定
+## Key architectural or design decisions
 
-- 不重写 `master` 独有历史；使用 merge commit 同步正式发布链。
-- `spec-v1.23.3` 保持 AppStudio 初始化四阶段诊断、显式恢复和 DAG owner fence 的正式事实。
-- `spec-v1.23.4` 保持 `agent.runtime.ensure@1.0` RETAINED、`1.1` ACTIVE 及失败日志安全摘要合同。
+- Add one optional immutable `primary_resource` snapshot for the top-level navigable business resource.
+- Extend the existing WorkflowRuntime log contract to envelope v2 while retaining v1 and plain-text compatibility.
+- Do not add a log table, Attempt diff API, new error code, permission, event, or Domain Context change.
 
-## API、Schema、依赖或配置变化
+## API, schema, dependency, or configuration changes
 
-- 本次不新增发布版本或修改正式合同，仅把现有 v1.23.3/4 发布链同步到 `master`。
+- Added `TaskBusinessResourceSummary`, optional `primary_resource` on task response schemas, structured `TaskAttemptLog` fields, four `atomic_tasks` columns, and a partial composite index.
+- No dependency or runtime configuration changes.
 
-## 验证与风险
+## Verification performed and remaining checks
 
-- 已确认 v1.23.3 内容/release commit 为 `31c9be3` / `6e292e8`。
-- 已确认 v1.23.4 内容/release commit 为 `0da3dd2` / `e3e0034`，发布分支最新 handoff commit 为 `8bc0aa1`。
-- 已核验两个 tag 均为 `master` 祖先；最终 handoff commit 推送后再次核验工作区和远端指针。
+- Verified the local and remote release/tag state. SSH reads failed twice, while the HTTPS read returned matching refs.
+- Parsed Task Center OpenAPI successfully and resolved all 80 local refs; verified the new S1 anchors and passed `git diff --check`.
+- Remaining: content/release commits, annotated tag creation, push, and remote commit verification for v1.23.6.
 
-## 未完成事项
+## Outstanding tasks
 
-- 无。
+- Commit the current content, update release metadata to its commit, create the release commit and annotated tag, push, and verify the remote refs.
 
-## 推荐下一步
+## Known issues and risks
 
-下游仓库以 `spec-v1.23.4` 为最新正式 SSOT，更新对应 gitlink/version pin 后实施。
+- Downstream Server/Web implementation must not pin v1.23.6 until its release tag is remotely verified.
+- GitHub SSH connectivity is currently intermittent; use HTTPS read-only verification if SSH ref checks fail again.
+
+## Exact recommended next step
+
+Create the content commit from the current validated files, then add the `spec-v1.23.6` entry to `RELEASE.md` using that commit SHA.
 
 Next Prompt:
 

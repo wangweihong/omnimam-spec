@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM Task Center API
-  version: 1.6.0-draft
+  version: 1.7.0-draft
   description: AtomicTask、版本化 function registry、组合任务、DAG 可观测详情、Schedule、Attempt、执行日志与汇总查询契约。
 servers:
   - url: /
@@ -80,7 +80,7 @@ paths:
       summary: 分页查询 TaskAttempt 运行中执行日志
       operationId: list_task_attempt_logs
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140]}
+      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023, US-TASK-027], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140, BR-TASK-162, BR-TASK-163]}
       parameters:
         - {$ref: '#/components/parameters/atomic_task_id'}
         - {$ref: '#/components/parameters/task_attempt_id'}
@@ -104,7 +104,7 @@ paths:
       summary: 下载筛选后的 TaskAttempt 执行日志
       operationId: download_task_attempt_logs
       x-permission: task.atomic.operate
-      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140]}
+      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023, US-TASK-027], business_rules: [BR-TASK-129, BR-TASK-130, BR-TASK-131, BR-TASK-132, BR-TASK-140, BR-TASK-162, BR-TASK-163]}
       parameters:
         - {$ref: '#/components/parameters/atomic_task_id'}
         - {$ref: '#/components/parameters/task_attempt_id'}
@@ -600,10 +600,21 @@ components:
         detail: {type: string}
         retryable: {type: boolean}
         occurred_at: {type: string, format: date-time}
+    TaskBusinessResourceSummary:
+      type: object
+      additionalProperties: false
+      description: AtomicTask 创建时保存的唯一主业务资源非敏感快照；名称缺失时客户端使用本地化 kind 降级，不得以 id 伪造名称。domain/kind 仅允许 asset-library/ASSET|ARTIFACT、application-platform/APPLICATION、workflow-canvas/CANVAS、appstudio/STUDIO_APPLICATION、agent/AGENT、gitlab/GITLAB_PROJECT。
+      x-s1-refs: {user_stories: [US-TASK-027], business_rules: [BR-TASK-158, BR-TASK-159, BR-TASK-161]}
+      required: [domain, kind, id]
+      properties:
+        domain: {type: string, enum: [asset-library, application-platform, workflow-canvas, appstudio, agent, gitlab]}
+        kind: {type: string, enum: [ASSET, ARTIFACT, APPLICATION, CANVAS, STUDIO_APPLICATION, AGENT, GITLAB_PROJECT]}
+        id: {type: string, minLength: 1, maxLength: 256}
+        name: {type: string, minLength: 1, maxLength: 256}
     AtomicTaskSummary:
       type: object
       description: AtomicTask 的一跳可读摘要，不包含 arguments、output、error 或其他关联摘要。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-TASK-128]}
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-005, BR-TASK-128, BR-TASK-158, BR-TASK-161]}
       required: [id, name, status, progress]
       properties:
         id: {type: string}
@@ -612,6 +623,7 @@ components:
         status: {$ref: '#/components/schemas/AtomicTaskStatus'}
         progress: {type: number, minimum: 0, maximum: 1}
         function_ref: {type: string}
+        primary_resource: {$ref: '#/components/schemas/TaskBusinessResourceSummary', nullable: true, readOnly: true}
     TaskOwnerSummary:
       type: object
       description: AtomicTask 所属 TaskGroup、DAGTaskGroup 或 TaskSchedule 的一跳摘要。
@@ -649,6 +661,7 @@ components:
             current_attempt: {type: integer, minimum: 0}
             output: {$ref: '#/components/schemas/TaskOutput'}
             last_error: {$ref: '#/components/schemas/TaskError'}
+            primary_resource: {$ref: '#/components/schemas/TaskBusinessResourceSummary', nullable: true, readOnly: true}
             retry_of_task_id: {type: string}
             retry_of_task: {$ref: '#/components/schemas/AtomicTaskSummary', nullable: true, readOnly: true}
             root_task_id: {type: string}
@@ -764,13 +777,32 @@ components:
         items: {type: array, items: {$ref: '#/components/schemas/TaskAttempt'}}
     TaskAttemptLog:
       type: object
+      additionalProperties: false
+      x-s1-refs: {user_stories: [US-TASK-022, US-TASK-023, US-TASK-027], business_rules: [BR-TASK-129, BR-TASK-131, BR-TASK-132, BR-TASK-140, BR-TASK-162, BR-TASK-163]}
       required: [sequence, source, level, message, occurred_at]
       properties:
         sequence: {type: integer, minimum: 1, description: 当前运行时日志历史内按稳定升序分配的序号。}
         source: {type: string, enum: [LIFECYCLE, WORKER]}
         level: {type: string, enum: [INFO, WARN, ERROR]}
         message: {type: string, maxLength: 4096, description: 已在运行时写入和 Task Center 读取边界双重脱敏的单行消息。}
+        event_key: {type: string, minLength: 1, maxLength: 256, description: 稳定、非敏感的生命周期或业务事件 key。}
+        stage: {type: string, enum: [PREPARE, EXECUTE, WAIT, POST_PROCESS, CLEANUP]}
+        error_code: {type: string, minLength: 1, maxLength: 256, description: 面向用户排障的安全稳定错误码，不得使用 Provider RawCode。}
+        context: {$ref: '#/components/schemas/TaskLogContext'}
         occurred_at: {type: string, format: date-time}
+    TaskLogContext:
+      type: object
+      additionalProperties: false
+      description: 日志 envelope v2 的封闭诊断上下文；字符串字段适用双重脱敏、单行化和 4096 字节限制。
+      properties:
+        attempt_no: {type: integer, minimum: 1}
+        duration_ms: {type: integer, format: int64, minimum: 0}
+        progress: {type: number, minimum: 0, maximum: 1}
+        item_count: {type: integer, format: int64, minimum: 0}
+        output_count: {type: integer, format: int64, minimum: 0}
+        operation: {type: string, maxLength: 4096}
+        external_status: {type: string, maxLength: 4096}
+        retryable: {type: boolean}
     TaskAttemptLogListResponse:
       type: object
       required: [total, items]
@@ -1007,6 +1039,7 @@ components:
         status: {type: string}
         progress: {type: number, minimum: 0, maximum: 1}
         function_ref: {type: string}
+        primary_resource: {$ref: '#/components/schemas/TaskBusinessResourceSummary', nullable: true, readOnly: true}
         task_count: {type: integer, minimum: 0}
         application_run_id: {type: string}
         canvas_run_id: {type: string}

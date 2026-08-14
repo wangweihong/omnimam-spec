@@ -465,6 +465,12 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 83. `BR-TASK-155`：所有 CHAT/CODING Invocation 必须通过 `agent.invocation.execute@1.0` 执行；Worker 按 Invocation 幂等恢复 Runtime 操作，单调投影事件。CODING 只有在 base Revision/CommitSHA 到 GitLab HEAD 恰好一个普通 fast-forward commit并已幂等投影一个 ChangeSet/Revision 后才能成功；异常分支不推进 Revision。成功、失败、超时、取消和 execution 丢失终态均通知 Agent observer。
 84. `BR-TASK-156`：`gitlab.pipeline.run` 是非 Infra-backed 外部 AtomicTask，只接收内部 GitLabProject ID、ref 和 variables；Worker 必须用 externalJobId、IN_PROGRESS 和延迟回调恢复同一远端 Pipeline，不得把 URL、credential 或远端 project ID 写入任务输入输出，也不得伪造 Infra JOB/SERVICE 映射。
 85. `BR-TASK-157`：公共 DAG 创建入口不得接受用户选择 `gitlab.pipeline.run` 或 AppStudio 内部初始化/投影 functionRef；AppStudio 可通过携带受信 caller identity 的领域内部入口提交固定模板 DAG，Task Center 仍执行相同 functionRef 注册、输入 schema、DAG 无环、规模和幂等校验。
+86. `BR-TASK-158`：AtomicTask 可在创建时保存唯一可选 `primary_resource`，表示用户可导航的上层业务资源不可变快照；来源领域必须在既有权限校验后通过内部创建边界提供，公开 AtomicTask、Group 和 DAG 创建请求不得设置该字段，Task Center 不得从 `function_ref` 或任意 `arguments` 启发式猜测。
+87. `BR-TASK-159`：`primary_resource` 只允许 `asset-library/ASSET|ARTIFACT`、`application-platform/APPLICATION`、`workflow-canvas/CANVAS`、`appstudio/STUDIO_APPLICATION`、`agent/AGENT` 和 `gitlab/GITLAB_PROJECT` 组合，并保存稳定资源 ID 与创建时可得的非敏感名称；名称不可可靠取得时必须省略，不得以 ID 伪造名称。
+88. `BR-TASK-160`：主业务资源快照创建后不可变；自动 Attempt 重试、手动重试、Group/DAG 重跑和幂等恢复必须保留原快照。相同幂等键携带不同快照时继续按既有幂等内容冲突处理，不得覆盖已存在任务。
+89. `BR-TASK-161`：任务列表、详情和目标摘要只在调用方可见父任务时返回已保存的 `primary_resource`；它不授予关联资源访问权限。历史任务缺失快照、资源已删除或名称为空时仍可读取任务，客户端只能以本地化 kind 降级，不得回查可变名称改写历史或展示资源 ID 代替名称。
+90. `BR-TASK-162`：WorkflowRuntime 日志 envelope 升级为 v2，在既有时间、来源、级别和消息外提供可选 event key、阶段、安全错误码和封闭上下文；Task Center 必须兼容 v1 envelope 与历史纯文本，日志正文仍由 WorkflowRuntime 保存，不新增日志表或第二事实源。
+91. `BR-TASK-163`：日志阶段固定为 PREPARE、EXECUTE、WAIT、POST_PROCESS 或 CLEANUP；上下文只允许 Attempt 序号、耗时、进度、输入项数、输出项数、操作、外部状态和可重试标记。所有字符串字段继续在写入与读取边界双重脱敏、单行化并限制 4096 字节，不得暴露 DEBUG、Stack、Cause、RawCode、任意 URL、凭证或 Provider 原始响应；下载保留既有前四列并在末尾追加这些结构化字段。
 
 ---
 
@@ -629,6 +635,16 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 - `AC-TASK-026-03`：AtomicTask 固定 function contract version/digest；自动重试、延迟回调和重启恢复使用同一版本，registry 新版本不改变历史任务。
 - `AC-TASK-026-04`：Task Worker 输出只包含合同允许的小型引用和脱敏摘要；源码、Artifact 内容、Secret、宿主路径、容器信息、Provider 原始响应和业务状态仍由各事实领域拥有。
 - `AC-TASK-026-05`：CHAT/CODING 创建后执行前绑定 AtomicTask；重复 Attempt 不重复提交已接受消息。CODING push 后崩溃或重复 Attempt 只同步同一 commit；无 commit、多 commit、分叉、force 语义或 base 不匹配时失败且不推进 Revision。取消调用对应 adapter，所有终态及 execution 丢失均由 reconciler 单调通知 Agent observer。
+
+### US-TASK-027 业务资源关联与结构化诊断
+
+作为任务中心用户，我希望任务直接标识其所属的主业务资源，并用安全的结构化日志定位执行阶段与失败原因，从而无需理解 functionRef、原始 JSON 或内部运行时信息。
+
+- `AC-TASK-027-01`：新建任务可返回一个合法的 `primary_resource` 快照；AppStudio、Agent、应用运行、素材处理和 GitLab Pipeline 分别关联 StudioApplication、Agent、Application、Asset/Artifact 和 GitLabProject，Canvas 任务关联 Canvas。
+- `AC-TASK-027-02`：公开创建请求不能设置 `primary_resource`，无可靠名称时仅返回 domain、kind 和 id；历史任务没有该字段时列表、详情和概览正常降级。
+- `AC-TASK-027-03`：自动/手动重试、Group/DAG 重跑和幂等恢复保留原快照；相同幂等键的快照差异不会改写旧任务，并返回既有幂等冲突。
+- `AC-TASK-027-04`：Attempt 日志可按阶段、event key、安全错误码和固定 context 字段排障，同时兼容 v1 与纯文本历史；日志正文继续来自 WorkflowRuntime。
+- `AC-TASK-027-05`：在线查询和下载不会出现 DEBUG、Stack、Cause、RawCode、任意 URL、凭证、Provider 原始响应或超长多行字符串，且日志增强不改变任务状态、重试、取消或日志保留语义。
 
 ---
 

@@ -1,6 +1,6 @@
 -- task-center spec-v1.0.0 design schema. This is not a runtime migration.
 
--- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023..024, US-TASK-026, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135, BR-TASK-142, BR-TASK-147..153.
+-- s1_refs: US-TASK-008, US-TASK-018..020, US-TASK-023..024, US-TASK-026..027, BR-TASK-073..077, BR-TASK-087..100, BR-TASK-120..126, BR-TASK-135, BR-TASK-142, BR-TASK-147..153, BR-TASK-158..161.
 CREATE TABLE atomic_tasks (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -15,6 +15,10 @@ CREATE TABLE atomic_tasks (
   function_ref TEXT NOT NULL,
   function_contract_version TEXT NOT NULL DEFAULT '',
   function_contract_digest TEXT NOT NULL DEFAULT '',
+  primary_resource_domain TEXT NOT NULL DEFAULT '',
+  primary_resource_kind TEXT NOT NULL DEFAULT '',
+  primary_resource_id TEXT NOT NULL DEFAULT '',
+  primary_resource_name TEXT NOT NULL DEFAULT '',
   arguments_json TEXT NOT NULL DEFAULT '{}',
   required_capabilities TEXT DEFAULT '',
   retry_policy_json TEXT NOT NULL DEFAULT '{}',
@@ -65,7 +69,23 @@ CREATE TABLE atomic_tasks (
     )
   ),
   CHECK ((idempotency_scope = '' AND idempotency_key = '') OR (idempotency_scope <> '' AND idempotency_key <> '')),
-  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> ''))
+  CHECK ((name_source = 'USER' AND system_name_key = '') OR (name_source = 'SYSTEM' AND system_name_key <> '')),
+  CHECK (
+    (primary_resource_domain = '' AND primary_resource_kind = '' AND primary_resource_id = '' AND primary_resource_name = '')
+    OR (
+      primary_resource_id <> ''
+      AND length(primary_resource_id) <= 256
+      AND length(primary_resource_name) <= 256
+      AND (
+        (primary_resource_domain = 'asset-library' AND primary_resource_kind IN ('ASSET','ARTIFACT'))
+        OR (primary_resource_domain = 'application-platform' AND primary_resource_kind = 'APPLICATION')
+        OR (primary_resource_domain = 'workflow-canvas' AND primary_resource_kind = 'CANVAS')
+        OR (primary_resource_domain = 'appstudio' AND primary_resource_kind = 'STUDIO_APPLICATION')
+        OR (primary_resource_domain = 'agent' AND primary_resource_kind = 'AGENT')
+        OR (primary_resource_domain = 'gitlab' AND primary_resource_kind = 'GITLAB_PROJECT')
+      )
+    )
+  )
 );
 
 CREATE UNIQUE INDEX idx_atomic_tasks_idempotency ON atomic_tasks(project_id, namespace, idempotency_scope, idempotency_key) WHERE idempotency_scope <> '';
@@ -78,6 +98,7 @@ CREATE INDEX idx_atomic_tasks_retry_root ON atomic_tasks(root_task_id);
 CREATE INDEX idx_atomic_tasks_application_run ON atomic_tasks(application_run_id) WHERE application_run_id <> '';
 CREATE INDEX idx_atomic_tasks_canvas_run ON atomic_tasks(canvas_run_id) WHERE canvas_run_id <> '';
 CREATE UNIQUE INDEX idx_atomic_tasks_runtime_task ON atomic_tasks(runtime_task_id) WHERE runtime_task_id <> '';
+CREATE INDEX idx_atomic_tasks_primary_resource ON atomic_tasks(primary_resource_domain, primary_resource_kind, primary_resource_id) WHERE primary_resource_domain <> '' AND primary_resource_kind <> '' AND primary_resource_id <> '';
 
 -- s1_refs: US-TASK-008, US-TASK-014, US-TASK-018, US-TASK-022..023, BR-TASK-075, BR-TASK-077, BR-TASK-120, BR-TASK-129..132, BR-TASK-138.
 CREATE TABLE task_attempts (
