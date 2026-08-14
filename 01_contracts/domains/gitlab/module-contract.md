@@ -4,7 +4,7 @@
 
 | 模块 | 拥有事实 | 提供能力 | 不负责 |
 | --- | --- | --- | --- |
-| `server` | GitLabServer、credential、连接状态、AppStudio 默认标记 | Server CRUD、Test、默认 Server 解析和 Client Factory 输入 | GitLab 进程生命周期、Secret Provider |
+| `server` | GitLabServer、credential、连接状态、AppStudio 默认标记 | 服务端派生 API URL、固定 Group ensure、Server CRUD、Test、默认 Server 解析和 Client Factory 输入 | GitLab 进程生命周期、Secret Provider |
 | `project` | GitLabProject 本地投影、`CREATING -> READY/ERROR` reservation 和 AppStudio Hook 元数据 | 远端 Project/Hook 幂等创建、读取、删除及投影维护 | AppStudio Revision/ChangeSet、Webhook 业务编排 |
 | `repository` | GitLab Repository 与 Project Access Token 协议适配 | tree/file/archive、HEAD、compare/commit、token create/revoke | AppStudio 业务事务、Runtime 生命周期 |
 | `client` | GitLab HTTP 协议适配 | version/user/namespace/project/repository/token/pipeline API | 业务权限、数据库事务、Task 状态 |
@@ -16,6 +16,7 @@
 - Service 负责 Server/Project 业务规则、数据库事务、远端补偿和错误映射。
 - Store 接口由 GitLab Service 消费；PostgreSQL adapter 实现查询、乐观版本和关联删除保护。
 - Credential 只在服务端内存和 HTTP header 中短暂出现，不进入 JSON、日志、Task 参数、Task 输出或事件。
+- Create/Update 请求不得接收 API URL 或 Namespace Path。Service 从规范化 External URL 的同一路径派生 `/api/v4`，依次调用 version/user，并通过 Client 幂等解析或创建 private 顶级 Group `omnimam-appstudio`。全部成功后才写入连接；创建直接写 `READY`，更新失败保留原连接。
 - GitLab Client Factory 从 GitLabServer 构造带超时的 client；业务 service 不直接拼装 HTTP 请求。
 - `is_appstudio_default=true` 只允许 READY Server；更新默认值必须在一个数据库事务中清除旧默认。API URL、Namespace Path 或 credential 变化以及 Test 失败必须清除当前标记，partial unique index 保证全局最多一个默认 Server。
 - 默认 Server 解析找不到唯一 READY 且 `is_appstudio_default=true` 的 Server 时返回 `ERR_GITLAB_APPSTUDIO_DEFAULT_SERVER_UNAVAILABLE`；不得任意选择其他 READY Server。
@@ -24,7 +25,7 @@
 
 客户端至少提供：
 
-- `GetVersion`、`GetCurrentUser`、`ResolveNamespace`；
+- `GetVersion`、`GetCurrentUser`、`ResolveNamespace`、`CreateNamespace`；
 - `CreateProject`、`GetProject`、`DeleteProject`、`CreateProjectHook`、`GetProjectHook`、`DeleteProjectHook`；
 - `ListRepositoryTree`、`GetRepositoryFile`、`GetRepositoryArchive`、`GetBranchHead`、`CompareCommits`、`CreateCommit`；
 - `CreateProjectAccessToken`、`RevokeProjectAccessToken`；
@@ -57,4 +58,4 @@ AppStudio Project Hook URL 只能来自服务端部署配置。adapter 生成或
 
 ## 6. S1 追溯
 
-主要规则：`BR-GITLAB-001..019`；用户故事：`US-GITLAB-001..003`；验收：`AC-GITLAB-001-*`、`AC-GITLAB-002-*`、`AC-GITLAB-003-*`。
+主要规则：`BR-GITLAB-001..020`；用户故事：`US-GITLAB-001..003`；验收：`AC-GITLAB-001-*`、`AC-GITLAB-002-*`、`AC-GITLAB-003-*`。

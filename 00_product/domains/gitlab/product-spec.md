@@ -65,11 +65,13 @@ Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 c
 
 ## 4. 连接管理规则
 
-1. 创建 GitLabServer 不隐式执行连接检测。
-2. Test 动作依次验证 GitLab `/version` 和当前用户 `/user`，并确认 Namespace Path 可解析且当前 PAT 可以访问该 Namespace。
-3. 检测成功写入 `READY`、检查时间并清空错误；检测失败写入 `ERROR`、检查时间和脱敏错误。
-4. Test 动作本身完成时返回更新后的 GitLabServer，即使结果为 `ERROR`；只有持久化或不可恢复内部故障返回业务错误。
-5. Credential 更新请求省略 credential 时必须保留原值；不得使用响应中的掩码值反向覆盖真实 credential。
+1. 管理员创建 GitLabServer 只提交名称、可选描述、GitLab External URL 和 PAT；客户端不提交 API URL 或 Namespace Path。
+2. 服务端规范化 External URL，并在同一路径下派生标准 `/api/v4` API URL。随后依次验证 GitLab `/version` 和当前用户 `/user`，再解析固定 Group path `omnimam-appstudio`。
+3. 固定 Group 不存在时，服务端使用当前 PAT 创建 private 顶级 Group `omnimam-appstudio`；已存在时直接复用。Group 创建/解析必须幂等，重试不得产生第二个 Group。
+4. 只有地址、PAT 和固定 Group 全部验证成功后才持久化 GitLabServer，并直接写入 `READY`、检查时间和空错误；失败时返回 `ERR_GITLAB_SERVER_CONNECTION_FAILED`，不得保存不可用连接。远端 Group 已创建但本地保存失败时允许保留该固定 Group，后续重试必须复用。
+5. 更新 External URL 或 credential 时使用相同的派生、验证和固定 Group ensure 流程；成功后保持 `READY`，失败时保留原连接。Credential 省略时必须保留原值；不得使用响应中的掩码值反向覆盖真实 credential。
+6. Test 动作依次验证 GitLab `/version`、当前用户 `/user` 和固定 Namespace Path；成功写入 `READY`、检查时间并清空错误，失败写入 `ERROR`、检查时间和脱敏错误。
+7. Test 动作本身完成时返回更新后的 GitLabServer，即使结果为 `ERROR`；只有持久化或不可恢复内部故障返回业务错误。
 
 ## 5. Project 管理规则
 
@@ -116,6 +118,7 @@ Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 c
 - `BR-GITLAB-017`：AppStudio Project Hook 使用每 Project 唯一 token，明文只发送给 GitLab且只保存 SHA-256 digest，重复初始化不得创建重复 Hook。
 - `BR-GITLAB-018`：Pipeline Hook 只加速投影，external_job_id polling 仍保证最终一致；Artifact 下载只接受本地 Project/Pipeline 与受控名称，不接受任意 URL。
 - `BR-GITLAB-019`：不存在唯一 READY AppStudio 默认 GitLabServer 时，Project 初始化必须返回专用可诊断错误；SourceProvider 必须保留该错误以及连接、远端和 projection 的结构化业务错误，不得统一改写为 AppStudio Source 错误。
+- `BR-GITLAB-020`：GitLabServer 的 API URL 与固定 `omnimam-appstudio` Namespace 由服务端管理；创建和连接参数更新必须派生 API URL、幂等 ensure private Group 并验证成功后才持久化，客户端不得提交这两个底层字段。
 
 ## 8. 用户故事与验收
 
@@ -125,11 +128,12 @@ Pipeline Hook 只提供低延迟状态投影，`gitlab.pipeline.run` 的 5 秒 c
 
 验收标准：
 
-- `AC-GITLAB-001-01`：创建连接后 credential 不出现在任何响应中，状态为 UNKNOWN。
+- `AC-GITLAB-001-01`：管理员只用 GitLab 地址和有效 PAT 即可创建连接；服务端派生 API URL、创建或复用 `omnimam-appstudio` Group，返回 READY Server 且 credential 不出现在任何响应中。
 - `AC-GITLAB-001-02`：有效 PAT 和 Namespace 检测后状态为 READY；失败时为 ERROR 且错误已脱敏。
 - `AC-GITLAB-001-03`：READY Server 可以创建 private Project，并保存 GitLab 实际返回的投影。
 - `AC-GITLAB-001-04`：有关联 Project 时 Server 删除失败；Project 删除成功或远端 404 后可删除 Server。
 - `AC-GITLAB-001-05`：USER 无法访问 GitLab 管理 API。
+- `AC-GITLAB-001-06`：无效地址、PAT 或 Group ensure 失败时不保存新连接；更新连接参数失败时保留原连接，远端重试不会重复创建固定 Group。
 
 ### US-GITLAB-002 运行可恢复 Pipeline
 

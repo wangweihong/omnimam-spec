@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OmniMAM GitLab API
-  version: 1.0.0
+  version: 1.1.0
   description: 独立 GitLab domain 第一阶段管理员 API。Credential 只允许写入，任何响应均不返回。
 servers:
   - url: /
@@ -43,7 +43,7 @@ paths:
       x-permission: gitlab.server.manage
       x-s1-refs:
         user_stories: [US-GITLAB-001]
-        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012, BR-GITLAB-020]
       requestBody:
         required: true
         content:
@@ -51,7 +51,7 @@ paths:
             schema: {$ref: '#/components/schemas/CreateGitLabServerRequest'}
       responses:
         '200':
-          description: 新建 GitLabServer，初始状态为 UNKNOWN。
+          description: 服务端派生 API URL、幂等 ensure 固定 `omnimam-appstudio` Group 并验证成功后返回 READY GitLabServer。
           content:
             application/json:
               schema: {$ref: '#/components/schemas/GitLabServer'}
@@ -78,11 +78,11 @@ paths:
       tags: [gitlab-servers]
       operationId: update_gitlab_server
       summary: 更新 GitLabServer
-      description: credential 省略时保留原值；API URL、Namespace Path 或 credential 改变时状态重置为 UNKNOWN。
+      description: credential 省略时保留原值；External URL 或 credential 改变时，服务端重新派生 API URL、ensure 固定 Group 并验证，成功后保持 READY，失败时保留原连接。
       x-permission: gitlab.server.manage
       x-s1-refs:
         user_stories: [US-GITLAB-001]
-        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012]
+        business_rules: [BR-GITLAB-002, BR-GITLAB-003, BR-GITLAB-012, BR-GITLAB-020]
       requestBody:
         required: true
         content:
@@ -262,13 +262,11 @@ components:
     CreateGitLabServerRequest:
       type: object
       additionalProperties: false
-      required: [name, api_url, external_url, namespace_path, credential]
+      required: [name, external_url, credential]
       properties:
         name: {type: string, minLength: 1, maxLength: 200}
         description: {type: string, maxLength: 2000}
-        api_url: {type: string, format: uri, maxLength: 2048}
         external_url: {type: string, format: uri, maxLength: 2048}
-        namespace_path: {type: string, minLength: 1, maxLength: 255}
         credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
         is_appstudio_default: {type: boolean, default: false, description: 新建 Server 初始为 UNKNOWN，因此仅允许 false。}
     UpdateGitLabServerRequest:
@@ -278,9 +276,7 @@ components:
       properties:
         name: {type: string, minLength: 1, maxLength: 200}
         description: {type: string, maxLength: 2000}
-        api_url: {type: string, format: uri, maxLength: 2048}
         external_url: {type: string, format: uri, maxLength: 2048}
-        namespace_path: {type: string, minLength: 1, maxLength: 255}
         credential: {type: string, minLength: 1, maxLength: 4096, writeOnly: true}
         is_appstudio_default: {type: boolean, description: 设为 true 时要求当前 Server 为 READY，并在同一事务清除旧默认值。}
         resource_version: {type: integer, format: int64, minimum: 1}

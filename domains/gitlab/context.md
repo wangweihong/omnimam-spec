@@ -14,6 +14,7 @@
 ## 3. 核心规则
 
 - credential 只写不读，不进入响应、日志、事件或任务输入输出。
+- 管理员只提交 External URL 与只写 PAT；服务端派生标准 API URL，并幂等创建或复用固定 private Group `omnimam-appstudio`，客户端不配置 API URL 或 Namespace Path。
 - 只有 READY Server 可以创建 private Project；namespace 由 Server 固定。
 - 不存在 READY AppStudio 默认 Server 时返回专用结构化错误；连接、远端和 projection 错误不得被 SourceProvider 压缩为 AppStudio 通用 Source 错误。
 - 有关联 Project 时禁止删除 Server；Project 远端 404 可清理本地投影。
