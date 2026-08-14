@@ -716,7 +716,7 @@ Agent 可以请求删除当前主体拥有且当前可见的 Asset：
 {
   "asset_id": "asset_01K2IMAGE",
   "deleted": true,
-  "status": "archived",
+  "status": "deleted",
   "uri": "omnimam://assets/asset_01K2IMAGE"
 }
 ```

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 修正 MCP Asset 删除结果状态，与 Asset Library 回收站正式状态 `deleted` 保持一致。
+
 - MCP Asset Tool 扩展为 12 个固定 Tool，新增 `omnimam.assets.delete` 软删除素材能力；默认 Platform Agent MCP Binding 开放素材查询、受控上传和软删除，消息附件继续使用 `AssetReference` 引用。
 
 - GitLabServer 创建/连接参数更新改为只接收 External URL 与只写 PAT：服务端派生并验证标准 `/api/v4`，幂等创建或复用固定 private Group `omnimam-appstudio`，成功后直接保存 READY 连接；客户端不再提交 API URL 或 Namespace Path，不改变持久化字段、错误码、权限码、事件或 Schema。

@@ -1,5 +1,18 @@
 # Release Records
 
+## spec-v1.23.10
+
+- status: pending release
+- confirmed_by: user（2026-08-14，修正 v1.23.9 MCP 删除状态与 Asset Library S2 的一致性）
+- allowed_as_formal_implementation_basis: false
+- domains:
+  - mcp
+- S1:
+  - 00_product/domains/mcp/product-spec.md
+- S2:
+  - 01_contracts/domains/mcp/openapi.yaml
+- implementation_gate: `omnimam.assets.delete` 返回既有 Asset Library 回收站状态 `deleted`；`spec-v1.23.9` 保持不可变，仅本修正版可作为正式实现依据。
+
 ## spec-v1.23.9
 
 - commit: 952c4c6

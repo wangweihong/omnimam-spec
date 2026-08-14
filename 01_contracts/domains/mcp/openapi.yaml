@@ -1078,7 +1078,7 @@ components:
       properties:
         asset_id: {type: string}
         deleted: {type: boolean, const: true}
-        status: {type: string, const: archived}
+        status: {type: string, const: deleted}
         uri: {type: string, format: uri}
 
     MediaType:
