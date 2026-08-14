@@ -2,9 +2,10 @@
 
 ## spec-v1.23.9
 
-- status: pending release
+- commit: 952c4c6
+- status: released
 - confirmed_by: user（2026-08-14 明确要求发布 Hermes Agent 素材上传、挂载和 MCP 软删除小版本）
-- allowed_as_formal_implementation_basis: false
+- allowed_as_formal_implementation_basis: true
 - domains:
   - mcp
   - agent
