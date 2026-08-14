@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: publish the Task Center download-order and no-legacy-data correction as `spec-v1.23.7`.
-- Status: in progress. The scoped v1.23.7 correction is implemented and validated; content/release commits and remote publication remain.
+- Status: in progress. v1.23.7 content commit `b51296122dd598de2a5ab67ea3d4aa73fa5e7508` is complete; the release record is prepared and awaits its release commit/tag/push.
 
 ## Work completed in this session
 
@@ -18,10 +18,11 @@
 - During downstream Server inspection, confirmed the existing download order is `occurred_at`, `level`, `source`, `message`; v1.23.6 module contract incorrectly states `occurred_at`, `source`, `level`, `message`.
 - User approved an immutable v1.23.7 correction and overrode the prior legacy-data compatibility requirement: deployment will clear old Task Center/WorkflowRuntime data and logs will be v2-only.
 - Updated S1 with `BR-TASK-164`/`AC-TASK-027-06`, made logs v2-only, corrected the download order, and documented the empty-data deployment gate in the module contract and changelog.
+- Created v1.23.7 content commit `b51296122dd598de2a5ab67ea3d4aa73fa5e7508` and added a release record pointing to it.
 
 ## Current in-progress work
 
-- Create the v1.23.7 content commit, then add its release record and create the release commit/tag without rewriting v1.23.6.
+- Validate the release diff, create the release commit and annotated `spec-v1.23.7` tag, then push and verify remote refs.
 
 ## Files added, modified, renamed, or removed
 
@@ -47,7 +48,7 @@
 - Parsed Task Center OpenAPI successfully and resolved all 80 local refs; verified the new S1 anchors and passed `git diff --check`.
 - Verified remote `refs/heads/master=47eef7b4273bbf3c910ed95a880e04b503b40ac6`, tag object `6991ad0b08b3a9daffd0ba166bf83f7816446a05`, and peeled `refs/tags/spec-v1.23.6^{}=47eef7b4273bbf3c910ed95a880e04b503b40ac6`.
 - Re-parsed Task Center OpenAPI and resolved all 80 local refs; verified S1/no-legacy-data anchors and passed `git diff --check`.
-- Remaining: content/release commits, tag, push, and remote verification for v1.23.7.
+- Remaining: release commit, tag, push, and remote verification for v1.23.7.
 
 ## Outstanding tasks
 
@@ -61,7 +62,7 @@
 
 ## Exact recommended next step
 
-Create the scoped v1.23.7 content commit, then add a release record pointing to it before creating the release commit/tag.
+Run `git diff --check`, commit `RELEASE.md` and `docs/HANDOFF.md`, create annotated tag `spec-v1.23.7`, then push and verify remote refs.
 
 Next Prompt:
 

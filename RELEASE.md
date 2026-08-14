@@ -1,5 +1,19 @@
 # Release Records
 
+## spec-v1.23.7
+
+- commit: b51296122dd598de2a5ab67ea3d4aa73fa5e7508
+- status: released
+- confirmed_by: user（2026-08-14 明确要求发布 `spec-v1.23.7`，实现不兼容旧数据并直接清除）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: Attempt 日志下载保留现有 `occurred_at`、`level`、`source`、`message` 前四列，再追加 v2 结构化字段。部署前必须清除 Task Center 与 WorkflowRuntime 的既有持久化数据，不执行 AtomicTask/Attempt/Group/DAG/Schedule、运行时执行、日志或 `primary_resource` 的迁移、回填与恢复；新服务只写入和读取 envelope v2，不兼容 v1 或纯文本日志。`spec-v1.23.6` 保持不可变，不得重写其 tag。
+
 ## spec-v1.23.6
 
 - commit: 8924ab681d1c5b3de693d8b315ed80df241d390c
