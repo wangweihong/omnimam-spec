@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: publish the Task Center download-order and no-legacy-data correction as `spec-v1.23.7`.
-- Status: in progress. v1.23.7 content commit `b51296122dd598de2a5ab67ea3d4aa73fa5e7508` is complete; the release record is prepared and awaits its release commit/tag/push.
+- Status: complete. `spec-v1.23.7` is released, pushed, and remotely verified; downstream repositories may pin it.
 
 ## Work completed in this session
 
@@ -19,10 +19,11 @@
 - User approved an immutable v1.23.7 correction and overrode the prior legacy-data compatibility requirement: deployment will clear old Task Center/WorkflowRuntime data and logs will be v2-only.
 - Updated S1 with `BR-TASK-164`/`AC-TASK-027-06`, made logs v2-only, corrected the download order, and documented the empty-data deployment gate in the module contract and changelog.
 - Created v1.23.7 content commit `b51296122dd598de2a5ab67ea3d4aa73fa5e7508` and added a release record pointing to it.
+- Created release commit `712e926df5738d9667273696d6fc510fd444e851`, annotated tag `spec-v1.23.7`, pushed both, and remotely verified the master and peeled tag refs.
 
 ## Current in-progress work
 
-- Validate the release diff, create the release commit and annotated `spec-v1.23.7` tag, then push and verify remote refs.
+- No Spec work is in progress; downstream Server/Web pins and implementation are complete.
 
 ## Files added, modified, renamed, or removed
 
@@ -48,11 +49,12 @@
 - Parsed Task Center OpenAPI successfully and resolved all 80 local refs; verified the new S1 anchors and passed `git diff --check`.
 - Verified remote `refs/heads/master=47eef7b4273bbf3c910ed95a880e04b503b40ac6`, tag object `6991ad0b08b3a9daffd0ba166bf83f7816446a05`, and peeled `refs/tags/spec-v1.23.6^{}=47eef7b4273bbf3c910ed95a880e04b503b40ac6`.
 - Re-parsed Task Center OpenAPI and resolved all 80 local refs; verified S1/no-legacy-data anchors and passed `git diff --check`.
-- Remaining: release commit, tag, push, and remote verification for v1.23.7.
+- Verified remote `master=712e926df5738d9667273696d6fc510fd444e851`, tag object `731edd404678cb38297851b95a8ac379cf3184aa`, and peeled tag `712e926df5738d9667273696d6fc510fd444e851`.
+- Downstream Server/Web implementation and the approved clean-data rebuild are complete.
 
 ## Outstanding tasks
 
-- Publish `spec-v1.23.7`, then update downstream pins before formal implementation.
+- No outstanding Spec release tasks.
 
 ## Known issues and risks
 
@@ -62,7 +64,7 @@
 
 ## Exact recommended next step
 
-Run `git diff --check`, commit `RELEASE.md` and `docs/HANDOFF.md`, create annotated tag `spec-v1.23.7`, then push and verify remote refs.
+No further Spec work is required for `spec-v1.23.7`; preserve the published release commit and annotated tag.
 
 Next Prompt:
 
