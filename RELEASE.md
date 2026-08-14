@@ -2,9 +2,10 @@
 
 ## spec-v1.23.10
 
-- status: pending release
+- commit: 4ea2615
+- status: released
 - confirmed_by: user（2026-08-14，修正 v1.23.9 MCP 删除状态与 Asset Library S2 的一致性）
-- allowed_as_formal_implementation_basis: false
+- allowed_as_formal_implementation_basis: true
 - domains:
   - mcp
 - S1:
