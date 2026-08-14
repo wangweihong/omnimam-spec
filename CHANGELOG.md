@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Task Center 新增单一 `primary_resource` 不可变快照，覆盖 Asset/Artifact、Application、Canvas、StudioApplication、Agent 和 GitLabProject；公开创建 API 不可设置，重试、重跑和幂等恢复保留原快照，历史空值兼容。
-- WorkflowRuntime 日志 envelope 升级为 v2，新增可选 event key、固定阶段、安全错误码和封闭 context，同时兼容 v1/纯文本；继续双重脱敏、单行化和 4096 字节限制，不新增日志表、错误码、权限码或事件。
+- 修正 Task Center 日志下载兼容列顺序为 `occurred_at`、`level`、`source`、`message`；主业务资源/日志 v2 升级不迁移旧数据，部署前清除 Task Center 与 WorkflowRuntime 持久化数据，读取端只接受 v2 envelope。
+- Task Center 新增单一 `primary_resource` 不可变快照，覆盖 Asset/Artifact、Application、Canvas、StudioApplication、Agent 和 GitLabProject；公开创建 API 不可设置，重试、重跑和幂等恢复保留原快照，名称为空时按 kind 降级。
+- WorkflowRuntime 日志 envelope 升级为 v2，新增可选 event key、固定阶段、安全错误码和封闭 context；继续双重脱敏、单行化和 4096 字节限制，不新增日志表、错误码、权限码或事件。
 - Task Center OpenAPI 升级为 `1.7.0-draft`，`atomic_tasks` 增加四个主业务资源快照列和部分复合索引，日志下载在既有前四列后追加结构化字段。
 - AppStudio Preview 新增 owner-scoped 同源 HTTP(S) Preview Proxy；`display_ref` 使用 API Server 代理路径，支持 GET/HEAD/POST/PUT/PATCH/DELETE，隐藏 Host Port、私网地址和 Provider `base_url`。Infrastructure Endpoint resolve 增加 `APPSTUDIO_PREVIEW_PROXY` purpose；不新增数据库字段、错误码或事件。
 

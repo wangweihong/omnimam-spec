@@ -468,9 +468,10 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 86. `BR-TASK-158`：AtomicTask 可在创建时保存唯一可选 `primary_resource`，表示用户可导航的上层业务资源不可变快照；来源领域必须在既有权限校验后通过内部创建边界提供，公开 AtomicTask、Group 和 DAG 创建请求不得设置该字段，Task Center 不得从 `function_ref` 或任意 `arguments` 启发式猜测。
 87. `BR-TASK-159`：`primary_resource` 只允许 `asset-library/ASSET|ARTIFACT`、`application-platform/APPLICATION`、`workflow-canvas/CANVAS`、`appstudio/STUDIO_APPLICATION`、`agent/AGENT` 和 `gitlab/GITLAB_PROJECT` 组合，并保存稳定资源 ID 与创建时可得的非敏感名称；名称不可可靠取得时必须省略，不得以 ID 伪造名称。
 88. `BR-TASK-160`：主业务资源快照创建后不可变；自动 Attempt 重试、手动重试、Group/DAG 重跑和幂等恢复必须保留原快照。相同幂等键携带不同快照时继续按既有幂等内容冲突处理，不得覆盖已存在任务。
-89. `BR-TASK-161`：任务列表、详情和目标摘要只在调用方可见父任务时返回已保存的 `primary_resource`；它不授予关联资源访问权限。历史任务缺失快照、资源已删除或名称为空时仍可读取任务，客户端只能以本地化 kind 降级，不得回查可变名称改写历史或展示资源 ID 代替名称。
-90. `BR-TASK-162`：WorkflowRuntime 日志 envelope 升级为 v2，在既有时间、来源、级别和消息外提供可选 event key、阶段、安全错误码和封闭上下文；Task Center 必须兼容 v1 envelope 与历史纯文本，日志正文仍由 WorkflowRuntime 保存，不新增日志表或第二事实源。
+89. `BR-TASK-161`：任务列表、详情和目标摘要只在调用方可见父任务时返回已保存的 `primary_resource`；它不授予关联资源访问权限。资源已删除或名称为空时仍可读取任务，客户端只能以本地化 kind 降级，不得回查可变名称改写历史或展示资源 ID 代替名称。
+90. `BR-TASK-162`：WorkflowRuntime 日志 envelope 升级为 v2，在既有时间、来源、级别和消息外提供可选 event key、阶段、安全错误码和封闭上下文；升级部署前清除既有 Task Center 与 WorkflowRuntime 持久化数据，读取端只接受 v2，不实现 v1 envelope 或历史纯文本兼容。日志正文仍由 WorkflowRuntime 保存，不新增日志表或第二事实源。
 91. `BR-TASK-163`：日志阶段固定为 PREPARE、EXECUTE、WAIT、POST_PROCESS 或 CLEANUP；上下文只允许 Attempt 序号、耗时、进度、输入项数、输出项数、操作、外部状态和可重试标记。所有字符串字段继续在写入与读取边界双重脱敏、单行化并限制 4096 字节，不得暴露 DEBUG、Stack、Cause、RawCode、任意 URL、凭证或 Provider 原始响应；下载保留既有前四列并在末尾追加这些结构化字段。
+92. `BR-TASK-164`：本次主业务资源与日志 v2 升级不迁移、回填或恢复旧 AtomicTask、Attempt、Group/DAG、Schedule、运行时执行和日志历史；部署必须从空 Task Center 与 WorkflowRuntime 数据集启动，来源领域按新合同重新创建后续任务。
 
 ---
 
@@ -641,10 +642,11 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 作为任务中心用户，我希望任务直接标识其所属的主业务资源，并用安全的结构化日志定位执行阶段与失败原因，从而无需理解 functionRef、原始 JSON 或内部运行时信息。
 
 - `AC-TASK-027-01`：新建任务可返回一个合法的 `primary_resource` 快照；AppStudio、Agent、应用运行、素材处理和 GitLab Pipeline 分别关联 StudioApplication、Agent、Application、Asset/Artifact 和 GitLabProject，Canvas 任务关联 Canvas。
-- `AC-TASK-027-02`：公开创建请求不能设置 `primary_resource`，无可靠名称时仅返回 domain、kind 和 id；历史任务没有该字段时列表、详情和概览正常降级。
+- `AC-TASK-027-02`：公开创建请求不能设置 `primary_resource`，无可靠名称时仅返回 domain、kind 和 id；资源缺失或名称为空时列表、详情和概览按本地化 kind 正常降级。
 - `AC-TASK-027-03`：自动/手动重试、Group/DAG 重跑和幂等恢复保留原快照；相同幂等键的快照差异不会改写旧任务，并返回既有幂等冲突。
-- `AC-TASK-027-04`：Attempt 日志可按阶段、event key、安全错误码和固定 context 字段排障，同时兼容 v1 与纯文本历史；日志正文继续来自 WorkflowRuntime。
+- `AC-TASK-027-04`：Attempt 日志可按阶段、event key、安全错误码和固定 context 字段排障，只读取 v2 envelope；日志正文继续来自 WorkflowRuntime。
 - `AC-TASK-027-05`：在线查询和下载不会出现 DEBUG、Stack、Cause、RawCode、任意 URL、凭证、Provider 原始响应或超长多行字符串，且日志增强不改变任务状态、重试、取消或日志保留语义。
+- `AC-TASK-027-06`：升级环境在启用新版本前清除既有 Task Center 与 WorkflowRuntime 持久化数据，不执行旧任务、日志或资源快照的迁移、回填与恢复。
 
 ---
 
