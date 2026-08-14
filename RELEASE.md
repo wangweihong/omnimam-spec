@@ -1,5 +1,20 @@
 # Release Records
 
+## spec-v1.23.8
+
+- commit: e2958267cd65230e612143fe6d4ef9fc524996b7
+- status: released
+- confirmed_by: user（2026-08-14 明确要求发布 GitLab 连接配置小版本，并要求平台自行创建固定 Group 而不是让用户指定）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - gitlab
+- S1:
+  - 00_product/domains/gitlab/product-spec.md
+- S2:
+  - 01_contracts/domains/gitlab/openapi.yaml
+  - 01_contracts/domains/gitlab/module-contract.md
+- implementation_gate: GitLabServer 创建请求只接收名称、可选描述、External URL 和只写 PAT；更新请求不再接受 API URL 或 Namespace Path。服务端在 External URL 同路径派生标准 `/api/v4`，验证 version/user，幂等创建或复用 private 顶级 Group `omnimam-appstudio`，全部成功后才保存 READY 连接。连接参数更新失败必须保留原连接。不得改变 GitLabServer 持久化字段、错误码、权限码、事件或设计态 Schema。
+
 ## spec-v1.23.7
 
 - commit: b51296122dd598de2a5ab67ea3d4aa73fa5e7508
