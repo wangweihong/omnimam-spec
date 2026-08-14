@@ -2,69 +2,58 @@
 
 ## Current goal and status
 
-- Goal: publish the Task Center download-order and no-legacy-data correction as `spec-v1.23.7`.
-- Status: complete. `spec-v1.23.7` is released, pushed, and remotely verified; downstream repositories may pin it.
+- Goal: publish the GitLab guided connection contract as `spec-v1.23.8`.
+- Status: complete. The release commit, annotated tag, push, and remote ref verification succeeded; downstream Server/Web repositories may pin it.
 
 ## Work completed in this session
 
-- Re-read the Spec S1/S2 workflow rules and confirmed the approved v1.23.6 scope.
-- Resumed from the existing checkpoint and verified local `master`, cached `origin/master`, and annotated `spec-v1.23.5` all point to `476d976`.
-- Loaded the required Spec S1/S2 workflow rules before content changes.
-- Verified through HTTPS `git ls-remote` that remote `master` and peeled `spec-v1.23.5` both point to `476d976`; no push was necessary.
-- Added `US-TASK-027`, `BR-TASK-158..163`, `TaskBusinessResourceSummary`, `TaskLogContext`, optional task resource projections, four `atomic_tasks` snapshot columns, the partial composite index, and WorkflowRuntime log envelope v2 compatibility/security/download rules.
-- Updated `CHANGELOG.md`; no errors, permissions, events, Domain Context, new tables, or Attempt persistence were changed.
-- Created content commit `8924ab681d1c5b3de693d8b315ed80df241d390c` and added the `spec-v1.23.6` release record pointing to it.
-- Created release commit `47eef7b4273bbf3c910ed95a880e04b503b40ac6`, annotated tag `spec-v1.23.6`, pushed both, and verified remote `master` plus the peeled tag at that commit.
-- During downstream Server inspection, confirmed the existing download order is `occurred_at`, `level`, `source`, `message`; v1.23.6 module contract incorrectly states `occurred_at`, `source`, `level`, `message`.
-- User approved an immutable v1.23.7 correction and overrode the prior legacy-data compatibility requirement: deployment will clear old Task Center/WorkflowRuntime data and logs will be v2-only.
-- Updated S1 with `BR-TASK-164`/`AC-TASK-027-06`, made logs v2-only, corrected the download order, and documented the empty-data deployment gate in the module contract and changelog.
-- Created v1.23.7 content commit `b51296122dd598de2a5ab67ea3d4aa73fa5e7508` and added a release record pointing to it.
-- Created release commit `712e926df5738d9667273696d6fc510fd444e851`, annotated tag `spec-v1.23.7`, pushed both, and remotely verified the master and peeled tag refs.
+- Changed GitLabServer create/update semantics so clients no longer submit `api_url` or `namespace_path`.
+- Defined server-side External URL normalization, standard `/api/v4` derivation, version/user validation, and idempotent private top-level Group ensure for `omnimam-appstudio`.
+- Required create to persist only a validated READY connection and update failures to preserve the previous connection.
+- Updated GitLab S1, OpenAPI 1.1.0, module contract, Domain Context, and changelog without changing persistence Schema, errors, permissions, or events.
+- Created content commit `e2958267cd65230e612143fe6d4ef9fc524996b7`, release commit `79c83efdc407d24cbafec91405a9d774de2c5e87`, and annotated tag `spec-v1.23.8`.
+- Pushed `master` and `spec-v1.23.8`; remotely verified the peeled tag and `master` both point to the release commit.
 
 ## Current in-progress work
 
-- No Spec work is in progress; downstream Server/Web pins and implementation are complete.
+- None in the Spec repository. Downstream Server and Web implementation is next.
 
 ## Files added, modified, renamed, or removed
 
-- Modified: `docs/HANDOFF.md`.
-- Content committed: `00_product/domains/task-center/product-spec.md`, `01_contracts/domains/task-center/openapi.yaml`, `01_contracts/domains/task-center/schema.sql`, `01_contracts/domains/task-center/module-contract.md`, and `CHANGELOG.md`.
-- Committed for the release: `RELEASE.md`.
-- Modified as the live post-release checkpoint: `docs/HANDOFF.md`.
+- Released: `00_product/domains/gitlab/product-spec.md`, `01_contracts/domains/gitlab/openapi.yaml`, `01_contracts/domains/gitlab/module-contract.md`, `domains/gitlab/context.md`, `CHANGELOG.md`, and `RELEASE.md`.
+- Modified after the tag as a live checkpoint: `docs/HANDOFF.md`.
 
 ## Key architectural or design decisions
 
-- Add one optional immutable `primary_resource` snapshot for the top-level navigable business resource.
-- Extend the existing WorkflowRuntime log contract to envelope v2 only; clear old persisted data instead of decoding v1/plain text.
-- Do not add a log table, Attempt diff API, new error code, permission, event, or Domain Context change.
+- The platform owns GitLab API URL derivation and the fixed `omnimam-appstudio` Group; administrators only provide a GitLab site URL and PAT.
+- Group ensure is idempotent. A remote Group may remain if local persistence fails, and retries must reuse it.
+- Existing GitLabServer response and database fields remain stable; only client-writable create/update fields and lifecycle behavior changed.
 
 ## API, schema, dependency, or configuration changes
 
-- Added `TaskBusinessResourceSummary`, optional `primary_resource` on task response schemas, structured `TaskAttemptLog` fields, four `atomic_tasks` columns, and a partial composite index.
-- No dependency or runtime configuration changes.
+- `CreateGitLabServerRequest` now requires `name`, `external_url`, and `credential`; `description` and `is_appstudio_default` remain optional.
+- `UpdateGitLabServerRequest` no longer accepts `api_url` or `namespace_path`.
+- GitLab OpenAPI version is `1.1.0`. No new endpoint, schema table/column, error code, permission, event, dependency, or runtime configuration was added.
 
 ## Verification performed and remaining checks
 
-- Verified the local and remote release/tag state. SSH reads failed twice, while the HTTPS read returned matching refs.
-- Parsed Task Center OpenAPI successfully and resolved all 80 local refs; verified the new S1 anchors and passed `git diff --check`.
-- Verified remote `refs/heads/master=47eef7b4273bbf3c910ed95a880e04b503b40ac6`, tag object `6991ad0b08b3a9daffd0ba166bf83f7816446a05`, and peeled `refs/tags/spec-v1.23.6^{}=47eef7b4273bbf3c910ed95a880e04b503b40ac6`.
-- Re-parsed Task Center OpenAPI and resolved all 80 local refs; verified S1/no-legacy-data anchors and passed `git diff --check`.
-- Verified remote `master=712e926df5738d9667273696d6fc510fd444e851`, tag object `731edd404678cb38297851b95a8ac379cf3184aa`, and peeled tag `712e926df5738d9667273696d6fc510fd444e851`.
-- Downstream Server/Web implementation and the approved clean-data rebuild are complete.
+- Parsed GitLab OpenAPI successfully; resolved all 39 local refs and verified all operation S1 anchors.
+- Asserted create/update request field constraints and passed `git diff --check` before release.
+- Verified remote `master=79c83efdc407d24cbafec91405a9d774de2c5e87`, tag object `e0e44e5bbe9c03161c679f28d98e5e5f3d23af45`, and peeled `spec-v1.23.8^{}=79c83efdc407d24cbafec91405a9d774de2c5e87`.
+- Remaining verification belongs to downstream Server/Web implementation.
 
 ## Outstanding tasks
 
-- No outstanding Spec release tasks.
+- Pin Server and Web to `spec-v1.23.8`, implement the contract, run focused tests, rebuild, and perform browser acceptance.
 
 ## Known issues and risks
 
-- Downstream Server/Web implementation must not pin v1.23.6 until its release tag is remotely verified.
-- GitHub SSH connectivity failed during two early reads but succeeded for push and final ref verification.
-- Server code at `backend/internal/apiserver/service/v1/taskcenter/task_logs.go` writes timestamp, level, source, message; v1.23.7 preserves that order.
+- The PAT must have GitLab API permission and sufficient rights to create the top-level `omnimam-appstudio` Group when it does not already exist.
+- GitLabServer Test remains available for later revalidation and can still project an existing connection to ERROR.
 
 ## Exact recommended next step
 
-No further Spec work is required for `spec-v1.23.7`; preserve the published release commit and annotated tag.
+Update Server and Web SSOT submodules to release commit `79c83efdc407d24cbafec91405a9d774de2c5e87`, then implement the GitLab connection workflow exactly as released.
 
 Next Prompt:
 
