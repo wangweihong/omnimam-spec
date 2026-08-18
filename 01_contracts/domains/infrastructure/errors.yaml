@@ -204,3 +204,39 @@
   deprecated: false
   related_rules: [BR-INFRA-001, R-INFRA-008, R-INFRA-022]
   related_user_stories: [US-INFRA-001]
+- code: ERR_INFRA_LOCAL_MODEL_ROOT_NOT_CONFIGURED
+  value: 241000
+  http: 200
+  cn: 本地模型根目录尚未配置。
+  en: The local model root is not configured.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 241000-241199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-027]
+  related_user_stories: [US-INFRA-002]
+- code: ERR_INFRA_LOCAL_MODEL_NOT_FOUND
+  value: 241001
+  http: 200
+  cn: 指定本地模型在根目录下不可用。
+  en: The requested local model is unavailable under the configured root.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 241000-241199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-027]
+  related_user_stories: [US-INFRA-002]
+- code: ERR_INFRA_MODEL_PROFILE_INVALID
+  value: 241002
+  http: 200
+  cn: 本地模型 RuntimeProfile 校验失败。
+  en: The local model RuntimeProfile validation failed.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 241000-241199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-026]
+  related_user_stories: [US-INFRA-002]

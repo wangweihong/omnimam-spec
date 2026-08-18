@@ -1,6 +1,6 @@
 # Task Center Module Contract
 
-本文档定义当前 task-center S2 模块边界。产品语义以 `00_product/domains/task-center/product-spec.md` 为准；第一阶段 Agent/AppStudio 函数结构以 `function-registry.schema.yaml` 为准，逐项合同以 `function-registry.yaml` 为准。
+本文档定义当前 task-center S2 模块边界。产品语义以 `00_product/domains/task-center/product-spec.md` 为准；Infra-backed 函数结构以 `function-registry.schema.yaml` 为准，逐项合同以 `function-registry.yaml` 为准。
 
 ## 1. 模块边界
 
@@ -58,7 +58,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 
 ### 3.1 Agent/AppStudio Function Registry
 
-`function-registry.yaml` 是第一阶段八个 canonical functionRef 的只读 S2 合同，不是运行时配置、数据库种子或用户可写资源：
+`function-registry.yaml` 是第一阶段 Agent/AppStudio 与 Model Deployment canonical functionRef 的只读 S2 合同，不是运行时配置、数据库种子或用户可写资源：
 
 | functionRef | 模式 | 来源领域 | 业务聚合 |
 | --- | --- | --- | --- |
@@ -85,6 +85,14 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 其他条目不得交付 Artifact。Artifact processing/ready 状态仍由 asset-library 拥有，AtomicTask 成功不代表 Artifact ready。
 - 结果投影只能由 registry 的 `result_projection` 执行字段选择和状态 transform，再由来源领域消费 Task 结果更新自己的聚合；Task Worker、Task Center 和 Infra Adapter 都不得直接写 Agent/AppStudio 私表。
 - Registry 没有公开 CRUD API、权限码或领域事件。修改 functionRef、I/O schema、能力、策略、映射或 transform 必须提升 `contract_version` 并重新生成规范化摘要；禁止原地改变同版本合同。
+
+### 3.3 Model Deployment Provider DAG
+
+- vLLM 和 LM Studio 各自拥有 `model.validate`、`runtime.ensure`、`runtime.stop` 三个独立 ACTIVE functionRef；不得新增一个通过 `provider_type` 分支的共享 Model Deployment handler。
+- Model Deployment 来源领域提交固定 SERIAL DAG：DEPLOY/START 为 `validate -> ensure`，RESTART 为 `stop -> validate -> ensure`。DAG 节点、依赖和 function contract version 在创建前固定。
+- `model.validate` 使用对应 Provider 的验证 Job Profile；`runtime.ensure` 使用对应 Provider 的 Service Profile；`runtime.stop` 只操作对应 Provider 的 Runtime 引用。三者的输入、输出、能力和结果映射分别声明。
+- Task Center 在 DAG 创建前校验来源领域、资源版本、当前动作和精确输入 schema；DAG 运行中不得追加节点、改变 Provider、替换 model_name 或注入 capability_definition_ids。
+- Model Deployment DAG 结果只由 `model-deployment` 消费并投影到 `ModelDeployment`；Task Worker 不写部署表，旧 DAG/Task 事件不得覆盖当前执行 fence。
 
 ### 3.2 GitLab 外部 handler
 

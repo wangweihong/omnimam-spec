@@ -1,8 +1,8 @@
-schema_version: "1.2"
-registry_id: task-center.agent-appstudio
-scope: AGENT_APPSTUDIO_V1
+schema_version: "1.3"
+registry_id: task-center.infra-backed
+scope: INFRA_BACKED_V1
 description: >-
-  Task Center 第一阶段只读 Agent/AppStudio Function Registry。该文件是 S2 实现合同，
+  Task Center 第一阶段只读 Infra-backed Function Registry。该文件是 S2 实现合同，
   不是运行时配置或用户可写目录；input_schema 校验 AtomicTask arguments，
   output_schema 校验 TaskOutput.result。TaskOutput.artifact_refs 仍使用 Task Center OpenAPI 通用结构。
 contract_digest:
@@ -10,8 +10,8 @@ contract_digest:
   canonicalization: RFC8785
   payload: function_entry_with_status_normalized_to_active_without_contract_digest_and_x_s1_refs_plus_resolved_input_output_schemas
 x-s1-refs:
-  user_stories: [US-TASK-026, US-AGENT-001, US-APPSTUDIO-001, US-INFRA-001]
-  business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-149, BR-TASK-150, BR-TASK-151, BR-TASK-152, BR-TASK-153, BR-TASK-155]
+  user_stories: [US-TASK-026, US-TASK-028, US-AGENT-001, US-APPSTUDIO-001, US-INFRA-001, US-MODELDEP-001, US-MODELDEP-002]
+  business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-149, BR-TASK-150, BR-TASK-151, BR-TASK-152, BR-TASK-153, BR-TASK-155, BR-TASK-165, BR-TASK-166, BR-TASK-167, BR-TASK-168]
 
 schemas:
   agent_invocation_execute_input:
@@ -442,6 +442,140 @@ schemas:
           summary_code: {type: string, minLength: 1, maxLength: 100}
           message: {type: string, maxLength: 1000}
           warnings: {type: array, maxItems: 100, items: {type: string, maxLength: 500}}
+
+  vllm_model_validate_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, model_name, runtime_profile_id, runtime_profile_revision, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+      runtime_profile_id: {const: model.vllm.validate}
+      runtime_profile_revision: {type: string, minLength: 1}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  vllm_model_validate_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, model_name, validation_status]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      model_name: {type: string, minLength: 1}
+      validation_status: {const: VALID}
+
+  vllm_runtime_ensure_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, operation, model_name, existing_infra_runtime_id, runtime_profile_id, runtime_profile_revision, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      operation: {type: string, enum: [DEPLOY, START, RESTART]}
+      model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+      existing_infra_runtime_id: {type: [string, 'null'], minLength: 1}
+      runtime_profile_id: {const: model.vllm}
+      runtime_profile_revision: {type: string, minLength: 1}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  vllm_runtime_ensure_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, runtime_status, health_status, endpoint_ref]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      runtime_status: {const: RUNNING}
+      health_status: {const: HEALTHY}
+      endpoint_ref: {type: string, minLength: 1}
+
+  vllm_runtime_stop_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, action, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      action: {type: string, enum: [STOP, DELETE, RESTART_PREPARE]}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  vllm_runtime_stop_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, runtime_status, completed_action]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      runtime_status: {type: string, enum: [STOPPED, DELETED]}
+      completed_action: {type: string, enum: [STOP, DELETE, RESTART_PREPARE]}
+
+  lmstudio_model_validate_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, model_name, runtime_profile_id, runtime_profile_revision, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+      runtime_profile_id: {const: model.lmstudio.validate}
+      runtime_profile_revision: {type: string, minLength: 1}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  lmstudio_model_validate_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, model_name, validation_status]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      model_name: {type: string, minLength: 1}
+      validation_status: {const: VALID}
+
+  lmstudio_runtime_ensure_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, operation, model_name, existing_infra_runtime_id, runtime_profile_id, runtime_profile_revision, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      operation: {type: string, enum: [DEPLOY, START, RESTART]}
+      model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+      existing_infra_runtime_id: {type: [string, 'null'], minLength: 1}
+      runtime_profile_id: {const: model.lmstudio}
+      runtime_profile_revision: {type: string, minLength: 1}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  lmstudio_runtime_ensure_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, runtime_status, health_status, endpoint_ref]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      runtime_status: {const: RUNNING}
+      health_status: {const: HEALTHY}
+      endpoint_ref: {type: string, minLength: 1}
+
+  lmstudio_runtime_stop_input:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, action, authorization_ref, expected_resource_version]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      action: {type: string, enum: [STOP, DELETE, RESTART_PREPARE]}
+      authorization_ref: {type: string, pattern: '^model-deployment-runtime-grant://'}
+      expected_resource_version: {type: integer, minimum: 0}
+
+  lmstudio_runtime_stop_output:
+    type: object
+    additionalProperties: false
+    required: [deployment_id, infra_runtime_id, runtime_status, completed_action]
+    properties:
+      deployment_id: {type: string, minLength: 1}
+      infra_runtime_id: {type: string, minLength: 1}
+      runtime_status: {type: string, enum: [STOPPED, DELETED]}
+      completed_action: {type: string, enum: [STOP, DELETE, RESTART_PREPARE]}
 
 functions:
   - function_ref: agent.invocation.execute
@@ -968,3 +1102,273 @@ functions:
     x-s1-refs:
       user_stories: [US-TASK-026, US-APPSTUDIO-001, US-INFRA-001]
       business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-152, BR-TASK-153, R-STUDIO-016, R-STUDIO-023, R-STUDIO-024, R-INFRA-016]
+
+  - function_ref: model-deployment.vllm.model.validate
+    contract_version: "1.0"
+    contract_digest: sha256:551c21eedc115bbfcc89108ef90aad986b856a68ad28a682cbe00268d1dc0e1b
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: JOB
+    required_capabilities: [infra.runtime.job, model.vllm.validate]
+    input_schema_ref: '#/schemas/vllm_model_validate_input'
+    output_schema_ref: '#/schemas/vllm_model_validate_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'VLLM_VALIDATE:{arguments.model_name}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 2, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 60, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED, ERR_INFRA_NO_ELIGIBLE_NODE, ERR_INFRA_RESOURCE_INSUFFICIENT]}
+    cancel_policy: {mode: COOPERATIVE_THEN_INFRA_CANCEL, grace_period_seconds: 15, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 60, per_attempt_timeout_seconds: 300, overall_timeout_seconds: 900}
+    infra_adapter:
+      operation: CREATE_JOB
+      runtime_mode: JOB
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      runtime_profile_id_path: arguments.runtime_profile_id
+      runtime_profile_revision_path: arguments.runtime_profile_revision
+      source_policy: LOCAL_MODEL_NAME
+      constants: {provider_type: vllm}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings: [{from: result.validation_status, to: validation_status}]
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-001]
+      business_rules: [BR-TASK-165, BR-TASK-166, BR-TASK-167, BR-MODELDEP-003, BR-MODELDEP-005]
+
+  - function_ref: model-deployment.vllm.runtime.ensure
+    contract_version: "1.0"
+    contract_digest: sha256:4de951b7b296c2143d76bab1a942f31f0e4822acb35555405d5ca363aad8b209
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: SERVICE
+    required_capabilities: [infra.runtime.service, infra.runtime.health, model.vllm.runtime]
+    input_schema_ref: '#/schemas/vllm_runtime_ensure_input'
+    output_schema_ref: '#/schemas/vllm_runtime_ensure_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'VLLM_RUNTIME:{arguments.operation}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 3, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 120, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED, ERR_INFRA_NO_ELIGIBLE_NODE, ERR_INFRA_RESOURCE_INSUFFICIENT, ERR_INFRA_ENDPOINT_ALLOCATION_FAILED]}
+    cancel_policy: {mode: COOPERATIVE_THEN_INFRA_STOP, grace_period_seconds: 30, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 300, per_attempt_timeout_seconds: 600, overall_timeout_seconds: 1800}
+    infra_adapter:
+      operation: ENSURE_RUNTIME
+      runtime_mode: SERVICE
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      existing_runtime_id_path: arguments.existing_infra_runtime_id
+      runtime_profile_id_path: arguments.runtime_profile_id
+      runtime_profile_revision_path: arguments.runtime_profile_revision
+      source_policy: LOCAL_MODEL_NAME
+      constants: {provider_type: vllm, endpoint_visibility: INTERNAL}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings:
+        - {from: result.infra_runtime_id, to: infra_runtime_id}
+        - {from: result.endpoint_ref, to: endpoint_ref}
+        - {from: result.runtime_status, to: status}
+        - {from: result.health_status, to: health_status}
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-001]
+      business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-165, BR-TASK-166, BR-TASK-167, BR-MODELDEP-004, BR-MODELDEP-005, BR-MODELDEP-007]
+
+  - function_ref: model-deployment.vllm.runtime.stop
+    contract_version: "1.0"
+    contract_digest: sha256:b199973f59dc68b712565dad59f8ec6c17ff78b465488bf43dc56dbbbb78e0f8
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: SERVICE
+    required_capabilities: [infra.runtime.stop, model.vllm.runtime]
+    input_schema_ref: '#/schemas/vllm_runtime_stop_input'
+    output_schema_ref: '#/schemas/vllm_runtime_stop_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'VLLM_STOP:{arguments.action}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 3, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 120, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED]}
+    cancel_policy: {mode: NOT_INTERRUPTIBLE_AFTER_READY, grace_period_seconds: 0, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 30, per_attempt_timeout_seconds: 300, overall_timeout_seconds: 900}
+    infra_adapter:
+      operation: STOP_RUNTIME
+      runtime_mode: SERVICE
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      existing_runtime_id_path: arguments.infra_runtime_id
+      source_policy: NONE
+      constants: {provider_type: vllm}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings:
+        - {from: result.runtime_status, to: status}
+        - {from: result.completed_action, to: completed_action}
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-002]
+      business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-165, BR-TASK-166, BR-TASK-168, BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-008]
+
+  - function_ref: model-deployment.lmstudio.model.validate
+    contract_version: "1.0"
+    contract_digest: sha256:31a0281e02ab07d5cd8c47e51c8fb8e19d5b317b3fdc3e35fb96be2b6f6fa59b
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: JOB
+    required_capabilities: [infra.runtime.job, model.lmstudio.validate]
+    input_schema_ref: '#/schemas/lmstudio_model_validate_input'
+    output_schema_ref: '#/schemas/lmstudio_model_validate_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'LMSTUDIO_VALIDATE:{arguments.model_name}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 2, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 60, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED, ERR_INFRA_NO_ELIGIBLE_NODE, ERR_INFRA_RESOURCE_INSUFFICIENT]}
+    cancel_policy: {mode: COOPERATIVE_THEN_INFRA_CANCEL, grace_period_seconds: 15, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 60, per_attempt_timeout_seconds: 300, overall_timeout_seconds: 900}
+    infra_adapter:
+      operation: CREATE_JOB
+      runtime_mode: JOB
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      runtime_profile_id_path: arguments.runtime_profile_id
+      runtime_profile_revision_path: arguments.runtime_profile_revision
+      source_policy: LOCAL_MODEL_NAME
+      constants: {provider_type: lmstudio}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings: [{from: result.validation_status, to: validation_status}]
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-001]
+      business_rules: [BR-TASK-165, BR-TASK-166, BR-TASK-167, BR-MODELDEP-003, BR-MODELDEP-005]
+
+  - function_ref: model-deployment.lmstudio.runtime.ensure
+    contract_version: "1.0"
+    contract_digest: sha256:17ac74ea06d07d7df0e6334e8bd321f2f3a7ec0617cf8f1a928e13128bdb066a
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: SERVICE
+    required_capabilities: [infra.runtime.service, infra.runtime.health, model.lmstudio.runtime]
+    input_schema_ref: '#/schemas/lmstudio_runtime_ensure_input'
+    output_schema_ref: '#/schemas/lmstudio_runtime_ensure_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'LMSTUDIO_RUNTIME:{arguments.operation}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 3, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 120, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED, ERR_INFRA_NO_ELIGIBLE_NODE, ERR_INFRA_RESOURCE_INSUFFICIENT, ERR_INFRA_ENDPOINT_ALLOCATION_FAILED]}
+    cancel_policy: {mode: COOPERATIVE_THEN_INFRA_STOP, grace_period_seconds: 30, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 300, per_attempt_timeout_seconds: 600, overall_timeout_seconds: 1800}
+    infra_adapter:
+      operation: ENSURE_RUNTIME
+      runtime_mode: SERVICE
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      existing_runtime_id_path: arguments.existing_infra_runtime_id
+      runtime_profile_id_path: arguments.runtime_profile_id
+      runtime_profile_revision_path: arguments.runtime_profile_revision
+      source_policy: LOCAL_MODEL_NAME
+      constants: {provider_type: lmstudio, endpoint_visibility: INTERNAL}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings:
+        - {from: result.infra_runtime_id, to: infra_runtime_id}
+        - {from: result.endpoint_ref, to: endpoint_ref}
+        - {from: result.runtime_status, to: status}
+        - {from: result.health_status, to: health_status}
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-001]
+      business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-165, BR-TASK-166, BR-TASK-167, BR-MODELDEP-004, BR-MODELDEP-005, BR-MODELDEP-007]
+
+  - function_ref: model-deployment.lmstudio.runtime.stop
+    contract_version: "1.0"
+    contract_digest: sha256:197c1599842f1da1f79c5cf2f42c15b5460b1268914542ba29e98f0b8e6208d3
+    status: ACTIVE
+    owning_domain: model-deployment
+    handler: task-center.infra-adapter
+    execution_mode: SERVICE
+    required_capabilities: [infra.runtime.stop, model.lmstudio.runtime]
+    input_schema_ref: '#/schemas/lmstudio_runtime_stop_input'
+    output_schema_ref: '#/schemas/lmstudio_runtime_stop_output'
+    task_idempotency:
+      scope_template: 'model-deployment:{arguments.deployment_id}'
+      key_template: 'LMSTUDIO_STOP:{arguments.action}:{arguments.expected_resource_version}:{retry_generation}'
+      manual_retry_uses_new_key: true
+    retry_policy: {max_attempts: 3, backoff: EXPONENTIAL, initial_delay_seconds: 5, max_delay_seconds: 120, retryable_error_codes: [ERR_INFRA_RUNTIME_OPERATION_FAILED]}
+    cancel_policy: {mode: NOT_INTERRUPTIBLE_AFTER_READY, grace_period_seconds: 0, terminal_result: CANCELED}
+    timeout_policy: {startup_timeout_seconds: 30, per_attempt_timeout_seconds: 300, overall_timeout_seconds: 900}
+    infra_adapter:
+      operation: STOP_RUNTIME
+      runtime_mode: SERVICE
+      requesting_service: task-center
+      request_id_template: '{atomic_task_id}:{attempt_no}'
+      owner_domain: model-deployment
+      owner_reference_path: arguments.deployment_id
+      authorization_ref_path: arguments.authorization_ref
+      existing_runtime_id_path: arguments.infra_runtime_id
+      source_policy: NONE
+      constants: {provider_type: lmstudio}
+    result_projection:
+      consumer_domain: model-deployment
+      aggregate_type: ModelDeployment
+      aggregate_id_path: arguments.deployment_id
+      update_mode: SOURCE_DOMAIN_CONSUMES_TASK_RESULT
+      field_mappings:
+        - {from: result.runtime_status, to: status}
+        - {from: result.completed_action, to: completed_action}
+    security:
+      allowed_callers: [model-deployment]
+      forbidden_argument_fields: [capability_definition_ids]
+      forbidden_output_fields: [provider_response]
+    x-s1-refs:
+      user_stories: [US-TASK-028, US-MODELDEP-002]
+      business_rules: [BR-TASK-147, BR-TASK-148, BR-TASK-165, BR-TASK-166, BR-TASK-168, BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-008]

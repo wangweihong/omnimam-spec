@@ -52,6 +52,9 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 | InfraRuntime | Docker Job 或 Service 的基础设施运行事实；只保存运行状态和稳定关联，不等于 AgentRuntime 或 StudioRuntimeInstance | infrastructure |
 | RuntimeMount | InfraRuntime 使用的受控挂载记录，包含来源引用、目标路径、只读标志和授权上下文 | infrastructure |
 | source_ref | 由来源领域授权生成的不可变或受控资源引用；不得解释为宿主机路径 | infrastructure |
+| ModelDeployment | 平台管理员管理的本地 vLLM 或 LM Studio 模型部署资源；不等于 EngineInstance 或 UserModelProvider | model-deployment |
+| MODEL_FILES | Infrastructure 为本地模型 Runtime 提供的模型文件挂载类型 | infrastructure |
+| local_model_root | Infrastructure 节点上的本地模型根目录配置；由 Infrastructure 与逻辑 model_name 派生模型目录 | infrastructure |
 
 Gateway Adapter 负责 Provider 连接、鉴权应用、发现、探测和公共协议，`OperationExecutor` 负责具体 Operation；稳定 `providerType` 可对外展示，内部 `adapter_id` 和 `operation_executor_id` 不能由客户端选择。
 

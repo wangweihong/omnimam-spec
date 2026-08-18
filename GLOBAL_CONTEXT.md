@@ -30,6 +30,7 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `agent` | 管理 Agent、Session、Invocation、Memory、内部 Workspace 固定绑定和 AgentRuntime；用户侧只管理 Platform Agent。 |
 | `appstudio` | 管理生成式 Web/BFF 应用的源码、Revision、构建、发布和运行实例；内部维护唯一默认 StudioWorkspace。 |
 | `infrastructure` | 提供第一阶段单机 Docker Job/Service、InfraRuntime、受控 Endpoint 与 RuntimeOutput 内容交付。 |
+| `model-deployment` | 管理平台共享本地 vLLM/LM Studio 模型部署、生命周期任务和管理投影；不拥有 Model Gateway 调用事实。 |
 | `mcp` | 将已发布应用、能力目录和素材通过标准 MCP 协议提供给受权 Agent。 |
 | `gitlab` | 管理 GitLab API 连接、远端 Project/Hook 本地投影、受控 Pipeline artifact 和可恢复 Pipeline 外部任务。 |
 
@@ -74,10 +75,11 @@ Context 文件只是摘要与导航，不构成 S3 或新的事实层。产品�
 | `AuditLog` | 跨 domain 的脱敏管理审计记录、查询和可靠事件；归 platform-management，来源 domain 提交上下文。 |
 | `GitLabServer` | GitLab API URL、固定 Namespace、PAT 和连接检测状态；归 gitlab。 |
 | `GitLabProject` | GitLab 远端 Project 的本地稳定投影；归 gitlab。 |
+| `ModelDeployment` | 平台管理员管理的本地模型部署配置与生命周期投影；归 model-deployment。 |
 
 ## 5. 全局事实归属
 
-当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消、Task Worker 分发和 RuntimeOutput 到 Artifact 的流式交付编排归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、RuntimeOutput descriptor、临时 staging、基础设施挂载和 Provider 对账归 `infrastructure`；Artifact 内容完成、处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
+当前工作区事实中，能力目录、平台 Engine 配置、Binding、Adapter、模型发现/探测和 OperationExecutor 归 `modelgateway`；ComfyUIWorkflow、AI 能力应用、模板、版本、RuntimeFormSchema、ApplicationRun 编排和执行快照归 `application-platform`；用户 Provider、模型清单、默认配置、用户模型健康事实和使用资格归 `user-model`；平台共享本地模型部署、Provider 专属生命周期 DAG 与管理投影归 `model-deployment`，不改变 `modelgateway` 的 Engine/Adapter/Binding 事实；GenerationRun 生命周期归 `ai-chatting`。异步执行、重试、取消、Task Worker 分发和 RuntimeOutput 到 Artifact 的流式交付编排归 `task-center`；Docker Job/Service、InfraRuntime、Endpoint、RuntimeOutput descriptor、临时 staging、基础设施挂载、MODEL_FILES 挂载和 Provider 对账归 `infrastructure`；Artifact 内容完成、处理、登记和 Asset 生命周期归 `asset-library`；画布结构、不可变版本和编译归 `workflow-canvas`；通知收件箱与已读状态归 `notification-center`；用户实时事件投影归 `sse`；对话和助手会话归 `ai-chatting`；Agent、Session、Invocation、Memory、内部 AgentWorkspace 和 AgentRuntime 归 `agent`；StudioApplication、StudioApplicationVersion、内部 StudioWorkspace、Revision、ChangeSet、Snapshot、Build、RuntimeConfig、Release 和 StudioRuntimeInstance 归 `appstudio`。Agent/AppStudio 的公共 API、页面、通知和 SSE 不投影 Workspace ID。用户、认证流程、会话、授权和服务主体归 `identity`；平台级只读信息、`SystemAuthConfig` 和 `AuditLog` 归 `platform-management`。平台概览中的素材、应用、模型、任务和通知统计仍归各事实 domain，下一阶段再通过受控摘要接入。MCP Tool、Resource、Task 映射和协议审计上下文归 `mcp`，但 MCP 不复制上述领域事实。
 
 GitLab API 连接、远端 Project/Hook 投影、Repository HTTP 适配、受控 Pipeline artifact 和 GitLab Pipeline 外部调用语义归 `gitlab`；Pipeline 的 AtomicTask、TaskAttempt、重试、取消和终态仍归 `task-center`。AppStudio 只保存稳定 `GitLabProject` ID，并通过受控模块接口使用 Repository、Hook、Pipeline artifact 与 Runtime access，不读取 GitLab 私表或持久化 PAT/明文 webhook token。
 
@@ -117,6 +119,7 @@ GitLab API 连接、远端 Project/Hook 投影、Repository HTTP 适配、受控
 - `Application` 专指 application-platform 的 AI 能力应用；`StudioApplication` 专指 appstudio 的生成式 Web/BFF 应用，不得互换或共享版本对象。
 - `agent` 的当前完整 S1/S2 和 AgentRuntimeAdapter 只读 Endpoint resolve 例外已由 `spec-v1.17.2` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，StudioBuild Artifact producer 与批量摘要投影已由 `spec-v1.17.1` 发布；Asset Library 对应 StudioBuild producer、owner、幂等与 owner-only 权限契约由 `spec-v1.17.1` 发布，Task Worker 受控 Infra 输出流交付合同由 `spec-v1.17.2` 发布；`infrastructure` 的当前 S1/S2 和 Endpoint/RuntimeOutput 闭环已由 `spec-v1.17.2` 发布。上述版本均允许按各自 implementation gate 作为正式实现依据。三域使用各自的 `US-*-001`、`BR-*-001` 追溯锚点关联既有 `R-*` 规则。
 - `infrastructure` 的当前 S2 只覆盖 Docker-only 第一阶段；挂载策略为 AgentWorkspace 授权、StudioWorkspace 受控授权、Preview 当前 Revision、Build 固定 Snapshot、Production 固定 Artifact 且禁止可写 Workspace。
+- `model-deployment` 的本地模型部署通过 Task Center Provider 专属 DAG 使用 Infrastructure 的 `model.vllm`/`model.lmstudio` Profile；模型路径由 Infrastructure 的 `local_model_root` 与逻辑 `model_name` 派生，Model Gateway Adapter、EngineInstance 和 Binding 不在本次范围。
 - AppStudio GitLab 第二阶段由 `spec-v1.23.1` 发布：GitLab 成为唯一源码正文 Provider；AppStudio Revision/ChangeSet 仍为 canonical 业务事实并通过 `commit_sha` 关联 Git commit；创建先持久化不可用的 Application/Repository/Workspace/GitLabProject `CREATING` reservation，再幂等创建远端 Project 和 Starter commit；Coding Runtime 的 clone、凭据文件和 `/workspace` 可丢弃，Preview/Build 源码按固定 commit 受控流式注入。
 - AppStudio 第三阶段由 `spec-v1.23.2` 发布：创建 reservation 后由受信初始化 DAG 完成 Project/Hook、Revision 0、Agent/Session/Bindings 与首次 Invocation；GitLab Push/Pipeline Hook 按 Project token digest 验证并幂等触发 canonical Revision -> Snapshot -> Pipeline -> Bundle Artifact -> Preview，CI 不直接调用 Infrastructure 或部署 Production。
 - AppStudio 初始化诊断与显式恢复由 `spec-v1.23.3` 发布：应用级接口只聚合当前 DAG 的 Project、Webhook、应用初始化和首次 Invocation 四阶段安全状态；缺少 READY 默认 GitLabServer 使用专用错误，`ERROR` reservation 按 retry 幂等键复用原对象创建新 DAG，并以当前 DAG owner fence 阻止旧轮次迟到事件覆盖。

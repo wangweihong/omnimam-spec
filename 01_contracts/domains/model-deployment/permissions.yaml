@@ -1,0 +1,21 @@
+modeldeployment.deployment.read:
+  module: deployment
+  resource: model_deployment
+  action: read
+  description: 查看平台共享本地模型部署、健康状态、当前任务和运行日志。
+  frontend_usage: 控制本地模型部署管理列表、详情和日志入口。
+  backend_enforcement: 按管理员权限返回部署、DAG/Task、Runtime、Endpoint、健康和日志投影。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-MODELDEP-001, BR-MODELDEP-009]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+
+modeldeployment.deployment.manage:
+  module: deployment
+  resource: model_deployment
+  action: manage
+  description: 创建、更新、启动、停止、重启和删除平台共享本地模型部署。
+  frontend_usage: 控制部署表单和生命周期动作。
+  backend_enforcement: 只允许 vllm/lmstudio 与逻辑模型名，生命周期写操作必须通过 Task Center。
+  default_roles: [ADMIN, SUPER_ADMIN]
+  related_rules: [BR-MODELDEP-001, BR-MODELDEP-002, BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-008]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]

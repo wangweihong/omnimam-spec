@@ -536,6 +536,7 @@ media.python-image
 network.asset-downloader
 model.comfyui
 model.vllm
+model.lmstudio
 sandbox.python
 ```
 
@@ -617,6 +618,14 @@ S1 中：
 * Infra Runtime 必须记录实际使用的 Profile Revision。
 * Service 只能请求该 Revision 已声明的命名 Endpoint，上层不得提交任意容器端口、Host Port 或绑定地址。
 * Job 只能声明该 Revision 允许的输出名称、相对路径和媒体类型，不得扩大受控输出根。
+
+## 7.4 本地模型 Profile
+
+平台本地模型部署使用两个独立的内置 Profile：`model.vllm` 和 `model.lmstudio`。二者均为 Docker `SERVICE`，但分别维护镜像、Entrypoint、启动参数、模型格式校验、命名 Endpoint 和健康检查，不通过共享 Provider 分支表达专用语义。
+
+Infrastructure 节点配置提供 `local_model_root`。Task Worker 只提交 `source_ref=local-model://{model_name}` 与 `MODEL_FILES` 挂载声明，Infrastructure 在节点边界将其解析为 `<local_model_root>/<model_name>`，以只读方式挂载到对应 Profile 的模型目录。`local_model_root` 不属于 Model Deployment 创建请求字段。
+
+`model.vllm.validate` 与 `model.lmstudio.validate` 是 Provider 专属的 `JOB` 校验 Profile；校验成功后由对应 `model.vllm` 或 `model.lmstudio` `SERVICE` Profile 启动模型。模型部署 Runtime 的 owner 为 `model-deployment`，业务生命周期仍由 Model Deployment 与 Task Center 管理。
 
 建议引用方式：
 
@@ -2288,6 +2297,18 @@ Agent Runtime 日志和实时健康探测必须同时校验 Runtime 存在、`ow
 
 Infrastructure 允许 AppStudio API Server 以 `APPSTUDIO_PREVIEW_PROXY` purpose 解析 `USER_ACCESSIBLE`/`PUBLIC` Preview Endpoint。解析前必须由 AppStudio 完成应用 owner、Preview/Endpoint 状态和 visibility 校验；Infrastructure 只校验自身 Runtime/Endpoint owner、READY、RUNNING/健康、有效期和撤销状态，并且只在当前请求内返回短时地址。
 
+## R-INFRA-026
+
+本地模型 Runtime 只能使用内置 `model.vllm` 或 `model.lmstudio` Profile，且两个 Profile 的模型校验、启动和健康检查语义分别维护。
+
+## R-INFRA-027
+
+`MODEL_FILES` 挂载的 sourceRef 使用 `local-model://{model_name}`；Infrastructure 使用节点 `local_model_root` 与逻辑模型名拼接本地模型目录，调用方不提交宿主机模型路径。
+
+## R-INFRA-028
+
+本地模型 Runtime 的 ownerDomain 固定为 `model-deployment`，生命周期写操作仍必须由 Task Center Task Worker 通过 Infra Adapter 发起。
+
 ---
 
 # 31. 最终职责总结
@@ -2350,6 +2371,8 @@ Infra Service 的最终边界是：
 
 - `US-INFRA-001`：受信 Task Worker 可以创建、管理、对账第一阶段 Docker Job/Service 及其受控挂载和输出。
 - `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态、诊断和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、27、28、29、30 节及 `R-INFRA-001..024`。
+- `US-INFRA-002`：Task Worker 可以通过固定 Profile 和逻辑模型名创建本地 vLLM 或 LM Studio Docker Service。
+- `BR-INFRA-002`：本地模型 Profile、MODEL_FILES 挂载、local_model_root 派生和 model-deployment owner 必须遵守 `R-INFRA-026..028`。
 
 验收标准：
 
@@ -2366,3 +2389,6 @@ Infra Service 的最终边界是：
 - `AC-INFRA-001-11`：Agent Runtime 启动只接受短期 grant 引用；Infrastructure 以服务身份校验 owner/Agent/usage/config version/有效期后解析并注入，普通响应、事件、日志和持久化不得包含 grant、ModelAccessSpec 或明文凭证。
 - `AC-INFRA-001-12`：OpenCode MCP 只接受 `MCP_SERVER_REF`，通过 `authorizationRef` 解析固定 revision，并以 Docker Archive/Exec 写入 tmpfs `opencode.json`、设为 `0600` 后释放启动门闩；未授权目标和所有 inspect 可见凭证传递方式必须拒绝。
 - `AC-INFRA-001-13`：Agent Runtime 日志和实时健康必须校验 Runtime 与 ownerReference/Agent Runtime 范围；日志在最近 5000 行快照内分页且脱敏。实时探测将停止、服务不可达和非 2xx 映射为 `UNHEALTHY`，Infra/Provider 不可用或无法判断映射为 `UNKNOWN`，并且不修改 Runtime 生命周期。
+- `AC-INFRA-002-01`：`model.vllm` 与 `model.lmstudio` 均可被 Task Worker 以 SERVICE 模式创建，且使用各自固定的 Profile Revision。
+- `AC-INFRA-002-02`：`local-model://{model_name}` 能在已配置 `local_model_root` 的节点上解析为模型目录并形成 `MODEL_FILES` 只读挂载；缺少配置或模型不可用时 Runtime 不进入 RUNNING。
+- `AC-INFRA-002-03`：本地模型 Runtime 记录 `owner_domain=model-deployment`，并遵守既有 Task Worker、幂等和 Runtime 状态规则。

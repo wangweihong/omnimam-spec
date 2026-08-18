@@ -247,7 +247,7 @@ components:
       properties:
         request_id: {type: string}
         requesting_service: {type: string, enum: [task-center]}
-        owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library]}
+        owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library, model-deployment]}
         owner_reference: {type: string}
         request_user_id: {type: string}
         runtime_mode: {type: string, enum: [JOB, SERVICE]}
@@ -281,7 +281,7 @@ components:
         source_ref: {type: string}
         target_path: {type: string}
         read_only: {type: boolean}
-        mount_kind: {type: string, enum: [AGENT_WORKSPACE, STUDIO_WORKSPACE_REVISION, STUDIO_SNAPSHOT, ARTIFACT, TEMPORARY]}
+        mount_kind: {type: string, enum: [AGENT_WORKSPACE, STUDIO_WORKSPACE_REVISION, STUDIO_SNAPSHOT, ARTIFACT, MODEL_FILES, TEMPORARY]}
     RuntimeConfigBindingInput:
       type: object
       required: [name, binding_type, reference]
@@ -303,7 +303,7 @@ components:
         runtime_mode: {type: string, enum: [JOB, SERVICE]}
         status: {type: string, enum: [ACCEPTED, VALIDATING, SCHEDULING, PREPARING, RUNNING, SUCCEEDED, DEGRADED, STOPPING, STOPPED, FAILED, CANCELED, EXPIRED, DELETING, DELETED]}
         requesting_service: {type: string, enum: [task-center]}
-        owner_domain: {type: string}
+        owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library, model-deployment]}
         owner_reference: {type: string}
         request_user_id: {type: string, nullable: true}
         runtime_profile_id: {type: string}

@@ -1,0 +1,36 @@
+model_deployment_status_changed:
+  producer: model-deployment.lifecycle
+  consumers: [model-deployment.admin-projection]
+  trigger_condition: ModelDeployment status、desired_state 或 health_status 相对已保存事实发生变化。
+  payload:
+    model_deployment_id: string
+    provider_type: string
+    model_name: string
+    desired_state: string
+    status: string
+    health_status: string
+    current_dag_task_group_id: string|null
+    current_atomic_task_id: string|null
+    failure_code: string
+    resource_version: integer
+    changed_at: string(date-time)
+  idempotency_key: model_deployment_id:resource_version
+  retry_policy: 通过事务 outbox 重试，消费者按 resource_version 单调投影。
+  failure_policy: 事件失败不得回滚已经提交的部署状态；消费者重新查询最新资源。
+  related_rules: [BR-MODELDEP-006, BR-MODELDEP-007, BR-MODELDEP-008, BR-MODELDEP-009]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+
+model_deployment_deleted:
+  producer: model-deployment.lifecycle
+  consumers: [model-deployment.admin-projection]
+  trigger_condition: DELETE Task 已确认 Runtime 和 Endpoint 清理完成，ModelDeployment 即将删除。
+  payload:
+    model_deployment_id: string
+    provider_type: string
+    model_name: string
+    deleted_at: string(date-time)
+  idempotency_key: model_deployment_id:deleted
+  retry_policy: 通过事务 outbox 重试。
+  failure_policy: 删除事实保持成立，消费者按 deployment ID 幂等移除投影。
+  related_rules: [BR-MODELDEP-008, BR-MODELDEP-009]
+  related_user_stories: [US-MODELDEP-002]

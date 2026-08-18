@@ -26,6 +26,7 @@
 | `agent` | `domains/agent/context.md` | Agent、Session、Memory、内部 Workspace 绑定与 AgentRuntime | Platform Agent、Coding Agent、Hermes、OpenCode |
 | `appstudio` | `domains/appstudio/context.md` | 生成应用源码、Revision、构建、Build owner/摘要、发布与运行 | StudioApplication、Source、Revision、StudioBuild、StudioRelease |
 | `infrastructure` | `domains/infrastructure/context.md` | 第一阶段单机 Docker 运行层与受控挂载 | InfraRuntime、Docker Job/Service、RuntimeMount、Task Worker、Workspace 挂载 |
+| `model-deployment` | `domains/model-deployment/context.md` | 平台共享本地模型部署与生命周期管理 | vLLM、LM Studio、部署 DAG、管理页面 |
 | `mcp` | `domains/mcp/context.md` | Agent 协议访问、固定 Tool/Resource 和 MCP Task 映射 | MCP、Agent 调用应用、stdio、Streamable HTTP |
 | `gitlab` | `domains/gitlab/context.md` | GitLab 连接、远端 Project 投影、Repository HTTP 适配和 Pipeline 外部任务 | GitLabServer、GitLabProject、PAT、Repository、Pipeline |
 
@@ -60,6 +61,7 @@
 | StudioApplication、Source、Revision、StudioChangeSet、StudioSourceSnapshot | `domains/appstudio/context.md` | Agent 修改或内部 StudioWorkspace 绑定再读 agent |
 | StudioBuild、StudioBuild batch summary、RuntimeConfig、StudioRelease、StudioRuntimeInstance、StudioDeploymentProvider | `domains/appstudio/context.md` | 执行与 Attempt 重试再读 task-center；Artifact owner/权限再读 asset-library |
 | InfraRuntime、Docker Job、Docker Service、RuntimeMount、DockerRuntimeProvider、Task Worker 调用 Infra | `domains/infrastructure/context.md` | 必须继续读 task-center；涉及 AgentWorkspace 读 agent，涉及 StudioWorkspace/Revision/Snapshot/Artifact 读 appstudio |
+| 本地模型部署、vLLM、LM Studio、model_name、model.vllm、model.lmstudio | `domains/model-deployment/context.md` | 必须继续读 infrastructure、task-center |
 | GitLabServer、GitLabProject、PRIVATE-TOKEN、Repository API、gitlab.pipeline.run | `domains/gitlab/context.md` | Pipeline 执行继续读 task-center；AppStudio source binding 同时读 appstudio、agent 与 infrastructure |
 
 ## 4. 跨域任务映射
@@ -81,6 +83,7 @@
 | AppStudio GitLab Source 与 Coding Runtime Git workspace | appstudio、gitlab、agent、infrastructure | task-center |
 | StudioApplication 构建与发布 | appstudio、task-center | asset-library、notification-center |
 | Agent/AppStudio 调用基础设施 | task-center、infrastructure | agent、appstudio、asset-library |
+| 本地 vLLM/LM Studio 部署 | model-deployment、task-center、infrastructure | 无；不读取 modelgateway 适配器契约 |
 | StudioBuild 交付 Artifact、producer owner 与一跳摘要 | appstudio、asset-library、task-center | 无 |
 | GitLab Pipeline AtomicTask | gitlab、task-center | 无；第一阶段不读取 appstudio |
 | 迁移认证配置或跨域审计 | platform-management、identity | 涉及来源事件再读对应 domain |

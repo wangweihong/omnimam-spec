@@ -1,5 +1,43 @@
 # Release Records
 
+## spec-v1.24.0
+
+- status: pending release
+- confirmed_by: user（2026-08-18，明确要求仅实现本地模型部署管理，使用 Provider 专属 DAG，vLLM 与 LM Studio 拆分，并发布小版本）
+- allowed_as_formal_implementation_basis: false
+- domains:
+  - model-deployment
+  - task-center
+  - infrastructure
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+  - 00_product/glossary.md
+- S2:
+  - 01_contracts/domains/model-deployment/openapi.yaml
+  - 01_contracts/domains/model-deployment/schema.sql
+  - 01_contracts/domains/model-deployment/errors.yaml
+  - 01_contracts/domains/model-deployment/permissions.yaml
+  - 01_contracts/domains/model-deployment/events.yaml
+  - 01_contracts/domains/model-deployment/module-contract.md
+  - 01_contracts/domains/task-center/function-registry.schema.yaml
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/errors.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/model-deployment.md
+- context:
+  - domains/model-deployment/context.md
+  - domains/infrastructure/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: 本版本只实现部署管理。DEPLOY/START 使用 Provider 专属 `model.validate -> runtime.ensure` DAG，RESTART 前置同 Provider `runtime.stop`；vLLM 与 LM Studio 使用独立 functionRef、校验和 RuntimeProfile。用户提交逻辑 `model_name`，Infrastructure 使用 `local_model_root` 派生模型目录。不新增 Model Gateway Adapter，不修改 EngineInstance/Binding，不传递 `capability_definition_ids`。
+
 ## spec-v1.23.10
 
 - commit: 4ea2615

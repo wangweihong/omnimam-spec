@@ -12,7 +12,8 @@
 - `AgentWorkspace` 只能按 Agent 授权挂载；Coding Runtime 不挂载 StudioWorkspace，而是接收 Git clone 非敏感配置、tmpfs credential helper 和可丢弃 `/workspace`；Preview/Build 源码按 AppStudio Revision/Snapshot 固定 commit 受控注入。
 - Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace。
 - `appstudio.preview.web-backend` 是现有 Preview profile；它与静态 Web Preview 一样只接收固定 Revision CommitSHA archive，但当前 AppStudio 不开放 `WEB_WITH_LIGHT_BACKEND` 创建。
-- Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。
+- Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。`model-deployment` 作为平台本地模型部署的 Runtime owner。
+- 本地模型使用 `MODEL_FILES` 挂载。节点配置提供 `local_model_root`，`local-model://{model_name}` 在 Infrastructure 内部解析为该根目录下的模型目录；调用方只提交逻辑模型名。
 - Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
 - Task Worker 从 Infra 鉴权流式读取字节，双重校验大小和 digest，完成 Asset Library Artifact 内容后幂等回链；Infra 不生成 Artifact ready 事实。
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
@@ -24,11 +25,11 @@
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.17.2`) | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
+| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.17.2`); local model additions draft | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
 | `02_architecture/domains/infrastructure.md` | 参考（`spec-v1.17.2`） | Task Worker、Infra Adapter、Docker Provider 和挂载边界 |
-| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.17.2`) | InfraRuntime、Endpoint、Node、Profile 和输出 API |
-| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.17.2`) | Infrastructure 设计态 Schema |
-| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.17.2`) | 错误、权限、事件和模块边界 |
+| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.17.2`); local model additions draft | InfraRuntime、Endpoint、Node、Profile 和输出 API |
+| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.17.2`); local model additions draft | Infrastructure 设计态 Schema |
+| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.17.2`); local model additions draft | 错误、权限、事件和模块边界 |
 
 Infrastructure 当前 S1/S2、Endpoint resolve 与 RuntimeOutput 内容交付闭环已由 `spec-v1.17.2` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。
 Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` 发布后作为新增实现依据。

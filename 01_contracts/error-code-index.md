@@ -21,6 +21,7 @@
 | platform-management | `01_contracts/domains/platform-management/errors.yaml` | SystemAuthConfig、平台审计和跨 domain 管理边界错误码 |
 | identity | `01_contracts/domains/identity/errors.yaml` | 认证流程、用户、RBAC、资源授权、服务主体和 PrincipalContext 错误码 |
 | infrastructure | `01_contracts/domains/infrastructure/errors.yaml` | Docker Runtime、节点资源、挂载配置、Endpoint 和 Provider 对账错误码 |
+| model-deployment | `01_contracts/domains/model-deployment/errors.yaml` | 本地 vLLM/LM Studio 部署、生命周期和管理错误码 |
 | gitlab | `01_contracts/domains/gitlab/errors.yaml` | GitLabServer、GitLabProject、Pipeline 和访问控制错误码 |
 
 ## 2. 错误码区间分配
@@ -90,6 +91,9 @@
 | 240400-240599 | infrastructure | placement | Docker 节点、CPU/内存/磁盘/GPU 资源错误 |
 | 240600-240799 | infrastructure | runtime | InfraRuntime 状态、Provider 操作、停止和对账错误 |
 | 240800-240999 | infrastructure | mount-config | 挂载、Secret/ModelAccessSpec 注入和 Endpoint 错误 |
+| 241000-241199 | infrastructure | mount-config/request | 本地模型根目录、模型挂载和模型 Profile 校验错误 |
+| 260200-260399 | model-deployment | deployment | 本地模型部署资源、名称、Provider、状态和版本错误 |
+| 260400-260599 | model-deployment | runtime | 本地模型生命周期任务、模型可用性和 Runtime 操作错误 |
 | 250200-250399 | gitlab | server | GitLabServer、连接、credential 检测和关联删除错误 |
 | 250400-250599 | gitlab | project | GitLabProject 远端操作与本地投影错误 |
 | 250600-250799 | gitlab | pipeline | Pipeline 输入、创建与终态错误 |

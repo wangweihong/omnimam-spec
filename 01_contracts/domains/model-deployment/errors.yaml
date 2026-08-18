@@ -1,0 +1,117 @@
+- code: ERR_MODELDEP_DEPLOYMENT_NOT_FOUND
+  value: 260200
+  http: 200
+  cn: 本地模型部署不存在或当前用户不可见。
+  en: The local model deployment does not exist or is not visible.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-001]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+
+- code: ERR_MODELDEP_NAME_DUPLICATED
+  value: 260201
+  http: 200
+  cn: 本地模型部署名称已存在。
+  en: The local model deployment name already exists.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-001]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_PROVIDER_UNSUPPORTED
+  value: 260202
+  http: 200
+  cn: 本地模型部署 Provider 不受支持。
+  en: The local model deployment provider is not supported.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-002, BR-MODELDEP-005]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_MODEL_NAME_INVALID
+  value: 260203
+  http: 200
+  cn: 模型名格式无效。
+  en: The model name format is invalid.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-002, BR-MODELDEP-003]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_STATE_CONFLICT
+  value: 260204
+  http: 200
+  cn: 当前部署状态不允许执行该操作。
+  en: The current deployment state does not allow this operation.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-006, BR-MODELDEP-008]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_RESOURCE_VERSION_CONFLICT
+  value: 260205
+  http: 200
+  cn: 本地模型部署已被其他操作更新，请刷新后重试。
+  en: The local model deployment was updated by another operation; refresh and retry.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-006]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_LIFECYCLE_TASK_UNAVAILABLE
+  value: 260400
+  http: 200
+  cn: 本地模型生命周期任务当前不可用。
+  en: The local model lifecycle task is currently unavailable.
+  owning_domain: model-deployment
+  owning_module: runtime
+  range: 260400-260599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-004, BR-MODELDEP-006]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+
+- code: ERR_MODELDEP_LOCAL_MODEL_UNAVAILABLE
+  value: 260401
+  http: 200
+  cn: 配置根目录下不存在可用的指定模型。
+  en: The specified model is not available under the configured local model root.
+  owning_domain: model-deployment
+  owning_module: runtime
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-003]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_RUNTIME_OPERATION_FAILED
+  value: 260402
+  http: 200
+  cn: 本地模型 Runtime 操作失败。
+  en: The local model runtime operation failed.
+  owning_domain: model-deployment
+  owning_module: runtime
+  range: 260400-260599
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-004, BR-MODELDEP-007, BR-MODELDEP-008]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+

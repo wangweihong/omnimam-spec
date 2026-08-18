@@ -1,0 +1,360 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Model Deployment API
+  version: 1.0.0
+  description: 平台共享 vLLM/LM Studio 本地模型部署管理契约。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: model-deployments
+
+paths:
+  /api/v1/model-deployments:
+    get:
+      tags: [model-deployments]
+      operationId: list_model_deployments
+      summary: 查询本地模型部署
+      x-permission: modeldeployment.deployment.read
+      x-s1-refs:
+        user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-001, BR-MODELDEP-009]
+      parameters:
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+        - $ref: '#/components/parameters/keyword'
+        - name: provider_type
+          in: query
+          schema: {$ref: '#/components/schemas/ModelDeploymentProviderType'}
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ModelDeploymentStatus'}
+        - name: health_status
+          in: query
+          schema: {$ref: '#/components/schemas/ModelDeploymentHealthStatus'}
+      responses:
+        '200':
+          description: 查询完成。
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ModelDeploymentListResponse'}
+    post:
+      tags: [model-deployments]
+      operationId: create_model_deployment
+      summary: 创建并异步部署本地模型
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-001]
+        business_rules: [BR-MODELDEP-002, BR-MODELDEP-003, BR-MODELDEP-004, BR-MODELDEP-005]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelDeploymentCreateRequest'}
+      responses:
+        '200':
+          description: 返回部署资源与当前任务，或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeployment'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/model-deployments/{model_deployment_id}:
+    get:
+      tags: [model-deployments]
+      operationId: get_model_deployment
+      summary: 查询本地模型部署详情
+      x-permission: modeldeployment.deployment.read
+      x-s1-refs:
+        user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-009]
+      parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
+      responses:
+        '200':
+          description: 返回部署详情或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeployment'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [model-deployments]
+      operationId: update_model_deployment
+      summary: 更新部署展示信息
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-001]
+        business_rules: [BR-MODELDEP-002]
+      parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelDeploymentUpdateRequest'}
+      responses:
+        '200':
+          description: 返回更新结果或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeployment'
+                  - $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [model-deployments]
+      operationId: delete_model_deployment
+      summary: 异步删除部署及底层 Runtime
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-008]
+      parameters:
+        - $ref: '#/components/parameters/model_deployment_id'
+        - $ref: '#/components/parameters/resource_version'
+        - $ref: '#/components/parameters/idempotency_key'
+      responses:
+        '200':
+          description: 返回 DELETING 部署与当前任务，或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeployment'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/model-deployments/{model_deployment_id}/start:
+    post:
+      tags: [model-deployments]
+      operationId: start_model_deployment
+      summary: 异步启动部署
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-004, BR-MODELDEP-006]
+      parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelDeploymentActionRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/ModelDeploymentActionResponse'}
+
+  /api/v1/model-deployments/{model_deployment_id}/stop:
+    post:
+      tags: [model-deployments]
+      operationId: stop_model_deployment
+      summary: 异步停止部署
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-008]
+      parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelDeploymentActionRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/ModelDeploymentActionResponse'}
+
+  /api/v1/model-deployments/{model_deployment_id}/restart:
+    post:
+      tags: [model-deployments]
+      operationId: restart_model_deployment
+      summary: 异步重启部署
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-004, BR-MODELDEP-006, BR-MODELDEP-007]
+      parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelDeploymentActionRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/ModelDeploymentActionResponse'}
+
+  /api/v1/model-deployments/{model_deployment_id}/logs:
+    get:
+      tags: [model-deployments]
+      operationId: list_model_deployment_logs
+      summary: 查询部署运行日志
+      x-permission: modeldeployment.deployment.read
+      x-s1-refs:
+        user_stories: [US-MODELDEP-002]
+        business_rules: [BR-MODELDEP-009]
+      parameters:
+        - $ref: '#/components/parameters/model_deployment_id'
+        - $ref: '#/components/parameters/page_num'
+        - $ref: '#/components/parameters/page_size'
+      responses:
+        '200':
+          description: 返回日志分页或业务错误。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeploymentLogListResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    model_deployment_id:
+      name: model_deployment_id
+      in: path
+      required: true
+      schema: {type: string}
+    page_num:
+      name: page_num
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    page_size:
+      name: page_size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 200, default: 20}
+    keyword:
+      name: keyword
+      in: query
+      schema: {type: string, default: ''}
+    resource_version:
+      name: resource_version
+      in: query
+      required: true
+      schema: {type: integer, minimum: 0}
+    idempotency_key:
+      name: idempotency_key
+      in: query
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+  responses:
+    ModelDeploymentActionResponse:
+      description: 返回部署资源与当前任务，或业务错误。
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ModelDeployment'
+              - $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ModelDeploymentProviderType:
+      type: string
+      enum: [vllm, lmstudio]
+    ModelDeploymentDesiredState:
+      type: string
+      enum: [RUNNING, STOPPED]
+    ModelDeploymentStatus:
+      type: string
+      enum: [CREATING, DEPLOYING, RUNNING, STOPPING, STOPPED, RESTARTING, FAILED, DELETING]
+    ModelDeploymentHealthStatus:
+      type: string
+      enum: [UNKNOWN, HEALTHY, UNHEALTHY]
+    ModelDeploymentTaskSummary:
+      type: object
+      additionalProperties: false
+      required: [id, status, function_ref]
+      properties:
+        id: {type: string}
+        status: {type: string}
+        function_ref: {type: string}
+        progress: {type: number, minimum: 0, maximum: 1, nullable: true}
+        created_at: {type: string, format: date-time, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+    ModelDeployment:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, provider_type, model_name, desired_state, status, health_status, failure_code, failure_message, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        provider_type: {$ref: '#/components/schemas/ModelDeploymentProviderType'}
+        model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+        desired_state: {$ref: '#/components/schemas/ModelDeploymentDesiredState'}
+        status: {$ref: '#/components/schemas/ModelDeploymentStatus'}
+        health_status: {$ref: '#/components/schemas/ModelDeploymentHealthStatus'}
+        infra_runtime_id: {type: string, nullable: true, readOnly: true}
+        endpoint_ref: {type: string, nullable: true, readOnly: true, description: Infrastructure Endpoint 引用。}
+        current_dag_task_group_id: {type: string, nullable: true, readOnly: true}
+        current_dag_task_group: {$ref: '#/components/schemas/ModelDeploymentTaskSummary', nullable: true, readOnly: true}
+        current_atomic_task_id: {type: string, nullable: true, readOnly: true}
+        current_atomic_task: {$ref: '#/components/schemas/ModelDeploymentTaskSummary', nullable: true, readOnly: true}
+        failure_code: {type: string, maxLength: 200, readOnly: true}
+        failure_message: {type: string, maxLength: 1000, readOnly: true}
+        last_health_check_at: {type: string, format: date-time, nullable: true, readOnly: true}
+        resource_version: {type: integer, minimum: 0}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ModelDeploymentCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, provider_type, model_name, idempotency_key]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 1000, default: ''}
+        provider_type: {$ref: '#/components/schemas/ModelDeploymentProviderType'}
+        model_name: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    ModelDeploymentUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [resource_version]
+      minProperties: 2
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 1000}
+        resource_version: {type: integer, minimum: 0}
+    ModelDeploymentActionRequest:
+      type: object
+      additionalProperties: false
+      required: [resource_version, idempotency_key]
+      properties:
+        resource_version: {type: integer, minimum: 0}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+        reason: {type: string, maxLength: 1000}
+    ModelDeploymentListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ModelDeployment'}
+    ModelDeploymentLogEntry:
+      type: object
+      additionalProperties: false
+      required: [occurred_at, level, source, message]
+      properties:
+        occurred_at: {type: string, format: date-time}
+        level: {type: string, enum: [INFO, WARN, ERROR]}
+        source: {type: string, maxLength: 100}
+        message: {type: string, maxLength: 4096}
+    ModelDeploymentLogListResponse:
+      type: object
+      additionalProperties: false
+      required: [total, items]
+      properties:
+        total: {type: integer, minimum: 0}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ModelDeploymentLogEntry'}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, value, message]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        detail: {type: string}

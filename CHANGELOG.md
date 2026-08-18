@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- 新增 `model-deployment` 领域，提供管理员管理的本地 vLLM/LM Studio Docker 部署、Provider 专属 DAG/Task、生命周期投影和管理 API；用户只提交逻辑 `model_name`，不新增 Model Gateway Adapter、EngineInstance、Binding 或 capability 选择。
+- Infrastructure 增加 `local_model_root`、`MODEL_FILES` 挂载以及独立 `model.vllm`/`model.lmstudio` Profile 语义，Task Center 以 `model-deployment` owner 调用；vLLM 与 LM Studio 不共享 Provider 专用 handler。
+
 - 修正 MCP Asset 删除结果状态，与 Asset Library 回收站正式状态 `deleted` 保持一致。
 
 - MCP Asset Tool 扩展为 12 个固定 Tool，新增 `omnimam.assets.delete` 软删除素材能力；默认 Platform Agent MCP Binding 开放素材查询、受控上传和软删除，消息附件继续使用 `AssetReference` 引用。

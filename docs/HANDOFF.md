@@ -2,60 +2,54 @@
 
 ## Current goal and status
 
-- Goal: publish the Hermes Agent asset upload/attachment/MCP soft-delete contract as `spec-v1.23.9`.
-- Status: content changes complete and locally validated; release commit/tag is the next action. Downstream Server/Web must wait for the released tag.
+- Goal: 发布平台共享本地模型部署管理的小版本，覆盖 vLLM/LM Studio Docker Service、Provider 专属 DAG、Infrastructure 挂载契约和管理 API。
+- Status: 实现规格已完成，等待最终 diff 检查和 release 记录确认。
 
 ## Work completed in this session
 
-- Changed GitLabServer create/update semantics so clients no longer submit `api_url` or `namespace_path`.
-- Defined server-side External URL normalization, standard `/api/v4` derivation, version/user validation, and idempotent private top-level Group ensure for `omnimam-appstudio`.
-- Required create to persist only a validated READY connection and update failures to preserve the previous connection.
-- Updated GitLab S1, OpenAPI 1.1.0, module contract, Domain Context, and changelog without changing persistence Schema, errors, permissions, or events.
-- Created content commit `e2958267cd65230e612143fe6d4ef9fc524996b7`, release commit `79c83efdc407d24cbafec91405a9d774de2c5e87`, and annotated tag `spec-v1.23.8`.
-- Pushed `master` and `spec-v1.23.8`; remotely verified the peeled tag and `master` both point to the release commit.
-
-## Current in-progress work
-
-- None in the Spec repository. Downstream Server and Web implementation is next.
+- 新增独立 `model-deployment` S1/S2、Domain Context 和架构参考。
+- 明确只接收 `provider_type`、逻辑 `model_name` 和管理字段；不新增 Model Gateway Adapter、EngineInstance、Binding 或 capability 选择。
+- vLLM 与 LM Studio 使用独立的 validate/ensure/stop functionRef、Profile、DAG 模板和结果投影。
+- Infrastructure 增加 `local_model_root`、`MODEL_FILES` 挂载、`model.vllm`/`model.lmstudio` Profile 语义，以及 `model-deployment` Runtime owner。
+- Task Center Function Registry 已登记六个 Provider 专属合同，并已生成真实 RFC8785 + SHA-256 contract digest。
+- 更新全局上下文、Context Map、Glossary、错误码索引和 CHANGELOG。
 
 ## Files added, modified, renamed, or removed
 
-- Released: `00_product/domains/gitlab/product-spec.md`, `01_contracts/domains/gitlab/openapi.yaml`, `01_contracts/domains/gitlab/module-contract.md`, `domains/gitlab/context.md`, `CHANGELOG.md`, and `RELEASE.md`.
-- Modified after the tag as a live checkpoint: `docs/HANDOFF.md`.
+- Added: `00_product/domains/model-deployment/`, `01_contracts/domains/model-deployment/`, `domains/model-deployment/`, `02_architecture/domains/model-deployment.md`.
+- Modified: Infrastructure/Task Center S1/S2, `GLOBAL_CONTEXT.md`, `CONTEXT_MAP.md`, `00_product/glossary.md`, `01_contracts/error-code-index.md`, `CHANGELOG.md`, `docs/HANDOFF.md`.
 
 ## Key architectural or design decisions
 
-- The platform owns GitLab API URL derivation and the fixed `omnimam-appstudio` Group; administrators only provide a GitLab site URL and PAT.
-- Group ensure is idempotent. A remote Group may remain if local persistence fails, and retries must reuse it.
-- Existing GitLabServer response and database fields remain stable; only client-writable create/update fields and lifecycle behavior changed.
+- Model Deployment 只拥有部署资源、生命周期和管理投影；Task Center 拥有 DAG/Task，Infrastructure 拥有 Runtime/Profile/挂载。
+- DEPLOY/START 使用 `model.validate -> runtime.ensure`；RESTART 使用 `runtime.stop -> model.validate -> runtime.ensure`；STOP/DELETE 使用 Provider 专属 stop AtomicTask。
+- Infrastructure 节点以 `local_model_root` 与 `model_name` 派生 `local-model://{model_name}` 的模型目录，使用 `MODEL_FILES` 挂载。
+- vLLM 与 LM Studio 不共享 Provider 专用 handler、模型校验或 RuntimeProfile；不修改现有 Model Gateway 适配器、EngineInstance 或 Binding。
 
 ## API, schema, dependency, or configuration changes
 
-- `CreateGitLabServerRequest` now requires `name`, `external_url`, and `credential`; `description` and `is_appstudio_default` remain optional.
-- `UpdateGitLabServerRequest` no longer accepts `api_url` or `namespace_path`.
-- GitLab OpenAPI version is `1.1.0`. No new endpoint, schema table/column, error code, permission, event, dependency, or runtime configuration was added.
+- 新增 `/api/v1/model-deployments` CRUD、生命周期动作和日志查询契约。
+- Infrastructure owner domain 与挂载枚举增加 `model-deployment`、`MODEL_FILES`；设计态 schema 增加 `infra_local_model_config`。
+- 新增 Infrastructure 本地模型错误码 `241000-241199`，Model Deployment 错误码区间为 `260200-260599`。
 
 ## Verification performed and remaining checks
 
-- Parsed GitLab OpenAPI successfully; resolved all 39 local refs and verified all operation S1 anchors.
-- Asserted create/update request field constraints and passed `git diff --check` before release.
-- Verified remote `master=79c83efdc407d24cbafec91405a9d774de2c5e87`, tag object `e0e44e5bbe9c03161c679f28d98e5e5f3d23af45`, and peeled `spec-v1.23.8^{}=79c83efdc407d24cbafec91405a9d774de2c5e87`.
-- Added `omnimam.assets.delete` as a soft-delete-only MCP Tool, expanded the fixed Tool count to 12, and added Agent acceptance language for AssetReference attachments and the default Platform MCP Binding.
-- Parsed the changed MCP OpenAPI and permissions YAML with `python3` and passed `git diff --check`.
-- Remaining verification: commit the content change, create the `spec-v1.23.9` release commit/tag, then pin Server/Web and implement the released contract.
+- 已通过目标 YAML 解析、Model Deployment/Infrastructure OpenAPI 本地 `$ref` 检查、Function Registry JSON Schema 校验、S1 引用检查和六个 function contract digest 复算。
+- 仍需执行：`git diff --check`、最终变更审阅、更新 `RELEASE.md` 为 `spec-v1.24.0` 并在 release 后刷新本文件。
 
 ## Outstanding tasks
 
-- Commit and tag `spec-v1.23.9`, then update Server/Web SSOT pins and implement the focused MCP/Agent/Web changes.
+- 执行最终 diff 检查并登记 `spec-v1.24.0` Release。
+- Release 后记录最终提交引用并刷新本 handoff。
 
 ## Known issues and risks
 
-- The PAT must have GitLab API permission and sufficient rights to create the top-level `omnimam-appstudio` Group when it does not already exist.
-- GitLabServer Test remains available for later revalidation and can still project an existing connection to ERROR.
+- RuntimeProfile 的镜像、Entrypoint、端口和健康检查具体值仍属于 Infrastructure Profile Revision 实现事实。
+- `local_model_root` 是 Infrastructure 节点配置，部署前必须由运行环境提供；本仓库只维护配置语义。
 
 ## Exact recommended next step
 
-Update Server and Web SSOT submodules to release commit `79c83efdc407d24cbafec91405a9d774de2c5e87`, then implement the GitLab connection workflow exactly as released.
+运行 `git diff --check`，复核新增 domain 与 Infrastructure/Task Center 交叉引用，然后登记 `spec-v1.24.0` Release 并记录最终提交引用。
 
 Next Prompt:
 

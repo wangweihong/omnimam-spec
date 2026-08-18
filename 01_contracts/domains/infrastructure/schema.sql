@@ -1,6 +1,17 @@
 -- Infrastructure S2 design schema, v1.2.0 released by spec-v1.17.2. This is not a migration.
 -- Infra 只保存运行层事实；Agent、AppStudio、Task Center 和 Artifact 业务事实不在本 schema 内。
 
+-- s1_refs: R-INFRA-027; source: 7.4 本地模型 Profile.
+CREATE TABLE infra_local_model_config (
+  id TEXT PRIMARY KEY CHECK (id = 'default'),
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  extend_shadow TEXT NOT NULL DEFAULT '',
+  resource_version INTEGER NOT NULL DEFAULT 0,
+  local_model_root TEXT NOT NULL
+);
+
 -- s1_refs: R-INFRA-003, R-INFRA-004, R-INFRA-005, R-INFRA-020, R-INFRA-021, R-INFRA-022; source: 7 RuntimeProfile, 10 Runtime Provider.
 CREATE TABLE infra_runtime_profiles (
   id TEXT PRIMARY KEY,
@@ -51,7 +62,7 @@ CREATE TABLE infra_runtimes (
   runtime_mode TEXT NOT NULL CHECK (runtime_mode IN ('JOB', 'SERVICE')),
   status TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'VALIDATING', 'SCHEDULING', 'PREPARING', 'RUNNING', 'SUCCEEDED', 'DEGRADED', 'STOPPING', 'STOPPED', 'FAILED', 'CANCELED', 'EXPIRED', 'DELETING', 'DELETED')),
   requesting_service TEXT NOT NULL CHECK (requesting_service = 'task-center'),
-  owner_domain TEXT NOT NULL CHECK (owner_domain IN ('agent', 'appstudio', 'task-center', 'asset-library')),
+  owner_domain TEXT NOT NULL CHECK (owner_domain IN ('agent', 'appstudio', 'task-center', 'asset-library', 'model-deployment')),
   owner_reference TEXT NOT NULL,
   request_user_id TEXT,
   request_id TEXT NOT NULL,
@@ -107,7 +118,7 @@ CREATE TABLE infra_runtime_mounts (
   resource_version INTEGER NOT NULL DEFAULT 0,
   runtime_id TEXT NOT NULL REFERENCES infra_runtimes(id),
   source_ref TEXT NOT NULL,
-  mount_kind TEXT NOT NULL CHECK (mount_kind IN ('AGENT_WORKSPACE', 'STUDIO_WORKSPACE_REVISION', 'STUDIO_SNAPSHOT', 'ARTIFACT', 'TEMPORARY')),
+  mount_kind TEXT NOT NULL CHECK (mount_kind IN ('AGENT_WORKSPACE', 'STUDIO_WORKSPACE_REVISION', 'STUDIO_SNAPSHOT', 'ARTIFACT', 'MODEL_FILES', 'TEMPORARY')),
   target_path TEXT NOT NULL,
   read_only BOOLEAN NOT NULL,
   authorization_ref TEXT,

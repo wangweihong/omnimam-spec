@@ -340,6 +340,19 @@ Infra-backed Task Worker 必须按函数注册信息选择 `JOB` 或 `SERVICE`�
 
 `agent.runtime.stop` 使用受控目标动作区分挂起、停止和删除；`appstudio.production.reconcile` 使用部署原因区分首次部署、升级和回滚，但回滚输入必须引用 AppStudio 已创建的新 Release 与新候选 RuntimeInstance。Build 取消、Runtime ensure 取消及其他进行中操作统一使用 AtomicTask 取消语义，不创建 `*.cancel` functionRef。
 
+### 5.8.1 Model Deployment Provider 专属 DAG
+
+`model-deployment` 的本地模型部署不复用 Agent/AppStudio functionRef，也不使用一个包含 Provider 分支的通用 handler。Task Center 必须登记两组独立合同：
+
+| Provider | 部署/启动 DAG 节点 | 停止/删除节点 |
+| --- | --- | --- |
+| vLLM | `model-deployment.vllm.model.validate` -> `model-deployment.vllm.runtime.ensure` | `model-deployment.vllm.runtime.stop` |
+| LM Studio | `model-deployment.lmstudio.model.validate` -> `model-deployment.lmstudio.runtime.ensure` | `model-deployment.lmstudio.runtime.stop` |
+
+部署和启动固定使用两节点 SERIAL DAG；重启固定在前面追加同 Provider 的 `runtime.stop` 节点。每个 Provider 的模型校验、RuntimeProfile、Infra 参数和结果投影必须由独立合同声明，不能通过 `provider_type` 在 Worker 内分支复用。DAG 输入只包含部署 ID、逻辑 `model_name`、Provider 专属 Profile revision、既有 InfraRuntime ID、授权引用和资源版本，不包含能力列表。
+
+模型校验节点完成后，ensure 节点才能创建 Docker Service。DAG 任一节点失败时，来源领域只投影安全失败状态；DAG 重试、恢复和幂等不得创建第二个模型部署或并行 Runtime。
+
 ### 5.9 GitLab 外部 Pipeline 任务
 
 `gitlab.pipeline.run` 是 GitLab 领域拥有的非 Infra-backed 外部 AtomicTask。它不进入 Agent/AppStudio Infra Function Registry，也不得声明 Docker `JOB`/`SERVICE`、Infra capability、RuntimeProfile、source_ref 或 authorization_ref。
@@ -468,6 +481,10 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 86. `BR-TASK-158`：AtomicTask 可在创建时保存唯一可选 `primary_resource`，表示用户可导航的上层业务资源不可变快照；来源领域必须在既有权限校验后通过内部创建边界提供，公开 AtomicTask、Group 和 DAG 创建请求不得设置该字段，Task Center 不得从 `function_ref` 或任意 `arguments` 启发式猜测。
 87. `BR-TASK-159`：`primary_resource` 只允许 `asset-library/ASSET|ARTIFACT`、`application-platform/APPLICATION`、`workflow-canvas/CANVAS`、`appstudio/STUDIO_APPLICATION`、`agent/AGENT` 和 `gitlab/GITLAB_PROJECT` 组合，并保存稳定资源 ID 与创建时可得的非敏感名称；名称不可可靠取得时必须省略，不得以 ID 伪造名称。
 88. `BR-TASK-160`：主业务资源快照创建后不可变；自动 Attempt 重试、手动重试、Group/DAG 重跑和幂等恢复必须保留原快照。相同幂等键携带不同快照时继续按既有幂等内容冲突处理，不得覆盖已存在任务。
+93. `BR-TASK-165`：Model Deployment 的 vLLM 与 LM Studio 必须使用独立的 Provider 专属 functionRef、DAG 模板、模型校验和 RuntimeProfile，不得使用一个按 Provider 分支的通用合同。
+94. `BR-TASK-166`：Model Deployment 的 DEPLOY/START DAG 固定为 `model.validate -> runtime.ensure`，RESTART DAG 固定为 `runtime.stop -> model.validate -> runtime.ensure`，节点和依赖在 DAG 创建前确定。
+95. `BR-TASK-167`：Model Deployment functionRef 输入只接受部署 ID、逻辑 model_name、Provider 专属 Profile、既有 Runtime ID、授权引用和资源版本，不接受 capability_definition_ids。
+96. `BR-TASK-168`：Model Deployment DAG 与停止 AtomicTask 使用部署级幂等键和当前执行 fence；旧 DAG/Task 终态不得覆盖新动作，失败恢复不得创建并行 Runtime。
 89. `BR-TASK-161`：任务列表、详情和目标摘要只在调用方可见父任务时返回已保存的 `primary_resource`；它不授予关联资源访问权限。资源已删除或名称为空时仍可读取任务，客户端只能以本地化 kind 降级，不得回查可变名称改写历史或展示资源 ID 代替名称。
 90. `BR-TASK-162`：WorkflowRuntime 日志 envelope 升级为 v2，在既有时间、来源、级别和消息外提供可选 event key、阶段、安全错误码和封闭上下文；升级部署前清除既有 Task Center 与 WorkflowRuntime 持久化数据，读取端只接受 v2，不实现 v1 envelope 或历史纯文本兼容。日志正文仍由 WorkflowRuntime 保存，不新增日志表或第二事实源。
 91. `BR-TASK-163`：日志阶段固定为 PREPARE、EXECUTE、WAIT、POST_PROCESS 或 CLEANUP；上下文只允许 Attempt 序号、耗时、进度、输入项数、输出项数、操作、外部状态和可重试标记。所有字符串字段继续在写入与读取边界双重脱敏、单行化并限制 4096 字节，不得暴露 DEBUG、Stack、Cause、RawCode、任意 URL、凭证或 Provider 原始响应；下载保留既有前四列并在末尾追加这些结构化字段。
@@ -647,6 +664,15 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 - `AC-TASK-027-04`：Attempt 日志可按阶段、event key、安全错误码和固定 context 字段排障，只读取 v2 envelope；日志正文继续来自 WorkflowRuntime。
 - `AC-TASK-027-05`：在线查询和下载不会出现 DEBUG、Stack、Cause、RawCode、任意 URL、凭证、Provider 原始响应或超长多行字符串，且日志增强不改变任务状态、重试、取消或日志保留语义。
 - `AC-TASK-027-06`：升级环境在启用新版本前清除既有 Task Center 与 WorkflowRuntime 持久化数据，不执行旧任务、日志或资源快照的迁移、回填与恢复。
+
+### US-TASK-028 Model Deployment Provider 专属 DAG
+
+作为平台维护者，我希望 vLLM 和 LM Studio 的本地模型部署通过各自独立的 DAG 合同执行，使模型校验、Runtime 启动、重启和停止不会在 Worker 中混入 Provider 分支。
+
+- `AC-TASK-028-01`：vLLM 与 LM Studio 各自拥有独立的 validate、ensure、stop functionRef，输入输出 schema、Profile 和结果投影可单独演进。
+- `AC-TASK-028-02`：DEPLOY/START/RESTART 使用来源领域提交的固定 SERIAL DAG，所有节点在创建前完成校验；Task Center 不接受动态回边或运行中追加节点。
+- `AC-TASK-028-03`：同一 ModelDeployment 只允许一个活动 DAG 或停止 AtomicTask，自动重试和恢复复用稳定幂等键，不创建第二个 Runtime。
+- `AC-TASK-028-04`：Model Deployment Task arguments 只包含逻辑 model_name 和稳定引用，不包含 capability_definition_ids。
 
 ---
 
