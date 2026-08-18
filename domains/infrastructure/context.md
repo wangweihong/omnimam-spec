@@ -25,13 +25,14 @@
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.17.2`); local model additions draft | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
+| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.24.0`) | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
 | `02_architecture/domains/infrastructure.md` | 参考（`spec-v1.17.2`） | Task Worker、Infra Adapter、Docker Provider 和挂载边界 |
-| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.17.2`); local model additions draft | InfraRuntime、Endpoint、Node、Profile 和输出 API |
-| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.17.2`); local model additions draft | Infrastructure 设计态 Schema |
-| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.17.2`); local model additions draft | 错误、权限、事件和模块边界 |
+| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.24.0`) | InfraRuntime、Endpoint、Node、Profile 和输出 API |
+| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.24.0`) | Infrastructure 设计态 Schema |
+| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.24.0`) | 错误、权限、事件和模块边界 |
 
 Infrastructure 当前 S1/S2、Endpoint resolve 与 RuntimeOutput 内容交付闭环已由 `spec-v1.17.2` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。
+本地模型 `local_model_root`、`MODEL_FILES`、`model.vllm`/`model.lmstudio` Profile 和 `model-deployment` owner 增量由 `spec-v1.24.0` 发布。
 Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` 发布后作为新增实现依据。
 
 ## 4. 直接依赖

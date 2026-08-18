@@ -34,6 +34,8 @@
 
 `agent` 的当前完整 S1/S2 已由 `spec-v1.17.1` 发布；`appstudio` 的当前 S1/S2 已由 `spec-v1.16.0` 发布，AppStudio Outbox 全限定幂等键修复已由 `spec-v1.16.1` 发布，StudioBuild Artifact producer 与批量摘要投影已由 `spec-v1.17.1` 发布；Asset Library 对应 StudioBuild producer 契约也由 `spec-v1.17.1` 发布；`infrastructure` 已由 `spec-v1.12.0` 发布，Domain Context 应同步其正式状态。旧版 S2 不作为当前契约输入。Agent 交互、Session、Memory 和 AgentRuntime 先读 `domains/agent/context.md`；StudioApplication、源码 Revision、Build、Release 和 StudioRuntimeInstance 先读 `domains/appstudio/context.md`；InfraRuntime、挂载和 Docker Provider 先读 `domains/infrastructure/context.md`。Workspace 关键词在这两个领域仅用于定位后端 canonical 事实，不代表公共资源、页面或用户输入。Coding Agent 修改生成应用时必须同时读取 agent 和 appstudio，并按需继续读取 task-center、infrastructure 与 asset-library。Agent 可按 `spec-v1.17.1` 门禁使用；AppStudio 必须同时遵守 `spec-v1.16.0`、`spec-v1.16.1` 与 `spec-v1.17.1` 门禁；StudioBuild Artifact 必须同时遵守 Asset Library 的 `spec-v1.17.1` 门禁；Infrastructure 可按 `spec-v1.12.0` 门禁使用。
 
+本地模型部署与 `model-deployment` 由 `spec-v1.24.0` 发布；读取其 Context 时继续读取 `domains/infrastructure/context.md` 与 `domains/task-center/context.md`。
+
 如果任务使用规划领域名称，应先映射到当前事实拥有者并检查用户是否要求建立新领域。仅讨论未来方向时可停留在规划状态；一旦要求新增 API、Schema 或业务规则，必须先完成对应 S1 领域决策，不能直接从 Context 推导 S2。
 
 ## 3. 任务关键词映射

@@ -2,9 +2,10 @@
 
 ## spec-v1.24.0
 
-- status: pending release
+- commit: 2982d43
+- status: released
 - confirmed_by: user（2026-08-18，明确要求仅实现本地模型部署管理，使用 Provider 专属 DAG，vLLM 与 LM Studio 拆分，并发布小版本）
-- allowed_as_formal_implementation_basis: false
+- allowed_as_formal_implementation_basis: true
 - domains:
   - model-deployment
   - task-center

@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 发布平台共享本地模型部署管理的小版本，覆盖 vLLM/LM Studio Docker Service、Provider 专属 DAG、Infrastructure 挂载契约和管理 API。
-- Status: 实现规格已完成，等待最终 diff 检查和 release 记录确认。
+- Status: `spec-v1.24.0` 已发布，规格提交为 `2982d43`；待完成 release commit/tag 后的最终状态检查。
 
 ## Work completed in this session
 
@@ -35,12 +35,11 @@
 ## Verification performed and remaining checks
 
 - 已通过目标 YAML 解析、Model Deployment/Infrastructure OpenAPI 本地 `$ref` 检查、Function Registry JSON Schema 校验、S1 引用检查和六个 function contract digest 复算。
-- 仍需执行：`git diff --check`、最终变更审阅、更新 `RELEASE.md` 为 `spec-v1.24.0` 并在 release 后刷新本文件。
+- 已执行 `git diff --check`、最终变更审阅，并将 `RELEASE.md` 更新为 `spec-v1.24.0` released。
 
 ## Outstanding tasks
 
-- 执行最终 diff 检查并登记 `spec-v1.24.0` Release。
-- Release 后记录最终提交引用并刷新本 handoff。
+- 创建并校验 `spec-v1.24.0` release tag，确认工作树干净。
 
 ## Known issues and risks
 
@@ -49,7 +48,7 @@
 
 ## Exact recommended next step
 
-运行 `git diff --check`，复核新增 domain 与 Infrastructure/Task Center 交叉引用，然后登记 `spec-v1.24.0` Release 并记录最终提交引用。
+创建 `spec-v1.24.0` release tag，确认工作树干净，并将 tag/提交引用同步到实现仓库的发布流程。
 
 Next Prompt:
 

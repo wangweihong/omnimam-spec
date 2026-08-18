@@ -11,7 +11,7 @@
 - `TaskGroup`：多个 AtomicTask 的 SERIAL 或 PARALLEL 组合及汇总。
 - `DAGTaskGroup`：AtomicTask 节点和有向无环依赖组成的编排资源。
 - `TaskSchedule`、`ScheduleExecution`：触发目标的计划与每次调度历史。
-- `Function Registry`：八个 Agent/AppStudio canonical functionRef 的版本化 I/O、能力、策略、执行/Infra 映射、输出交付与结果投影合同。
+- `Function Registry`：14 个 Agent/AppStudio/Model Deployment canonical functionRef 的版本化 I/O、能力、策略、执行/Infra 映射、输出交付与结果投影合同。
 - `gitlab.pipeline.run`：GitLab 领域拥有的非 Infra-backed 外部 handler，通过 external_job_id 和延迟回调恢复，不进入 Agent/AppStudio Infra Function Registry。
 - AppStudio 可通过受信任的领域内部入口提交包含 `gitlab.pipeline.run` 的固定 DAG；公共 DAG API 继续禁止用户选择该内部 functionRef。
 - `WorkflowRuntime`、`Task Worker`、`Infra Adapter`、`Agent Runtime Adapter`：内部运行时边界、已注册 handler 的执行者、Infra-backed 请求和 Agent Invocation 协议适配边界。
@@ -49,7 +49,7 @@
 | `01_contracts/domains/task-center/openapi.yaml` | S2 | 任务查询、动作和调度 API |
 | `01_contracts/domains/task-center/schema.sql` | S2 | 设计态任务资源结构 |
 | `01_contracts/domains/task-center/function-registry.schema.yaml` | S2 | Infra-backed Function Registry 文件结构 |
-| `01_contracts/domains/task-center/function-registry.yaml` | S2 | 八个 canonical functionRef 的精确合同 |
+| `01_contracts/domains/task-center/function-registry.yaml` | S2 | 14 个 canonical functionRef、16 个版本合同条目的精确合同 |
 | `01_contracts/domains/task-center/events.yaml` | S2 | 可靠任务事件合同 |
 | `01_contracts/domains/task-center/module-contract.md` | S2 | Runtime 与跨域模块边界 |
 | `02_architecture/domains/task-center.md` | 参考 | 编译、调度、恢复和数据所有权 |
@@ -68,7 +68,7 @@
 
 ## 8. 当前状态
 
-`spec-v1.0.0` 起的新任务模型已确定，Infra-backed `appstudio.build.execute@1.1` 已由 `spec-v1.17.2` 发布，`agent.invocation.execute@1.0` 及 Agent Runtime Adapter 已由后续 release 发布；Coding commit 终态同步与 Runtime Git access 由 `spec-v1.23.0` 发布。具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
+`spec-v1.0.0` 起的新任务模型已确定，Infra-backed `appstudio.build.execute@1.1` 已由 `spec-v1.17.2` 发布，`agent.invocation.execute@1.0` 及 Agent Runtime Adapter 已由后续 release 发布；Coding commit 终态同步与 Runtime Git access 由 `spec-v1.23.0` 发布；六个 Model Deployment Provider 专属合同与固定 DAG 由 `spec-v1.24.0` 发布。具体实现门禁以 `RELEASE.md` 为准，旧编号只保留审计追溯意义。
 
 ## 9. 不在本领域定义的内容
 
