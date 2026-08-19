@@ -6,7 +6,7 @@
 
 | 模块 | 职责 | 不负责 | S1 引用 |
 | --- | --- | --- | --- |
-| source-consumer | 消费 task-center、asset-library、workflow-canvas、application-platform 与 notification-center 可靠事件，校验所有者、版本和必需字段 | 不直接读 Conductor、Provider 或跨域私有表 | BR-SSE-009..012、017..019；BR-WORKFLOW-024、025；BR-NOTIFY-016、017；US-SSE-002、003、006 |
+| source-consumer | 消费 task-center、asset-library、workflow-canvas、application-platform、notification-center 与 model-deployment 可靠事件，校验所有者、版本和必需字段 | 不直接读 Conductor、Provider 或跨域私有表 | BR-SSE-009..012、017..019；BR-WORKFLOW-024、025；BR-NOTIFY-016、017；BR-MODELDEP-009；US-SSE-002、003、006 |
 | event-projector | 将上游事件映射为稳定客户端 event_type 和统一信封 | 不创造业务状态或改写上游资源 | BR-SSE-004、006、010、011、015 |
 | user-event-store | 按用户持久短期可重放 UserEvent，分配有序 event_id，执行保留清理 | 不保存长期业务历史或正文 | BR-SSE-005..008、012 |
 | event-gateway | 鉴权、建立 SSE、心跳、格式化、连接限制、慢客户端和实例排空 | 不执行业务命令，不为单个资源创建专属连接 | BR-SSE-001..003、013、014 |
@@ -30,6 +30,8 @@ SSE 只消费以下已持久业务事实的可靠事件：
 | workflow-canvas | `canvas_node_run_status_changed`、`canvas_node_output_available` | 生成 `canvas.node.*`，包括渐进输出可用事件 |
 | notification-center | `notification_created`、`notification_updated`、`notification_deleted` | 生成 `notification.created`、`notification.updated`、`notification.deleted` |
 | notification-center | `notification_unread_count_changed` | 生成 `notification.unread_count_changed` |
+| model-deployment | `model_deployment_status_changed` | 生成 `model_deployment.status_changed`，客户端收到后重新查询部署事实 |
+| model-deployment | `model_deployment_deleted` | 生成 `model_deployment.deleted`，客户端收到后重新查询部署列表 |
 
 上游事件必须提供稳定 source_event_id、所有者、聚合 ID、`resource_version`、发生时间和受控 payload。缺少必需字段的事件进入可观测错误与重试/死信边界，不允许猜测所有者。
 
@@ -57,7 +59,7 @@ SSE 只消费以下已持久业务事实的可靠事件：
 - `Last-Event-ID` 与 `after_event_id` 是等价游标；同时出现时必须相同。
 - 游标查询始终同时限制 `recipient_user_id=当前用户`，不向调用方暴露不可见游标的真实所有者。
 - 默认保留 24 小时，配置只能改变 UserEvent 保留，不得影响上游业务数据。
-- 游标无效或过期时发出 `connection.resync_required`；客户端查询 task-center、application-platform、asset-library、workflow-canvas 和 notification-center 事实后再恢复增量消费。
+- 游标无效或过期时发出 `connection.resync_required`；客户端查询 task-center、application-platform、asset-library、workflow-canvas、notification-center 和 model-deployment 事实后再恢复增量消费。
 
 ## 6. 权限与安全
 
@@ -69,6 +71,7 @@ SSE 只消费以下已持久业务事实的可靠事件：
 ## 7. 跨域边界
 
 - task-center 拥有 AtomicTask、TaskAttempt、TaskGroup 和 DAGTaskGroup；SSE 只消费 S2 事件，不读运行时数据库或 API。
+- model-deployment 拥有部署生命周期、健康和管理投影；SSE 只转发可靠生命周期事件，客户端必须回到 model-deployment REST API 查询最新状态。
 - asset-library 拥有 Artifact、Asset、AssetVersion、AssetRepresentation 和对应生命周期事件；application-platform 只拥有 ApplicationRun 的 Artifact 引用投影。
 - workflow-canvas 拥有 CanvasRun、CanvasFlowRun、CanvasNodeRun、任务/输出绑定和对应 Canvas 语义事件；SSE 不从 Task 事件自行猜测 Canvas 状态。
 - notification-center 拥有 Notification、收件箱状态、计数和 notification outbox；SSE 只保存短期 UserEvent，不提供通知私有连接，也不把 UserEvent 当完整通知。

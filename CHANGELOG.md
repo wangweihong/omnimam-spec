@@ -453,3 +453,8 @@
 # spec-v0.9.3
 
 - 修正通用 `idempotency_scope` 与 TaskRun 数据库 CHECK 约束的一致性。
+# Changelog
+
+## 1.24.1 - 2026-08-19
+
+- Add user SSE lifecycle events for model deployments so admin projections can refresh list and detail facts.

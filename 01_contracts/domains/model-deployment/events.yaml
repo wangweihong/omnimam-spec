@@ -1,6 +1,6 @@
 model_deployment_status_changed:
   producer: model-deployment.lifecycle
-  consumers: [model-deployment.admin-projection]
+  consumers: [model-deployment.admin-projection, sse-event-projector]
   trigger_condition: ModelDeployment status、desired_state 或 health_status 相对已保存事实发生变化。
   payload:
     model_deployment_id: string
@@ -22,7 +22,7 @@ model_deployment_status_changed:
 
 model_deployment_deleted:
   producer: model-deployment.lifecycle
-  consumers: [model-deployment.admin-projection]
+  consumers: [model-deployment.admin-projection, sse-event-projector]
   trigger_condition: DELETE Task 已确认 Runtime 和 Endpoint 清理完成，ModelDeployment 即将删除。
   payload:
     model_deployment_id: string

@@ -219,6 +219,29 @@ x-notification-count-defaults: &notification_count_defaults
   related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-SSE-009, BR-SSE-010, BR-SSE-019, BR-NOTIFY-008, BR-NOTIFY-016, BR-NOTIFY-017]
   related_user_stories: [US-SSE-004, US-SSE-006, US-NOTIFY-001, US-NOTIFY-002, US-NOTIFY-004]
 
+x-model-deployment-defaults: &model_deployment_defaults
+  producer: sse-event-projector
+  consumers: [omnimam-web]
+  source_events: [model-deployment.model_deployment_status_changed, model-deployment.model_deployment_deleted]
+  payload:
+    model_deployment_id: string
+    provider_type: string
+    model_name: string
+    desired_state: string|null
+    status: string|null
+    health_status: string|null
+    current_dag_task_group_id: string|null
+    current_atomic_task_id: string|null
+    failure_code: string|null
+    deleted_at: string(date-time)|null
+    aggregate_version: integer
+    occurred_at: string(date-time)
+  idempotency_key: recipient_user_id:model_deployment_id:aggregate_version:event_name
+  retry_policy: 由用户事件投影 outbox 重试；重复键返回已有事件。
+  failure_policy: ModelDeployment 仍以 model-deployment REST 投影为事实源；投影失败不回滚部署，客户端重新查询事实恢复。
+  related_rules: [BR-SSE-004, BR-SSE-005, BR-SSE-006, BR-MODELDEP-006, BR-MODELDEP-007, BR-MODELDEP-008, BR-MODELDEP-009]
+  related_user_stories: [US-SSE-004, US-MODELDEP-001, US-MODELDEP-002]
+
 connection.ready:
   producer: sse-event-gateway
   consumers: [omnimam-web]
@@ -459,3 +482,11 @@ notification.deleted:
 notification.unread_count_changed:
   <<: *notification_count_defaults
   trigger_condition: 当前用户的 unread、critical unread 或 unresolved action_required 计数发生变化。
+
+model_deployment.status_changed:
+  <<: *model_deployment_defaults
+  trigger_condition: ModelDeployment 的 status、desired_state、health_status、当前任务或失败摘要发生更高 resource_version 更新。
+
+model_deployment.deleted:
+  <<: *model_deployment_defaults
+  trigger_condition: ModelDeployment 删除清理完成并即将从管理投影移除；payload.deleted_at 非空。

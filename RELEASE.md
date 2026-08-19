@@ -1,5 +1,24 @@
 # Release Records
 
+## spec-v1.24.1
+
+- commit: f392da4af369a3a9e3d5a21f515a45b536c3cfd1
+- status: released
+- confirmed_by: user（2026-08-19，要求为模型部署管理页增加 SSE 自动刷新合同并发布小版本）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - model-deployment
+  - sse
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+  - 00_product/domains/sse/product-spec.md
+- S2:
+  - 01_contracts/domains/model-deployment/events.yaml
+  - 01_contracts/domains/sse/events.yaml
+  - 01_contracts/domains/sse/openapi.yaml
+  - 01_contracts/domains/sse/module-contract.md
+- implementation_gate: Model Deployment 生命周期状态和删除事实通过用户级 SSE 投影为 `model_deployment.status_changed` 与 `model_deployment.deleted`；Web 只据此失效列表/详情缓存并重新查询 REST 事实，不直接以事件 payload 覆盖部署状态。
+
 ## spec-v1.24.0
 
 - commit: 2982d43

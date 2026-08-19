@@ -234,6 +234,8 @@ components:
         - notification.updated
         - notification.deleted
         - notification.unread_count_changed
+        - model_deployment.status_changed
+        - model_deployment.deleted
 
     UserEventEnvelope:
       type: object
@@ -260,6 +262,7 @@ components:
         canvas_run_id: {type: string, nullable: true}
         canvas_node_run_id: {type: string, nullable: true}
         notification_id: {type: string, nullable: true}
+        model_deployment_id: {type: string, nullable: true}
         payload:
           description: 具体结构由 event_type 决定；既有宽松 payload schema 可能共享字段，因此使用 anyOf 保持兼容。
           anyOf:
@@ -272,6 +275,7 @@ components:
             - $ref: '#/components/schemas/CanvasNodeEventPayload'
             - $ref: '#/components/schemas/NotificationEventPayload'
             - $ref: '#/components/schemas/NotificationUnreadCountEventPayload'
+            - $ref: '#/components/schemas/ModelDeploymentEventPayload'
 
     AtomicTaskEventPayload:
       type: object
@@ -416,6 +420,21 @@ components:
         unread_count: {type: integer, minimum: 0}
         critical_count: {type: integer, minimum: 0}
         action_required_count: {type: integer, minimum: 0}
+
+    ModelDeploymentEventPayload:
+      type: object
+      required: [model_deployment_id]
+      properties:
+        model_deployment_id: {type: string}
+        provider_type: {type: string, nullable: true}
+        model_name: {type: string, nullable: true}
+        desired_state: {type: string, nullable: true}
+        status: {type: string, nullable: true}
+        health_status: {type: string, nullable: true}
+        current_dag_task_group_id: {type: string, nullable: true}
+        current_atomic_task_id: {type: string, nullable: true}
+        failure_code: {type: string, nullable: true}
+        deleted_at: {type: string, format: date-time, nullable: true}
 
     UserEventListResponse:
       type: object
