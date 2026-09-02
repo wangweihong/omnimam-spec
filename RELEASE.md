@@ -1,5 +1,29 @@
 # Release Records
 
+## spec-v1.25.2
+
+- commit: e0e698674f480f1c31cb9f9657eabf707b3167ef
+- status: released
+- confirmed_by: user（2026-09-02，要求修复 SSOT 冲突、发布小版本并完成 Web 修改）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - modelgateway
+  - agent
+  - appstudio
+- S1:
+  - 00_product/domains/modelgateway/product-spec.md
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/appstudio/product-spec.md
+- S2:
+  - 01_contracts/domains/modelgateway/openapi.yaml
+  - 01_contracts/domains/modelgateway/permissions.yaml
+  - 01_contracts/domains/modelgateway/module-contract.md
+  - 01_contracts/domains/agent/openapi.yaml
+  - 01_contracts/domains/agent/schema.sql
+  - 01_contracts/domains/appstudio/openapi.yaml
+  - 01_contracts/domains/appstudio/module-contract.md
+- implementation_gate: ProviderCapability 列表保持轻量，详情通过 `GET /api/v1/model-gateway/provider-capabilities/{provider_capability_id}` 返回脱敏 models、operations、variants 与参数 schema；Agent ModelBinding 使用 `PROVIDER_RESOURCE | MODEL_PREFERENCE_DEFAULT`；AppStudio 创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`，不允许默认偏好、隐式回退或旧 User Model 合同。`agent.runtime.ensure@1.0/@1.1/@1.2` 历史保持不变。
+
 ## spec-v1.25.1
 
 - commit: bdf05de2955028f10e8fab9a63098dad623cb3f3

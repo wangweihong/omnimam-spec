@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 修复 `spec-v1.25.0`/`spec-v1.25.1` 的 Capability 查询与 Agent/AppStudio 模型绑定冲突，发布 `spec-v1.25.2`。
-- Status: 规范修复和首轮定向校验已完成；等待 release commit、annotated tag、push 及 tag 后发布记录提交。
+- Status: `spec-v1.25.2` release commit、annotated tag、分支与 tag 推送已完成；正在提交 tag 后发布元数据。
 
 ## Work completed in this session
 
@@ -12,11 +12,11 @@
 - Agent S1 的 ModelBinding 对齐现有 S2：`PROVIDER_RESOURCE | MODEL_PREFERENCE_DEFAULT`，分别引用 ProviderResource ID 与用途键。
 - AppStudio S1/S2/Context 删除 User Model/ModelAccessSpec 残留；创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`。
 - `CHANGELOG.md` 已明确区分 v1.25.1/v1.25.2；`RELEASE.md` 已补录 v1.25.1 的真实 tag target。
+- Release commit `e0e698674f480f1c31cb9f9657eabf707b3167ef` 已创建并标记、推送为 `spec-v1.25.2`。
 
 ## Current in-progress work
 
-- 创建规范 release commit 和 `spec-v1.25.2` annotated tag，推送分支与 tag。
-- tag 后把真实 target SHA 写入 `RELEASE.md`，更新本文件并提交、推送发布元数据。
+- 把 `spec-v1.25.2` 的真实 target SHA 写入 `RELEASE.md`，提交并推送发布元数据。
 
 ## Files added, modified, renamed, or removed
 
@@ -44,11 +44,11 @@
 - 3 个 ProviderCapability 清单通过 Draft 2020-12 schema 校验。
 - 目标 Agent/AppStudio S1/S2/Context 无旧 User Model 枚举、类型或 `ModelAccessSpec` 残留。
 - Function Registry 相对 `spec-v1.25.1` 无 diff，`git diff --check` 通过。
-- Remaining: 提交前复检、tag/push、tag 后 Release 记录复检。
+- Release commit 与 tag 已推送；remaining: tag 后 Release 记录复检、提交和推送。
 
 ## Outstanding tasks
 
-- 发布并推送 `spec-v1.25.2`。
+- 提交并推送 tag 后发布元数据。
 - 更新 Web submodule pin/`SSOT_VERSION`，重新生成客户端并完成 Web 迁移与验证。
 
 ## Known issues and risks
@@ -58,7 +58,7 @@
 
 ## Exact recommended next step
 
-运行最终定向校验并创建 release commit，然后创建、推送 `spec-v1.25.2` annotated tag。
+校验 `RELEASE.md` 的 v1.25.2 commit 与 tag target 一致，提交并推送发布元数据。
 
 Next Prompt:
 
