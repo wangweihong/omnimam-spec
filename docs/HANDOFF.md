@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 修复 `spec-v1.25.0` 对 `agent.runtime.ensure` 历史合同的改写，发布不可变兼容的 `spec-v1.25.1`。
-- Status: 规范修复与定向校验已完成；等待提交、创建 `spec-v1.25.1` annotated tag 并推送。
+- Status: completed；`spec-v1.25.1` 已发布，tag 指向 `bdf05de2955028f10e8fab9a63098dad623cb3f3`，可作为正式实现依据。
 
 ## Work completed in this session
 
@@ -16,16 +16,18 @@
 - 已审计并补全 Application Platform S1/S2：补齐内置 LLM Application ProviderType 约束，移除剩余 Engine DTO/错误/示例命名，并将无效 S1 追溯引用收口到现行 BR/US。
 - 已同步 AI Chat、Agent、Task Center 的 ProviderResource/ProviderExecutionGrant 依赖语义；Agent ModelBinding 改为 ProviderResource/Model Preferences 默认引用，Task Center Provider 健康巡检归 Model Gateway。
 - 已更新 Model Preferences、AI Chat、Model Gateway、Application Platform 架构参考及 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、Glossary、CHANGELOG。
+- 已恢复 `agent.runtime.ensure@1.0/@1.1` 不可变历史合同，新增 `@1.2 ACTIVE`，提交并发布 annotated tag `spec-v1.25.1`。
 
 ## Current in-progress work
 
-- 无规范实现工作；仅待 release commit、tag、push 和 `RELEASE.md` 发布记录。
+- 无。
 
 ## Files added, modified, renamed, or removed
 
 - Modified: `00_product/domains/modelgateway/product-spec.md`、`01_contracts/domains/modelgateway/` 的核心合同与清单、`docs/HANDOFF.md`。
 - Renamed and rebuilt: `domains/user-model`、`00_product/domains/user-model`、`01_contracts/domains/user-model`、`02_architecture/domains/user-model.md` 到 `model-preferences`。
 - 本次修复修改：`01_contracts/domains/task-center/function-registry.yaml`、`01_contracts/domains/task-center/module-contract.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- 发布记录修改：`RELEASE.md`。
 
 ## Key architectural or design decisions
 
@@ -51,10 +53,11 @@
 - 本次限定校验：7 个受影响领域全部 YAML 解析通过；7 份 OpenAPI 本地 `$ref` 全部通过；全局错误码扫描 178 个值无重复；`git diff --check` 通过。
 - 已核对 `agent.runtime.ensure@1.0/@1.1` 恢复为 `agent-model-access-grant://`，并保持已发布 digest 不变；新增 `@1.2` 使用 `provider-execution-grant://` 且保留 Coding Runtime Git access 约束。
 - server 现有 RFC 8785 registry 校验器计算并确认 `agent.runtime.ensure@1.2` digest 为 `sha256:c6c932f813fda29e6214130219854a62c275b886f7702b5ac08065eac3806c87`；Task Worker 定向合同测试通过。
+- 已核对远端 `origin/master` 与 annotated tag `spec-v1.25.1^{}` 均指向 `bdf05de2955028f10e8fab9a63098dad623cb3f3`。
 
 ## Outstanding tasks
 
-- 完成 `spec-v1.25.1` S2 修复、定向校验、Release 记录、提交、tag 和 push。
+- 无。
 
 ## Known issues and risks
 
@@ -63,7 +66,7 @@
 
 ## Exact recommended next step
 
-提交当前规范修复，创建并推送 `spec-v1.25.1` annotated tag，然后把 tag target commit 写入 `RELEASE.md` 并推送发布记录。
+在 `omnimam-server` 将 `ssot` submodule 与 `SSOT_VERSION` pin 到 `spec-v1.25.1` commit `bdf05de2955028f10e8fab9a63098dad623cb3f3`，再继续 Task Worker 和 v1.25 后端实现验证。
 
 Next Prompt:
 

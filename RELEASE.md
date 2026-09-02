@@ -1,5 +1,20 @@
 # Release Records
 
+## spec-v1.25.1
+
+- commit: bdf05de2955028f10e8fab9a63098dad623cb3f3
+- status: released
+- confirmed_by: user（2026-09-02，要求修复 Task Center registry 并发布 `spec-v1.25.1`）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - task-center
+- S1:
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: `agent.runtime.ensure@1.0/@1.1` 必须以原 `agent-model-access-grant://` schema 和已发布 digest 作为 RETAINED 历史合同；新任务唯一使用 `agent.runtime.ensure@1.2` ACTIVE，其 input 改用 `provider-execution-grant://` 并继续要求 Coding Runtime 携带 `appstudio-runtime-git-access://`。`1.2` digest 固定为 `sha256:c6c932f813fda29e6214130219854a62c275b886f7702b5ac08065eac3806c87`。
+
 ## spec-v1.25.0
 
 - commit: a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6
