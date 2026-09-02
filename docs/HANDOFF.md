@@ -2,8 +2,8 @@
 
 ## Current goal and status
 
-- Goal: 按“方案 B”完成统一 `ProviderAccount` 与全能力画布架构修复，覆盖 Model Gateway、Model Preferences、Application Platform、Workflow Canvas，以及 AI Chat、Agent、Task Center 的直接依赖契约。
-- Status: 方案 B 已提交并发布；Model Gateway、Model Preferences、Application Platform、Workflow Canvas 及直接依赖域已按方案 B 同步。
+- Goal: 修复 `spec-v1.25.0` 对 `agent.runtime.ensure` 历史合同的改写，发布不可变兼容的 `spec-v1.25.1`。
+- Status: 规范修复与定向校验已完成；等待提交、创建 `spec-v1.25.1` annotated tag 并推送。
 
 ## Work completed in this session
 
@@ -19,13 +19,13 @@
 
 ## Current in-progress work
 
-- Workflow Canvas 的 target_binding、REQUEST 运行选择、PROJECT/PRIVATE 约束与执行指纹已完成审计；当前转入直接依赖域同步。
-- 无进行中工作；`spec-v1.25.0` 已登记，发布标签已推送到 `origin`，方案 B 提交已推送到 `origin/master`。
+- 无规范实现工作；仅待 release commit、tag、push 和 `RELEASE.md` 发布记录。
 
 ## Files added, modified, renamed, or removed
 
 - Modified: `00_product/domains/modelgateway/product-spec.md`、`01_contracts/domains/modelgateway/` 的核心合同与清单、`docs/HANDOFF.md`。
 - Renamed and rebuilt: `domains/user-model`、`00_product/domains/user-model`、`01_contracts/domains/user-model`、`02_architecture/domains/user-model.md` 到 `model-preferences`。
+- 本次修复修改：`01_contracts/domains/task-center/function-registry.yaml`、`01_contracts/domains/task-center/module-contract.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
 
 ## Key architectural or design decisions
 
@@ -49,11 +49,12 @@
 - Application Platform 的 OpenAPI/errors/events/permissions YAML、OpenAPI 本地 `$ref`、S1 BR/US 追溯和旧 Engine DTO 残留检查已通过；`BR-AIAPP-209` 中仅保留对删除 `engine_instance_id` 的明确历史说明。
 - 首次校验命令因环境没有 `python` 命令未运行逻辑，改用 `python3` 后通过。
 - 本次限定校验：7 个受影响领域全部 YAML 解析通过；7 份 OpenAPI 本地 `$ref` 全部通过；全局错误码扫描 178 个值无重复；`git diff --check` 通过。
+- 已核对 `agent.runtime.ensure@1.0/@1.1` 恢复为 `agent-model-access-grant://`，并保持已发布 digest 不变；新增 `@1.2` 使用 `provider-execution-grant://` 且保留 Coding Runtime Git access 约束。
+- server 现有 RFC 8785 registry 校验器计算并确认 `agent.runtime.ensure@1.2` digest 为 `sha256:c6c932f813fda29e6214130219854a62c275b886f7702b5ac08065eac3806c87`；Task Worker 定向合同测试通过。
 
 ## Outstanding tasks
 
-- 已登记并发布 `spec-v1.25.0`，标签指向 `a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6`，允许作为正式实现依据。
-- 无。
+- 完成 `spec-v1.25.1` S2 修复、定向校验、Release 记录、提交、tag 和 push。
 
 ## Known issues and risks
 
@@ -62,7 +63,7 @@
 
 ## Exact recommended next step
 
-发布标签和文档提交均已推送；按用户下一项任务继续，不重复方案 B 已完成工作。
+提交当前规范修复，创建并推送 `spec-v1.25.1` annotated tag，然后把 tag target commit 写入 `RELEASE.md` 并推送发布记录。
 
 Next Prompt:
 

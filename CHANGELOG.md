@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 修复 `spec-v1.25.0` 对 Task Center 历史合同的原地改写：`agent.runtime.ensure@1.0/@1.1` 恢复原 `agent-model-access-grant://` schema/digest 并保留为 RETAINED；新增 `@1.2` ACTIVE，以 `provider-execution-grant://` 对接 Model Gateway，同时保留 Coding Runtime Git access 约束。
+
 - 继续推进方案 B：AI Chat、Agent 与 Task Center 改用 Model Gateway `ProviderAccount`/`ProviderResource`、`ResolveProviderTarget` 和不透明 `provider-execution-grant://`；Model Preferences 仅保留展示偏好与默认用途引用。
 - Workflow Canvas/Application Platform 的 TargetSelection、REQUEST 节点选择、PROJECT/PRIVATE 账号约束和 Provider 健康巡检归属同步到直接依赖域；更新 Context、架构参考与术语导航。
 
