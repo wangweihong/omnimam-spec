@@ -20,7 +20,7 @@
 ## Current in-progress work
 
 - Workflow Canvas 的 target_binding、REQUEST 运行选择、PROJECT/PRIVATE 约束与执行指纹已完成审计；当前转入直接依赖域同步。
-- 无进行中工作；`spec-v1.25.0` 已登记并推送到 `origin/master`。
+- 无进行中工作；`spec-v1.25.0` 已登记，发布标签已推送到 `origin`，方案 B 提交已推送到 `origin/master`。
 
 ## Files added, modified, renamed, or removed
 
@@ -52,7 +52,7 @@
 
 ## Outstanding tasks
 
-- 已登记 `spec-v1.25.0`，commit 为 `a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6`，允许作为正式实现依据。
+- 已登记并发布 `spec-v1.25.0`，标签指向 `a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6`，允许作为正式实现依据。
 - 无。
 
 ## Known issues and risks
@@ -62,7 +62,7 @@
 
 ## Exact recommended next step
 
-推送完成后读取 `docs/HANDOFF.md`，按用户下一项任务继续，不重复方案 B 已完成工作。
+发布标签和文档提交均已推送；按用户下一项任务继续，不重复方案 B 已完成工作。
 
 Next Prompt:
 
