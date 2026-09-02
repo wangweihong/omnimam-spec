@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 按“方案 B”完成统一 `ProviderAccount` 与全能力画布架构修复，覆盖 Model Gateway、Model Preferences、Application Platform、Workflow Canvas，以及 AI Chat、Agent、Task Center 的直接依赖契约。
-- Status: 本次实现工作完成，等待用户审阅和 Release 确认；Model Gateway、Model Preferences、Application Platform、Workflow Canvas 及直接依赖域已按方案 B 同步。
+- Status: 方案 B 已提交并发布；Model Gateway、Model Preferences、Application Platform、Workflow Canvas 及直接依赖域已按方案 B 同步。
 
 ## Work completed in this session
 
@@ -20,7 +20,7 @@
 ## Current in-progress work
 
 - Workflow Canvas 的 target_binding、REQUEST 运行选择、PROJECT/PRIVATE 约束与执行指纹已完成审计；当前转入直接依赖域同步。
-- 无实现工作；仅待用户审阅 S1/S2 并决定是否登记 `spec-v1.25.0`。
+- 无实现工作；`spec-v1.25.0` 已登记，待远端推送完成。
 
 ## Files added, modified, renamed, or removed
 
@@ -52,8 +52,8 @@
 
 ## Outstanding tasks
 
-- 用户审阅 S1/S2 后，新增方案 B 的 `spec-v1.25.0` Release 记录；当前未写入 Release，不能作为正式实现依据。
-- 完成前刷新本文件并核对实际工作树。
+- 已登记 `spec-v1.25.0`，commit 为 `a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6`，允许作为正式实现依据。
+- 推送后核对远端分支与工作树清洁状态。
 
 ## Known issues and risks
 
@@ -62,7 +62,7 @@
 
 ## Exact recommended next step
 
-完成 AI Chat、Agent、Task Center 的 S1/S2 直接依赖修订后，运行限定领域的 YAML/OpenAPI/S1 引用与旧术语残留校验。
+推送完成后读取 `docs/HANDOFF.md`，按用户下一项任务继续，不重复方案 B 已完成工作。
 
 Next Prompt:
 

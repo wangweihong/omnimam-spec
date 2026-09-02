@@ -1,5 +1,38 @@
 # Release Records
 
+## spec-v1.25.0
+
+- commit: a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6
+- status: released
+- confirmed_by: user（2026-09-02，要求提交并发布方案 B 统一 Provider Account 与全能力画布架构修复）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - modelgateway
+  - model-preferences
+  - application-platform
+  - workflow-canvas
+  - ai-chatting
+  - agent
+  - task-center
+- S1:
+  - 00_product/domains/modelgateway/product-spec.md
+  - 00_product/domains/model-preferences/product-spec.md
+  - 00_product/domains/application-platform/product-spec.md
+  - 00_product/domains/workflow-canvas/product-spec.md
+  - 00_product/domains/ai-chatting/product-spec.md
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/modelgateway/
+  - 01_contracts/domains/model-preferences/
+  - 01_contracts/domains/application-platform/
+  - 01_contracts/domains/workflow-canvas/
+  - 01_contracts/domains/ai-chatting/
+  - 01_contracts/domains/agent/
+  - 01_contracts/domains/task-center/
+  - 01_contracts/error-code-index.md
+- implementation_gate: ProviderAccount.scope 与 ProviderType 解耦；Application/Canvas/AI Chat/Agent 通过 TargetSelection 和 Model Gateway ProviderExecutionGrant 执行；Model Preferences 仅维护展示偏好与默认 ProviderResource 引用；USER/PLATFORM 不自动回退；默认 ALLOW_ALL 出站访问风险已接受并需进入部署安全门禁。
+
 ## spec-v1.24.1
 
 - commit: f392da4af369a3a9e3d5a21f515a45b536c3cfd1
