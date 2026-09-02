@@ -1,35 +1,70 @@
-engine_instance_health_changed:
-  producer: modelgateway.engine-instance
-  consumers: [application-platform.engine-router]
-  trigger_condition: EngineInstance 健康检测结果相对已保存状态发生变化。
-  payload:
-    engine_instance_id: string
-    application_engine_type_id: string
-    health_status: string
-    checked_at: string(date-time)
-    failure_summary: string
-  idempotency_key: engine_instance_id:checked_at
-  retry_policy: 发布失败后按固定间隔重试，健康事实仍以 EngineInstance 表为准。
-  failure_policy: 不得因事件发布失败回滚已经完成的健康检测；路由读取前必须查询最新状态。
-  related_rules: [BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-041]
+provider_account_changed:
+  producer: modelgateway.provider_account
+  consumers: [application-platform, model-preferences, ai-chatting, agent, audit]
+  trigger_condition: ProviderAccount 创建、更新、启停或删除事务提交后。
+  payload: [event_id, occurred_at, provider_account_id, account_scope, owner_user_id, provider_type, config_version, resource_version, change_type]
+  forbidden_payload: [endpoint, credential_ref, credential, headers, extra_config, health_reason]
+  idempotency_key: provider_account_id + resource_version + change_type
+  retry_policy: outbox 至少一次投递，指数退避。
+  failure_policy: 保留 outbox 并告警；不得回滚已提交账号事实。
+  related_rules: [BR-MGW-001, BR-MGW-002, BR-MGW-014]
+  related_user_stories: [US-MGW-001]
 
+provider_account_health_changed:
+  producer: modelgateway.health
+  consumers: [application-platform, model-preferences, ai-chatting, agent, audit]
+  trigger_condition: 成功保存的账号健康状态与前一状态不同。
+  payload: [event_id, occurred_at, provider_account_id, account_scope, health_status, checked_account_config_version, checked_at, resource_version]
+  forbidden_payload: [endpoint, credential_ref, headers, raw_provider_response, health_reason]
+  idempotency_key: provider_account_id + checked_account_config_version + resource_version
+  retry_policy: outbox 至少一次投递，消费者按 aggregate version 去重。
+  failure_policy: 可由账号详情重查当前事实。
+  related_rules: [BR-MGW-007, BR-MGW-014]
+  related_user_stories: [US-MGW-004]
+
+provider_resource_changed:
+  producer: modelgateway.provider_resource
+  consumers: [model-preferences, application-platform, ai-chatting, agent, audit]
+  trigger_condition: 资源创建、同步、更新、missing、恢复或删除事务提交后。
+  payload: [event_id, occurred_at, provider_resource_id, provider_account_id, account_scope, resource_kind, discovery_status, resource_revision, resource_version, change_type]
+  forbidden_payload: [endpoint, credential_ref, headers, non_sensitive_metadata]
+  idempotency_key: provider_resource_id + resource_version + change_type
+  retry_policy: outbox 至少一次投递。
+  failure_policy: 消费者只失效缓存并重查 Gateway，不复制资源事实。
+  related_rules: [BR-MGW-005, BR-MGW-014]
+  related_user_stories: [US-MGW-002]
+
+provider_resource_health_changed:
+  producer: modelgateway.health
+  consumers: [model-preferences, application-platform, ai-chatting, agent, audit]
+  trigger_condition: 成功保存的资源健康状态与前一状态不同。
+  payload: [event_id, occurred_at, provider_resource_id, provider_account_id, health_status, checked_account_config_version, checked_resource_revision, checked_at, resource_version]
+  forbidden_payload: [endpoint, credential_ref, headers, raw_provider_response, health_reason]
+  idempotency_key: provider_resource_id + checked_resource_revision + resource_version
+  retry_policy: outbox 至少一次投递。
+  failure_policy: 可由资源详情重查当前事实。
+  related_rules: [BR-MGW-007, BR-MGW-014]
+  related_user_stories: [US-MGW-004]
+
+provider_network_policy_changed:
+  producer: modelgateway.network_policy
+  consumers: [modelgateway-runtime, platform-management, audit]
+  trigger_condition: 管理员成功替换网络策略。
+  payload: [event_id, occurred_at, mode, allowed_hosts, allowed_cidrs, allowed_schemes, allowed_ports, resource_version, updated_by]
+  idempotency_key: default + resource_version
+  retry_policy: outbox 至少一次投递；运行时在事件遗漏时轮询版本。
+  failure_policy: 新请求必须读取持久化当前策略，不得继续依赖旧缓存。
+  related_rules: [BR-MGW-016, BR-MGW-017]
+  related_user_stories: [US-MGW-006]
 
 provider_capability_correction_required:
-  producer: modelgateway.operation-executor
-  consumers: [modelgateway.admin-diagnostics]
-  trigger_condition: 外部平台拒绝清单声明为有效的模型、Operation 或参数组合。
-  payload:
-    provider_capability_id: string
-    provider_capability_revision: string
-    model_id: string
-    operation_id: string
-    field: string
-    rejected_value: object
-    provider_error: object
-    occurred_at: string(date-time)
-  idempotency_key: provider_capability_id:provider_capability_revision:operation_id:occurred_at
-  retry_policy: 诊断事项发布失败后重试，不自动修改清单。
-  failure_policy: 运行按外部平台失败结束；维护人员核实文档并通过新 revision 与重启修正。
-  related_rules: [BR-AIAPP-130, BR-AIAPP-138]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-043]
+  producer: modelgateway.provider_capability_loader
+  consumers: [platform-administrator, audit]
+  trigger_condition: 目录清单无效、冲突或缺少 ProviderType/Adapter/Executor 依赖而被隔离。
+  payload: [event_id, occurred_at, provider_capability_id, provider_type, load_status, diagnostic_code, loaded_at]
+  forbidden_payload: [source_file_absolute_path, raw_yaml, credentials]
+  idempotency_key: provider_capability_id + provider_type + diagnostic_code + loaded_at
+  retry_policy: 运行期诊断事件至少一次投递。
+  failure_policy: 能力保持 unavailable；其他能力继续服务。
+  related_rules: [BR-MGW-004]
+  related_user_stories: [US-MGW-007]

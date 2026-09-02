@@ -63,7 +63,7 @@
 | 修改 GitLab Pipeline handler | S1 product-spec | 继续读 gitlab Context 与 GitLab module-contract；不得加载 AppStudio |
 | 修改 DAG 或 Schedule | S1 product-spec | 涉及运行时边界时读 module-contract/architecture |
 | 修改 Application 执行 | 当前 Context | 再读 application-platform Context |
-| 修改 Engine 健康或 object-info Schedule | 当前 Context | 再读 modelgateway Context |
+| 修改 Provider 健康或 object-info Schedule | 当前 Context | 再读 modelgateway Context |
 | 修改任务输出素材 | 当前 Context | 再读 asset-library Context |
 
 ## 8. 当前状态

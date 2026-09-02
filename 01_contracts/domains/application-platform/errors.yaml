@@ -29,14 +29,14 @@
 - code: ERR_AIAPP_RUNTIME_FORM_NO_VALID_VARIANT
   value: 130622
   http: 200
-  cn: 当前应用、能力和 Engine 限制没有可执行的 CapabilityVariant。
-  en: No executable CapabilityVariant remains for the current application, capability, and engine restrictions.
+  cn: 当前应用、能力和 Provider 目标 限制没有可执行的 CapabilityVariant。
+  en: No executable CapabilityVariant remains for the current application, capability, and provider target restrictions.
   owning_domain: application-platform
   owning_module: application
   range: 130600-130799
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-142]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-146, BR-AIAPP-205]
   related_user_stories: [US-AIAPP-043]
 
 
@@ -50,7 +50,7 @@
   range: 130600-130799
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-143]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-146, BR-AIAPP-207]
   related_user_stories: [US-AIAPP-043]
 
 
@@ -204,8 +204,8 @@
   range: 130800-130999
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-130, BR-AIAPP-138]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-043]
+  related_rules: [BR-AIAPP-138]
+  related_user_stories: [US-AIAPP-043]
 
 
 - code: ERR_AIAPP_TASK_RUN_CREATE_FAILED
@@ -302,8 +302,8 @@
   range: 131000-131199
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-136, BR-AIAPP-140, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-156, BR-AIAPP-162]
-  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-042, US-AIAPP-043, US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-148, BR-AIAPP-156]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-043, US-AIAPP-044, US-AIAPP-045, US-AIAPP-046]
 
 
 - code: ERR_AIAPP_COMFYUI_WORKFLOW_FILE_INVALID
@@ -338,7 +338,7 @@
   value: 131224
   http: 200
   cn: 工作流节点、参数或运行依赖与目标 ComfyUI 实例不兼容。
-  en: The workflow nodes, parameters, or runtime dependencies are incompatible with the target ComfyUI engine.
+  en: The workflow nodes, parameters, or runtime dependencies are incompatible with the target ComfyUI provider account.
   owning_domain: application-platform
   owning_module: comfyui-workflow
   range: 131200-131399
@@ -407,8 +407,8 @@
 - code: ERR_AIAPP_COMFYUI_TEMPLATE_CONTRACT_INVALID
   value: 131229
   http: 200
-  cn: 模板输入、固定参数、转换规则、输出提取或 Engine 约束不完整。
-  en: The template inputs, fixed parameters, mappings, output extraction, or engine restrictions are incomplete.
+  cn: 模板输入、固定参数、转换规则、输出提取或 Provider 目标 约束不完整。
+  en: The template inputs, fixed parameters, mappings, output extraction, or provider type/resource restrictions are incomplete.
   owning_domain: application-platform
   owning_module: comfyui-workflow
   range: 131200-131399
@@ -516,7 +516,7 @@
   related_user_stories: [US-AIAPP-047, US-AIAPP-048]
 
 
-- code: ERR_AIAPP_COMFYUI_TEST_ENGINE_UNAVAILABLE
+- code: ERR_AIAPP_COMFYUI_TEST_PROVIDER_UNAVAILABLE
   value: 131237
   http: 200
   cn: 所选 ComfyUI 实例未启用或当前不健康。
@@ -626,3 +626,45 @@
   deprecated: true
   related_rules: [BR-AIAPP-177, BR-AIAPP-178, BR-AIAPP-181]
   related_user_stories: [US-AIAPP-050]
+
+
+- code: ERR_AIAPP_EXECUTION_TARGET_POLICY_INVALID
+  value: 130831
+  http: 200
+  cn: ApplicationVersion 的执行目标策略结构无效或不存在合法解析方式。
+  en: ApplicationVersion execution target policy is invalid or has no legal resolution path.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-205, BR-AIAPP-206, BR-AIAPP-208]
+  related_user_stories: [US-AIAPP-053]
+
+
+- code: ERR_AIAPP_TARGET_SELECTION_INVALID
+  value: 130832
+  http: 200
+  cn: FIXED、DEFAULT 或 REQUEST 目标选择与 ApplicationVersion 策略不匹配。
+  en: FIXED, DEFAULT, or REQUEST target selection violates the ApplicationVersion policy.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-AIAPP-205, BR-AIAPP-207]
+  related_user_stories: [US-AIAPP-053]
+
+
+- code: ERR_AIAPP_PROVIDER_TARGET_UNAVAILABLE
+  value: 130833
+  http: 200
+  cn: 当前 Provider 目标不可用，且不会跨 USER/PLATFORM 作用域回退。
+  en: Current provider target is unavailable and no USER/PLATFORM cross-scope fallback is performed.
+  owning_domain: application-platform
+  owning_module: application-run
+  range: 130800-130999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-AIAPP-206, BR-AIAPP-209, BR-AIAPP-210]
+  related_user_stories: [US-AIAPP-053]

@@ -57,7 +57,7 @@ schemas:
       - workspace_source_ref
       - runtime_profile_id
       - runtime_profile_revision
-      - model_access_grant_ref
+      - provider_execution_grant_ref
       - runtime_configuration_ref
       - authorization_ref
       - expected_resource_version
@@ -72,7 +72,7 @@ schemas:
       workspace_source_ref: {type: [string, 'null'], pattern: '^agent-workspace://'}
       runtime_profile_id: {type: string, enum: [agent.hermes, agent.coding]}
       runtime_profile_revision: {type: string, minLength: 1}
-      model_access_grant_ref: {type: string, pattern: '^agent-model-access-grant://'}
+      provider_execution_grant_ref: {type: string, pattern: '^provider-execution-grant://'}
       runtime_configuration_ref: {type: string, pattern: '^agent-runtime-config://'}
       authorization_ref: {type: string, pattern: '^agent-runtime-grant://'}
       expected_resource_version: {type: integer, minimum: 0}
@@ -138,7 +138,7 @@ schemas:
       - workspace_source_ref
       - runtime_profile_id
       - runtime_profile_revision
-      - model_access_grant_ref
+      - provider_execution_grant_ref
       - runtime_configuration_ref
       - authorization_ref
       - expected_resource_version
@@ -153,7 +153,7 @@ schemas:
       workspace_source_ref: {type: [string, 'null'], pattern: '^agent-workspace://'}
       runtime_profile_id: {type: string, enum: [agent.hermes, agent.coding]}
       runtime_profile_revision: {type: string, minLength: 1}
-      model_access_grant_ref: {type: string, pattern: '^agent-model-access-grant://'}
+      provider_execution_grant_ref: {type: string, pattern: '^provider-execution-grant://'}
       runtime_configuration_ref: {type: string, pattern: '^agent-runtime-config://'}
       runtime_git_access_ref: {type: string, pattern: '^appstudio-runtime-git-access://'}
       authorization_ref: {type: string, pattern: '^agent-runtime-grant://'}

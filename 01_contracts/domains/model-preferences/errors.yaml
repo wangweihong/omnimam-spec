@@ -1,0 +1,111 @@
+preference_not_found:
+  code: ERR_MODEL_PREFERENCE_NOT_FOUND
+  value: 280200
+  http: 200
+  cn: 模型偏好不存在或不属于当前用户。
+  en: Model preference does not exist or does not belong to the current user.
+  owning_domain: model-preferences
+  owning_module: preference
+  range: 280200-280399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-003]
+  related_user_stories: [US-MODELPREF-001]
+
+preference_resource_invalid:
+  code: ERR_MODEL_PREFERENCE_RESOURCE_INVALID
+  value: 280201
+  http: 200
+  cn: Provider 资源不可见或不是 MODEL 资源。
+  en: Provider resource is not visible or is not a MODEL resource.
+  owning_domain: model-preferences
+  owning_module: preference
+  range: 280200-280399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-002, BR-MODELPREF-003]
+  related_user_stories: [US-MODELPREF-001]
+
+preference_still_default:
+  code: ERR_MODEL_PREFERENCE_STILL_DEFAULT
+  value: 280202
+  http: 200
+  cn: 模型偏好仍被用途默认值引用，请先替换或删除默认值。
+  en: Model preference is still referenced by a usage default; replace or delete the default first.
+  owning_domain: model-preferences
+  owning_module: preference
+  range: 280200-280399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-009]
+  related_user_stories: [US-MODELPREF-001, US-MODELPREF-002]
+
+default_not_found:
+  code: ERR_MODEL_PREFERENCE_DEFAULT_NOT_FOUND
+  value: 280400
+  http: 200
+  cn: 当前用途未配置默认模型。
+  en: No default model is configured for the requested usage.
+  owning_domain: model-preferences
+  owning_module: default
+  range: 280400-280599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-006, BR-MODELPREF-007]
+  related_user_stories: [US-MODELPREF-002, US-MODELPREF-003]
+
+default_usage_invalid:
+  code: ERR_MODEL_PREFERENCE_DEFAULT_USAGE_INVALID
+  value: 280401
+  http: 200
+  cn: 默认模型用途不受支持。
+  en: Default model usage is not supported.
+  owning_domain: model-preferences
+  owning_module: default
+  range: 280400-280599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-008]
+  related_user_stories: [US-MODELPREF-002]
+
+default_resource_invalid:
+  code: ERR_MODEL_PREFERENCE_DEFAULT_RESOURCE_INVALID
+  value: 280402
+  http: 200
+  cn: 默认资源不可见或不是 MODEL 资源。
+  en: Default resource is not visible or is not a MODEL resource.
+  owning_domain: model-preferences
+  owning_module: default
+  range: 280400-280599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-002, BR-MODELPREF-003]
+  related_user_stories: [US-MODELPREF-002]
+
+preference_access_forbidden:
+  code: ERR_MODEL_PREFERENCE_ACCESS_FORBIDDEN
+  value: 280600
+  http: 200
+  cn: 当前主体无权访问该模型偏好或默认值。
+  en: Current principal cannot access the model preference or default.
+  owning_domain: model-preferences
+  owning_module: access
+  range: 280600-280799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELPREF-003]
+  related_user_stories: [US-MODELPREF-001, US-MODELPREF-002]
+
+gateway_projection_unavailable:
+  code: ERR_MODEL_PREFERENCE_GATEWAY_PROJECTION_UNAVAILABLE
+  value: 280601
+  http: 200
+  cn: 暂时无法读取 Model Gateway 当前模型投影。
+  en: Current model projection cannot be read from Model Gateway.
+  owning_domain: model-preferences
+  owning_module: access
+  range: 280600-280799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELPREF-005]
+  related_user_stories: [US-MODELPREF-001, US-MODELPREF-003]

@@ -1,0 +1,29 @@
+"model_preference.read":
+  module: model-preferences
+  resource: model_preference
+  action: read
+  description: 读取当前用户模型偏好、默认值和 Gateway 当前一跳模型投影。
+  frontend_usage: 模型列表、详情与选择器。
+  backend_enforcement: 强制 owner_user_id=current_user 并调用 Gateway 进行资源可见性裁剪。
+  related_rules: [BR-MODELPREF-003, BR-MODELPREF-005]
+  related_user_stories: [US-MODELPREF-001, US-MODELPREF-003]
+
+"model_preference.manage":
+  module: model-preferences
+  resource: model_preference
+  action: manage
+  description: 保存当前用户的模型显示名、分组和标签。
+  frontend_usage: 模型偏好编辑。
+  backend_enforcement: 强制 owner；引用必须是当前可见 Gateway MODEL 资源。
+  related_rules: [BR-MODELPREF-002, BR-MODELPREF-003, BR-MODELPREF-004]
+  related_user_stories: [US-MODELPREF-001]
+
+"model_preference.default_manage":
+  module: model-preferences
+  resource: default_model_preference
+  action: manage
+  description: 读取、保存和删除当前用户用途默认模型。
+  frontend_usage: 默认模型设置与各产品默认解析。
+  backend_enforcement: 强制 owner、usage 白名单和 Gateway MODEL 可见性。
+  related_rules: [BR-MODELPREF-006, BR-MODELPREF-007, BR-MODELPREF-008]
+  related_user_stories: [US-MODELPREF-002, US-MODELPREF-003]

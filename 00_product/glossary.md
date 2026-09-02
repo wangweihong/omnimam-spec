@@ -23,9 +23,9 @@
 | ComfyUIWorkflowValidation | 工作流针对一个 ComfyUI EngineInstance 的不可变兼容性校验快照；不提交 prompt，不覆盖历史结果 | application-platform |
 | ApplicationVersion | Application 的不可变发布契约，定义稳定的业务输入输出并引用底层模板 | application-platform |
 | RuntimeFormSchema | 根据应用版本、能力约束、权限和运行时可用性派生的临时业务表单 | application-platform |
-| UserModelProvider | 当前用户私有模型服务连接和非敏感配置；不等于 ProviderCapability 或 ApplicationEngineInstance | user-model |
-| UserProviderModel | 用户 Provider 下的远端模型标识、展示字段、特征标签、启用范围和 Gateway 派生能力投影 | user-model |
-| UserModelExecutionContext | User Model 完成 owner、启用、健康、能力和配置版本校验后签发的请求级执行上下文；不包含凭证明文且不建表 | user-model |
+| ModelPreference | 当前用户对 Gateway ProviderResource 的展示覆盖；不包含连接、健康或凭证 | model-preferences |
+| ProviderResource | 用户 Provider 下的远端模型标识、展示字段、特征标签、启用范围和 Gateway 派生能力投影 | model-preferences |
+| ProviderExecutionGrant | Gateway 按主体、账号作用域、资源、能力和版本签发的不透明短期授权；不包含凭证明文且不建表 | modelgateway |
 
 ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管理员可写数据库版本实体；运行快照保存实际使用的 revision。`ProviderCapabilityVersion` 不作为独立全局术语。
 
@@ -33,14 +33,13 @@ ProviderCapability 使用文件中的稳定 `id` 与 `revision`，不建立管�
 
 | 术语 | 定义 | 主要事实源 |
 | --- | --- | --- |
-| ApplicationEngineType | 一类执行平台的产品级注册信息，必须有真实注册的执行能力 | modelgateway |
-| ApplicationEngineInstance | 某执行平台的真实账号或运行环境，包含连接引用、激活状态和健康状态 | modelgateway |
-| EngineCapabilityBinding | Engine 实例与平台能力之间的绑定及实例级收紧限制 | modelgateway |
+| ProviderType | Provider 能力类型及账号作用域、资源类型和认证约束 | modelgateway |
+| ProviderAccount | USER 或 PLATFORM 作用域的 Provider 账号和连接配置引用 | modelgateway |
+| ProviderAccountCapabilityBinding | ProviderAccount 与能力目录之间的绑定和收紧限制 | modelgateway |
 | Operation | 可由执行平台完成的一项标准业务操作；标识格式仍待 modelgateway 确认 | modelgateway |
 | OperationExecutor | 某项 Operation 在特定平台上的真实执行能力 | modelgateway |
-| PlatformEngineTarget | Application Platform 使用的 Gateway 执行目标，引用平台 Engine、Binding、ProviderCapability revision 和运行快照 | modelgateway |
-| UserModelTarget | 使用 User Model 签发执行上下文的 Gateway 执行目标；不把用户 Provider 转换为平台 Engine | modelgateway |
-| ResolvedModelRoute | Gateway 按执行目标、能力和 Runtime Registry 在单次请求内派生的路由；不建表、不提供 CRUD | modelgateway |
+| ProviderResource | ProviderAccount 下的 MODEL、WORKFLOW、APPLICATION 或 DEPLOYMENT 远端资源 | modelgateway |
+| TargetSelection | 应用、画布或 Agent 请求中的 FIXED、DEFAULT、REQUEST 目标选择 | application-platform / workflow-canvas |
 | ApplicationRun | 一次应用运行的业务输入、版本和执行环境快照，以及 AtomicTask 的只读投影 | application-platform |
 | AtomicTask | 一次异步执行的状态、进度、重试、超时和取消事实源 | task-center |
 | TaskAttempt | AtomicTask 的一次具体执行尝试及其失败、外部任务和恢复信息 | task-center |

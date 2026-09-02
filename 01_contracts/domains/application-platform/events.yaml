@@ -6,7 +6,7 @@ comfyui_workflow_converted:
     workflow_id: string
     owner_user_id: string
     actor_user_id: string
-    engine_instance_id: string
+    provider_account_id: string
     application_template_id: string
     application_template_version_id: string
     workflow_contract_revision: string
@@ -34,24 +34,34 @@ application_version_published:
     run_enabled: boolean
     input_schema: object
     output_schema: object
+    execution_target_policy: object
+    renderer_key: string|null
     published_at: string(date-time)
   idempotency_key: application_version_id:semantic_version
   retry_policy: 发布失败后保留 outbox 记录并重试。
   failure_policy: 版本事实以数据库记录为准；消费者必须按 application_version_id 幂等处理。
-  related_rules: [BR-AIAPP-142]
-  related_user_stories: [US-AIAPP-042]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-205, BR-AIAPP-208, BR-AIAPP-211]
+  related_user_stories: [US-AIAPP-042, US-AIAPP-053]
 
 
 application_run_created:
   producer: application-platform.application-run
   consumers: [audit-service]
-  trigger_condition: 能力、实例、权限和输入校验完成，ApplicationRun 不可变执行快照已保存，task_creation_status 为 pending。
+  trigger_condition: 能力、TargetSelection、权限和输入校验完成，ApplicationRun 不可变非敏感执行快照已保存，task_creation_status 为 pending。
   payload:
     application_run_id: string
     application_id: string
     application_version_id: string
     application_template_version_id: string
-    engine_instance_id: string
+    target_selection_source: string(FIXED|DEFAULT|REQUEST)
+    account_scope: string(USER|PLATFORM)
+    provider_account_id: string
+    provider_account_snapshot: object
+    provider_account_config_version: integer
+    provider_resource_id: string|null
+    provider_resource_snapshot: object|null
+    provider_resource_revision: string|null
+    capability_definition_id: string
     capability_source_type: string
     source_revision: string
     provider_capability_id: string|null
@@ -65,11 +75,12 @@ application_run_created:
     execution_key: string|null
     task_creation_status: string
     occurred_at: string(date-time)
+  forbidden_payload: [endpoint, credential, credential_ref, headers, extra_config, provider_execution_grant, grant_resolution]
   idempotency_key: application_run_id:created
   retry_policy: 事件发布失败后按 ApplicationRun ID 重试；AtomicTask 创建由模块协作 API 的幂等键保证。
   failure_policy: 事件失败不回滚 ApplicationRun 快照；未创建 AtomicTask 时不得伪造执行状态。
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149]
-  related_user_stories: [US-AIAPP-043]
+  related_rules: [BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149, BR-AIAPP-207, BR-AIAPP-209, BR-AIAPP-210]
+  related_user_stories: [US-AIAPP-043, US-AIAPP-053]
 
 
 application_run_atomic_task_bound:
@@ -99,14 +110,14 @@ application_run_projection_changed:
     task_resource_version: integer
     task_status: string
     progress: object
-    output_values: array
+    output_values: object
     failure_summary: string
     occurred_at: string(date-time)
   idempotency_key: atomic_task_id:task_resource_version
   retry_policy: 失败后重试相同投影事件。
   failure_policy: 旧 resource_version 不得覆盖新投影；AtomicTask 始终是执行状态事实源。
-  related_rules: [BR-AIAPP-143]
-  related_user_stories: [US-AIAPP-043]
+  related_rules: [BR-AIAPP-143, BR-AIAPP-212]
+  related_user_stories: [US-AIAPP-043, US-AIAPP-053]
 
 
 application_run_artifact_ref_changed:

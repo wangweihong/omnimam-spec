@@ -38,7 +38,7 @@ aiapp.comfyui_workflow.validate:
   module: comfyui-workflow
   resource: comfyui_workflow_validation
   action: validate
-  description: 针对指定 ComfyUI EngineInstance 当前目录创建不含目录正文的不可变兼容性校验。
+  description: 针对指定 ComfyUI ProviderAccount 当前目录创建不含目录正文的不可变兼容性校验。
   frontend_usage: 控制实例兼容性校验操作。
   backend_enforcement: 目标必须为 comfyui 实例且当前目录未过期；不得保存 object_info 正文、提交 prompt 或覆盖历史校验。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
@@ -62,7 +62,7 @@ aiapp.comfyui_workflow.test:
   module: comfyui-workflow
   resource: comfyui_workflow_test_run
   action: test
-  description: 在健康 ComfyUI EngineInstance 上试运行本人可见的 ready API Workflow。
+  description: 在健康 ComfyUI ProviderAccount 上试运行本人可见的 ready API Workflow。
   frontend_usage: 控制试运行、取消、历史、任务步骤和临时预览入口。
   backend_enforcement: 普通用户只能测试本人工作流；创建 DAG 前必须即时兼容校验，预览只按服务端 output ID 代理读取。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
@@ -90,7 +90,7 @@ aiapp.application.manage:
   frontend_usage: 控制模板创建、应用创建和版本发布；ComfyUI 首版入口由工作流转换权限单独控制。
   backend_enforcement: SaaS 来源必须引用 available ProviderCapability；ComfyUI 首版必须来自原子转换，后续版本使用模板版本机制；已发布版本不可原地修改；设置或修改 global visibility 还必须拥有 aiapp.application.manage_global。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148, BR-AIAPP-159, BR-AIAPP-174]
+  related_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147, BR-AIAPP-148, BR-AIAPP-159, BR-AIAPP-174]
   related_user_stories: [US-AIAPP-042, US-AIAPP-046]
 
 
@@ -112,7 +112,7 @@ aiapp.application.run:
   action: run
   description: 解析 RuntimeFormSchema、提交运行并查看本人可见的 ApplicationRun。
   frontend_usage: 控制应用运行表单、提交和运行详情。
-  backend_enforcement: 按联合能力来源重新校验模板版本、Binding/Engine、输入和用户访问权后保存 ApplicationRun 快照，再幂等创建 AtomicTask；允许查看 Artifact 登记状态。
+  backend_enforcement: 按联合能力来源、execution_target_policy、TargetSelection 和当前主体重新校验 Provider 目标后保存非敏感 ApplicationRun 快照，再幂等创建 AtomicTask；Grant 由 Gateway 签发且不得持久化解析结果。
   default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-149, BR-AIAPP-150]
-  related_user_stories: [US-AIAPP-043]
+  related_rules: [BR-AIAPP-138, BR-AIAPP-142, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-149, BR-AIAPP-150, BR-AIAPP-205, BR-AIAPP-207, BR-AIAPP-209, BR-AIAPP-210, BR-AIAPP-212]
+  related_user_stories: [US-AIAPP-043, US-AIAPP-053]

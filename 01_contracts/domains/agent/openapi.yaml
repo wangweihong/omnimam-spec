@@ -558,8 +558,8 @@ components:
       type: object
       required: [source_type, source_ref, purpose]
       properties:
-        source_type: {type: string, enum: [USER_DEFAULT_MODEL, USER_PROVIDER_MODEL, PLATFORM_MODEL]}
-        source_ref: {type: string}
+        source_type: {type: string, enum: [PROVIDER_RESOURCE, MODEL_PREFERENCE_DEFAULT]}
+        source_ref: {type: string, description: PROVIDER_RESOURCE 时为 modelgateway.ProviderResource.id；MODEL_PREFERENCE_DEFAULT 时为用途键。}
         purpose: {type: string, enum: [CHAT, CODING, VISION, EMBEDDING]}
     Reference:
       type: object

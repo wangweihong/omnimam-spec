@@ -1,7 +1,7 @@
 -- ai-chatting S2 design schema.
 -- Product source: 00_product/domains/ai-chatting/product-spec.md
 -- 本文件是设计态 schema，不是实际数据库 migration。
--- AI 聊天不维护独立模型配置表；model_id 引用 user-model.UserProviderModel.id。
+-- AI 聊天不维护独立模型配置表；provider_resource_id 引用 modelgateway.ProviderResource(kind=MODEL).id。
 
 -- S1 refs: US-AICHAT-06; BR-AICHAT-02, BR-AICHAT-09, BR-AICHAT-10.
 CREATE TABLE ai_chat_assistants (
@@ -15,7 +15,7 @@ CREATE TABLE ai_chat_assistants (
   owner_user_id TEXT NOT NULL,
   system_prompt TEXT DEFAULT '',
   is_system BOOLEAN NOT NULL DEFAULT FALSE,
-  suggested_model_id TEXT DEFAULT '',
+  suggested_provider_resource_id TEXT DEFAULT '',
   use_suggested_model BOOLEAN NOT NULL DEFAULT FALSE,
   runtime_config_json TEXT NOT NULL DEFAULT '{}',
   deleted_at TEXT DEFAULT ''
@@ -39,7 +39,7 @@ CREATE TABLE ai_chat_topics (
   title TEXT NOT NULL,
   pinned BOOLEAN NOT NULL DEFAULT FALSE,
   assistant_id TEXT NOT NULL REFERENCES ai_chat_assistants(id),
-  model_id TEXT NOT NULL,
+  provider_resource_id TEXT NOT NULL,
   branch_source_json TEXT NOT NULL DEFAULT '{}',
   last_active_at TEXT NOT NULL,
   deleted_at TEXT DEFAULT ''
@@ -84,9 +84,12 @@ CREATE TABLE ai_chat_generation_runs (
   topic_id TEXT NOT NULL REFERENCES ai_chat_topics(id),
   assistant_message_id TEXT NOT NULL REFERENCES ai_chat_messages(id),
   operation TEXT NOT NULL CHECK (operation IN ('chat', 'translate')),
-  model_id TEXT NOT NULL,
+  provider_resource_id TEXT NOT NULL,
+  account_scope TEXT NOT NULL CHECK (account_scope IN ('USER', 'PLATFORM')),
   capability_definition_id TEXT NOT NULL,
-  model_config_version INTEGER NOT NULL,
+  provider_account_config_version INTEGER NOT NULL CHECK (provider_account_config_version >= 1),
+  provider_resource_revision INTEGER DEFAULT 0,
+  provider_capability_revision TEXT NOT NULL DEFAULT '',
   model_snapshot_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL CHECK (status IN ('queued', 'generating', 'done', 'interrupted', 'failed')),
   started_at TEXT DEFAULT '',

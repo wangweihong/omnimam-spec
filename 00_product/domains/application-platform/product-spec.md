@@ -4,7 +4,7 @@
 >
 > 本次修订日期：2026-07-19
 >
-> Gateway 核心事实已迁移到 `modelgateway`；本领域继续通过只读 `ProviderCapability`、Engine 与 OperationExecutor 契约封装应用，不改变既有应用行为。
+> Gateway 核心事实已迁移到 `modelgateway`；本领域继续通过只读 `ProviderCapability`、Provider 目标 与 OperationExecutor 契约封装应用，不改变既有应用行为。
 
 > 当前实现范围：本版本覆盖应用平台、任务中心协作与 Artifact 引用交付；第 10～14 章的画布协作语义由 workflow-canvas S1/S2 共同约束，画布事实和编译实现归 workflow-canvas 所有。Artifact 事实、处理、Representation 和登记归 asset-library。
 
@@ -42,7 +42,7 @@
 8. 如何将画布运行转换为 ApplicationRun 和任务中心中的异步任务。
 9. 如何避免前端、画布和业务应用直接依赖供应商原始接口或 ComfyUI 内部节点。
 
-`CapabilityDefinition`、`ProviderCapability`、`ApplicationEngineType`、`ApplicationEngineInstance`、`EngineCapabilityBinding`、`EngineAdapter` 与 `OperationExecutor` 的正式产品事实见 `00_product/domains/modelgateway/product-spec.md`。
+`CapabilityDefinition`、`ProviderCapability`、`ProviderType`、`ProviderAccount`、`ProviderAccountCapabilityBinding`、`ProviderAdapter` 与 `OperationExecutor` 的正式产品事实见 `00_product/domains/modelgateway/product-spec.md`。
 
 ---
 
@@ -204,12 +204,12 @@ graph TD
     B --> C[ApplicationVersion]
     C --> D[ApplicationTemplate]
     D --> E[ApplicationExecutor]
-    E --> F[EngineAdapter]
+    E --> F[ProviderAdapter]
     E --> X[OperationExecutor]
-    F --> G[ApplicationEngineInstance]
+    F --> G[ProviderAccount]
     X --> G
 
-    H[ProviderCapability 当前加载修订] --> I[EngineCapabilityBinding]
+    H[ProviderCapability 当前加载修订] --> I[ProviderAccountCapabilityBinding]
     I --> G
     H --> J[RuntimeFormResolver]
     S[ComfyUI 工作流能力契约] --> J
@@ -236,7 +236,7 @@ graph TD
 
 ### 3.1 ComfyUI 与 Seedance 2 应用完整使用链路
 
-下图对照展示 ComfyUI 工作流应用与 Seedance 2 官方 SaaS 应用从能力接入、应用发布、用户或画布使用，到任务中心调度、外部平台执行、状态同步和结果登记的完整链路。两类应用共享统一的应用契约、任务运行和状态主干，但使用不同的能力来源、Engine 约束和外部执行方式。
+下图对照展示 ComfyUI 工作流应用与 Seedance 2 官方 SaaS 应用从能力接入、应用发布、用户或画布使用，到任务中心调度、外部平台执行、状态同步和结果登记的完整链路。两类应用共享统一的应用契约、任务运行和状态主干，但使用不同的能力来源、Provider 目标 约束和外部执行方式。
 
 ```mermaid
 flowchart TD
@@ -248,7 +248,7 @@ flowchart TD
         C3 --> C4["用户选择引擎、补充映射并转换新的模板首版"]
 
         S1["启动加载 Seedance 2 ProviderCapability YAML"] --> S2["校验模型、Operation 与 CapabilityVariant"]
-        S2 --> S3["通过 EngineCapabilityBinding 绑定官方实例"]
+        S2 --> S3["通过 ProviderAccountCapabilityBinding 绑定官方实例"]
         S3 --> S4["形成 Seedance 2 有效平台能力"]
     end
 
@@ -267,7 +267,7 @@ flowchart TD
         direction LR
 
         U1["用户或画布打开应用"] --> U2["解析 RuntimeFormSchema"]
-        U2 --> U3{"存在有效 CapabilityVariant 与可用 Engine"}
+        U2 --> U3{"存在有效 CapabilityVariant 与可用 Provider 目标"}
         U3 -->|"是"| U4["填写或连接业务输入"]
         U4 --> U5{"应用提交校验通过"}
         U5 -->|"是"| U6["创建 ApplicationRun"]
@@ -293,12 +293,12 @@ flowchart TD
 
         R1 -->|"ComfyUI"| C5{"存在满足模板约束的健康 ComfyUI 实例"}
         C5 -->|"是"| C6["ApplicationExecutor 编排执行"]
-        C6 --> C7["EngineAdapter + ComfyUI Workflow OperationExecutor"]
+        C6 --> C7["ProviderAdapter + ComfyUI Workflow OperationExecutor"]
         C7 --> C8["提交并查询 ComfyUI 工作流"]
 
-        R1 -->|"Seedance 2 官方 SaaS"| S5{"可通过 EngineCapabilityBinding 选择官方实例"}
+        R1 -->|"Seedance 2 官方 SaaS"| S5{"可通过 ProviderAccountCapabilityBinding 选择官方实例"}
         S5 -->|"是"| S6["ApplicationExecutor 编排执行"]
-        S6 --> S7["Seedance EngineAdapter + 对应 OperationExecutor"]
+        S6 --> S7["Seedance ProviderAdapter + 对应 OperationExecutor"]
         S7 --> S8["提交并查询 Seedance 2 平台任务"]
 
         C5 -->|"否"| E1["当前无可执行引擎"]
@@ -370,7 +370,7 @@ flowchart TD
 
 ## 4. Application Platform 核心领域对象
 
-CapabilityDefinition、ApplicationEngineType、ProviderCapability、ApplicationEngineInstance、EngineAdapter、OperationExecutor 与 EngineCapabilityBinding 的产品事实已迁移到 `modelgateway`。本领域通过稳定 ID、只读投影和受控模块边界消费这些事实，不复制能力目录、Engine 配置、Binding 或执行器注册。
+CapabilityDefinition、ProviderType、ProviderCapability、ProviderAccount、ProviderAdapter、OperationExecutor 与 ProviderAccountCapabilityBinding 的产品事实已迁移到 `modelgateway`。本领域通过稳定 ID、只读投影和受控模块边界消费这些事实，不复制能力目录、Provider 目标 配置、Binding 或执行器注册。
 
 ### 4.8 Application
 
@@ -433,6 +433,7 @@ Application 不直接保存完整参数契约和底层执行配置。
 * 字段是否允许作为画布入口参数
 * 引用的 `ApplicationTemplate`
 * 兼容契约
+* 与具体 Provider 账号解绑的 `execution_target_policy`
 
 示例：
 
@@ -442,6 +443,13 @@ application_id: app_text_to_video
 semantic_version: 1.0.0
 status: published
 application_template_version_id: templatever_seedance_text_to_video_v1
+execution_target_policy:
+  allowed_account_scopes: [USER, PLATFORM]
+  allowed_provider_types: [byteplus_modelark, runninghub]
+  allowed_resource_kinds: [MODEL, WORKFLOW]
+  allowed_selection_sources: [FIXED, DEFAULT, REQUEST]
+  default_account_scope: USER
+  default_model_usage: application.default
 # 暴露参数
 exposed_inputs:
   prompt:
@@ -476,7 +484,16 @@ outputs:
 
 画布必须引用具体 ApplicationVersion。
 
-公开版本号使用语义版本字符串，例如 `1.0.0`。同一 Application 下语义版本唯一，发布后不得修改版本号、模板版本引用、输入输出或参数策略。草稿完成校验后通过显式发布动作进入 `published`；发布失败时保留草稿和明确失败原因，不更新 Application 的当前发布版本。
+公开版本号使用语义版本字符串，例如 `1.0.0`。同一 Application 下语义版本唯一，发布后不得修改版本号、模板版本引用、输入输出、参数策略或 `execution_target_policy`。草稿完成校验后通过显式发布动作进入 `published`；发布失败时保留草稿和明确失败原因，不更新 Application 的当前发布版本。
+
+`execution_target_policy` 只声明合法目标解析空间，不固定账号、凭证或健康事实：
+
+- `default_account_scope` 只在 `allowed_selection_sources` 包含 `DEFAULT` 时出现。
+- `USER + DEFAULT` 当前只允许 `MODEL`，并通过 Model Preferences 的 `default_model_usage` 取得资源 ID。
+- USER RunningHub/ComfyUI 必须使用 `FIXED` 或 `REQUEST`。
+- `PLATFORM + DEFAULT` 由 Gateway 按 `routing_priority ASC, account_id ASC` 选择。
+- 目标不可用时直接失败，禁止在 USER 与 PLATFORM 间回退。
+- 发布时必须证明至少存在一种结构合法的目标解析方式，但不能把当前账号存在或健康作为版本不可变事实。
 
 ---
 
@@ -494,19 +511,19 @@ outputs:
 * 参数转换
 * 固定参数
 * 输出提取
-* Engine 选择约束
+* ProviderType、ResourceKind 与能力来源约束
 * 能力来源约束
 
 模板保存的是完整能力，不等于终端用户最终看到的应用。
 
-`ApplicationTemplateVersion` 保存模板的不可变可执行契约。ApplicationTemplate 保存元数据和当前发布版本引用；创建模板时形成第一个 draft 版本，后续修改通过创建新版本完成。模板版本只有在能力来源、参数映射、输出提取、Engine 约束和 OperationExecutor 校验全部通过后才能发布。ApplicationVersion 必须引用已发布的 `ApplicationTemplateVersion`，不得只引用可变的 ApplicationTemplate。
+`ApplicationTemplateVersion` 保存模板的不可变可执行契约。ApplicationTemplate 保存元数据和当前发布版本引用；创建模板时形成第一个 draft 版本，后续修改通过创建新版本完成。模板版本只有在能力来源、参数映射、输出提取、ProviderType/ResourceKind 约束和 OperationExecutor 校验全部通过后才能发布。ApplicationVersion 必须引用已发布的 `ApplicationTemplateVersion`，不得只引用可变的 ApplicationTemplate。
 
 
 模板创建时必须指定相应的 `CapabilityDefinition`，并根据底层能力来源建立可执行契约：
 
 * SaaS、平台代理和其他目录清单平台，需要引用状态为 `available` 的 `ProviderCapability` 当前加载修订；
 * ComfyUI 不创建 `ProviderCapability`；API Workflow 必须先导入为当前用户私有的 `ComfyUIWorkflow`，达到 API ready 后选择一个当前可用实例实时校验，并可多次转换为彼此独立的 `ApplicationTemplate` 及首个 draft `ApplicationTemplateVersion`；
-* 两类模板都只能使用对应 `ApplicationEngineType` 已关联的 `OperationExecutor`，不能通过配置扩张平台实际执行能力。
+* 两类模板都只能使用对应 `ProviderType` 已关联的 `OperationExecutor`，不能通过配置扩张平台实际执行能力；能力来源必须与具体 ProviderAccount 解耦。
 
 模板能力来源统一使用联合模型：
 
@@ -514,7 +531,7 @@ outputs:
 capability_source_type: provider_capability # provider_capability | comfyui_workflow
 ```
 
-当类型为 `provider_capability` 时，模板版本必须固定 `provider_capability_id`、创建时 revision 和 `provider_operation_id`；运行时仍需重新验证当前加载修订。当类型为 `comfyui_workflow` 时，不得填写任何 ProviderCapability 字段。首个模板版本必须由 `ComfyUIWorkflow` 转换动作创建，保存服务端根据 API Workflow 与模板契约计算的 `workflow_contract_revision`，并深拷贝 API Workflow、人工映射和模板约束。模板版本不得保存 `object_info` 正文、checksum 或由某次目录解析出的依赖快照；发布、表单解析和运行必须使用候选 EngineInstance 当前目录重新校验。
+当类型为 `provider_capability` 时，模板版本必须固定 `provider_capability_id`、创建时 revision 和 `provider_operation_id`；运行时仍需重新验证当前加载修订。当类型为 `comfyui_workflow` 时，不得填写任何 ProviderCapability 字段。首个模板版本必须由 `ComfyUIWorkflow` 转换动作创建，保存服务端根据 API Workflow 与模板契约计算的 `workflow_contract_revision`，并深拷贝 API Workflow、人工映射和模板约束。模板版本不得保存 `object_info` 正文、checksum 或由某次目录解析出的依赖快照；发布、表单解析和运行必须使用候选 ProviderAccount 当前目录重新校验。
 
 模板示例
 ```yaml
@@ -569,11 +586,11 @@ outputs:
 ApplicationTemplate 不保存：
 
 * API Key
-* Engine base URL
+* Provider endpoint
 * Worker 状态
 * 当前负载
 * GPU 信息
-* Engine 网络配置
+* Provider 网络配置
 
 
 
@@ -588,31 +605,33 @@ ApplicationTemplate 不保存：
 
 * 验证模板与应用运行输入；
 * 根据模板解析标准操作参数；
-* 根据已校验的 Engine、Binding、能力 revision 和运行快照构造 `PlatformEngineTarget`；
-* 通过 Model Gateway `ExecuteOperation` 编排任务提交、状态查询和取消；
+* 根据 ApplicationVersion policy、运行入口和用户选择构造类型化 `TargetSelection`；
+* 向 Model Gateway 请求不透明 `ProviderExecutionGrant` 并调用 `ExecuteOperation`；
 * 将标准输出通过受控内容入口交付 asset-library，并保存返回的 `Artifact` 引用；
 * 将 Gateway 返回的标准错误映射为应用运行失败原因。
 
 其产品语义为：
 
 ```text
-ApplicationTemplate + ApplicationRun + PlatformEngineTarget
+ApplicationTemplate + ApplicationRun + TargetSelection
 → 校验并解析标准操作参数
+→ Model Gateway ResolveProviderTarget
+→ provider-execution-grant://
 → Model Gateway ExecuteOperation
-→ Gateway 内部解析 EngineAdapter 与 OperationExecutor
+→ Gateway 内部解析 ProviderAdapter 与 OperationExecutor
 → 返回归一化运行状态、输出与失败
 → asset-library 创建并处理 Artifact
 ```
 
-`ApplicationExecutor` 不维护模型清单、平台参数范围、供应商生命周期、Provider 协议、鉴权应用或下载实现；这些事实和实现分别来自模板、`ProviderCapability` 当前加载修订、ComfyUI 工作流能力契约与 Model Gateway。Application Platform 只使用 `PlatformEngineTarget`，不得构造或消费 `UserModelTarget`。
+`ApplicationExecutor` 不维护模型清单、平台参数范围、供应商生命周期、Provider 协议、提交、轮询、取消、鉴权、下载或结果解析实现；这些事实和实现分别来自模板、`ProviderCapability` 当前加载修订、ComfyUI 工作流能力契约与 Model Gateway。Application Platform 只传递非敏感 `TargetSelection` 和运行引用，不解析 Grant，也不接收 endpoint、凭证、Header 或 Provider 私有配置。
 
 独立运行创建 AtomicTask 的顺序为：先固定并保存 ApplicationRun 执行快照，再以 ApplicationRun ID 和幂等键请求 task-center 创建 `application-platform.run` AtomicTask，成功后绑定 `atomic_task_id`。创建失败时 ApplicationRun 保留为 `task_creation_failed`，不得伪造 AtomicTask 状态；重试必须返回或绑定同一 AtomicTask，不能重复创建执行。
 
-Canvas Application 节点使用另一条受控入口：Workflow Canvas 只在 DAG 中创建一个 `application-platform.run` AtomicTask，不提前创建输入不完整的 ApplicationRun。该 AtomicTask 进入 Worker 且 Conductor 已解析全部上游映射后，Application Platform 必须在调用 Provider 前以 `canvas_run_id + execution_key` 为稳定来源键幂等创建 ApplicationRun，固定最终输入、当前可执行 Engine/runtime 和来源快照，并把 ApplicationRun 绑定到这个已经存在的 AtomicTask。自动重试、Worker 重启或绑定窗口恢复只能返回并修复同一 ApplicationRun/AtomicTask 关系，禁止创建第二个 AtomicTask。
+Canvas Application 节点使用另一条受控入口：Workflow Canvas 只在 DAG 中创建一个 `application-platform.run` AtomicTask，不提前创建输入不完整的 ApplicationRun。该 AtomicTask 进入 Worker 且 Conductor 已解析全部上游映射后，Application Platform 必须在调用 Provider 前以 `canvas_run_id + execution_key` 为稳定来源键幂等创建 ApplicationRun，固定最终输入、TargetSelection、Provider 目标非敏感快照和来源修订，并把 ApplicationRun 绑定到这个已经存在的 AtomicTask。自动重试、Worker 重启或绑定窗口恢复只能返回并修复同一 ApplicationRun/AtomicTask 关系，禁止创建第二个 AtomicTask。
 
 `application-platform.run` 是内部可执行 functionRef 的唯一规范名称；历史文档中的 `application.execute` 只表示逻辑动作，不得继续注册或编译为运行时任务名。
 
-ApplicationVersion 只有同时满足发布、调用方可见、`canvas_enabled=true`、`run_enabled=true`、输入输出 schema 可转换为 NodeDefinition 端口且当前至少存在一个可执行 Engine/runtime 时，才可被新 Canvas 草稿发现、发布或启动。Application Platform 通过消费方接口返回权限裁剪后的版本契约；Workflow Canvas 不得直接读取 Application Platform 私有表。
+ApplicationVersion 只有同时满足发布、调用方可见、`canvas_enabled=true`、`run_enabled=true`、输入输出 schema 可转换为 NodeDefinition 端口且目标策略至少存在一种合法解析方式时，才可被新 Canvas 草稿发现、发布或启动。Application Platform 通过消费方接口返回权限裁剪后的版本契约；Workflow Canvas 不得直接读取 Application Platform 私有表。
 
 ApplicationVersion 发布必须与可靠 `application_version_published` 事件原子提交。Workflow Canvas 消费该事件幂等登记不可变应用节点定义；应用可见性、`canvas_enabled`、`run_enabled` 或运行能力变化仍在目录读取、发布和启动边界实时复核，事件或缓存不得替代 Application Platform 事实查询。
 
@@ -646,7 +665,34 @@ AtomicTask 成功只表示执行完成，不表示素材登记成功。用户动
 
 Artifact 处理与登记是两个独立维度。只有 `processing_status=ready` 才能请求登记；登记状态为 `pending | registered | failed`。这些事实、`resource_version` 和 outbox 均由 asset-library 维护。ApplicationRun 只按 `artifact_id + resource_version` 保存可重建的只读输出投影。
 
-ApplicationExecutor 仍负责 Provider 提交、轮询、鉴权、下载和标准输出解析。它只能向 asset-library 推送字节流、受控上传会话或可信存储引用，不得传递 Provider 凭证、任意 URL、私网地址或原始响应。
+ApplicationExecutor 只负责运行编排、请求 Grant 和将 Gateway 的标准结果交付到正确输出通道。Provider 提交、轮询、取消、鉴权、下载和结果解析全部由 Gateway Adapter/Executor 完成；ApplicationExecutor 只能向 asset-library 推送 Gateway 返回的字节流、受控上传会话或可信存储引用，不得传递 Provider 凭证、任意 URL、私网地址或原始响应。
+
+### 4.12 系统内置 LLM Application
+
+系统必须幂等提供一个已发布的普通 Application：
+
+```yaml
+id: system.llm.text-generation
+version: 1.0.0
+capability: text.chat_completion
+inputs:
+  prompt: {type: string, required: true}
+  system_prompt: {type: string, required: false}
+  temperature: {type: number, required: false}
+  max_tokens: {type: integer, required: false}
+outputs:
+  text: {type: string, required: true}
+execution_target_policy:
+  allowed_account_scopes: [USER, PLATFORM]
+  allowed_provider_types: [openai_compatible, deepseek_official]
+  allowed_selection_sources: [FIXED, DEFAULT, REQUEST]
+  allowed_resource_kinds: [MODEL]
+  default_account_scope: USER
+  default_model_usage: application.default
+renderer_key: application.llm
+```
+
+它通过 `application_version_published` 注册为普通 Application NodeDefinition，不产生新的 ModelNode 类型。文本输出直接保存到 ApplicationRun `output_values.text`，并进入 Canvas string 端口；纯文本结果不要求创建 Artifact。媒体输出仍按 Asset Library 契约形成 Artifact。
 
 ---
 
@@ -806,17 +852,17 @@ ComfyUI 应用从工作流导入到运行的产品链路为：
 ```text
 导入普通 Workflow 或 API Workflow
 → 创建当前用户私有且不带版本树的 ComfyUIWorkflow
-→ 普通 Workflow 显式选择 ComfyUI EngineInstance 并转换为 API Workflow
+→ 普通 Workflow 显式选择 ComfyUI ProviderAccount 并转换为 API Workflow
 → 按目标实例当前目录识别节点、连接、输入输出候选、基础约束和运行依赖
-→ 对指定 ComfyUI EngineInstance 创建不可变兼容性校验记录
+→ 对指定 ComfyUI ProviderAccount 创建不可变兼容性校验记录
 → 用户补充无法自动恢复的参数映射与交互语义
 → 关联 CapabilityDefinition 和 ComfyUI OperationExecutor
 → 每次转换创建新的 ApplicationTemplate 和首个 draft ApplicationTemplateVersion
 → ApplicationVersion 裁剪并暴露业务参数
-→ RuntimeFormSchema 合并 API Workflow、模板约束、目标实例当前目录和运行时 Engine 可用性
-→ ApplicationRun 选择满足模板约束的 ApplicationEngineInstance
+→ RuntimeFormSchema 合并 API Workflow、模板约束、目标实例当前目录和运行时 Provider 目标 可用性
+→ ApplicationRun 选择满足模板约束的 ProviderAccount
 → 提交前按所选实例当前目录重新校验
-→ ApplicationExecutor 编排 EngineAdapter 和 OperationExecutor 执行
+→ ApplicationExecutor 编排 ProviderAdapter 和 OperationExecutor 执行
 → 输出登记为 Artifact，并可进一步转为 Asset
 ```
 
@@ -833,9 +879,9 @@ ComfyUI 应用从工作流导入到运行的产品链路为：
 
 ---
 
-### 5.6 EngineInstance 当前 object_info
+### 5.6 ProviderAccount 当前 object_info
 
-ComfyUI EngineInstance 的当前 `object_info` 由 `modelgateway` 维护。本领域的解析、普通 Workflow 转换、兼容性校验、模板发布、RuntimeFormSchema 与运行通过稳定 `engine_instance_id` 读取当前事实，并继续执行既有 freshness、可见性与执行资格校验；任何工作流、校验、模板或运行对象都不得复制目录正文或 checksum。
+ComfyUI ProviderAccount 的当前 `object_info` 由 `modelgateway` 维护。本领域的解析、普通 Workflow 转换、兼容性校验、模板发布、RuntimeFormSchema 与运行通过稳定 `provider_account_id` 读取当前事实，并继续执行既有 freshness、可见性与执行资格校验；任何工作流、校验、模板或运行对象都不得复制目录正文或 checksum。
 
 ---
 
@@ -845,13 +891,13 @@ ComfyUI EngineInstance 的当前 `object_info` 由 `modelgateway` 维护。本�
 
 API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 规范字节后计算 SHA-256，统一表示为 `sha256:<64 位小写十六进制>`。重复提示只比较当前所有者名下的工作流，不能泄露其他用户是否导入相同内容。`workflow_contract_revision` 使用相同算法覆盖模板版本中的 API Workflow 与模板契约，但不得包含 `object_info` 或由某次目录解析出的依赖结果。
 
-导入接受单个普通 Workflow 或 API Workflow，不选择或保存来源 `ApplicationEngineInstance`，也不读取 `object_info`。服务端只校验文件安全、来源顶层结构和 API Workflow 节点必须具备 `class_type` 与 `inputs` 的基础结构；普通 Workflow 导入后保持 `pending`，API Workflow 导入后直接为 `ready`。客户端不得提交 `object_info` 作为能力事实。
+导入接受单个普通 Workflow 或 API Workflow，不选择或保存来源 `ProviderAccount`，也不读取 `object_info`。服务端只校验文件安全、来源顶层结构和 API Workflow 节点必须具备 `class_type` 与 `inputs` 的基础结构；普通 Workflow 导入后保持 `pending`，API Workflow 导入后直接为 `ready`。客户端不得提交 `object_info` 作为能力事实。
 
-应用创建者可以只读查询允许用于普通 Workflow 转换、解析和校验的 EngineInstance 标识、名称、类型、启用状态和健康状态，但不得读取鉴权配置、内部凭证或修改实例。实例创建、配置、健康检测和删除仍仅由管理员负责。
+应用创建者可以只读查询允许用于普通 Workflow 转换、解析和校验的 ProviderAccount 标识、名称、类型、启用状态和健康状态，但不得读取鉴权配置、内部凭证或修改实例。实例创建、配置、健康检测和删除仍仅由管理员负责。
 
-导入以原子方式完成：文件安全解析、来源类型识别和基础结构校验任一步失败时，不产生 `ComfyUIWorkflow`。导入不得因没有可用 EngineInstance 或 `object_info` 而失败。
+导入以原子方式完成：文件安全解析、来源类型识别和基础结构校验任一步失败时，不产生 `ComfyUIWorkflow`。导入不得因没有可用 ProviderAccount 或 `object_info` 而失败。
 
-节点、输入候选、输出候选和依赖查询保留为工作流派生接口。每次请求必须指定一个可见的 ComfyUI EngineInstance，并使用该实例当前、未过期目录即时解析：
+节点、输入候选、输出候选和依赖查询保留为工作流派生接口。每次请求必须指定一个可见的 ComfyUI ProviderAccount，并使用该实例当前、未过期目录即时解析：
 
 * 节点 ID、`class_type`、`inputs` 和节点引用；
 * 字面量输入、连接输入和隐藏输入；
@@ -859,7 +905,7 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 * 模型、LoRA、自定义节点及其他运行依赖；
 * `fully_supported`、`partially_supported`、`manual_configuration_required`、`unsupported` 解析状态和诊断。
 
-候选输入分为 `exposable`、`fixed_only`、`connection`、`hidden`、`unsupported`。节点、候选项和依赖是请求时计算结果，不是可独立编辑或持久化的业务资源；切换 EngineInstance 后必须重新查询。
+候选输入分为 `exposable`、`fixed_only`、`connection`、`hidden`、`unsupported`。节点、候选项和依赖是请求时计算结果，不是可独立编辑或持久化的业务资源；切换 ProviderAccount 后必须重新查询。
 
 工作流始终属于一个用户，不存在 global 工作流，也不允许跨用户共享或转换。普通用户只能访问本人工作流；管理员和超级管理员只有同时拥有具体操作权限与显式 `aiapp.comfyui_workflow.manage_all` 时才可代管任意用户工作流，所有代管读取和操作必须同时记录操作者与资源所有者。
 
@@ -869,7 +915,7 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 
 ### 5.8 ComfyUIWorkflowValidation 兼容性校验
 
-`ComfyUIWorkflowValidation` 表示工作流对某个目标 ComfyUI EngineInstance 当前目录的一次不可变兼容性检查。校验读取该实例当前、未过期的 `object_info`，只保存状态、节点与依赖摘要、错误、警告和校验时间，不保存目录正文或 checksum。读取失败时保存 `failed` 记录和稳定失败诊断。所有结果都不覆盖历史，也不向 `/prompt` 提交工作流。
+`ComfyUIWorkflowValidation` 表示工作流对某个目标 ComfyUI ProviderAccount 当前目录的一次不可变兼容性检查。校验读取该实例当前、未过期的 `object_info`，只保存状态、节点与依赖摘要、错误、警告和校验时间，不保存目录正文或 checksum。读取失败时保存 `failed` 记录和稳定失败诊断。所有结果都不覆盖历史，也不向 `/prompt` 提交工作流。
 
 校验必须确认目标实例类型为 `comfyui`，并检查：
 
@@ -887,7 +933,7 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 
 ### 5.9 转换为新的 ApplicationTemplate
 
-只有 API Workflow 已 ready 的工作流可以转换；来源既可以是直接导入的 API Workflow，也可以是已经完成 Visual-to-API 转换的普通 Workflow。转换必须显式选择一个 ComfyUI EngineInstance，并提供该实例 `operation_executors` 支持的 `CapabilityDefinition`、模板元数据、暴露输入、固定参数、参数转换、输出提取和 Engine 选择约束。服务端必须在事务内使用所选实例当前目录实时校验，不要求用户选择或复用历史兼容性校验记录。
+只有 API Workflow 已 ready 的工作流可以转换；来源既可以是直接导入的 API Workflow，也可以是已经完成 Visual-to-API 转换的普通 Workflow。转换必须显式选择一个 ComfyUI ProviderAccount，并提供该实例 `operation_executors` 支持的 `CapabilityDefinition`、模板元数据、暴露输入、固定参数、参数转换、输出提取和 Provider 目标 选择约束。服务端必须在事务内使用所选实例当前目录实时校验，不要求用户选择或复用历史兼容性校验记录。
 
 转换在一个原子事务中：
 
@@ -903,7 +949,7 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 
 任一步失败时不得产生模板或模板版本，也不得标记工作流已转换。转换使用用户提供的幂等键：相同工作流、所有者和幂等键重试必须返回原结果；同一工作流成功转换后使用其他幂等键再次转换必须失败。
 
-每次转换都创建新的模板及其首个 draft 版本，不能追加到既有模板；同一 API-ready 工作流可以使用不同幂等键重复转换。相同 owner、工作流和幂等键重试返回首次结果，同一 owner 在其他工作流复用该键必须失败。源内容始终只读；模板的后续调整、发布和演进全部通过 `ApplicationTemplateVersion` 机制完成。模板版本保存 API Workflow 和模板契约，但其当前可执行性始终取决于候选 EngineInstance 当前目录；转换所选实例只用于即时校验，不自动写入模板 Engine 选择约束。
+每次转换都创建新的模板及其首个 draft 版本，不能追加到既有模板；同一 API-ready 工作流可以使用不同幂等键重复转换。相同 owner、工作流和幂等键重试返回首次结果，同一 owner 在其他工作流复用该键必须失败。源内容始终只读；模板的后续调整、发布和演进全部通过 `ApplicationTemplateVersion` 机制完成。模板版本保存 API Workflow 和模板契约，但其当前可执行性始终取决于候选 ProviderAccount 当前目录；转换所选实例只用于即时校验，不自动写入模板 Provider 目标 选择约束。
 
 现有通用模板创建能力只直接创建 `provider_capability` 来源模板。ComfyUI 首版模板不得绕过工作流转换链路直接携带原始 Workflow 创建，也不得在任何模板创建或版本接口提交 `object_info`。
 
@@ -913,9 +959,9 @@ API Workflow checksum 使用 RFC 8785 JSON Canonicalization Scheme 生成 UTF-8 
 
 工作流导入支持单个普通 Workflow JSON 或 API Workflow JSON。服务端根据顶层结构识别 `visual_workflow` 与 `api_workflow`，不接受客户端声明覆盖检测结果。旧的 API Workflow 加可选普通 Workflow 双文件请求只用于兼容既有客户端。
 
-`visual_workflow` 来源保存原始画布，初始 `api_conversion_status=pending`；导入阶段不得调用图解析器或读取任何实例目录。只有用户显式执行转换并指定一个类型为 `comfyui`、已启用、状态为 `online` 且当前目录未过期的 EngineInstance 后，服务端才使用该目录调用开源 ComfyUI 图解析器，保存生成的 API Workflow 并进入 `ready`。`api_workflow` 来源导入后直接为 `ready`，不得显示 Workflow 转 API 操作。源文件、来源类型和来源 checksum 导入后不可修改；转换所用实例不保存到工作流。
+`visual_workflow` 来源保存原始画布，初始 `api_conversion_status=pending`；导入阶段不得调用图解析器或读取任何实例目录。只有用户显式执行转换并指定一个类型为 `comfyui`、已启用、状态为 `online` 且当前目录未过期的 ProviderAccount 后，服务端才使用该目录调用开源 ComfyUI 图解析器，保存生成的 API Workflow 并进入 `ready`。`api_workflow` 来源导入后直接为 `ready`，不得显示 Workflow 转 API 操作。源文件、来源类型和来源 checksum 导入后不可修改；转换所用实例不保存到工作流。
 
-API Workflow ready 后，工作流所有者可以选择任意当前启用且健康、当前目录未过期的 ComfyUI EngineInstance 进行试运行。用户可以选择需要覆盖的字面量输入参数和需要收集临时预览的输出候选；输出候选沿用 ComfyUI 应用模板的 `node_id + output_index` 身份，至少选择一项。只有目标实例当前 `object_info` 将节点声明为 `output_node=true` 时，该节点的端口候选才可标记 `extractable=true`；试运行进一步只接受可形成图片或文本预览的候选。服务端在创建任务前读取目标实例当前目录完成兼容性、输入参数和输出候选校验，并生成不可变运行快照；试运行不得保存 `object_info` 正文或 checksum。不兼容、目录不可用、参数越界、输出候选失效或 API 尚未 ready 时不创建任务。
+API Workflow ready 后，工作流所有者可以选择任意当前启用且健康、当前目录未过期的 ComfyUI ProviderAccount 进行试运行。用户可以选择需要覆盖的字面量输入参数和需要收集临时预览的输出候选；输出候选沿用 ComfyUI 应用模板的 `node_id + output_index` 身份，至少选择一项。只有目标实例当前 `object_info` 将节点声明为 `output_node=true` 时，该节点的端口候选才可标记 `extractable=true`；试运行进一步只接受可形成图片或文本预览的候选。服务端在创建任务前读取目标实例当前目录完成兼容性、输入参数和输出候选校验，并生成不可变运行快照；试运行不得保存 `object_info` 正文或 checksum。不兼容、目录不可用、参数越界、输出候选失效或 API 尚未 ready 时不创建任务。
 
 每次试运行创建一个 `ComfyUIWorkflowTestRun` 和一个三节点 DAGTaskGroup：
 
@@ -923,15 +969,15 @@ API Workflow ready 后，工作流所有者可以选择任意当前启用且健�
 comfyui.submit -> comfyui.poll -> comfyui.collect_preview
 ```
 
-每条 `ComfyUIWorkflowTestRun` 必须保存本次实际使用的 EngineInstance 非敏感快照、服务端校验后的输入参数覆盖快照和输出候选选择快照。实例后续改名、停用或健康状态变化不得改写历史运行展示；列表默认只返回实例快照、参数覆盖数量和运行状态，输入参数值、输出选择、任务步骤和输出等复杂数据仅在请求完整详情时返回。
+每条 `ComfyUIWorkflowTestRun` 必须保存本次实际使用的 ProviderAccount 非敏感快照、服务端校验后的输入参数覆盖快照和输出候选选择快照。实例后续改名、停用或健康状态变化不得改写历史运行展示；列表默认只返回实例快照、参数覆盖数量和运行状态，输入参数值、输出选择、任务步骤和输出等复杂数据仅在请求完整详情时返回。
 
 用户可以从历史试运行详情发起“使用此配置再次运行”。该动作只把历史实例 ID、输入参数覆盖快照和输出候选选择快照带入新的试运行确认流程；服务端必须按当前实例可用性、当前 `object_info`、参数约束和输出候选重新校验，并使用新的幂等键创建独立 `ComfyUIWorkflowTestRun`，不得修改、恢复或直接复用历史任务。历史输入或输出选择已经失效时，客户端必须阻止提交，直到用户移除或修正失效项。
 
 `poll` 每次查询 `/history` 与 `/queue` 后通过 WorkflowRuntime 延迟回调释放 Worker，并投影 queued/running、queue position 和 prompt ID。submit 重试必须优先恢复同一 test run 已存在的 prompt ID，并使用稳定 correlation ID 查询 queue/history，不能重复提交。
 
-试运行只保存所选输出候选所属节点产生的图片、文本等轻量描述。`collect_preview` 必须先将不可变输出选择按 `node_id` 归并，再忽略 ComfyUI history 中未选择节点的结果；同一节点选择多个端口不得重复收集。媒体正文不写入 Artifact 或 Asset；预览请求必须按服务端生成的 output ID，经所选 EngineAdapter 代理读取，不能接受客户端提供的 filename、路径、URL 或凭证。ComfyUI 清理输出后允许返回预览不可用，历史任务和输出描述仍保留。
+试运行只保存所选输出候选所属节点产生的图片、文本等轻量描述。`collect_preview` 必须先将不可变输出选择按 `node_id` 归并，再忽略 ComfyUI history 中未选择节点的结果；同一节点选择多个端口不得重复收集。媒体正文不写入 Artifact 或 Asset；预览请求必须按服务端生成的 output ID，经所选 ProviderAdapter 代理读取，不能接受客户端提供的 filename、路径、URL 或凭证。ComfyUI 清理输出后允许返回预览不可用，历史任务和输出描述仍保留。
 
-前端在用户具有工作流转换与应用管理权限且工作流 API ready 时始终展示 ComfyUIWorkflow 转 ApplicationTemplate 入口。前端必须通过资源选择器选择目标 ComfyUI 实例，并从该 EngineType `operation_executors` 的 key 构造能力下拉选项；显示名称由服务端返回的 `zh-CN`、`en-US` 名称数组提供，不允许手工输入能力 ID。最终可转换性由服务端按目标实例当前目录重新校验。
+前端在用户具有工作流转换与应用管理权限且工作流 API ready 时始终展示 ComfyUIWorkflow 转 ApplicationTemplate 入口。前端必须通过资源选择器选择目标 ComfyUI ProviderAccount，并从该 ProviderType `operation_executors` 的 key 构造能力下拉选项；显示名称由服务端返回的 `zh-CN`、`en-US` 名称数组提供，不允许手工输入能力 ID。最终可转换性由服务端按目标账号当前目录重新校验。
 
 ---
 
@@ -955,10 +1001,10 @@ ApplicationTemplateConstraint 表示：
 ```text
 ApplicationTemplateCapability
 ⊆
-CapabilitySource ∩ EngineRestrictions
+CapabilitySource ∩ ProviderAccountRestrictions
 ```
 
-对于 SaaS 等平台，`EngineRestrictions` 来自 `EngineCapabilityBinding.restrictions`；对于 ComfyUI，来自模板的 Engine 选择约束。
+对于 SaaS 等平台，`ProviderAccountRestrictions` 来自 `ProviderAccountCapabilityBinding.restrictions`；对于 ComfyUI，来自模板的 Provider 目标 选择约束。
 
 例如平台能力：
 
@@ -1017,7 +1063,7 @@ resolution:
   option_policy: inherit
 ```
 
-如果 Engine 后续切换到包含 8K 的 `ProviderCapability` 修订，应用可以获得 8K。
+如果 Provider 目标 后续切换到包含 8K 的 `ProviderCapability` 修订，应用可以获得 8K。
 
 #### inherit_with_constraint
 
@@ -1071,7 +1117,7 @@ if (provider === "volcengine" && model === "pro") {
 ```yaml
 variants:
   - dimensions:
-      engine_type: seedance_official
+      provider_type: seedance_official
       operation: text_to_video
       model: pro
     constraints:
@@ -1081,7 +1127,7 @@ variants:
         enum: [5, 10, 15, 20, 25]
 
   - dimensions:
-      engine_type: seedance_official
+      provider_type: seedance_official
       operation: text_to_video
       model: flash
     constraints:
@@ -1091,7 +1137,7 @@ variants:
         enum: [5, 10]
 
   - dimensions:
-      engine_type: volcengine_seedance
+      provider_type: volcengine_seedance
       operation: text_to_video
       model: pro
     constraints:
@@ -1175,7 +1221,7 @@ model = flash
 重新计算：
 
 ```text
-engine = 官方
+provider_type = seedance_official
 resolution = 720p、1080p
 duration = 5、10
 ```
@@ -1229,17 +1275,19 @@ reject
 RuntimeApplicationCapability
 =
 CapabilitySource
-∩ EngineRestrictions
+∩ ProviderAccountEffectiveCapability
 ∩ ApplicationTemplateConstraint
 ∩ ApplicationVersionExposure
 ∩ UserEntitlement
-∩ RuntimeEngineAvailability
+∩ ExecutionTargetPolicy
+∩ GatewayEligibleTargets
 ```
 
 其中 `CapabilitySource` 根据模板类型确定：
 
-* SaaS 等平台取状态为 `available` 的 `ProviderCapability` 当前加载修订，`EngineRestrictions` 取 `EngineCapabilityBinding.restrictions`；
-* ComfyUI 取 API Workflow、管理员参数映射、模板约束和候选 EngineInstance 当前 `object_info` 共同形成实时工作流能力契约，`EngineRestrictions` 取模板的 Engine 选择约束。
+* SaaS 等平台取状态为 `available` 的 `ProviderCapability` 当前加载修订，账号有效能力取 ProviderAccountCapabilityBinding 与可选 ProviderResource 的共同收窄结果；
+* ComfyUI 取 API Workflow、管理员参数映射、模板约束和候选 ProviderAccount 当前 `object_info` 共同形成实时工作流能力契约；
+* `ExecutionTargetPolicy` 与 Gateway 合格目标决定 FIXED、DEFAULT、REQUEST 当前可展示的非敏感选择，不把账号或健康冻结到 ApplicationVersion。
 
 如果任一约束应用后不存在有效 `CapabilityVariant`，表单解析必须返回“当前没有可执行的能力组合”，不得生成可提交表单。
 
@@ -1260,8 +1308,9 @@ CapabilitySource
 ApplicationVersion
 → ApplicationTemplate
 → CapabilitySource
-→ Engine 选择范围
-→ EngineRestrictions
+→ ExecutionTargetPolicy
+→ Gateway ListEligibleProviderTargets
+→ ProviderAccountEffectiveCapability
 
 ```json
 {
@@ -1352,19 +1401,23 @@ ApplicationVersion
 
 ### 8.4 RuntimeFormSchema 解析语义
 
-表单解析输入包含目标应用版本、可选的引擎选择和当前字段值。示例：
+表单解析输入包含目标应用版本、类型化目标选择和当前字段值。示例：
 
 ```json
 {
   "application_version_id": "appver_text_to_video_v1",
-  "engine_instance_id": "seedance-official-prod",
+  "target_selection": {
+    "source": "FIXED",
+    "provider_account_id": "seedance-official-prod",
+    "provider_resource_id": "seedance-model-pro"
+  },
   "current_values": {
     "model": "flash"
   }
 }
 ```
 
-解析结果包含字段当前值与有效选项、兼容引擎、系统修正以及仍未解决的违规项。`fields` 在所有接口和示例中统一使用数组，每个字段以 `name` 作为稳定标识。示例：
+解析结果包含字段当前值与有效选项、当前合格 Provider 目标摘要、系统修正以及仍未解决的违规项。`fields` 在所有接口和示例中统一使用数组，每个字段以 `name` 作为稳定标识。示例：
 
 ```json
 {
@@ -1386,8 +1439,13 @@ ApplicationVersion
       "value": null
     }
   ],
-  "compatible_engine_instance_ids": [
-    "seedance-official-prod"
+  "eligible_provider_targets": [
+    {
+      "provider_account_id": "seedance-official-prod",
+      "provider_resource_id": "seedance-model-pro",
+      "account_scope": "PLATFORM",
+      "provider_type": "byteplus_modelark"
+    }
   ],
   "changes": [
     {
@@ -1407,92 +1465,46 @@ ApplicationVersion
 
 ---
 
-## 9. 应用创建模式
+## 9. 执行目标选择模式
 
-### 9.1 固定 Engine
+RuntimeForm 与 ApplicationRun 统一使用：
+
+```text
+TargetSelectionSource = FIXED | DEFAULT | REQUEST
+```
+
+### 9.1 FIXED
 
 ```yaml
-engine_binding:
-  mode: fixed
-  engine_id: volcengine-seedance-prod
+target_selection:
+  source: FIXED
+  provider_account_id: provider-account-platform-seedance
+  provider_resource_id: provider-resource-seedance-pro
 ```
 
-由于火山 `ProviderCapability` 中只有 Pro：
+`provider_account_id` 必填，`provider_resource_id` 是否必填由 ApplicationVersion 的 allowed_resource_kinds 与能力来源决定。固定目标必须被 policy 允许，并在表单解析、运行创建和 Provider 调用前重新校验 owner、scope、enabled、健康、能力和修订。
 
-```text
-应用模板创建界面
-→ model 只有 Pro
-→ Flash 不允许选择
-```
-
-适合第一阶段。
-
----
-
-### 9.2 多 Engine 能力匹配
+### 9.2 DEFAULT
 
 ```yaml
-engine_binding:
-  mode: capability_match
-  selector:
-    capability: video.text_to_video
+target_selection:
+  source: DEFAULT
 ```
 
-候选引擎可能包括：
+DEFAULT 不携带账号 ID。`USER + DEFAULT` 当前只允许 MODEL，并由 Model Preferences 按 `default_model_usage` 返回 `provider_resource_id`；`PLATFORM + DEFAULT` 由 Gateway 在合格账号中按 `routing_priority ASC, account_id ASC` 稳定选择。任一目标不可用时直接失败，不跨 USER/PLATFORM 回退。
 
-```text
-Seedance 官方
-火山引擎
-RunningHub
-其他平台代理
+### 9.3 REQUEST
+
+```yaml
+target_selection:
+  source: REQUEST
 ```
 
-用户选择：
+ApplicationVersion/CanvasVersion 只声明请求时必须选择，不保存用户账号 ID。创建独立 ApplicationRun 或 CanvasRun 时必须提供具体 `provider_account_id` 和按策略要求的 `provider_resource_id`；缺失、重复、范围外或额外选择在创建任务前失败。
 
-```text
-Pro + 4K + 25 秒
-```
+### 9.4 版本与运行边界
 
-可能只有官方 Engine 匹配。
-
-用户选择：
-
-```text
-Pro + 1080p + 10 秒
-```
-
-可能多个 Engine 匹配。
-
-系统再根据以下策略选择：
-
-* 固定优先级
-* 价格
-* 负载
-* 区域
-* 成功率
-* 用户偏好
-* 额度
-
----
-
-### 9.3 多 Engine 下的表单语义
-
-可以采用：
-
-#### 显式平台选择
-
-```text
-选择平台
-→ 选择模型
-→ 选择分辨率
-→ 选择时长
-```
-
-#### 自动调度
-
-用户只选择业务参数。
-
-系统保证至少存在一个有效 CapabilityVariant。
+ApplicationVersion 只冻结 target policy。RuntimeForm 返回当前合格目标一跳摘要，ApplicationRun 固定本次解析结果。账号、资源、健康或配置随后变化不会改写历史，但执行前 Gateway 仍可拒绝签发 Grant。
 
 ---
 
@@ -1524,7 +1536,7 @@ Pro + 1080p + 10 秒
 * ComfyUI node ID
 * RunningHub workflow ID
 * SaaS endpoint
-* Engine base URL
+* Provider 目标 base URL
 * 供应商原始参数名
 
 ---
@@ -1810,23 +1822,41 @@ CanvasGraph
 
 非画布入口的 ApplicationRun 不包含 `canvas_run_id` 或 `canvas_node_run_id`。画布入口由 workflow-canvas 保存 CanvasNodeRun 到 ApplicationRun/AtomicTask 的关联。
 
+每个 ApplicationRun 还必须固定以下非敏感目标快照：
+
+```text
+target_selection_source
+account_scope
+provider_account_id
+provider_account_snapshot
+provider_account_config_version
+provider_resource_id?
+provider_resource_snapshot?
+provider_resource_revision?
+provider_capability_id / provider_capability_revision
+capability_definition_id
+```
+
+快照不得包含 endpoint、credential_ref、Header、extra_config、Provider 私有 metadata 或 Grant 解析结果。`ProviderExecutionGrant` 只在 Gateway 与受信 Worker 边界短时使用，不成为 ApplicationRun 持久字段。
+
 ---
 
-### 13.5 Engine 选择
+### 13.5 Provider 目标解析
 
 ```text
 ApplicationRun
 → 读取 CapabilitySource
-→ 解析 EngineRestrictions
+→ 读取 execution_target_policy
 → 过滤有效 CapabilityVariant
 → 应用 ApplicationTemplateConstraint
-→ 选择 ApplicationEngineInstance 与 EngineCapabilityBinding
-→ 构造 PlatformEngineTarget
+→ 校验 FIXED / DEFAULT / REQUEST TargetSelection
+→ Model Gateway ResolveProviderTarget
+→ ProviderExecutionGrant
 ```
 
-对于 SaaS 等平台，`CapabilitySource` 为状态为 `available` 的 `ProviderCapability` 当前加载修订，并通过 `EngineCapabilityBinding` 找到候选实例。对于 ComfyUI，`CapabilitySource` 为工作流能力契约，并从满足模板 Engine 约束的 ComfyUI 实例中选择候选实例。
+对于 SaaS 等平台，`CapabilitySource` 为状态为 `available` 的 `ProviderCapability` 当前加载修订，并通过 ProviderAccountCapabilityBinding 与 ProviderResource 得到有效能力。对于 ComfyUI，`CapabilitySource` 为工作流能力契约，并从满足 policy 且当前 object_info 可用的 ComfyUI ProviderAccount 中解析目标。
 
-如果没有实例同时满足能力约束、启用状态和运行时可用性，`ApplicationRun` 必须在提交外部平台前失败，并说明当前无可执行引擎。
+如果没有目标同时满足作用域、ProviderType、ResourceKind、能力约束、owner/权限、启用状态和健康，`ApplicationRun` 必须在提交外部平台前失败，并说明当前无可执行 Provider 目标；不得切换到另一账号作用域。
 
 ---
 
@@ -1836,13 +1866,15 @@ ApplicationRun
 ApplicationRun
 → ApplicationTemplate
 → ApplicationExecutor
-→ PlatformEngineTarget
+→ TargetSelection
+→ Model Gateway ResolveProviderTarget
+→ provider-execution-grant://
 → Model Gateway ExecuteOperation
-→ Gateway 内部 EngineAdapter + OperationExecutor
+→ Gateway 内部 ProviderAdapter + OperationExecutor
 → 平台任务
 ```
 
-`ApplicationExecutor` 只向 Gateway 传递经过本领域运行校验并固定到 ApplicationRun 快照的 `PlatformEngineTarget`。它不得使用 `UserModelTarget`，也不得读取 Gateway 私有表或直接调用 Provider 专用客户端。
+`ApplicationExecutor` 只向 Gateway 传递经过本领域运行校验并固定到 ApplicationRun 快照的 `TargetSelection`、能力和 execution_ref。它不构造旧用户模型目标，不解析 ProviderExecutionGrant，也不得读取 Gateway 私有表或直接调用 Provider 专用客户端。
 
 ---
 
@@ -1883,7 +1915,7 @@ ApplicationRun
 
 不得只引用 Application。
 
-固定 `ApplicationVersion` 不等于冻结 `ProviderCapability` 修订、Engine 健康状态或运行时可用性。运行时能力变化导致已保存字面值不再合法时，系统不得静默修改画布；应按字段失效策略给出修正建议，或将节点标记为当前不可执行。
+固定 `ApplicationVersion` 不等于冻结 `ProviderCapability` 修订、Provider 目标 健康状态或运行时可用性。运行时能力变化导致已保存字面值不再合法时，系统不得静默修改画布；应按字段失效策略给出修正建议，或将节点标记为当前不可执行。
 
 ---
 
@@ -1914,7 +1946,7 @@ PINNED
 * 字面值是否合法
 * 连线是否兼容
 * 是否新增必填字段
-* Engine 是否仍可执行
+* Provider 目标 是否仍可执行
 
 结果：
 
@@ -1933,16 +1965,16 @@ PINNED
 
 校验：
 
-* 模板能力是否超出 Engine 能力
+* 模板能力是否超出 ProviderType 与 ProviderCapability 能力
 * 是否引用 retired 模型
 * 参数绑定是否存在
 * 输出节点是否有效
 * 固定值是否符合能力变体
 * allowlist 是否属于能力集合
 
-对于 ComfyUI 模板，还必须使用候选 EngineInstance 当前 `object_info` 校验 API Workflow、工作流所有者或代管管理员提供的参数映射和输出提取规则能否共同形成完整的工作流能力契约。任一必填输入无法映射或输出无法提取时，模板不得发布；校验过程不得把目录正文写入模板版本。
+对于 ComfyUI 模板，还必须使用候选 ProviderAccount 当前 `object_info` 校验 API Workflow、工作流所有者或代管管理员提供的参数映射和输出提取规则能否共同形成完整的工作流能力契约。任一必填输入无法映射或输出无法提取时，模板不得发布；校验过程不得把目录正文写入模板版本。
 
-ComfyUI 首个模板版本只能由 API-ready 的 `ComfyUIWorkflow` 通过转换动作创建。转换必须直接指定一个当前可用的 ComfyUI EngineInstance，并在同一事务内按该实例当前目录重新校验、创建新的模板和首个 draft 模板版本；不读取历史 compatible 记录，也不保存单次转换关系到工作流。后续模板版本不再读取或修改源工作流，但发布和运行仍校验候选实例当前目录。
+ComfyUI 首个模板版本只能由 API-ready 的 `ComfyUIWorkflow` 通过转换动作创建。转换必须直接指定一个当前可用的 ComfyUI ProviderAccount，并在同一事务内按该实例当前目录重新校验、创建新的模板和首个 draft 模板版本；不读取历史 compatible 记录，也不保存单次转换关系到工作流。后续模板版本不再读取或修改源工作流，但发布和运行仍校验候选实例当前目录。
 
 ---
 
@@ -1953,7 +1985,8 @@ ComfyUI 首个模板版本只能由 API-ready 的 `ComfyUIWorkflow` 通过转换
 * 当前模型是否 active
 * 当前参数组合是否存在有效 Variant
 * 当前能力来源是否有效
-* 当前 Engine 是否满足绑定或模板约束
+* TargetSelection 是否满足 ApplicationVersion policy
+* 当前 ProviderAccount/ProviderResource 是否满足能力与模板约束
 * 当前应用是否允许这些参数
 * 用户是否有权限
 * 字段是否必填
@@ -1969,10 +2002,11 @@ ComfyUI 首个模板版本只能由 API-ready 的 `ComfyUIWorkflow` 通过转换
 ```text
 解析 RuntimeFormSchema
 → 校验 ApplicationRun 输入
-→ 选择 ApplicationEngineInstance
+→ 校验 TargetSelection
 → 校验 CapabilityVariant
-→ 固定 PlatformEngineTarget 与执行快照
-→ Model Gateway ExecuteOperation 校验并提交外部平台
+→ 固定非敏感 Provider 目标与能力修订快照
+→ Model Gateway ResolveProviderTarget 签发 Grant
+→ Model Gateway ExecuteOperation 提交外部平台
 ```
 
 任一步失败都必须在调用外部平台前终止运行，并返回对应字段、当前值和可理解的失败原因；不得用自动切换模型或扩张能力范围的方式绕过校验。
@@ -2014,10 +2048,10 @@ CapabilityCorrectionRequired
 
 9. `BR-AIAPP-138`：ApplicationRun 必须按能力来源快照 ProviderCapability ID/revision 或 ComfyUI workflow contract revision；能力变化不得改写历史运行快照。
 13. `BR-AIAPP-142`：ApplicationTemplate、ApplicationVersion 和 RuntimeFormSchema 必须从当前有效能力逐层裁剪；已发布版本不原地修改，运行时表单是临时解析结果。
-14. `BR-AIAPP-143`：ApplicationRun 在调用任务中心前固定应用版本、模板版本、EngineInstance、能力来源 revision、输入和输出映射快照；AtomicTask 是执行状态事实源。
-15. `BR-AIAPP-144`：ComfyUI 模板能力来自 API Workflow、候选 EngineInstance 当前 object_info、人工映射和模板约束；`comfyui-workflow-runtime` 只用于实例系统绑定，不得作为 Provider 模板来源或绕过工作流校验。
+14. `BR-AIAPP-143`：ApplicationRun 在调用任务中心前固定应用版本、模板版本、ProviderAccount、能力来源 revision、输入和输出映射快照；AtomicTask 是执行状态事实源。
+15. `BR-AIAPP-144`：ComfyUI 模板能力来自 API Workflow、候选 ProviderAccount 当前 object_info、人工映射和模板约束；`comfyui-workflow-runtime` 只用于实例系统绑定，不得作为 Provider 模板来源或绕过工作流校验。
 16. `BR-AIAPP-145`：模板、RuntimeFormSchema 和 ApplicationRun 必须使用 `provider_capability` 或 `comfyui_workflow` 联合能力来源；ComfyUI 分支不得要求 ProviderCapability 字段。
-17. `BR-AIAPP-146`：RuntimeFormSchema 的 fields 统一为数组，并必须返回兼容 Engine、系统修正和未解决违规；存在 violations 时不得提交运行。
+17. `BR-AIAPP-146`：RuntimeFormSchema 的 fields 统一为数组，并必须返回兼容 Provider 目标、系统修正和未解决违规；存在 violations 时不得提交运行。
 18. `BR-AIAPP-147`：ApplicationTemplateVersion 和 ApplicationVersion 通过显式校验与发布动作形成不可变版本；ApplicationVersion 使用同一应用内唯一的语义版本字符串并引用已发布模板版本。
 19. `BR-AIAPP-148`：Application 必须独立保存能力分类、private/global 可见性和运行、画布、复制、预设开关；global 仅拥有 `aiapp.application.manage_global` 的管理员可设置，不得仅按角色名授权。
 20. `BR-AIAPP-149`：ApplicationRun 先保存不可变快照，再以幂等方式创建并绑定 AtomicTask；创建失败保留可恢复状态，不得伪造执行状态或重复创建 AtomicTask。
@@ -2050,15 +2084,31 @@ CapabilityCorrectionRequired
 53. `BR-AIAPP-182`：ApplicationRun 使用 `application_run_id + output_key + sequence` 稳定映射 Artifact；重复交付必须命中同一 Artifact，自动 TaskAttempt 重试不得产生重复制品。
 54. `BR-AIAPP-183`：ApplicationExecutor 负责 ApplicationRun 编排和标准输出的受控交付，Provider 协议、鉴权应用、下载与 Operation 执行实现归 Model Gateway；ApplicationExecutor 只能向 asset-library 交付 Gateway 返回的字节流、受控上传会话或可信存储引用，不得交付凭证、任意 URL、私网地址或原始响应。
 55. `BR-AIAPP-184`：ApplicationRun 按 Artifact resource_version 保存可重建只读投影；Artifact 处理、登记或可选派生失败不反向改写已终态 AtomicTask。
-56. `BR-AIAPP-185`：ApplicationRun 创建与详情响应保留 application、application version、template version、ProviderCapability、engine 和 AtomicTask ID，并同时返回权限裁剪的一跳可读摘要。应用平台同域关系优先使用运行创建时保存的非敏感快照，AtomicTask 摘要通过 Task Center 受控只读能力获取；关联缺失时父运行仍返回，摘要不得包含凭证、object_info 正文、任务参数或输出。ApplicationRun 内嵌的 Artifact 引用本身必须包含输出名、媒体类型、处理/登记状态和 Asset 导航 ID，前端不得为每个 Artifact 再调用详情接口。
-57. `BR-AIAPP-186`：ComfyUIWorkflow 导入不接收或保存 EngineInstance，也不读取 object_info；visual_workflow 只保存源画布并进入 pending，api_workflow 完成基础节点结构校验后直接进入 ready。nodes、input-candidates、output-candidates、dependencies 仍必须接收目标实例并按其当前目录即时派生，不持久化解析缓存；只有 `object_info.output_node=true` 的节点端口可标记 extractable。
-58. `BR-AIAPP-187`：visual_workflow 显式转换必须指定一个类型为 comfyui、enabled 且 online 的 EngineInstance，并使用其当前未过期 object_info 调用图解析器和校验生成的 API Workflow；失败不得保存部分 API 内容，所用实例不持久化到工作流。目录缺失或超过 48 小时不得用于解析、转换、校验、模板发布、RuntimeFormSchema 或运行，但不影响导入。
+56. `BR-AIAPP-185`：ApplicationRun 创建与详情响应保留 application、application version、template version、ProviderCapability、ProviderAccount/ProviderResource 和 AtomicTask ID，并同时返回权限裁剪的一跳可读摘要。应用平台同域关系优先使用运行创建时保存的非敏感快照，AtomicTask 摘要通过 Task Center 受控只读能力获取；关联缺失时父运行仍返回，摘要不得包含凭证、object_info 正文、任务参数或输出。ApplicationRun 内嵌的 Artifact 引用本身必须包含输出名、媒体类型、处理/登记状态和 Asset 导航 ID，前端不得为每个 Artifact 再调用详情接口。
+57. `BR-AIAPP-186`：ComfyUIWorkflow 导入不接收或保存 ProviderAccount，也不读取 object_info；visual_workflow 只保存源画布并进入 pending，api_workflow 完成基础节点结构校验后直接进入 ready。nodes、input-candidates、output-candidates、dependencies 仍必须接收目标实例并按其当前目录即时派生，不持久化解析缓存；只有 `object_info.output_node=true` 的节点端口可标记 extractable。
+58. `BR-AIAPP-187`：visual_workflow 显式转换必须指定一个类型为 comfyui、enabled 且 online 的 ProviderAccount，并使用其当前未过期 object_info 调用图解析器和校验生成的 API Workflow；失败不得保存部分 API 内容，所用实例不持久化到工作流。目录缺失或超过 48 小时不得用于解析、转换、校验、模板发布、RuntimeFormSchema 或运行，但不影响导入。
 61. `BR-AIAPP-190`：任何 `api_conversion_status=ready` 的 ComfyUIWorkflow 都可以转换为新的 ApplicationTemplate；每次转换创建独立模板和首个 draft 版本，工作流不保存 converted 状态或单一模板引用。
-62. `BR-AIAPP-191`：模板转换必须直接选择 ComfyUI EngineInstance，并使用其当前未过期 object_info 实时校验；历史 WorkflowValidation 不作为请求输入，所选实例只用于本次校验，不自动限制模板运行范围。
+62. `BR-AIAPP-191`：模板转换必须直接选择 ComfyUI ProviderAccount，并使用其当前未过期 object_info 实时校验；历史 WorkflowValidation 不作为请求输入，所选实例只用于本次校验，不自动限制模板运行范围。
 63. `BR-AIAPP-192`：同一工作流允许使用不同幂等键多次转换；同一 owner、工作流和幂等键返回首次结果，同一 owner 跨工作流复用该键必须失败，任一失败不得留下部分模板或版本。
 65. `BR-AIAPP-194`：Application 详情必须提供按 Application 范围分页读取的持久化 ApplicationRun 历史，默认按 `created_at desc` 排序并遵循 private/global 与 owner 可见性；AtomicTask 终态持久化后，Application Platform 必须按递增 `task_resource_version` 单调、幂等投影状态、输出和失败摘要，成功输出幂等形成 ApplicationArtifact 引用，页面导航或刷新不得丢失运行记录。
+66. `BR-AIAPP-205`：ApplicationVersion 必须以 `execution_target_policy` 声明允许的账号作用域、ProviderType、ResourceKind、选择来源和可选默认用途；能力来源与具体 ProviderAccount 必须解绑。
+67. `BR-AIAPP-206`：`default_account_scope` 只在允许 DEFAULT 时出现；USER + DEFAULT 仅解析 MODEL，PLATFORM + DEFAULT 由 Gateway 按 routing_priority、account_id 稳定排序，目标不可用时不跨作用域回退。
+68. `BR-AIAPP-207`：RuntimeForm 与 ApplicationRun 只接受 FIXED、DEFAULT、REQUEST 类型化 TargetSelection；FIXED 保存账号/可选资源 ID，DEFAULT 不携带账号 ID，REQUEST 必须在运行请求提供目标。
+69. `BR-AIAPP-208`：ApplicationVersion 发布必须验证至少一种结构合法的目标解析方式，但不得将当前账号、凭证、健康或 Grant 冻结进版本。
+70. `BR-AIAPP-209`：ApplicationRun 必须固定目标选择来源、账号作用域、账号/资源非敏感快照与 config/resource/capability revision；删除旧 engine_instance_id 与跨域数据库外键。
+71. `BR-AIAPP-210`：ApplicationExecutor 只负责输入校验、运行编排、Task 协作、请求 Grant 和输出交付；Provider 提交、轮询、取消、鉴权、下载和结果解析全部由 Gateway Adapter/Executor 完成。
+72. `BR-AIAPP-211`：系统必须幂等提供 `system.llm.text-generation@1.0.0`，使用 `text.chat_completion`、`application.llm` renderer 与 MODEL 目标策略，并作为普通 ApplicationVersion 发布。
+73. `BR-AIAPP-212`：结构化文本输出直接保存到 ApplicationRun `output_values` 并进入 Canvas string 端口，不强制创建 Artifact；媒体输出继续使用 Asset Library Artifact。
 
 ### 16.2 用户故事与验收标准
+
+`US-AIAPP-053`：作为应用发布者和运行用户，我希望 ApplicationVersion 声明账号无关的目标策略，并在每次运行由 Gateway 解析合法 Provider 目标，使同一应用可安全用于 USER 或 PLATFORM 账号。
+
+* `AC-AIAPP-053-01`：发布校验 FIXED、DEFAULT、REQUEST 与 scope/type/kind 组合，且版本中没有 endpoint、凭证、健康或 Grant。
+* `AC-AIAPP-053-02`：RuntimeForm 返回当前合格目标摘要；REQUEST 缺少目标、DEFAULT 携带账号 ID 或 FIXED 缺少必需资源时在创建任务前失败。
+* `AC-AIAPP-053-03`：ApplicationRun 固定非敏感账号/资源快照与版本修订，Gateway 拒绝失配目标时不跨 USER/PLATFORM 回退。
+* `AC-AIAPP-053-04`：`system.llm.text-generation` 可由独立运行和 Canvas ApplicationNode 使用，文本写入 `output_values.text` 且无需 Artifact。
+* `AC-AIAPP-053-05`：ApplicationExecutor 不执行 Provider 专用提交、轮询、取消、鉴权、下载或结果解析，也不持久化 Grant 解析结果。
 
 `US-AIAPP-042`：作为应用创建者，我希望从 ComfyUI 模板或 SaaS 能力创建并发布应用版本，使输入输出、参数策略和底层能力引用可被稳定复用。
 
@@ -2079,13 +2129,13 @@ CapabilityCorrectionRequired
 
 `US-AIAPP-044`：作为应用创建者，我希望导入和管理自己的 ComfyUI 工作流，使平台能稳定解析节点、输入输出候选和运行依赖，而不要求我在导入时立即创建模板。
 
-* `AC-AIAPP-044-01`：仅提供合法普通 Workflow 或 API Workflow 即可成功导入，不要求选择 EngineInstance，也不读取 object_info。
+* `AC-AIAPP-044-01`：仅提供合法普通 Workflow 或 API Workflow 即可成功导入，不要求选择 ProviderAccount，也不读取 object_info。
 * `AC-AIAPP-044-02`：文件非法、来源类型无法识别或 API Workflow 节点缺少基础结构时不产生工作流资源；实例或目录不可用不影响导入。
 * `AC-AIAPP-044-03`：相同 checksum 可重复导入为不同资源并返回重复提示；既有内容不能覆盖，只能重新导入。
 * `AC-AIAPP-044-04`：普通用户无法读取他人工作流；管理员可代管且审计记录同时包含操作者和所有者。
 * `AC-AIAPP-044-05`（deprecated）：旧验收定义工作流归档和恢复；当前版本不提供这两个动作。
 * `AC-AIAPP-044-06`：应用创建者可查询可选 ComfyUI 实例的无凭证基础信息，但不能读取认证配置或修改实例。
-* `AC-AIAPP-044-07`：nodes、input-candidates、output-candidates 和 dependencies 查询必须指定可见 ComfyUI EngineInstance；切换实例后重新计算，工作流记录不保存这些解析缓存。
+* `AC-AIAPP-044-07`：nodes、input-candidates、output-candidates 和 dependencies 查询必须指定可见 ComfyUI ProviderAccount；切换实例后重新计算，工作流记录不保存这些解析缓存。
 * `AC-AIAPP-044-08`：工作流列表和详情不返回 lifecycle_status、archived_at、object_info_snapshot 或 object_info_checksum，也不存在 archive/restore API。
 
 `US-AIAPP-045`：作为应用创建者，我希望对工作流在不同 ComfyUI 实例上的兼容性进行独立校验，以便在转换前识别节点、参数和依赖问题，并在转换后继续诊断。
@@ -2103,9 +2153,9 @@ CapabilityCorrectionRequired
 * `AC-AIAPP-046-03`：相同 owner、工作流和幂等键重试返回相同模板；不同幂等键可以从同一工作流创建多个独立模板，跨工作流复用同一 owner 的幂等键失败。
 * `AC-AIAPP-046-04`（deprecated）：旧验收的执行事实包含 object_info 与依赖快照。
 * `AC-AIAPP-046-05`：通用模板创建入口不能直接携带 ComfyUI Workflow 绕过转换链路。
-* `AC-AIAPP-046-06`：转换直接选择目标 ComfyUI EngineInstance，并在事务内读取该实例当前目录重新校验；目录 stale 或当前不兼容时不产生模板，历史 compatible 记录不作为转换输入。
+* `AC-AIAPP-046-06`：转换直接选择目标 ComfyUI ProviderAccount，并在事务内读取该实例当前目录重新校验；目录 stale 或当前不兼容时不产生模板，历史 compatible 记录不作为转换输入。
 * `AC-AIAPP-046-07`：首版模板只深拷贝 API Workflow 与模板契约，revision 不覆盖 object_info 或派生依赖，模板及后续版本接口均不接受 object_info。
-* `AC-AIAPP-046-08`：转换界面的能力值来自所选 EngineType `operation_executors` key，中文和英文界面分别展示服务端同序返回的 `zh-CN`、`en-US` 名称，不提供自由文本输入。
+* `AC-AIAPP-046-08`：转换界面的能力值来自所选 ProviderType `operation_executors` key，中文和英文界面分别展示服务端同序返回的 `zh-CN`、`en-US` 名称，不提供自由文本输入。
 
 `US-AIAPP-047`：作为应用创建者，我希望用一个 JSON 文件导入普通 Workflow 或 API Workflow，并在详情中查看和按需转换 API。
 
@@ -2163,6 +2213,6 @@ CapabilityCorrectionRequired
 * RunningHub 工作流参数映射
 * ComfyUI 参数转换
 * Provider 鉴权
-* Engine 调度
+* Provider 目标 调度
 
 ---

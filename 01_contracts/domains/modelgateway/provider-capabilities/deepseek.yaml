@@ -2,9 +2,8 @@ schema_version: "1.0"
 id: deepseek-official
 name: DeepSeek Official API
 kind: catalog
-binding_policy: manual
 description: DeepSeek 官方稳定 OpenAI-compatible Chat Completions 能力清单。
-application_engine_type_id: deepseek_official
+provider_type: deepseek_official
 revision: "2026-07-15.1"
 enabled: true
 provider:
@@ -151,4 +150,4 @@ variants:
 notes:
   - 本清单排除 Prefix Completion、FIM Completion 等 Beta 能力。
   - deepseek-chat 与 deepseek-reasoner 将于 2026-07-24 15:59 UTC 退役，不作为可执行模型注册。
-  - ProviderCapability 不保存 API Key；鉴权和 base URL 由 deepseek_official EngineAdapter 与 ApplicationEngineInstance 提供。
+  - ProviderCapability 不保存 API Key；鉴权和 endpoint 由 deepseek_official Adapter 与 ProviderAccount 提供。

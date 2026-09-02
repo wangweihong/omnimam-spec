@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- 继续推进方案 B：AI Chat、Agent 与 Task Center 改用 Model Gateway `ProviderAccount`/`ProviderResource`、`ResolveProviderTarget` 和不透明 `provider-execution-grant://`；Model Preferences 仅保留展示偏好与默认用途引用。
+- Workflow Canvas/Application Platform 的 TargetSelection、REQUEST 节点选择、PROJECT/PRIVATE 账号约束和 Provider 健康巡检归属同步到直接依赖域；更新 Context、架构参考与术语导航。
+
 - 新增 `model-deployment` 领域，提供管理员管理的本地 vLLM/LM Studio Docker 部署、Provider 专属 DAG/Task、生命周期投影和管理 API；用户只提交逻辑 `model_name`，不新增 Model Gateway Adapter、EngineInstance、Binding 或 capability 选择。
 - Infrastructure 增加 `local_model_root`、`MODEL_FILES` 挂载以及独立 `model.vllm`/`model.lmstudio` Profile 语义，Task Center 以 `model-deployment` owner 调用；vLLM 与 LM Studio 不共享 Provider 专用 handler。
 

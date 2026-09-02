@@ -1,6 +1,6 @@
 -- workflow-canvas design schema for S1 v1.2 (PostgreSQL).
 -- This file is a design contract, not an executable migration.
--- s1_refs: US-WORKFLOW-001..010; BR-WORKFLOW-001..043.
+-- s1_refs: US-WORKFLOW-001..011; BR-WORKFLOW-001..052.
 
 -- s1_refs: US-WORKFLOW-001, US-WORKFLOW-007, US-WORKFLOW-009;
 -- BR-WORKFLOW-003..005, BR-WORKFLOW-017, BR-WORKFLOW-028..031.
@@ -84,7 +84,7 @@ CREATE INDEX idx_canvases_creator_updated
   WHERE deleted_at IS NULL;
 
 -- s1_refs: US-WORKFLOW-001, US-WORKFLOW-002, US-WORKFLOW-004;
--- BR-WORKFLOW-001..004, BR-WORKFLOW-011..012, BR-WORKFLOW-017..018, BR-WORKFLOW-034.
+-- BR-WORKFLOW-001..004, BR-WORKFLOW-011..012, BR-WORKFLOW-017..018, BR-WORKFLOW-034, BR-WORKFLOW-044..047.
 CREATE TABLE canvas_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -97,6 +97,7 @@ CREATE TABLE canvas_versions (
   version INTEGER NOT NULL CHECK (version > 0),
   graph_snapshot_json JSONB NOT NULL CHECK (jsonb_typeof(graph_snapshot_json) = 'object'),
   definition_snapshots_json JSONB NOT NULL CHECK (jsonb_typeof(definition_snapshots_json) = 'array'),
+  target_policy_snapshots_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(target_policy_snapshots_json) = 'object'),
   input_schema_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(input_schema_json) = 'object'),
   output_schema_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(output_schema_json) = 'object'),
   content_digest TEXT NOT NULL,
@@ -120,9 +121,9 @@ ALTER TABLE canvases
 CREATE INDEX idx_canvas_versions_canvas_published
   ON canvas_versions (canvas_id, published_at DESC);
 
--- s1_refs: US-WORKFLOW-002..006, US-WORKFLOW-008..009;
+-- s1_refs: US-WORKFLOW-002..006, US-WORKFLOW-008..009, US-WORKFLOW-011;
 -- BR-WORKFLOW-006..007, BR-WORKFLOW-013..016, BR-WORKFLOW-019..021,
--- BR-WORKFLOW-023, BR-WORKFLOW-027..028, BR-WORKFLOW-031..034.
+-- BR-WORKFLOW-023, BR-WORKFLOW-027..028, BR-WORKFLOW-031..034, BR-WORKFLOW-048..051.
 CREATE TABLE canvas_runs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -136,6 +137,7 @@ CREATE TABLE canvas_runs (
   idempotency_key TEXT NOT NULL,
   request_digest TEXT NOT NULL,
   input_snapshot_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(input_snapshot_json) = 'object'),
+  node_target_selections_json JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(node_target_selections_json) = 'array'),
   scope_json JSONB NOT NULL CHECK (jsonb_typeof(scope_json) = 'object'),
   run_policy_json JSONB NOT NULL CHECK (jsonb_typeof(run_policy_json) = 'object'),
   reuse_decisions_json JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(reuse_decisions_json) = 'array'),
@@ -205,9 +207,9 @@ CREATE TABLE canvas_flow_runs (
 CREATE INDEX idx_canvas_flow_runs_run_status
   ON canvas_flow_runs (canvas_run_id, status, flow_id);
 
--- s1_refs: US-WORKFLOW-002..008;
+-- s1_refs: US-WORKFLOW-002..008, US-WORKFLOW-011;
 -- BR-WORKFLOW-008..009, BR-WORKFLOW-014, BR-WORKFLOW-020..023,
--- BR-WORKFLOW-027..030, BR-WORKFLOW-033..034.
+-- BR-WORKFLOW-027..030, BR-WORKFLOW-033..034, BR-WORKFLOW-050..052.
 CREATE TABLE canvas_node_runs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -222,6 +224,14 @@ CREATE TABLE canvas_node_runs (
   node_type TEXT NOT NULL,
   definition_version TEXT NOT NULL,
   execution_fingerprint TEXT NOT NULL,
+  target_selection_source TEXT CHECK (target_selection_source IN ('FIXED', 'DEFAULT', 'REQUEST')),
+  account_scope TEXT CHECK (account_scope IN ('USER', 'PLATFORM')),
+  provider_account_id TEXT,
+  provider_account_config_version INTEGER CHECK (provider_account_config_version IS NULL OR provider_account_config_version >= 1),
+  provider_resource_id TEXT,
+  provider_resource_revision TEXT,
+  provider_capability_revision TEXT,
+  provider_target_snapshot_json JSONB CHECK (provider_target_snapshot_json IS NULL OR jsonb_typeof(provider_target_snapshot_json) = 'object'),
   resolved_input_snapshot_json JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(resolved_input_snapshot_json) = 'object'),
   result_mode TEXT NOT NULL CHECK (result_mode IN ('executed', 'reused', 'passive', 'client_generated')),
   status TEXT NOT NULL CHECK (status IN ('PENDING', 'BLOCKED', 'READY', 'RUNNING', 'RETRYING', 'SUCCESS', 'PARTIAL_SUCCESS', 'FAILED', 'CANCELED', 'TIMEOUT', 'SKIPPED', 'REUSED')),
@@ -242,6 +252,11 @@ CREATE TABLE canvas_node_runs (
   CHECK (
     (result_mode = 'reused' AND status = 'REUSED' AND source_canvas_run_id IS NOT NULL AND source_canvas_node_run_id IS NOT NULL AND task_count = 0) OR
     (result_mode <> 'reused' AND status <> 'REUSED' AND source_canvas_run_id IS NULL AND source_canvas_node_run_id IS NULL)
+  ),
+  CHECK (
+    (target_selection_source IS NULL AND account_scope IS NULL AND provider_account_id IS NULL AND provider_account_config_version IS NULL AND provider_resource_id IS NULL AND provider_resource_revision IS NULL AND provider_capability_revision IS NULL AND provider_target_snapshot_json IS NULL)
+    OR
+    (target_selection_source IS NOT NULL AND account_scope IS NOT NULL AND provider_account_id IS NOT NULL AND provider_account_config_version IS NOT NULL AND provider_capability_revision IS NOT NULL AND provider_target_snapshot_json IS NOT NULL)
   ),
   CHECK (ready_required_output_count <= required_output_count)
 );

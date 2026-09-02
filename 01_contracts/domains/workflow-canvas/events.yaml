@@ -10,6 +10,7 @@ canvas_version_published:
     execution_template_digest: string
     workflow_definition_name: string
     workflow_definition_version: string
+    target_policy_snapshot_digest: string
     project_id: string
     namespace: string
     published_by: string
@@ -18,19 +19,21 @@ canvas_version_published:
   idempotency_key: canvas_version_id:aggregate_version:published
   retry_policy: CanvasVersion 与 outbox 同事务写入，由 outbox 持续重试。
   failure_policy: CanvasVersion 为事实源；发布事件失败不得回滚已成立版本，也不得重复注册漂移定义。
-  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-004]
-  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002, BR-WORKFLOW-012, BR-WORKFLOW-034]
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-004, US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-001, BR-WORKFLOW-002, BR-WORKFLOW-012, BR-WORKFLOW-034, BR-WORKFLOW-044, BR-WORKFLOW-046, BR-WORKFLOW-047]
 
 canvas_run_created:
   producer: canvas-run-service
   consumers: [sse-event-projector, audit-service]
-  trigger_condition: CanvasRun 已固定版本、输入、scope、策略、请求摘要和执行计划并持久化；DAGTaskGroup 可以尚未绑定。
+  trigger_condition: CanvasRun 已固定版本、输入、REQUEST 目标选择、scope、策略、请求摘要和执行计划并持久化；DAGTaskGroup 可以尚未绑定。
   payload:
     canvas_run_id: string
     canvas_id: string
     canvas_version_id: string
     retry_of_canvas_run_id: string|null
     retry_intent: string|null
+    node_target_selection_count: integer
+    node_target_selection_digest: string
     task_creation_status: string(PENDING|CREATED|RETRYABLE_FAILED)
     status: string(PENDING)
     flow_summaries: array<object>
@@ -39,11 +42,12 @@ canvas_run_created:
     created_by: string
     aggregate_version: integer
     occurred_at: string(date-time)
+  forbidden_payload: [endpoint, credential, credential_ref, headers, provider_execution_grant, grant_resolution, provider_private_config]
   idempotency_key: canvas_run_id:aggregate_version:created
   retry_policy: CanvasRun 与 outbox 同事务写入，由 outbox 持续重试。
   failure_policy: CanvasRun 为事实源；事件或 Task Center 暂时失败不删除运行，也不创建第二个 DAGTaskGroup。
-  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-008]
-  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-027, BR-WORKFLOW-032, BR-WORKFLOW-034]
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-008, US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-027, BR-WORKFLOW-032, BR-WORKFLOW-034, BR-WORKFLOW-048, BR-WORKFLOW-049, BR-WORKFLOW-051]
 
 canvas_run_task_group_bound:
   producer: canvas-run-service

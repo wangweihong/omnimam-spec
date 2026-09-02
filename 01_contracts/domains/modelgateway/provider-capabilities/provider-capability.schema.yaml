@@ -1,5 +1,5 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: https://omnimam.local/schemas/application-platform/provider-capability.schema.yaml
+$id: https://omnimam.local/schemas/model-gateway/provider-capability.schema.yaml
 title: OmniMAM ProviderCapability Manifest
 description: >-
   ProviderCapability 只读 YAML 清单契约。运行态 availability、failure_reason、
@@ -11,8 +11,7 @@ required:
   - id
   - name
   - kind
-  - binding_policy
-  - application_engine_type_id
+  - provider_type
   - revision
   - provider
   - sources
@@ -31,13 +30,11 @@ properties:
     minLength: 1
     maxLength: 200
   kind:
-    enum: [catalog, engine_binding]
-  binding_policy:
-    enum: [manual, required_immutable]
+    enum: [catalog, runtime]
   description:
     type: string
     maxLength: 2000
-  application_engine_type_id:
+  provider_type:
     type: string
     pattern: '^[a-z][a-z0-9_]*$'
     maxLength: 128
@@ -88,16 +85,14 @@ allOf:
         kind: {const: catalog}
     then:
       properties:
-        binding_policy: {const: manual}
         models: {minItems: 1}
         operations: {minItems: 1}
         variants: {minItems: 1}
   - if:
       properties:
-        kind: {const: engine_binding}
+        kind: {const: runtime}
     then:
       properties:
-        binding_policy: {const: required_immutable}
         models: {maxItems: 0}
         operations: {maxItems: 0}
         variants: {maxItems: 0}

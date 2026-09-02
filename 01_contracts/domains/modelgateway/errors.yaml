@@ -1,362 +1,335 @@
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_DIRECTORY_UNREADABLE
-  value: 130220
+provider_type_not_found:
+  code: ERR_MODEL_GATEWAY_PROVIDER_TYPE_NOT_FOUND
+  value: 270200
   http: 200
-  cn: ProviderCapability 目录不存在或不可读取，能力注册表已降级。
-  en: The ProviderCapability directory is missing or unreadable; the registry is degraded.
+  cn: Provider 类型不存在或当前不可用。
+  en: Provider type does not exist or is currently unavailable.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-type-capability
+  range: 270200-270399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-131, BR-AIAPP-134]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-003]
+  related_user_stories: [US-MGW-007]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_YAML_INVALID
-  value: 130221
+provider_capability_not_found:
+  code: ERR_MODEL_GATEWAY_PROVIDER_CAPABILITY_NOT_FOUND
+  value: 270201
   http: 200
-  cn: ProviderCapability 文件不是合法 YAML。
-  en: The ProviderCapability file is not valid YAML.
+  cn: Provider 能力不存在或不可用。
+  en: Provider capability does not exist or is unavailable.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-type-capability
+  range: 270200-270399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-132, BR-AIAPP-134]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-004]
+  related_user_stories: [US-MGW-007]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_INVALID
-  value: 130222
+provider_capability_diagnostics_forbidden:
+  code: ERR_MODEL_GATEWAY_PROVIDER_CAPABILITY_DIAGNOSTICS_FORBIDDEN
+  value: 270202
   http: 200
-  cn: ProviderCapability 字段不符合当前 Schema。
-  en: ProviderCapability fields do not conform to the current schema.
+  cn: 无权读取 Provider 能力加载诊断。
+  en: Provider capability load diagnostics are not accessible.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-type-capability
+  range: 270200-270399
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-004]
+  related_user_stories: [US-MGW-007]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_SCHEMA_VERSION_UNSUPPORTED
-  value: 130223
+provider_account_not_found:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_NOT_FOUND
+  value: 270400
   http: 200
-  cn: ProviderCapability schema_version 不受支持。
-  en: The ProviderCapability schema_version is not supported.
+  cn: Provider 账号不存在或当前主体不可见。
+  en: Provider account does not exist or is not visible to the principal.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-account
+  range: 270400-270599
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_DUPLICATED
-  value: 130224
+provider_account_scope_invalid:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_SCOPE_INVALID
+  value: 270401
   http: 200
-  cn: 多个 ProviderCapability 文件声明了相同 ID，所有冲突项均不可用。
-  en: Multiple ProviderCapability files declare the same ID; all conflicting entries are unavailable.
+  cn: Provider 账号作用域或 owner 组合无效。
+  en: Provider account scope and owner combination is invalid.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-account
+  range: 270400-270599
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-133, BR-AIAPP-134]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_ENGINE_TYPE_MISSING
-  value: 130225
+provider_account_forbidden:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_FORBIDDEN
+  value: 270402
   http: 200
-  cn: ProviderCapability 引用的 ApplicationEngineType 未注册。
-  en: The ApplicationEngineType referenced by ProviderCapability is not registered.
+  cn: 当前主体无权执行此 Provider 账号操作。
+  en: The principal is not allowed to perform this provider account operation.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-account
+  range: 270400-270599
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_ADAPTER_MISSING
-  value: 130226
+provider_account_config_invalid:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_CONFIG_INVALID
+  value: 270403
   http: 200
-  cn: ProviderCapability 对应的 EngineAdapter 未注册。
-  en: The EngineAdapter required by ProviderCapability is not registered.
+  cn: endpoint、认证、凭证引用或 Provider 配置不符合 ProviderType 契约。
+  en: Endpoint, authentication, credential reference, or provider configuration violates the ProviderType contract.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
+  owning_module: provider-account
+  range: 270400-270599
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  related_rules: [BR-MGW-003]
+  related_user_stories: [US-MGW-001]
 
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_EXECUTOR_MISSING
-  value: 130227
+provider_account_version_conflict:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_VERSION_CONFLICT
+  value: 270404
   http: 200
-  cn: ProviderCapability 中至少一个 Operation 缺少 OperationExecutor。
-  en: At least one ProviderCapability operation has no registered OperationExecutor.
+  cn: Provider 账号已被其他操作更新，请刷新后重试。
+  en: Provider account was updated by another operation; refresh and retry.
   owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-132, BR-AIAPP-135, BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
-
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_VARIANT_INVALID
-  value: 130228
-  http: 200
-  cn: ProviderCapability 的模型、Operation、Variant 或参数约束不一致。
-  en: ProviderCapability models, operations, variants, or parameter constraints are inconsistent.
-  owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-130, BR-AIAPP-132]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
-
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_UNAVAILABLE
-  value: 130229
-  http: 200
-  cn: ProviderCapability 当前不可用，不能用于绑定、表单解析或运行。
-  en: ProviderCapability is unavailable and cannot be used for binding, form resolution, or execution.
-  owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137]
-  related_user_stories: [US-AIAPP-040, US-AIAPP-041, US-AIAPP-043]
-
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_NOT_FOUND
-  value: 130230
-  http: 200
-  cn: ProviderCapability 不存在或当前不可见。
-  en: The ProviderCapability does not exist or is not visible.
-  owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-130, BR-AIAPP-136]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
-
-
-- code: ERR_AIAPP_PROVIDER_CAPABILITY_ID_RESERVED
-  value: 130231
-  http: 200
-  cn: 外部 ProviderCapability 清单使用了系统内置保留 ID，不能覆盖内置能力。
-  en: An external ProviderCapability manifest uses a reserved builtin ID and cannot override the builtin capability.
-  owning_domain: modelgateway
-  owning_module: provider-capability
-  range: 130200-130399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-133, BR-AIAPP-188]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
-
-
-- code: ERR_AIAPP_ENGINE_INSTANCE_NOT_FOUND
-  value: 130420
-  http: 200
-  cn: ApplicationEngineInstance 不存在或当前用户不可见。
-  en: The ApplicationEngineInstance does not exist or is not visible to the current user.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_ENGINE_AUTH_CONFIG_INVALID
-  value: 130421
-  http: 200
-  cn: EngineInstance 鉴权配置与 ApplicationEngineType 不兼容。
-  en: EngineInstance authentication configuration is incompatible with its ApplicationEngineType.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_ENGINE_BINDING_INCOMPATIBLE
-  value: 130422
-  http: 200
-  cn: EngineInstance 与 ProviderCapability 的 ApplicationEngineType 不一致或能力不可用。
-  en: EngineInstance and ProviderCapability have incompatible ApplicationEngineTypes or unavailable capability.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_ENGINE_BINDING_RESTRICTION_EXPANDS
-  value: 130423
-  http: 200
-  cn: EngineCapabilityBinding restrictions 扩张了 ProviderCapability。
-  en: EngineCapabilityBinding restrictions expand ProviderCapability.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-141]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_ENGINE_UNAVAILABLE
-  value: 130424
-  http: 200
-  cn: 没有健康且具备当前有效能力的 EngineInstance。
-  en: No healthy EngineInstance has the currently effective capability.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
+  owning_module: provider-account
+  range: 270400-270599
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-140, BR-AIAPP-141]
-  related_user_stories: [US-AIAPP-041, US-AIAPP-043]
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
 
-
-- code: ERR_AIAPP_ENGINE_REFERENCE_BLOCKED
-  value: 130425
+provider_account_test_failed:
+  code: ERR_MODEL_GATEWAY_PROVIDER_ACCOUNT_TEST_FAILED
+  value: 270405
   http: 200
-  cn: EngineInstance 已被历史运行引用，只能停用，不能删除。
-  en: The EngineInstance is referenced by historical runs and may only be disabled.
+  cn: Provider 账号测试失败。
+  en: Provider account test failed.
   owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-140, BR-AIAPP-143]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_ENGINE_BINDING_NOT_FOUND
-  value: 130426
-  http: 200
-  cn: EngineCapabilityBinding 不存在或当前不可见。
-  en: The EngineCapabilityBinding does not exist or is not visible.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-137, BR-AIAPP-141]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_SYSTEM_ENGINE_BINDING_IMMUTABLE
-  value: 130427
-  http: 200
-  cn: 系统维护的 EngineCapabilityBinding 不允许创建、修改、禁用或删除。
-  en: A system-managed EngineCapabilityBinding cannot be created, modified, disabled, or deleted.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
-  retryable: false
-  deprecated: false
-  related_rules: [BR-AIAPP-141, BR-AIAPP-189]
-  related_user_stories: [US-AIAPP-041]
-
-
-- code: ERR_AIAPP_REQUIRED_ENGINE_BINDING_FAILED
-  value: 130428
-  http: 200
-  cn: 创建 EngineInstance 时未能原子写入系统必需能力绑定，实例未创建。
-  en: The required system capability binding could not be written atomically while creating the EngineInstance; the instance was not created.
-  owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
+  owning_module: provider-account
+  range: 270400-270599
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-189]
-  related_user_stories: [US-AIAPP-041]
+  related_rules: [BR-MGW-007, BR-MGW-018]
+  related_user_stories: [US-MGW-004]
 
-
-- code: ERR_AIAPP_ENGINE_INSTANCE_NAME_DUPLICATED
-  value: 130429
+provider_resource_not_found:
+  code: ERR_MODEL_GATEWAY_PROVIDER_RESOURCE_NOT_FOUND
+  value: 270600
   http: 200
-  cn: 已存在同名的 ApplicationEngineInstance。
-  en: An ApplicationEngineInstance with the same name already exists.
+  cn: Provider 资源不存在或当前主体不可见。
+  en: Provider resource does not exist or is not visible to the principal.
   owning_domain: modelgateway
-  owning_module: engine
-  range: 130400-130599
+  owning_module: provider-resource
+  range: 270600-270799
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-140]
-  related_user_stories: [US-AIAPP-041]
+  related_rules: [BR-MGW-005]
+  related_user_stories: [US-MGW-002]
 
-
-- code: ERR_AIAPP_COMFYUI_ENGINE_TYPE_INVALID
-  value: 131221
+provider_resource_kind_unsupported:
+  code: ERR_MODEL_GATEWAY_PROVIDER_RESOURCE_KIND_UNSUPPORTED
+  value: 270601
   http: 200
-  cn: 指定的来源或目标 EngineInstance 不是 ComfyUI 类型。
-  en: The selected source or target EngineInstance is not a ComfyUI engine.
+  cn: ProviderType 不支持该资源类型。
+  en: ProviderType does not support the requested resource kind.
   owning_domain: modelgateway
-  owning_module: comfyui-workflow
-  range: 131200-131399
+  owning_module: provider-resource
+  range: 270600-270799
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-169, BR-AIAPP-171, BR-AIAPP-172]
-  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
+  related_rules: [BR-MGW-003, BR-MGW-005]
+  related_user_stories: [US-MGW-002]
 
-
-- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_UNAVAILABLE
-  value: 131222
+provider_resource_duplicate:
+  code: ERR_MODEL_GATEWAY_PROVIDER_RESOURCE_DUPLICATE
+  value: 270602
   http: 200
-  cn: 指定 ComfyUI EngineInstance 不存在可用的当前 object_info，或目录已超过 48 小时。
-  en: The selected ComfyUI EngineInstance has no usable current object_info, or the catalog is older than 48 hours.
+  cn: 同一账号下已存在相同远端资源。
+  en: The same remote resource already exists under this account.
   owning_domain: modelgateway
-  owning_module: comfyui-workflow
-  range: 131200-131399
+  owning_module: provider-resource
+  range: 270600-270799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-005]
+  related_user_stories: [US-MGW-002]
+
+provider_resource_missing:
+  code: ERR_MODEL_GATEWAY_PROVIDER_RESOURCE_MISSING
+  value: 270603
+  http: 200
+  cn: Provider 资源已在远端缺失，当前不可执行。
+  en: Provider resource is missing remotely and cannot be executed.
+  owning_domain: modelgateway
+  owning_module: provider-resource
+  range: 270600-270799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-005]
+  related_user_stories: [US-MGW-002]
+
+provider_resource_sync_failed:
+  code: ERR_MODEL_GATEWAY_PROVIDER_RESOURCE_SYNC_FAILED
+  value: 270604
+  http: 200
+  cn: Provider 资源同步失败，现有本地启用决定保持不变。
+  en: Provider resource synchronization failed; existing local enablement decisions remain unchanged.
+  owning_domain: modelgateway
+  owning_module: provider-resource
+  range: 270600-270799
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-169, BR-AIAPP-176]
-  related_user_stories: [US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
+  related_rules: [BR-MGW-005]
+  related_user_stories: [US-MGW-002]
 
-
-- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_NOT_ALLOWED
-  value: 131243
+provider_binding_invalid:
+  code: ERR_MODEL_GATEWAY_PROVIDER_BINDING_INVALID
+  value: 270605
   http: 200
-  cn: 只有已启用且健康在线的 ComfyUI EngineInstance 可以刷新 object_info。
-  en: Object-info refresh is allowed only for enabled, healthy online ComfyUI EngineInstances.
+  cn: 账号能力绑定不兼容或试图扩张能力。
+  en: Account capability binding is incompatible or attempts to expand capability.
   owning_domain: modelgateway
-  owning_module: comfyui-workflow
-  range: 131200-131399
+  owning_module: provider-resource
+  range: 270600-270799
   retryable: false
   deprecated: false
-  related_rules: [BR-AIAPP-170, BR-AIAPP-176]
-  related_user_stories: [US-AIAPP-049]
+  related_rules: [BR-MGW-006]
+  related_user_stories: [US-MGW-003]
 
-
-- code: ERR_AIAPP_COMFYUI_OBJECT_INFO_REFRESH_FAILED
-  value: 131244
+execution_target_selection_invalid:
+  code: ERR_MODEL_GATEWAY_EXECUTION_TARGET_SELECTION_INVALID
+  value: 270800
   http: 200
-  cn: 未能从 ComfyUI EngineInstance 获取并校验完整 object_info，已保留最后一次成功目录。
-  en: A complete valid object_info could not be retrieved from the ComfyUI EngineInstance; the last successful catalog was retained.
+  cn: 目标选择与 FIXED、DEFAULT 或 REQUEST 结构不匹配。
+  en: Target selection does not match the FIXED, DEFAULT, or REQUEST structure.
   owning_domain: modelgateway
-  owning_module: comfyui-workflow
-  range: 131200-131399
+  owning_module: execution-target
+  range: 270800-270999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-012]
+  related_user_stories: [US-MGW-003]
+
+execution_target_scope_forbidden:
+  code: ERR_MODEL_GATEWAY_EXECUTION_TARGET_SCOPE_FORBIDDEN
+  value: 270801
+  http: 200
+  cn: 账号作用域不被目标策略或当前场景允许。
+  en: Account scope is not allowed by the target policy or current context.
+  owning_domain: modelgateway
+  owning_module: execution-target
+  range: 270800-270999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-009, BR-MGW-010]
+  related_user_stories: [US-MGW-003]
+
+execution_target_unavailable:
+  code: ERR_MODEL_GATEWAY_EXECUTION_TARGET_UNAVAILABLE
+  value: 270802
+  http: 200
+  cn: 选定账号或资源当前不可执行，且不会跨作用域回退。
+  en: Selected account or resource is not executable and no cross-scope fallback is performed.
+  owning_domain: modelgateway
+  owning_module: execution-target
+  range: 270800-270999
   retryable: true
   deprecated: false
-  related_rules: [BR-AIAPP-169, BR-AIAPP-170]
-  related_user_stories: [US-AIAPP-049]
+  related_rules: [BR-MGW-007, BR-MGW-009]
+  related_user_stories: [US-MGW-003]
+
+execution_default_not_configured:
+  code: ERR_MODEL_GATEWAY_EXECUTION_DEFAULT_NOT_CONFIGURED
+  value: 270803
+  http: 200
+  cn: 当前用途或平台范围没有可解析的默认目标。
+  en: No default target can be resolved for the current usage or platform scope.
+  owning_domain: modelgateway
+  owning_module: execution-target
+  range: 270800-270999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-011]
+  related_user_stories: [US-MGW-003]
+
+execution_grant_invalid:
+  code: ERR_MODEL_GATEWAY_EXECUTION_GRANT_INVALID
+  value: 270804
+  http: 200
+  cn: Provider Execution Grant 无效、过期或绑定不匹配。
+  en: Provider execution grant is invalid, expired, or binding-mismatched.
+  owning_domain: modelgateway
+  owning_module: execution-target
+  range: 270800-270999
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-012, BR-MGW-013]
+  related_user_stories: [US-MGW-003]
+
+execution_provider_failed:
+  code: ERR_MODEL_GATEWAY_EXECUTION_PROVIDER_FAILED
+  value: 270805
+  http: 200
+  cn: Provider 执行失败。
+  en: Provider operation execution failed.
+  owning_domain: modelgateway
+  owning_module: execution-target
+  range: 270800-270999
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MGW-015]
+  related_user_stories: [US-MGW-003]
+
+network_policy_forbidden:
+  code: ERR_MODEL_GATEWAY_NETWORK_POLICY_FORBIDDEN
+  value: 271000
+  http: 200
+  cn: 当前网络策略拒绝访问解析后的 Provider 目标。
+  en: Current network policy rejects the resolved provider target.
+  owning_domain: modelgateway
+  owning_module: network-policy-access
+  range: 271000-271199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-016, BR-MGW-017]
+  related_user_stories: [US-MGW-006]
+
+network_policy_invalid:
+  code: ERR_MODEL_GATEWAY_NETWORK_POLICY_INVALID
+  value: 271001
+  http: 200
+  cn: 网络策略的 mode、host、CIDR、scheme 或 port 配置无效。
+  en: Network policy mode, host, CIDR, scheme, or port configuration is invalid.
+  owning_domain: modelgateway
+  owning_module: network-policy-access
+  range: 271000-271199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-017]
+  related_user_stories: [US-MGW-006]
+
+network_redirect_forbidden:
+  code: ERR_MODEL_GATEWAY_NETWORK_REDIRECT_FORBIDDEN
+  value: 271002
+  http: 200
+  cn: Provider 重定向目标不符合网络策略或次数上限。
+  en: Provider redirect target violates network policy or redirect limits.
+  owning_domain: modelgateway
+  owning_module: network-policy-access
+  range: 271000-271199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MGW-017]
+  related_user_stories: [US-MGW-006]

@@ -1,0 +1,23 @@
+model_preference_changed:
+  producer: model-preferences.preference
+  consumers: [ai-chatting, application-platform, agent, audit]
+  trigger_condition: ModelPreference 创建、整体替换或删除事务提交后。
+  payload: [event_id, occurred_at, owner_user_id, provider_resource_id, preference_id, resource_version, change_type]
+  forbidden_payload: [gateway_health, executable, endpoint, credential_ref, provider_metadata]
+  idempotency_key: preference_id + resource_version + change_type
+  retry_policy: outbox 至少一次投递，消费者按幂等键去重。
+  failure_policy: 保留 outbox 并告警；消费者可重查 Model Preferences。
+  related_rules: [BR-MODELPREF-001, BR-MODELPREF-005]
+  related_user_stories: [US-MODELPREF-001]
+
+default_model_preference_changed:
+  producer: model-preferences.default
+  consumers: [ai-chatting, application-platform, agent, audit]
+  trigger_condition: DefaultModelPreference 保存、替换或删除事务提交后。
+  payload: [event_id, occurred_at, owner_user_id, usage, provider_resource_id, default_preference_id, resource_version, change_type]
+  forbidden_payload: [gateway_health, executable, endpoint, credential_ref, provider_metadata, provider_execution_grant]
+  idempotency_key: owner_user_id + usage + resource_version + change_type
+  retry_policy: outbox 至少一次投递，消费者按幂等键去重。
+  failure_policy: 保留 outbox 并告警；执行前仍必须重查默认 ID 并由 Gateway 校验。
+  related_rules: [BR-MODELPREF-006, BR-MODELPREF-007]
+  related_user_stories: [US-MODELPREF-002, US-MODELPREF-003]

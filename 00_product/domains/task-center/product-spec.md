@@ -17,7 +17,7 @@
 任务中心必须覆盖以下场景：
 
 1. 素材上传或 Artifact 登记成功后可靠触发 AssetRepresentation 派生 DAG，并周期补全缺失派生。
-2. 以轻量周期巡检并发检测应用中心 EngineInstance，只在需要异步修复时创建 AtomicTask。
+2. 以轻量周期巡检并发检测 Model Gateway ProviderAccount/ProviderResource，只在需要异步修复时创建 AtomicTask。
 3. 将 ComfyUI 生图拆为提交、轮询、下载制品等可恢复步骤。
 4. 支持文本、图片、视频等多节点依赖和动态批量 fan-out/fan-in。
 5. 支持无限画布用户发布任意合法无环工作流，并固定版本执行。
@@ -275,7 +275,7 @@ DAG 幂等键固定为 `asset-representations:<asset_version_id>:<profile_versio
 
 ### 5.2 周期性并发健康检测
 
-系统内置 `application-platform.engine-health` RECONCILE TaskSchedule，默认使用六段 `*/30 * * * * *` 与 `UTC`。巡检器按稳定 ID checkpoint 分批读取启用的 EngineInstance，默认最多并发 16、每轮最多 1000 项、单项最多 4 秒、整轮最多 5 秒。本轮不创建 Planner DAGTaskGroup 或健康 AtomicTask；上一轮未终态时记录 `SKIPPED_OVERLAP`。
+系统内置 `model-gateway.provider-health` RECONCILE TaskSchedule，默认使用六段 `*/30 * * * * *` 与 `UTC`。巡检器按稳定 ID checkpoint 分批读取启用的 ProviderAccount/ProviderResource，默认最多并发 16、每轮最多 1000 项、单项最多 4 秒、整轮最多 5 秒。本轮不创建 Planner DAGTaskGroup 或健康 AtomicTask；上一轮未终态时记录 `SKIPPED_OVERLAP`。健康事实由 Model Gateway 在同一事务中更新并发布事件。
 
 巡检参数范围为 `maxParallelism=1..64`、`maxItemsPerRun=1..1000`、`perItemTimeoutSeconds=1..30`、`overallTimeoutSeconds=1..300`，且整轮超时不得小于单项超时。参数更新后立即同步到 WorkflowRuntime schedule，服务重启不得覆盖已保存值。
 
@@ -437,7 +437,7 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 42. `BR-TASK-114`：RECONCILE ScheduleExecution 的 targetType 和 targetId 为空，必须保存执行模式和轻量摘要。
 43. `BR-TASK-115`：RECONCILE 历史按成功 4、重叠 4、失败 20 且 7 天的默认策略幂等清理，所有非终态保留；运行时终态巡检执行默认保留 24 小时。
 44. `BR-TASK-116`：WorkflowRuntime 为 RECONCILE 固定使用可复用 definition `task_center_reconcile_controller` 版本 1，并只删除超过保留期的终态 RECONCILE execution，不得触碰 MATERIALIZED execution。
-45. `BR-TASK-117`：引擎健康系统计划固定使用 systemKey `application-platform.engine-health` 和同名 reconcileRef，默认六段 cron、UTC 时区、16 并发、1000 项、4 秒单项与 5 秒整轮超时，服务重启不覆盖管理员修改。
+45. `BR-TASK-117`：Provider 健康系统计划固定使用 systemKey `model-gateway.provider-health` 和同名 reconcileRef，默认六段 cron、UTC 时区、16 并发、1000 项、4 秒单项与 5 秒整轮超时，服务重启不覆盖管理员修改；健康事实由 Model Gateway 所有。
 46. `BR-TASK-118`：巡检参数必须满足并发 1..64、单轮项数 1..1000、单项超时 1..30 秒、整轮超时 1..300 秒，且整轮超时不小于单项超时。
 47. `BR-TASK-119`：RECONCILE 低基数指标只允许 reconcileRef、状态和 runtime backend 等有界 label，不得使用 scheduleId、engineId 或其他无界资源 ID。
 48. `BR-TASK-120`：AtomicTask 创建与状态/进度变化、TaskAttempt 状态变化、TaskGroup/DAGTaskGroup 创建与汇总变化必须递增所属资源的 `resource_version` 并同事务写可靠事件；事件必须包含足以解析所有者和按版本幂等投影的字段，不得生成 TaskRun 事件。
@@ -572,7 +572,7 @@ Task 输入只允许 `gitlab_project_id`、`ref` 和可选 variables。GitLab Wo
 - `AC-TASK-017-02`：checkpoint 仅在完整分块成功后推进；超时重试不遗漏资源，稳定幂等键防止重复修复任务。
 - `AC-TASK-017-03`：系统计划无法由用户创建或删除；管理员修改 cron、时区和安全运行参数后立即生效，服务重启不恢复默认值。
 - `AC-TASK-017-04`：同计划重叠触发只记录 SKIPPED_OVERLAP；历史依策略幂等清理，累计统计不回退。
-- `AC-TASK-017-05`：引擎健康巡检使用 `application-platform.engine-health`，不再创建 Planner 和健康 AtomicTask，状态变化仍通过 application-platform outbox 事件发布。
+- `AC-TASK-017-05`：Provider 健康巡检使用 `model-gateway.provider-health`，不再创建 Planner 和健康 AtomicTask，状态变化通过 Model Gateway outbox 事件发布。
 
 ### US-TASK-018 可靠投影任务事实
 

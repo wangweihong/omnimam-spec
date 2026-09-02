@@ -417,3 +417,78 @@ canvas_quota_exceeded:
   deprecated: false
   related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-009]
   related_rules: [BR-WORKFLOW-010, BR-WORKFLOW-031]
+
+canvas_target_binding_invalid:
+  code: ERR_CANVAS_TARGET_BINDING_INVALID
+  value: 160612
+  cn: ApplicationNode 的 TargetBinding 不符合固定 ApplicationVersion policy。
+  en: ApplicationNode target binding violates the pinned ApplicationVersion policy.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-045, BR-WORKFLOW-046]
+
+canvas_user_account_binding_forbidden:
+  code: ERR_CANVAS_USER_ACCOUNT_BINDING_FORBIDDEN
+  value: 160613
+  cn: PROJECT Canvas 禁止固定 USER 账号，PRIVATE Canvas 只能固定创建者自己的 USER 账号。
+  en: PROJECT canvases cannot pin USER accounts, and PRIVATE canvases can only pin the creator's USER account.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-047]
+
+canvas_node_target_selection_invalid:
+  code: ERR_CANVAS_NODE_TARGET_SELECTION_INVALID
+  value: 160614
+  cn: 节点目标选择重复、范围外、多余或用于非 REQUEST 节点。
+  en: Node target selection is duplicated, out of scope, excessive, or targets a non-REQUEST node.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-048]
+
+canvas_node_target_selection_missing:
+  code: ERR_CANVAS_NODE_TARGET_SELECTION_MISSING
+  value: 160615
+  cn: 本次运行范围内的 REQUEST ApplicationNode 缺少 Provider 目标选择。
+  en: A REQUEST ApplicationNode in the run scope is missing its provider target selection.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  retryable: false
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-048]
+
+canvas_provider_target_unavailable:
+  code: ERR_CANVAS_PROVIDER_TARGET_UNAVAILABLE
+  value: 160616
+  cn: Provider 目标当前不可用，且不会跨 USER/PLATFORM 作用域回退。
+  en: Provider target is currently unavailable and no USER/PLATFORM cross-scope fallback is performed.
+  owning_domain: workflow-canvas
+  owning_module: run
+  range: 160600-160799
+  severity: error
+  http: 200
+  retryable: true
+  deprecated: false
+  related_user_stories: [US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-049, BR-WORKFLOW-050]

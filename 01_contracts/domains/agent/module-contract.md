@@ -38,7 +38,7 @@
 - 未曾成功绑定 AtomicTask 的 `FAILED/ERR_AGENT_INVOCATION_TASK_UNAVAILABLE` Invocation，允许在同一业务幂等键下复用原 Message/Invocation、递增 submission generation/resource version 并重试 Task 提交；一旦绑定 Task，状态、取消和终态只能按当前 Task ID 与预期资源版本单调投影。
 - Agent 内部 `ListMessages` 必须支持 owner、Agent、Session 受限查询并按 `(created_at DESC, id DESC)` 稳定分页；AppStudio 只能查询其当前 Application/generation/session。Agent Service 必须在 Invocation 创建时提供稳定 `user_message_id/assistant_message_id`，并以相同 ID 关联 delta、完成事件和持久化消息。
 - AgentRuntimeAdapter 必须把 Runtime 原始输出规范化为 S1 第 12.3 节的 12 类完整事件 payload；事件按 Invocation 内 `sequence_no` 先持久化再推送。内部重放只返回游标之后的事件且无重复，唯一终态事件 flush 后关闭，已终态 Invocation 补完历史后关闭。
-- Runtime 启动/恢复前必须解析用途匹配的 ACTIVE primary binding 并签发短期 AgentModelAccessGrant；校验失败前不得创建 RuntimeBinding 或 AtomicTask。Infra 只接收 grant 引用并以服务身份解析注入。
+- Runtime 启动/恢复前必须解析用途匹配的 ACTIVE primary binding 并签发短期 provider-execution-grant；校验失败前不得创建 RuntimeBinding 或 AtomicTask。Infra 只接收 grant 引用并以服务身份解析注入。
 - MCP Binding 创建和 PUT 必须在同一事务写当前态与不可变 revision；PUT 全量替换可变字段并用 `resource_version` 乐观控制，凭证使用 `KEEP/SET/CLEAR`。DELETE 是不可恢复、幂等软删除；List 和新 Runtime 排除删除项，所有响应隐藏 `credential_ref`。
 - `agent.runtime.ensure` 提交前按 Binding ID 稳定选择最多 50 个启用且未删除 Binding 的当前 revision，并持久化精确绑定 Runtime/请求/Agent generation/Application/refs/有效期的 AgentRuntimeGrant；入队失败撤销，重试复用同一 Grant。
 - Task 参数中的 `binding_revision` 是当前整数 `resource_version` 的规范十进制字符串；resolver 必须按该精确版本解析，不得回退到最新版本。
@@ -57,7 +57,7 @@
 | task-center | 创建/查询/取消 Agent functionRef 任务，消费任务结果 | 写 Attempt、重试、取消终态或运行时队列 |
 | infrastructure | 通过 Task Center 间接创建/操作受控 Runtime；提供受 AgentRuntimeGrant 约束的 MCP revision resolver；AgentRuntimeAdapter 直接调用只读 Endpoint resolve；RuntimeDiagnosticsReader 读取 owner-scoped 日志和实时健康 | 直接读取 Agent 私表、调用未授权 Infra API、Docker Socket 或 Provider API，持久化或传播解析地址/凭证，借诊断接口执行生命周期写操作 |
 | appstudio | 调用内部 `CreateCodingAgentForStudio`、owner-scoped `ListMessages`/Invocation 事件重放、校验 Coding Agent 固定 Workspace；实现 `WorkspaceGateway` 并在 Worker 终态前幂等投影 Git commit | 允许前端调用内部创建语义、读取 Agent 私表、创建第二套 Session/Invocation/Message/Event、绕过 base Revision/CommitSHA 或 ChangeSet |
-| user-model/modelgateway | 按 `agent.chat`/`agent.coding` 校验模型并签发 grant，解析为 ModelAccessSpec | 保存明文凭证、代理每次 LLM 请求 |
+| model-preferences/modelgateway | 按 `agent.chat`/`agent.coding` 校验模型并签发 grant，解析为 provider-execution-grant | 保存明文凭证、代理每次 LLM 请求 |
 | notification-center/sse | 发布可靠 Agent 状态事件 | 写通知收件箱或把 SSE 当事实源 |
 
 ## 5. 一致性与安全

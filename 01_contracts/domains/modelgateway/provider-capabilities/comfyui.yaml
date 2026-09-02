@@ -1,10 +1,9 @@
 schema_version: "1.0"
 id: comfyui-workflow-runtime
 name: ComfyUI Workflow Runtime
-kind: engine_binding
-binding_policy: required_immutable
-description: ComfyUI 实例的系统内置绑定能力；具体工作流能力仍由 workflow contract 与当前 object_info 决定。
-application_engine_type_id: comfyui
+kind: runtime
+description: ComfyUI ProviderAccount 的系统内置运行能力；具体工作流能力仍由 workflow contract 与当前 object_info 决定。
+provider_type: comfyui
 revision: "2026-07-24.1"
 enabled: true
 provider:
@@ -23,5 +22,5 @@ models: []
 operations: []
 variants: []
 notes:
-  - 本清单只标识 ComfyUI EngineInstance 的基础运行时身份，不声明模型、Operation、Variant 或参数能力。
+  - 本清单只标识 ComfyUI ProviderAccount 的基础运行时身份，不声明模型、Operation、Variant 或参数能力。
   - ComfyUI 模板与运行继续以 API Workflow、workflow contract 和目标实例当前 object_info 为能力事实源。

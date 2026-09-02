@@ -127,11 +127,11 @@ paths:
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
-        - name: engine_instance_id
+        - name: provider_account_id
           in: query
           required: true
           schema: {type: string}
-          description: 用于即时解析的目标 ComfyUI EngineInstance。
+          description: 用于即时解析的目标 ComfyUI ProviderAccount。
         - $ref: '#/components/parameters/page_num'
         - $ref: '#/components/parameters/page_size'
       responses:
@@ -156,11 +156,11 @@ paths:
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
-        - name: engine_instance_id
+        - name: provider_account_id
           in: query
           required: true
           schema: {type: string}
-          description: 用于即时解析的目标 ComfyUI EngineInstance。
+          description: 用于即时解析的目标 ComfyUI ProviderAccount。
       responses:
         '200':
           description: 查询完成或业务错误。
@@ -183,11 +183,11 @@ paths:
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
-        - name: engine_instance_id
+        - name: provider_account_id
           in: query
           required: true
           schema: {type: string}
-          description: 用于即时解析的目标 ComfyUI EngineInstance。
+          description: 用于即时解析的目标 ComfyUI ProviderAccount。
       responses:
         '200':
           description: 查询完成或业务错误。
@@ -210,11 +210,11 @@ paths:
         business_rules: [BR-AIAPP-156, BR-AIAPP-186, BR-AIAPP-187]
       parameters:
         - $ref: '#/components/parameters/workflow_id'
-        - name: engine_instance_id
+        - name: provider_account_id
           in: query
           required: true
           schema: {type: string}
-          description: 用于即时解析的目标 ComfyUI EngineInstance。
+          description: 用于即时解析的目标 ComfyUI ProviderAccount。
       responses:
         '200':
           description: 查询完成或业务错误。
@@ -461,7 +461,7 @@ paths:
       x-permission: aiapp.application.manage
       x-s1-refs:
         user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-159, BR-AIAPP-174]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-159, BR-AIAPP-174]
       requestBody:
         required: true
         content:
@@ -570,7 +570,7 @@ paths:
       x-permission: aiapp.application.manage
       x-s1-refs:
         user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-144, BR-AIAPP-145, BR-AIAPP-147]
       parameters: [{$ref: '#/components/parameters/application_template_version_id'}]
       responses:
         '200':
@@ -618,7 +618,7 @@ paths:
       x-conditional-permissions: {global_visibility: aiapp.application.manage_global}
       x-s1-refs:
         user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-142, BR-AIAPP-148]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-148]
       requestBody:
         required: true
         content:
@@ -705,8 +705,8 @@ paths:
       summary: 创建不可变 ApplicationVersion
       x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-137, BR-AIAPP-142]
+        user_stories: [US-AIAPP-042, US-AIAPP-053]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-205, BR-AIAPP-208]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
@@ -750,8 +750,8 @@ paths:
       summary: 校验并发布语义版本
       x-permission: aiapp.application.manage
       x-s1-refs:
-        user_stories: [US-AIAPP-042]
-        business_rules: [BR-AIAPP-142, BR-AIAPP-147]
+        user_stories: [US-AIAPP-042, US-AIAPP-053]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-147, BR-AIAPP-205, BR-AIAPP-208]
       parameters: [{$ref: '#/components/parameters/application_version_id'}]
       responses:
         '200':
@@ -770,8 +770,8 @@ paths:
       summary: 解析当前 RuntimeFormSchema
       x-permission: aiapp.application.run
       x-s1-refs:
-        user_stories: [US-AIAPP-043]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-145, BR-AIAPP-146]
+        user_stories: [US-AIAPP-043, US-AIAPP-053]
+        business_rules: [BR-AIAPP-142, BR-AIAPP-145, BR-AIAPP-146, BR-AIAPP-205, BR-AIAPP-207]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
@@ -823,8 +823,8 @@ paths:
       summary: 创建 ApplicationRun 并请求 AtomicTask
       x-permission: aiapp.application.run
       x-s1-refs:
-        user_stories: [US-AIAPP-043]
-        business_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149, BR-AIAPP-150]
+        user_stories: [US-AIAPP-043, US-AIAPP-053]
+        business_rules: [BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149, BR-AIAPP-150, BR-AIAPP-207, BR-AIAPP-209, BR-AIAPP-210, BR-AIAPP-212]
       parameters: [{$ref: '#/components/parameters/application_id'}]
       requestBody:
         required: true
@@ -950,7 +950,7 @@ components:
     ProviderCapabilityAvailability:
       type: string
       enum: [available, disabled, unavailable]
-    EngineHealthStatus:
+    ProviderHealthStatus:
       type: string
       enum: [unknown, online, offline, degraded]
     ComfyUIWorkflowSourceType:
@@ -1025,9 +1025,9 @@ components:
     ComfyUIWorkflowAPIConversionRequest:
       type: object
       additionalProperties: false
-      required: [engine_instance_id, resource_version]
+      required: [provider_account_id, resource_version]
       properties:
-        engine_instance_id: {type: string}
+        provider_account_id: {type: string}
         resource_version: {type: integer}
     ComfyUIWorkflowListResponse:
       type: object
@@ -1119,9 +1119,9 @@ components:
     ComfyUIWorkflowValidationCreateRequest:
       type: object
       additionalProperties: false
-      required: [engine_instance_id]
+      required: [provider_account_id]
       properties:
-        engine_instance_id: {type: string}
+        provider_account_id: {type: string}
     ComfyUIWorkflowDiagnostic:
       type: object
       required: [code, message]
@@ -1133,14 +1133,14 @@ components:
         detail: {type: object, additionalProperties: true}
     ComfyUIWorkflowValidation:
       type: object
-      required: [id, workflow_id, owner_user_id, engine_instance_id, status, node_summary, dependency_summary, errors, warnings, validated_at, created_at, updated_at, resource_version]
+      required: [id, workflow_id, owner_user_id, provider_account_id, status, node_summary, dependency_summary, errors, warnings, validated_at, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
         description: {type: string}
         workflow_id: {type: string}
         owner_user_id: {type: string}
-        engine_instance_id: {type: string}
+        provider_account_id: {type: string}
         status: {$ref: '#/components/schemas/ComfyUIWorkflowValidationStatus'}
         comfyui_version: {type: string}
         node_summary: {type: object, additionalProperties: true}
@@ -1160,18 +1160,18 @@ components:
     ComfyUIWorkflowConvertRequest:
       type: object
       additionalProperties: false
-      required: [name, capability_definition_id, engine_instance_id, template_contract, idempotency_key]
+      required: [name, capability_definition_id, provider_account_id, template_contract, idempotency_key]
       properties:
         name: {type: string}
         description: {type: string}
         capability_definition_id: {type: string}
-        engine_instance_id: {type: string}
+        provider_account_id: {type: string}
         template_contract: {$ref: '#/components/schemas/ComfyUIWorkflowTemplateContract'}
         idempotency_key: {type: string}
     ComfyUIWorkflowTemplateContract:
       type: object
       additionalProperties: false
-      required: [inputs, fixed_parameters, parameter_mappings, outputs, engine_restrictions]
+      required: [inputs, fixed_parameters, parameter_mappings, outputs, provider_restrictions]
       properties:
         inputs:
           type: array
@@ -1186,8 +1186,8 @@ components:
           type: array
           minItems: 1
           items: {$ref: '#/components/schemas/ComfyUITemplateOutput'}
-        engine_restrictions:
-          $ref: '#/components/schemas/ComfyUITemplateEngineRestrictions'
+        provider_restrictions:
+          $ref: '#/components/schemas/ComfyUITemplateProviderRestrictions'
     ComfyUITemplateInput:
       type: object
       additionalProperties: false
@@ -1241,13 +1241,13 @@ components:
         output_index: {type: integer, minimum: 0}
         data_type: {type: string}
         media_type: {type: string, enum: [image, video, audio, text, pdf, other]}
-    ComfyUITemplateEngineRestrictions:
+    ComfyUITemplateProviderRestrictions:
       type: object
       additionalProperties: false
       properties:
-        allowed_engine_instance_ids:
+        allowed_provider_account_ids:
           type: string
-          description: 允许的 EngineInstance ID，多个 ID 使用逗号分隔；为空表示所有兼容实例。
+          description: 允许的 ProviderAccount ID，多个 ID 使用逗号分隔；为空表示所有兼容实例。
         allowed_regions:
           type: string
           description: 允许的 region，多个值使用逗号分隔；为空表示不限制。
@@ -1276,7 +1276,7 @@ components:
       properties:
         node_id: {type: string}
         output_index: {type: integer, minimum: 0}
-    ComfyUIWorkflowTestEngineSnapshot:
+    ComfyUIWorkflowTestProviderAccountSnapshot:
       type: object
       additionalProperties: false
       required: [id, name]
@@ -1287,9 +1287,9 @@ components:
     ComfyUIWorkflowTestRunCreateRequest:
       type: object
       additionalProperties: false
-      required: [engine_instance_id, parameters, outputs, idempotency_key]
+      required: [provider_account_id, parameters, outputs, idempotency_key]
       properties:
-        engine_instance_id: {type: string}
+        provider_account_id: {type: string}
         parameters: {type: array, items: {$ref: '#/components/schemas/ComfyUIWorkflowTestParameter'}}
         outputs:
           type: array
@@ -1323,14 +1323,14 @@ components:
         content_url: {type: string, nullable: true}
     ComfyUIWorkflowTestRun:
       type: object
-      required: [id, name, workflow_id, owner_user_id, engine_instance_id, engine_instance_snapshot, parameter_override_count, workflow_validation_id, idempotency_key, task_creation_status, created_at, updated_at, resource_version]
+      required: [id, name, workflow_id, owner_user_id, provider_account_id, provider_account_snapshot, parameter_override_count, workflow_validation_id, idempotency_key, task_creation_status, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         name: {type: string}
         workflow_id: {type: string}
         owner_user_id: {type: string}
-        engine_instance_id: {type: string}
-        engine_instance_snapshot: {$ref: '#/components/schemas/ComfyUIWorkflowTestEngineSnapshot'}
+        provider_account_id: {type: string}
+        provider_account_snapshot: {$ref: '#/components/schemas/ComfyUIWorkflowTestProviderAccountSnapshot'}
         parameter_override_count: {type: integer, minimum: 0}
         workflow_validation_id: {type: string}
         dag_task_group_id: {type: string, nullable: true}
@@ -1510,19 +1510,61 @@ components:
       properties:
         total: {type: integer}
         items: {type: array, items: {$ref: '#/components/schemas/Application'}}
+    AccountScope: {type: string, enum: [USER, PLATFORM]}
+    TargetSelectionSource: {type: string, enum: [FIXED, DEFAULT, REQUEST]}
+    ExecutionTargetPolicy:
+      type: object
+      additionalProperties: false
+      required: [allowed_account_scopes, allowed_provider_types, allowed_resource_kinds, allowed_selection_sources]
+      properties:
+        allowed_account_scopes: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/AccountScope'}}
+        allowed_provider_types: {type: array, minItems: 1, uniqueItems: true, items: {type: string}}
+        allowed_resource_kinds: {type: array, minItems: 1, uniqueItems: true, items: {type: string, enum: [MODEL, WORKFLOW, APPLICATION, DEPLOYMENT]}}
+        allowed_selection_sources: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/TargetSelectionSource'}}
+        default_account_scope: {$ref: '#/components/schemas/AccountScope'}
+        default_model_usage: {type: string, enum: [application.default]}
+    TargetSelection:
+      type: object
+      additionalProperties: false
+      required: [source]
+      properties:
+        source: {$ref: '#/components/schemas/TargetSelectionSource'}
+        provider_account_id: {type: string}
+        provider_resource_id: {type: string}
+      oneOf:
+        - required: [source, provider_account_id]
+          properties: {source: {enum: [FIXED]}}
+        - required: [source]
+          properties: {source: {enum: [DEFAULT]}}
+          not: {anyOf: [{required: [provider_account_id]}, {required: [provider_resource_id]}]}
+        - required: [source, provider_account_id]
+          properties: {source: {enum: [REQUEST]}}
+    EligibleProviderTarget:
+      type: object
+      required: [provider_account_id, account_scope, provider_type, capability_definition_id, eligible]
+      properties:
+        provider_account_id: {type: string}
+        provider_resource_id: {type: string, nullable: true}
+        account_scope: {$ref: '#/components/schemas/AccountScope'}
+        provider_type: {type: string}
+        resource_kind: {type: string, enum: [MODEL, WORKFLOW, APPLICATION, DEPLOYMENT], nullable: true}
+        capability_definition_id: {type: string}
+        eligible: {type: boolean}
+        unavailable_reason: {type: string, nullable: true}
     ApplicationVersionCreateRequest:
       type: object
       additionalProperties: false
-      required: [semantic_version, application_template_version_id, input_schema, output_schema, parameter_policies]
+      required: [semantic_version, application_template_version_id, input_schema, output_schema, parameter_policies, execution_target_policy]
       properties:
         semantic_version: {type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'}
         application_template_version_id: {type: string}
         input_schema: {type: object, additionalProperties: true}
         output_schema: {type: object, additionalProperties: true}
         parameter_policies: {type: object, additionalProperties: true}
+        execution_target_policy: {$ref: '#/components/schemas/ExecutionTargetPolicy'}
     ApplicationVersion:
       type: object
-      required: [id, application_id, semantic_version, application_template_version_id, status, input_schema, output_schema, parameter_policies, created_at, updated_at, resource_version]
+      required: [id, application_id, semantic_version, application_template_version_id, status, input_schema, output_schema, parameter_policies, execution_target_policy, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         application_id: {type: string}
@@ -1532,6 +1574,7 @@ components:
         input_schema: {type: object, additionalProperties: true}
         output_schema: {type: object, additionalProperties: true}
         parameter_policies: {type: object, additionalProperties: true}
+        execution_target_policy: {$ref: '#/components/schemas/ExecutionTargetPolicy'}
         published_at: {type: string, format: date-time, nullable: true}
         created_at: {type: string, format: date-time}
         updated_at: {type: string, format: date-time}
@@ -1577,17 +1620,25 @@ components:
         availability: {$ref: '#/components/schemas/ProviderCapabilityAvailability'}
         operation_id: {type: string, nullable: true}
         operation_name: {type: string, nullable: true}
-    EngineInstanceRefSummary:
+    ProviderAccountRefSummary:
       type: object
-      description: EngineInstance 的非敏感一跳摘要，不包含 base_url 或 auth_config。
-      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185]}
-      required: [id, name, application_engine_type_id, enabled, health_status]
+      description: ApplicationRun 创建时固定的 ProviderAccount 非敏感快照，不包含 endpoint、凭证、Header 或 extra_config。
+      x-s1-refs: {business_rules: [BR-GLOBAL-001, BR-GLOBAL-002, BR-GLOBAL-003, BR-GLOBAL-004, BR-AIAPP-185, BR-AIAPP-209]}
+      required: [id, name, account_scope, provider_type]
       properties:
         id: {type: string}
         name: {type: string}
-        application_engine_type_id: {type: string}
-        enabled: {type: boolean}
-        health_status: {$ref: '#/components/schemas/EngineHealthStatus'}
+        account_scope: {$ref: '#/components/schemas/AccountScope'}
+        provider_type: {type: string}
+    ProviderResourceRefSummary:
+      type: object
+      description: ApplicationRun 创建时固定的 ProviderResource 非敏感快照，不继续展开账号。
+      required: [id, name, resource_kind, remote_resource_id]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        resource_kind: {type: string, enum: [MODEL, WORKFLOW, APPLICATION, DEPLOYMENT]}
+        remote_resource_id: {type: string}
     AtomicTaskRefSummary:
       type: object
       description: Task Center 提供的 AtomicTask 一跳只读投影。
@@ -1611,11 +1662,11 @@ components:
       required: [application_version_id]
       properties:
         application_version_id: {type: string}
-        engine_instance_id: {type: string}
+        target_selection: {$ref: '#/components/schemas/TargetSelection'}
         current_values: {type: object, additionalProperties: true}
     RuntimeFormSchema:
       type: object
-      required: [application_version_id, capability_source_type, source_revision, compatible_engine_instance_ids, fields, changes, violations, resolved_at]
+      required: [application_version_id, capability_source_type, source_revision, eligible_provider_targets, fields, changes, violations, resolved_at]
       properties:
         application_version_id: {type: string}
         capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
@@ -1623,7 +1674,7 @@ components:
         provider_capability_id: {type: string, nullable: true}
         provider_capability_revision: {type: string, nullable: true}
         workflow_contract_revision: {type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$'}
-        compatible_engine_instance_ids: {type: array, items: {type: string}}
+        eligible_provider_targets: {type: array, items: {$ref: '#/components/schemas/EligibleProviderTarget'}}
         fields: {type: array, items: {$ref: '#/components/schemas/RuntimeFormField'}}
         changes: {type: array, items: {$ref: '#/components/schemas/RuntimeFormChange'}}
         violations: {type: array, items: {$ref: '#/components/schemas/RuntimeFormViolation'}}
@@ -1677,15 +1728,15 @@ components:
     ApplicationRunCreateRequest:
       type: object
       additionalProperties: false
-      required: [application_version_id, inputs, idempotency_key]
+      required: [application_version_id, target_selection, inputs, idempotency_key]
       properties:
         application_version_id: {type: string}
-        engine_instance_id: {type: string}
+        target_selection: {$ref: '#/components/schemas/TargetSelection'}
         inputs: {type: object, additionalProperties: true}
         idempotency_key: {type: string}
     ApplicationRun:
       type: object
-      required: [id, application_id, application_version_id, application_template_version_id, engine_instance_id, capability_source_type, source_revision, input_snapshot, execution_snapshot, output_mapping_snapshot, task_creation_status, task_resource_version, artifacts, created_at, updated_at, resource_version]
+      required: [id, application_id, application_version_id, application_template_version_id, target_selection_source, account_scope, provider_account_id, provider_account_snapshot, provider_account_config_version, capability_definition_id, capability_source_type, source_revision, input_snapshot, execution_snapshot, output_mapping_snapshot, task_creation_status, task_resource_version, output_values, artifacts, created_at, updated_at, resource_version]
       properties:
         id: {type: string}
         application_id: {type: string}
@@ -1696,8 +1747,15 @@ components:
         application_template_version: {$ref: '#/components/schemas/ApplicationTemplateVersionSummary', nullable: true, readOnly: true}
         atomic_task_id: {type: string, nullable: true}
         atomic_task: {$ref: '#/components/schemas/AtomicTaskRefSummary', nullable: true, readOnly: true}
-        engine_instance_id: {type: string}
-        engine_instance: {$ref: '#/components/schemas/EngineInstanceRefSummary', nullable: true, readOnly: true}
+        target_selection_source: {$ref: '#/components/schemas/TargetSelectionSource'}
+        account_scope: {$ref: '#/components/schemas/AccountScope'}
+        provider_account_id: {type: string}
+        provider_account_snapshot: {$ref: '#/components/schemas/ProviderAccountRefSummary'}
+        provider_account_config_version: {type: integer, minimum: 1}
+        provider_resource_id: {type: string, nullable: true}
+        provider_resource_snapshot: {$ref: '#/components/schemas/ProviderResourceRefSummary', nullable: true}
+        provider_resource_revision: {type: string, nullable: true}
+        capability_definition_id: {type: string}
         capability_source_type: {$ref: '#/components/schemas/CapabilitySourceType'}
         source_revision: {type: string}
         provider_capability_id: {type: string, nullable: true}
@@ -1712,7 +1770,7 @@ components:
         task_creation_failure: {type: string, nullable: true}
         task_status_projection: {type: string, nullable: true}
         task_resource_version: {type: integer, minimum: 0}
-        output_values: {type: array, items: {type: object, additionalProperties: true}}
+        output_values: {type: object, additionalProperties: true, description: 结构化文本/JSON 输出；纯文本输出无需 Artifact。}
         artifacts: {type: array, items: {$ref: '#/components/schemas/ApplicationArtifactRef'}}
         failure_summary: {type: string}
         created_at: {type: string, format: date-time}

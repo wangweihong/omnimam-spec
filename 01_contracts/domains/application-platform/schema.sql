@@ -1,9 +1,7 @@
 -- application-platform S2 design schema, v1.1.0.
 -- This is a design contract, not a migration.
--- Gateway prerequisite: aiapp_engine_instances, aiapp_comfyui_engine_object_info and
--- aiapp_engine_capability_bindings are defined by ../modelgateway/schema.sql.
--- Existing cross-file foreign keys remain part of the compatibility contract; runtime
--- collaboration must still use stable IDs and the modelgateway module boundary.
+-- ProviderAccount/ProviderResource are Model Gateway private facts. This schema stores only
+-- cross-domain stable IDs and immutable non-sensitive snapshots; no cross-domain foreign keys.
 
 -- s1_refs: US-AIAPP-044, US-AIAPP-045, US-AIAPP-046; BR-AIAPP-153, BR-AIAPP-156, BR-AIAPP-169, BR-AIAPP-174, BR-AIAPP-186, BR-AIAPP-187, BR-AIAPP-190, BR-AIAPP-191, BR-AIAPP-192.
 -- A workflow import is deliberately not versioned. Re-import creates another row.
@@ -47,7 +45,7 @@ CREATE TABLE aiapp_comfyui_workflow_validations (
   workflow_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflows(id),
   owner_user_id TEXT NOT NULL,
   requested_by_user_id TEXT NOT NULL,
-  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  provider_account_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('compatible', 'incompatible', 'failed')),
   comfyui_version TEXT DEFAULT '',
   node_summary_json TEXT NOT NULL,
@@ -58,7 +56,7 @@ CREATE TABLE aiapp_comfyui_workflow_validations (
 );
 
 CREATE INDEX idx_aiapp_comfyui_validations_workflow_created ON aiapp_comfyui_workflow_validations(workflow_id, created_at);
-CREATE INDEX idx_aiapp_comfyui_validations_engine_status ON aiapp_comfyui_workflow_validations(engine_instance_id, status, validated_at);
+CREATE INDEX idx_aiapp_comfyui_validations_provider_status ON aiapp_comfyui_workflow_validations(provider_account_id, status, validated_at);
 
 -- s1_refs: US-AIAPP-048; BR-AIAPP-166, BR-AIAPP-167, BR-AIAPP-168.
 CREATE TABLE aiapp_comfyui_workflow_test_runs (
@@ -71,7 +69,7 @@ CREATE TABLE aiapp_comfyui_workflow_test_runs (
   resource_version INTEGER DEFAULT 0,
   workflow_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflows(id),
   owner_user_id TEXT NOT NULL,
-  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  provider_account_id TEXT NOT NULL,
   workflow_validation_id TEXT NOT NULL REFERENCES aiapp_comfyui_workflow_validations(id),
   dag_task_group_id TEXT,
   external_job_id TEXT,
@@ -170,7 +168,7 @@ CREATE UNIQUE INDEX idx_aiapp_applications_owner_name ON aiapp_applications(owne
 CREATE INDEX idx_aiapp_applications_owner_visibility ON aiapp_applications(owner_user_id, visibility);
 CREATE INDEX idx_aiapp_applications_capability_run ON aiapp_applications(capability_definition_id, run_enabled);
 
--- s1_refs: US-AIAPP-042, US-AIAPP-043; BR-AIAPP-137, BR-AIAPP-142, BR-AIAPP-147.
+-- s1_refs: US-AIAPP-042, US-AIAPP-043, US-AIAPP-053; BR-AIAPP-142, BR-AIAPP-147, BR-AIAPP-205..208.
 CREATE TABLE aiapp_application_versions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -186,6 +184,7 @@ CREATE TABLE aiapp_application_versions (
   input_schema_json TEXT NOT NULL,
   output_schema_json TEXT NOT NULL,
   parameter_policies_json TEXT NOT NULL,
+  execution_target_policy_json TEXT NOT NULL,
   published_at TIMESTAMPTZ,
   CHECK (
     (status = 'published' AND published_at IS NOT NULL) OR
@@ -199,7 +198,7 @@ ALTER TABLE aiapp_applications
   ADD CONSTRAINT fk_aiapp_application_current_version
   FOREIGN KEY (current_version_id) REFERENCES aiapp_application_versions(id);
 
--- s1_refs: US-AIAPP-043; BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-145, BR-AIAPP-149.
+-- s1_refs: US-AIAPP-043, US-AIAPP-053; BR-AIAPP-138, BR-AIAPP-143, BR-AIAPP-149, BR-AIAPP-205..210, BR-AIAPP-212.
 -- Provider capability fields are conditional immutable snapshots and therefore have no registry FK.
 CREATE TABLE aiapp_application_runs (
   id TEXT PRIMARY KEY,
@@ -214,7 +213,15 @@ CREATE TABLE aiapp_application_runs (
   application_version_id TEXT NOT NULL REFERENCES aiapp_application_versions(id),
   application_template_version_id TEXT NOT NULL REFERENCES aiapp_application_template_versions(id),
   atomic_task_id TEXT UNIQUE,
-  engine_instance_id TEXT NOT NULL REFERENCES aiapp_engine_instances(id),
+  target_selection_source TEXT NOT NULL CHECK (target_selection_source IN ('FIXED', 'DEFAULT', 'REQUEST')),
+  account_scope TEXT NOT NULL CHECK (account_scope IN ('USER', 'PLATFORM')),
+  provider_account_id TEXT NOT NULL,
+  provider_account_snapshot_json TEXT NOT NULL,
+  provider_account_config_version INTEGER NOT NULL CHECK (provider_account_config_version >= 1),
+  provider_resource_id TEXT,
+  provider_resource_snapshot_json TEXT,
+  provider_resource_revision TEXT,
+  capability_definition_id TEXT NOT NULL,
   capability_source_type TEXT NOT NULL CHECK (capability_source_type IN ('comfyui_workflow', 'provider_capability')),
   source_revision TEXT NOT NULL,
   provider_capability_id TEXT,
@@ -229,7 +236,7 @@ CREATE TABLE aiapp_application_runs (
   task_creation_failure TEXT DEFAULT '',
   task_status_projection TEXT,
   task_resource_version INTEGER NOT NULL DEFAULT 0,
-  output_values_json TEXT NOT NULL DEFAULT '[]',
+  output_values_json TEXT NOT NULL DEFAULT '{}',
   failure_summary TEXT DEFAULT '',
   idempotency_key TEXT NOT NULL,
   CHECK (
@@ -244,7 +251,7 @@ CREATE TABLE aiapp_application_runs (
 
 CREATE UNIQUE INDEX idx_aiapp_runs_owner_idempotency ON aiapp_application_runs(owner_user_id, idempotency_key);
 CREATE INDEX idx_aiapp_runs_application_created ON aiapp_application_runs(application_id, created_at);
-CREATE INDEX idx_aiapp_runs_engine_created ON aiapp_application_runs(engine_instance_id, created_at);
+CREATE INDEX idx_aiapp_runs_provider_created ON aiapp_application_runs(provider_account_id, provider_resource_id, created_at);
 CREATE INDEX idx_aiapp_runs_capability_revision ON aiapp_application_runs(provider_capability_id, provider_capability_revision);
 
 -- s1_refs: US-AIAPP-043, US-AIAPP-050; BR-AIAPP-150, BR-AIAPP-181..184.

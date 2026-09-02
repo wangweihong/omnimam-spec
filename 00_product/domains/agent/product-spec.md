@@ -148,10 +148,10 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 
 启动流程为：
 
-1. Agent Service 根据 Agent 的 ModelBinding 确定模型引用。
-2. `user-model` 解析用户私有模型选择。
-3. `modelgateway` 将模型引用解析为 `ModelAccessSpec`。
-4. Agent Service 将 `ModelAccessSpec`、Platform Agent 的授权挂载要求或 Coding Agent 的 Runtime Git access 引用写入 Agent Runtime Task。
+1. Agent Service 根据 Agent 的 ModelBinding 确定 Gateway MODEL Resource 引用。
+2. `model-preferences` 仅解析默认用途的 ProviderResource ID 与展示偏好。
+3. `modelgateway` 校验 ProviderResource、能力和修订并签发不透明 `provider-execution-grant://`。
+4. Agent Service 将 `provider-execution-grant`、Platform Agent 的授权挂载要求或 Coding Agent 的 Runtime Git access 引用写入 Agent Runtime Task。
 5. Task Worker 的 Infra Adapter 调用 Infra Service；Infra Service 解析 CredentialRef 并注入 Runtime。
 6. Agent Runtime 自行调用 LLM Provider。
 
@@ -159,7 +159,7 @@ Hermes、OpenCode 或 Coding Agent Runtime 通常已经实现：
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as user-model
+    participant MM as model-preferences
     participant MG as modelgateway
     participant TC as Task Center
     participant TW as Task Worker
@@ -170,10 +170,10 @@ sequenceDiagram
 
     U->>AS: 启动或发送消息
     AS->>MM: 解析用户模型选择
-    MM-->>AS: UserProviderModelRef
+    MM-->>AS: ProviderResourceRef
 
-    AS->>MG: ResolveModelAccess
-    MG-->>AS: ModelAccessSpec
+    AS->>MG: ResolveProviderTarget
+    MG-->>AS: provider-execution-grant
 
     AS->>TC: 创建 agent.runtime.ensure Task
     TC->>TW: 分发已注册 functionRef
@@ -266,7 +266,7 @@ flowchart TB
     API[omni-apiserver]
 
     AS[Agent Service]
-    MM[user-model]
+    MM[model-preferences]
     MG[modelgateway]
     TC[Task Center]
     WORKER[Task Worker]
@@ -349,21 +349,19 @@ volumeName
 
 ---
 
-## 5.2 user-model
+## 5.2 model-preferences
 
-`user-model` 管理当前用户的：
+`model-preferences` 管理当前用户的：
 
 ```text
-UserModelProvider
-UserProviderModel
-UserDefaultModel
+ModelPreference
+DefaultModelPreference
 ```
 
 Agent Service 通过可信用户上下文请求：
 
-* 当前用户默认 Coding 模型。
-* 当前用户默认 Chat 模型。
-* 用户显式选择的 UserProviderModel。
+* 当前用户默认 Coding/Chat ProviderResource。
+* 用户显式选择的 ProviderResource。
 * 模型启用状态。
 * 模型所有权校验。
 
@@ -376,7 +374,7 @@ Agent Service 不直接读取用户 API Key。
 `modelgateway` 将模型引用解析为：
 
 ```text
-ModelAccessSpec
+provider-execution-grant
 ```
 
 内容包括：
@@ -1195,7 +1193,7 @@ runtimePolicy
 sequenceDiagram
     participant U as User
     participant AS as Agent Service
-    participant MM as user-model
+    participant MM as model-preferences
     participant MG as modelgateway
     participant TC as Task Center
 
@@ -1206,7 +1204,7 @@ sequenceDiagram
     MM-->>AS: 模型引用有效
 
     AS->>MG: 校验模型访问能力
-    MG-->>AS: ModelAccessSpec 摘要
+    MG-->>AS: provider-execution-grant 摘要
 
     AS->>AS: 原子创建 Platform Agent、AgentWorkspace、默认 Session 与固定 Binding
     AS-->>U: Agent READY
@@ -1246,7 +1244,7 @@ Agent Service 在启动前解析：
 * Resource Requirement。
 * Lifecycle Policy。
 
-启动或恢复前必须找到与 Agent 类型用途匹配的 ACTIVE primary ModelBinding，并由 User Model 签发短期 Agent model access grant。缺失、无资格、过期或无法签发时返回既有 Agent 模型错误；在该校验成功前不得创建 RuntimeBinding、生命周期 AtomicTask 或 Infra Runtime。
+启动或恢复前必须找到与 Agent 类型用途匹配的 ACTIVE primary ModelBinding，并由 Model Gateway 签发短期 `provider-execution-grant://`。缺失、无资格、过期或无法签发时返回既有 Agent 模型错误；在该校验成功前不得创建 RuntimeBinding、生命周期 AtomicTask 或 Infra Runtime。
 
 ---
 
@@ -1312,15 +1310,15 @@ sequenceDiagram
     participant AS as Agent Service
     participant TC as Task Center
     participant TW as Task Worker
-    participant MM as user-model
+    participant MP as model-preferences
     participant MG as modelgateway
     participant IS as Infra Service
     participant AR as Agent Runtime
 
-    AS->>MM: 解析当前默认用途与模型引用
-    MM-->>AS: AgentModelAccessGrant
-    AS->>MG: ResolveModelAccess(grant)
-    MG-->>AS: ModelAccessSpec
+    AS->>MP: 解析当前默认用途与 ProviderResource 引用
+    MP-->>AS: provider_resource_id
+    AS->>MG: ResolveProviderTarget + ExecuteOperation
+    MG-->>AS: provider-execution-grant://
     AS->>TC: 创建 Agent Start Task
 
     TC->>TW: 分发 agent.runtime.ensure
@@ -1502,7 +1500,7 @@ runtimeSessionRef
 
 不要求 Runtime 自己成为 Session 唯一事实源。
 
-恢复必须先对账当前 RuntimeBinding 与 Infrastructure 的现存 Runtime/Endpoint；仍健康且引用一致时复用，缺失、失败或已撤销时才通过 `agent.runtime.ensure` 重建。每次恢复都重新解析模型并签发新 grant，不复用已过期的 ModelAccessSpec 或凭证句柄；重建完成后必须创建新的 Runtime Session，并按 Agent Service 的 Session 摘要、最近消息和 Memory 恢复上下文。
+恢复必须先对账当前 RuntimeBinding 与 Infrastructure 的现存 Runtime/Endpoint；仍健康且引用一致时复用，缺失、失败或已撤销时才通过 `agent.runtime.ensure` 重建。每次恢复都重新解析模型并签发新 grant，不复用已过期的 provider-execution-grant 或凭证句柄；重建完成后必须创建新的 Runtime Session，并按 Agent Service 的 Session 摘要、最近消息和 Memory 恢复上下文。
 
 ---
 
@@ -1857,7 +1855,7 @@ sequenceDiagram
 恢复时：
 
 1. 重新解析 ModelBinding。
-2. 重新签发短期 Agent model access grant 并解析 ModelAccessSpec；任何失败都不得先创建 Task 或 RuntimeBinding。
+2. 重新签发短期 Agent model access grant 并解析 provider-execution-grant；任何失败都不得先创建 Task 或 RuntimeBinding。
 3. 创建恢复 AtomicTask，由 Task Worker 通过 Infra Adapter 创建或启动 Runtime。
 4. Platform Agent 重新加载 AgentWorkspace 挂载；Coding Agent 重新解析 Runtime Git access 并 clone 固定 base commit 到可丢弃 `/workspace`，同时加载 Skills。
 5. 创建 Runtime Session。
@@ -2013,7 +2011,7 @@ Agent Service 调用以下内部服务时使用服务身份：
 
 ```text
 Task Center
-user-model
+model-preferences
 modelgateway
 Asset Library
 Application Platform
@@ -2062,9 +2060,9 @@ Agent Service：
 ```text
 AgentModelBinding
     ↓
-user-model 校验模型所有权
+model-preferences 校验模型所有权
     ↓
-modelgateway 生成 ModelAccessSpec
+modelgateway 生成 provider-execution-grant
     ↓
 Agent Service 创建 Agent Runtime Task
     ↓
@@ -2321,8 +2319,8 @@ GetRuntimeAgentStatus
 ```text
 ResolveAgentModelBinding
 ValidateAgentModelCapabilities
-IssueAgentModelAccessGrant
-BuildModelAccessSpecFromGrant
+Issueprovider-execution-grant
+Buildprovider-execution-grantFromGrant
 ```
 
 ---
@@ -2510,8 +2508,8 @@ AgentRuntimeBinding
 * SSE 流式输出。
 * Agent Memory 基础能力。
 * AgentModelBinding。
-* `user-model` 集成。
-* `modelgateway` ModelAccessSpec 解析。
+* `model-preferences` 集成。
+* `modelgateway` provider-execution-grant 解析。
 * Infra Service Runtime 创建和停止。
 * Secret 安全注入。
 * AgentRuntimeProvider 与 AgentRuntimeAdapter。
@@ -2577,7 +2575,7 @@ Agent Runtime 自行完成 LLM 调用、Streaming、Tool Calling 和 Agent Loop�
 
 ## R-AGENT-006
 
-`modelgateway` 默认只负责生成 ModelAccessSpec，不代理每次 Agent 模型请求。
+`modelgateway` 默认只负责生成 provider-execution-grant，不代理每次 Agent 模型请求。
 
 ## R-AGENT-007
 
@@ -2677,11 +2675,11 @@ Agent Runtime 诊断必须按 owner、Agent、AppStudio Application 和 generati
 Agent Service
     管理 Agent、Session、Invocation、Memory、AgentWorkspace、Skills、MCP、权限和业务生命周期
 
-user-model
+model-preferences
     决定当前用户可以使用哪个模型
 
 modelgateway
-    将模型引用解析为 ModelAccessSpec
+    将模型引用解析为 provider-execution-grant
 
 Infra Service
     接收 Task Worker 的受控请求，创建 Agent Runtime，并注入允许的配置和 Secret
@@ -2711,7 +2709,7 @@ Notification Center
 flowchart LR
     USER[User / AppStudio]
     AS[Agent Service]
-    MM[user-model]
+    MM[model-preferences]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Agent Runtime]
@@ -2731,7 +2729,7 @@ flowchart LR
     WORKER --> INFRA
     INFRA --> AGENT
     INFRA -->|仅 Platform Agent 授权挂载| AWS
-    INFRA -->|注入 ModelAccessSpec 与 Secret| AGENT
+    INFRA -->|注入 provider-execution-grant 与 Secret| AGENT
 
     AGENT -->|直接调用| LLM
     AGENT -->|Coding Agent commit / push| GL

@@ -7,15 +7,15 @@ Canvas Application 节点复用 Workflow Canvas 已创建的 DAG AtomicTask。`a
 ## 1. 架构目标
 
 - 保持 Application、Template、RuntimeFormSchema 与 ApplicationRun 的稳定应用语义。
-- 通过 `modelgateway` 解析 ProviderCapability、EngineCapabilityBinding、EngineInstance 与当前 object_info，并形成 `PlatformEngineTarget`。
+- 通过 `modelgateway` 解析 ProviderCapability、ProviderAccountCapabilityBinding、ProviderAccount 与当前 object_info，并形成 `TargetSelection`。
 - ApplicationExecutor 继续编排应用执行、AtomicTask 协作和 Artifact 交付，通过 Gateway `ExecuteOperation` 执行，不复制 Gateway 私有事实或 Provider 专用客户端。
 - ComfyUI 工作流导入、解析、兼容性校验和模板转换继续由本领域维护。
 
 ## 2. Model Gateway 依赖
 
-`CapabilityDefinition`、`ApplicationEngineType`、`ProviderCapability`、`ApplicationEngineInstance`、`EngineCapabilityBinding`、`EngineAdapter`、`OperationExecutor`、Runtime Registry、健康检测和当前 object_info 的架构归 `02_architecture/domains/modelgateway.md`。
+`CapabilityDefinition`、`ProviderType`、`ProviderCapability`、`ProviderAccount`、`ProviderAccountCapabilityBinding`、`ProviderAdapter`、`OperationExecutor`、Runtime Registry、健康检测和当前 object_info 的架构归 `02_architecture/domains/modelgateway.md`。
 
-Application Platform 只通过稳定 ID、权限裁剪摘要和受控模块接口读取当前能力与执行状态。ApplicationRun 中的 ProviderCapability、EngineInstance、Binding、`PlatformEngineTarget` 与能力 revision 是创建时的不可变非敏感快照，不构成 Gateway 当前事实副本。Application Platform 不使用 `UserModelTarget`。
+Application Platform 只通过稳定 ID、权限裁剪摘要和受控模块接口读取当前能力与执行状态。ApplicationRun 中的 ProviderCapability、ProviderAccount、Binding、`TargetSelection` 与能力 revision 是创建时的不可变非敏感快照，不构成 Gateway 当前事实副本。Application Platform 不解析 Grant；它只提交 TargetSelection 给 Model Gateway.
 
 ## 7. ComfyUI 工作流导入与转换时序
 
@@ -24,7 +24,7 @@ sequenceDiagram
     participant User as 用户或代管管理员
     participant Workflow as ComfyUI Workflow Module
     participant Catalog as Current object_info Store
-    participant Target as Target EngineInstance
+    participant Target as Target ProviderAccount
     participant Template as Application Template Module
     participant Outbox as Outbox/Audit
 
@@ -54,11 +54,11 @@ sequenceDiagram
 
 ```text
 RuntimeApplicationCapability
-= (available ProviderCapability 当前加载修订 ∩ EngineCapabilityBinding.restrictions)
-  或 (ComfyUI workflow contract ∩ 模板 Engine 约束)
+= (available ProviderCapability 当前加载修订 ∩ ProviderAccountCapabilityBinding.restrictions)
+  或 (ComfyUI workflow contract ∩ 模板 Provider 约束)
 ∩ ApplicationTemplateVersion 约束
 ∩ ApplicationVersion 参数策略
-∩ EngineInstance 当前健康与激活状态
+∩ ProviderAccount 当前健康与激活状态
 ∩ 用户权限
 ```
 
@@ -71,7 +71,7 @@ sequenceDiagram
     participant User as 用户/画布
     participant App as Application Platform
     participant Registry as Model Gateway Capability Registry
-    participant Engine as Model Gateway EngineInstance
+    participant Provider as Model Gateway ProviderAccount
     participant Task as Task Center
     participant Worker as Worker
     participant Gateway as Model Gateway ExecuteOperation
@@ -80,17 +80,17 @@ sequenceDiagram
 
     User->>App: 解析 RuntimeFormSchema
     App->>Registry: 校验 capability、revision、variant
-    App->>Engine: 校验 Binding、限制和健康状态
+    App->>Provider: 校验 Binding、限制和健康状态
     App-->>User: 返回有效字段与选项
     User->>App: 提交 ApplicationRun
     App->>Registry: 重新校验能力
-    App->>Engine: 重新校验并选择实例
-    App->>App: 固定 PlatformEngineTarget 与不可变执行快照
+    App->>Provider: 重新校验并选择实例
+    App->>App: 固定 TargetSelection 与不可变执行快照
     App->>Task: application_run_id + idempotency_key 幂等创建 AtomicTask
     Task-->>App: 返回唯一 atomic_task_id
     App->>App: 绑定 AtomicTask，task_creation_status=created
     Task->>Worker: Conductor 分发 AtomicTask handler
-    Worker->>Gateway: PlatformEngineTarget + capability + operation + 参数
+    Worker->>Gateway: TargetSelection + capability + operation + 参数
     Gateway->>Gateway: 解析 Adapter 与 OperationExecutor
     Gateway->>Provider: 应用协议与鉴权并调用供应商 API
     Provider-->>Gateway: 任务或结果
@@ -108,20 +108,20 @@ Artifact 处理事实以 asset-library 为准，状态为 `created/transferring/
 
 ## 10. 失败隔离
 
-Model Gateway 将目录、Registry、Adapter、Executor、Engine 或 Binding 不可用结果通过 `ExecuteOperation` 的稳定错误和受控模块边界返回。本领域不得绕过失败、补造执行能力、改用 `UserModelTarget` 或静默切换模型；历史 ApplicationRun 快照保持不变。
+Model Gateway 将目录、Registry、Adapter、Executor、ProviderAccount 或 Binding 不可用结果通过 `ExecuteOperation` 的稳定错误和受控模块边界返回。本领域不得绕过失败、补造执行能力、静默切换账号作用域或模型；历史 ApplicationRun 快照保持不变。
 - ComfyUI 导入失败：不创建工作流；其他工作流与模板不受影响。
 - 实例复检失败：追加 failed 或 incompatible 校验，不覆盖旧结果，不修改模板快照。
 - 转换失败：模板与首版模板版本全部回滚；相同幂等键可安全重试，不同幂等键可从同一工作流创建其他模板。
 
 ## 10.1 Model Gateway 运行事实消费
 
-EngineInstance 健康检测与 ComfyUI object_info 刷新由 Model Gateway 使用既有 system_key 执行。本领域在工作流解析、校验、模板发布、RuntimeFormSchema 和运行前通过 Gateway 重新读取当前事实，并继续拒绝 stale 或不可执行实例。
+ProviderAccount 健康检测与 ComfyUI object_info 刷新由 Model Gateway 使用既有 system_key 执行。本领域在工作流解析、校验、模板发布、RuntimeFormSchema 和运行前通过 Gateway 重新读取当前事实，并继续拒绝 stale 或不可执行实例。
 
 ## 11. 安全与可见性
 
-- Gateway 能力目录、加载诊断、Engine 凭证和 object_info 按 Model Gateway 权限边界返回；本领域不得扩大其可见性或缓存敏感字段。
+- Gateway 能力目录、加载诊断、Provider 凭证和 object_info 按 Model Gateway 权限边界返回；本领域不得扩大其可见性或缓存敏感字段。
 - Application 默认 private，只有管理员可设置 global；运行、画布、复制与预设开关独立校验。
 - ComfyUIWorkflow 始终为 owner 私有资源，不存在 global 或跨用户共享；管理员代管记录 actor 与 owner。
 - 管理员跨所有者读取或操作必须写入 identity 安全审计，至少记录 action、actor、owner、workflow、结果和时间。
-- object_info 只能由服务端刷新到 EngineInstance 当前目录，客户端不能注入；工作流、校验、模板和运行 API 不重复内嵌目录正文，所有 API 均不返回 Engine 凭证。
+- object_info 只能由服务端刷新到 ProviderAccount 当前目录，客户端不能注入；工作流、校验、模板和运行 API 不重复内嵌目录正文，所有 API 均不返回 Provider 凭证。
 - workflow-canvas 拥有 Canvas、不可变版本、DAG 编译和运行视图；application-platform 只提供已发布 ApplicationVersion、ApplicationRun 和 Artifact 引用协作。

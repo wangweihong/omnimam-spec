@@ -59,9 +59,9 @@ workflow.canvas.publish:
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 原子校验并发布不可变 CanvasVersion。
   frontend_usage: 控制发布入口和发布错误展示。
-  backend_enforcement: 在事务边界重新校验 revision、图、引用、权限、输入映射、无环和规模，并幂等注册内容寻址 workflow definition。
-  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-009]
-  related_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-018, BR-WORKFLOW-031]
+  backend_enforcement: 在事务边界重新校验 revision、图、引用、权限、ApplicationVersion target policy、TargetBinding、PRIVATE/PROJECT 账号约束、输入映射、无环和规模，并幂等注册内容寻址 workflow definition。
+  related_user_stories: [US-WORKFLOW-001, US-WORKFLOW-009, US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-018, BR-WORKFLOW-031, BR-WORKFLOW-044, BR-WORKFLOW-045, BR-WORKFLOW-046, BR-WORKFLOW-047]
 
 workflow.canvas.delete:
   domain: workflow-canvas
@@ -85,9 +85,9 @@ workflow.run.create:
   default_roles: [USER, ADMIN, SUPER_ADMIN]
   description: 预检并幂等创建固定版本 CanvasRun。
   frontend_usage: 控制运行节点、上游链、下游链、指定流和全部流的入口。
-  backend_enforcement: 校验固定版本、scope、输入闭包、复用资格、配额和所有引用；只向 Task Center 创建一个 DAGTaskGroup。
-  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-009]
-  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-010, BR-WORKFLOW-019, BR-WORKFLOW-021, BR-WORKFLOW-031, BR-WORKFLOW-032, BR-WORKFLOW-033]
+  backend_enforcement: 校验固定版本、scope、输入闭包、REQUEST node_target_selections、Provider 目标作用域/权限/能力/健康、复用指纹、配额和所有引用；只向 Task Center 创建一个 DAGTaskGroup，且不保存 Grant 解析结果。
+  related_user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-009, US-WORKFLOW-011]
+  related_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-010, BR-WORKFLOW-019, BR-WORKFLOW-021, BR-WORKFLOW-031, BR-WORKFLOW-032, BR-WORKFLOW-033, BR-WORKFLOW-048, BR-WORKFLOW-049, BR-WORKFLOW-050, BR-WORKFLOW-051]
 
 workflow.run.read:
   domain: workflow-canvas

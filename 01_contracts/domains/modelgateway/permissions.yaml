@@ -1,58 +1,119 @@
-aiapp.provider_capability.read:
-  module: provider-capability
+"model_gateway.provider_type.read":
+  module: modelgateway
+  resource: provider_type
+  action: read
+  description: 读取稳定 ProviderType 公共目录。
+  frontend_usage: Provider 账号创建与筛选。
+  backend_enforcement: 删除 Adapter、Executor 与内部实现字段后返回。
+  related_rules: [BR-MGW-003]
+  related_user_stories: [US-MGW-007]
+
+"model_gateway.provider_capability.read":
+  module: modelgateway
   resource: provider_capability
   action: read
-  description: 查看 ProviderCapability 只读目录、模型、Operation、Variant 和公开可用状态。
-  frontend_usage: 控制平台能力目录、应用参数来源和能力状态展示。
-  backend_enforcement: 不返回来源文件路径、完整加载失败详情或任何能力写入口。
-  default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-130, BR-AIAPP-135, BR-AIAPP-136, BR-AIAPP-139]
-  related_user_stories: [US-AIAPP-039, US-AIAPP-040]
+  description: 读取 ProviderCapability 公共目录。
+  frontend_usage: 能力浏览与目标策略配置。
+  backend_enforcement: 只返回公共能力与 availability。
+  related_rules: [BR-MGW-004]
+  related_user_stories: [US-MGW-007]
 
+"model_gateway.provider_capability.read_diagnostics":
+  module: modelgateway
+  resource: provider_capability
+  action: read_diagnostics
+  description: 读取文件级能力加载诊断。
+  frontend_usage: 平台管理诊断页。
+  backend_enforcement: 仅平台诊断主体；来源路径按安全策略裁剪。
+  related_rules: [BR-MGW-004]
+  related_user_stories: [US-MGW-007]
 
-aiapp.provider_capability.read_diagnostics:
-  module: provider-capability
-  resource: provider_capability_load_result
+"model_gateway.provider_account.read_own":
+  module: modelgateway
+  resource: provider_account
+  action: read_own
+  description: 读取当前用户自己的 USER ProviderAccount 与资源。
+  frontend_usage: 个人 Provider 管理。
+  backend_enforcement: 强制 scope=USER 且 owner_user_id=current_user。
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
+
+"model_gateway.provider_account.manage_own":
+  module: modelgateway
+  resource: provider_account
+  action: manage_own
+  description: 创建、修改和删除当前用户 USER ProviderAccount。
+  frontend_usage: 个人 Provider 管理。
+  backend_enforcement: 服务端强制 owner；拒绝 PLATFORM 写入。
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001]
+
+"model_gateway.provider_account.test_own":
+  module: modelgateway
+  resource: provider_account
+  action: test_own
+  description: 测试未保存或已保存的本人 USER Provider 账号与资源。
+  frontend_usage: 连接和资源测试。
+  backend_enforcement: 强制 owner、ProviderType 和网络策略。
+  related_rules: [BR-MGW-018]
+  related_user_stories: [US-MGW-004]
+
+"model_gateway.provider_account.read_platform":
+  module: modelgateway
+  resource: provider_account
+  action: read_platform
+  description: 读取 PLATFORM ProviderAccount 非敏感投影。
+  frontend_usage: 平台 Provider 管理与应用目标选择。
+  backend_enforcement: 不返回 credential_ref 解析值或私有配置。
+  related_rules: [BR-MGW-001, BR-MGW-014]
+  related_user_stories: [US-MGW-001]
+
+"model_gateway.provider_account.manage_platform":
+  module: modelgateway
+  resource: provider_account
+  action: manage_platform
+  description: 管理和测试 PLATFORM ProviderAccount 与资源。
+  frontend_usage: 平台 Provider 管理。
+  backend_enforcement: 仅平台管理员；owner_user_id 必须为空。
+  related_rules: [BR-MGW-001]
+  related_user_stories: [US-MGW-001, US-MGW-004]
+
+"model_gateway.provider_resource.manage_own":
+  module: modelgateway
+  resource: provider_resource
+  action: manage_own
+  description: 管理、同步和测试本人 USER 账号资源。
+  frontend_usage: 用户模型与 Workflow 资源管理。
+  backend_enforcement: 校验父账号 owner 和 ProviderType 支持范围。
+  related_rules: [BR-MGW-005]
+  related_user_stories: [US-MGW-002]
+
+"model_gateway.provider_binding.manage_platform":
+  module: modelgateway
+  resource: provider_account_capability_binding
+  action: manage_platform
+  description: 管理 PLATFORM 账号能力绑定。
+  frontend_usage: 平台能力收窄与路由配置。
+  backend_enforcement: 只允许收窄当前 ProviderCapability。
+  related_rules: [BR-MGW-006]
+  related_user_stories: [US-MGW-003]
+
+"model_gateway.network_policy.read":
+  module: modelgateway
+  resource: provider_network_policy
   action: read
-  description: 查看 ProviderCapability 目录级和文件级启动加载诊断。
-  frontend_usage: 控制管理员加载诊断页面和失败详情。
-  backend_enforcement: 只有管理员和超级管理员可读取 source_file、稳定错误码和 failure_detail。
-  default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-131, BR-AIAPP-132, BR-AIAPP-133, BR-AIAPP-134, BR-AIAPP-136, BR-AIAPP-139]
-  related_user_stories: [US-AIAPP-040]
+  description: 读取当前 Provider 网络策略及高危提示。
+  frontend_usage: 网络安全配置页。
+  backend_enforcement: 不返回运行时 DNS 缓存或内部审计明细。
+  related_rules: [BR-MGW-016, BR-MGW-017]
+  related_user_stories: [US-MGW-006]
 
-
-aiapp.engine_instance.read:
-  module: engine
-  resource: application_engine_instance
-  action: read
-  description: 只读查看可用于应用运行、ComfyUI 工作流导入和兼容性校验的 EngineInstance 基础状态及当前 ComfyUI object_info。
-  frontend_usage: 控制工作流来源实例、目标实例选择器和当前 object_info 只读入口。
-  backend_enforcement: 允许返回可见 ComfyUI 实例当前目录、版本、刷新时间和 stale，但不返回 auth_config、凭证或内部连接详情；其他资源响应不得重复内嵌目录正文。
-  default_roles: [USER, ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-140, BR-AIAPP-162, BR-AIAPP-169, BR-AIAPP-175, BR-AIAPP-176]
-  related_user_stories: [US-AIAPP-041, US-AIAPP-044, US-AIAPP-045, US-AIAPP-049]
-
-
-aiapp.engine_instance.manage:
-  module: engine
-  resource: application_engine_instance
+"model_gateway.network_policy.manage":
+  module: modelgateway
+  resource: provider_network_policy
   action: manage
-  description: 创建、查看、更新、停用、健康检测、手动刷新 object_info 和删除 EngineInstance。
-  frontend_usage: 控制引擎实例管理、健康检测和 object_info 手动刷新操作。
-  backend_enforcement: 必须验证内置 EngineType、鉴权结构、刷新资格和历史运行引用；刷新失败保留最后成功目录，列表不得回显 auth_config。
-  default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-140, BR-AIAPP-143, BR-AIAPP-169, BR-AIAPP-170]
-  related_user_stories: [US-AIAPP-041, US-AIAPP-049]
-
-
-aiapp.engine_binding.manage:
-  module: engine
-  resource: engine_capability_binding
-  action: manage
-  description: 管理 EngineInstance 与只读 ProviderCapability 的绑定及收紧限制。
-  frontend_usage: 控制绑定创建、启停、限制编辑和删除。
-  backend_enforcement: ProviderCapability 必须 available、EngineType 必须一致、restrictions 只能缩小能力。
-  default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-AIAPP-135, BR-AIAPP-137, BR-AIAPP-141]
-  related_user_stories: [US-AIAPP-041]
+  description: 修改 Provider 出站网络策略。
+  frontend_usage: 网络安全配置页。
+  backend_enforcement: 仅平台管理员并记录审计事件。
+  related_rules: [BR-MGW-016, BR-MGW-017]
+  related_user_stories: [US-MGW-006]

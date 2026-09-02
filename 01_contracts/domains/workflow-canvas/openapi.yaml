@@ -250,8 +250,8 @@ paths:
       summary: 原子校验并发布不可变 CanvasVersion
       x-permission: workflow.canvas.publish
       x-s1-refs:
-        user_stories: [US-WORKFLOW-001, US-WORKFLOW-009]
-        business_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-005, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-018, BR-WORKFLOW-031]
+        user_stories: [US-WORKFLOW-001, US-WORKFLOW-009, US-WORKFLOW-011]
+        business_rules: [BR-WORKFLOW-002, BR-WORKFLOW-003, BR-WORKFLOW-004, BR-WORKFLOW-005, BR-WORKFLOW-011, BR-WORKFLOW-017, BR-WORKFLOW-018, BR-WORKFLOW-031, BR-WORKFLOW-044, BR-WORKFLOW-045, BR-WORKFLOW-046, BR-WORKFLOW-047]
       parameters:
         - {$ref: '#/components/parameters/canvas_id'}
       requestBody:
@@ -322,8 +322,8 @@ paths:
       summary: 在创建任务前预检固定版本、scope、输入和复用策略
       x-permission: workflow.run.create
       x-s1-refs:
-        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-005, US-WORKFLOW-009]
-        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-010, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-033]
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-005, US-WORKFLOW-009, US-WORKFLOW-011]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-010, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-033, BR-WORKFLOW-048, BR-WORKFLOW-049, BR-WORKFLOW-050, BR-WORKFLOW-051]
       parameters:
         - {$ref: '#/components/parameters/canvas_version_id'}
       requestBody:
@@ -378,8 +378,8 @@ paths:
       summary: 幂等创建并启动固定版本 CanvasRun
       x-permission: workflow.run.create
       x-s1-refs:
-        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-009]
-        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-010, BR-WORKFLOW-018, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-032, BR-WORKFLOW-033]
+        user_stories: [US-WORKFLOW-002, US-WORKFLOW-003, US-WORKFLOW-004, US-WORKFLOW-005, US-WORKFLOW-009, US-WORKFLOW-011]
+        business_rules: [BR-WORKFLOW-006, BR-WORKFLOW-007, BR-WORKFLOW-010, BR-WORKFLOW-018, BR-WORKFLOW-019, BR-WORKFLOW-020, BR-WORKFLOW-021, BR-WORKFLOW-028, BR-WORKFLOW-031, BR-WORKFLOW-032, BR-WORKFLOW-033, BR-WORKFLOW-048, BR-WORKFLOW-049, BR-WORKFLOW-050, BR-WORKFLOW-051]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/CreateCanvasRunRequest'}}}
@@ -595,6 +595,26 @@ components:
     Visibility:
       type: string
       enum: [PRIVATE, PROJECT]
+    TargetSelectionSource:
+      type: string
+      enum: [FIXED, DEFAULT, REQUEST]
+    TargetBinding:
+      type: object
+      additionalProperties: false
+      required: [source]
+      properties:
+        source: {$ref: '#/components/schemas/TargetSelectionSource'}
+        provider_account_id: {type: string}
+        provider_resource_id: {type: string}
+      oneOf:
+        - required: [source, provider_account_id]
+          properties: {source: {enum: [FIXED]}}
+        - required: [source]
+          properties: {source: {enum: [DEFAULT]}}
+          not: {anyOf: [{required: [provider_account_id]}, {required: [provider_resource_id]}]}
+        - required: [source]
+          properties: {source: {enum: [REQUEST]}}
+          not: {anyOf: [{required: [provider_account_id]}, {required: [provider_resource_id]}]}
     NodeKind:
       type: string
       enum: [data, processor, generator, controller, orchestrator, viewer]
@@ -777,6 +797,9 @@ components:
           nullable: true
           description: 必须包含匹配节点定义的 schema_version 和坐标系；不得含任意 URL、凭证或大型二进制。
         literal_inputs: {type: object, additionalProperties: true}
+        target_binding:
+          $ref: '#/components/schemas/TargetBinding'
+          description: 仅 ApplicationNode 使用；DEFAULT/REQUEST 不得保存账号 ID。
         ui_state: {type: object, additionalProperties: true, description: 仅编辑态使用，不参与执行指纹。}
     CanvasPosition:
       type: object
@@ -933,7 +956,7 @@ components:
         published_at: {type: string, format: date-time}
     CanvasVersion:
       type: object
-      required: [canvas_version_id, canvas_id, version, graph_snapshot, definition_snapshots, input_schema, output_schema, content_digest, execution_template_digest, node_count, edge_count, published_by, published_at]
+      required: [canvas_version_id, canvas_id, version, graph_snapshot, definition_snapshots, target_policy_snapshots, input_schema, output_schema, content_digest, execution_template_digest, node_count, edge_count, published_by, published_at]
       properties:
         canvas_version_id: {type: string}
         canvas_id: {type: string}
@@ -941,6 +964,10 @@ components:
         version: {type: integer, minimum: 1}
         graph_snapshot: {$ref: '#/components/schemas/CanvasGraph'}
         definition_snapshots: {type: array, items: {$ref: '#/components/schemas/NodeDefinition'}}
+        target_policy_snapshots:
+          type: object
+          additionalProperties: true
+          description: 按 ApplicationNode node_id 冻结 ApplicationVersion policy 与 TargetBinding；不得包含凭证、Grant 或健康。
         input_schema: {type: object, additionalProperties: true}
         output_schema: {type: object, additionalProperties: true}
         content_digest: {type: string}
@@ -993,13 +1020,39 @@ components:
       properties:
         reuse_policy: {$ref: '#/components/schemas/ReusePolicy'}
         failure_policy: {$ref: '#/components/schemas/RunFailurePolicy'}
+    NodeTargetSelection:
+      type: object
+      additionalProperties: false
+      required: [node_id, provider_account_id]
+      properties:
+        node_id: {type: string}
+        provider_account_id: {type: string}
+        provider_resource_id: {type: string}
+    ProviderTargetSnapshot:
+      type: object
+      additionalProperties: false
+      required: [node_id, target_selection_source, account_scope, provider_account_id, provider_account_config_version, provider_capability_revision]
+      properties:
+        node_id: {type: string}
+        target_selection_source: {$ref: '#/components/schemas/TargetSelectionSource'}
+        account_scope: {type: string, enum: [USER, PLATFORM]}
+        provider_account_id: {type: string}
+        provider_account_config_version: {type: integer, minimum: 1}
+        provider_resource_id: {type: string, nullable: true}
+        provider_resource_revision: {type: string, nullable: true}
+        provider_capability_revision: {type: string}
     ValidateRunRequest:
       type: object
-      required: [scope, run_policy, runtime_inputs]
+      required: [scope, run_policy, runtime_inputs, node_target_selections]
       properties:
         scope: {$ref: '#/components/schemas/RunScope'}
         run_policy: {$ref: '#/components/schemas/RunPolicy'}
         runtime_inputs: {type: object, additionalProperties: true}
+        node_target_selections:
+          type: array
+          maxItems: 1000
+          items: {$ref: '#/components/schemas/NodeTargetSelection'}
+          description: 只允许本次运行范围内 target_binding.source=REQUEST 的 ApplicationNode；node_id 必须唯一。
     CreateCanvasRunRequest:
       allOf:
         - {$ref: '#/components/schemas/ValidateRunRequest'}
@@ -1125,7 +1178,7 @@ components:
         artifact_id: {type: string, nullable: true}
     CanvasRun:
       type: object
-      required: [canvas_run_id, canvas_id, canvas_version_id, idempotency_key, request_digest, input_snapshot, scope, run_policy, execution_plan_digest, task_creation_status, status, progress, summary, flow_runs, aggregate_version, project_id, namespace, created_by, created_at, updated_at]
+      required: [canvas_run_id, canvas_id, canvas_version_id, idempotency_key, request_digest, input_snapshot, node_target_selection_snapshot, scope, run_policy, execution_plan_digest, task_creation_status, status, progress, summary, flow_runs, aggregate_version, project_id, namespace, created_by, created_at, updated_at]
       properties:
         canvas_run_id: {type: string}
         canvas_id: {type: string}
@@ -1135,6 +1188,7 @@ components:
         idempotency_key: {type: string}
         request_digest: {type: string}
         input_snapshot: {type: object, additionalProperties: true}
+        node_target_selection_snapshot: {type: array, items: {$ref: '#/components/schemas/ProviderTargetSnapshot'}}
         scope: {$ref: '#/components/schemas/RunScope'}
         run_policy: {$ref: '#/components/schemas/RunPolicy'}
         execution_plan_digest: {type: string}
@@ -1224,6 +1278,10 @@ components:
         definition_version: {type: string}
         flow_ids: {type: array, items: {type: string}}
         execution_fingerprint: {type: string}
+        provider_target_snapshot:
+          $ref: '#/components/schemas/ProviderTargetSnapshot'
+          nullable: true
+          description: ApplicationNode 使用；进入执行指纹，不含凭证或 Grant。
         result_mode: {$ref: '#/components/schemas/ResultMode'}
         status: {$ref: '#/components/schemas/NodeRunStatus'}
         status_reason: {type: string, nullable: true}

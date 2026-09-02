@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: OmniMAM Model Preferences API
+  version: 1.0.0-draft
+  description: 当前用户模型展示偏好与用途默认值；不提供 Provider、健康或执行授权 API。
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - {name: Model Preferences}
+  - {name: Default Model Preferences}
+
+paths:
+  /api/v1/model-preferences/models:
+    get:
+      tags: [Model Preferences]
+      operationId: listModelPreferences
+      summary: 分页读取 Gateway MODEL 当前投影与用户偏好
+      x-s1-refs: {user_stories: [US-MODELPREF-001], business_rules: [BR-MODELPREF-003, BR-MODELPREF-005]}
+      parameters:
+        - {$ref: '#/components/parameters/PageNum'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Keyword'}
+        - {$ref: '#/components/parameters/SortField'}
+        - {$ref: '#/components/parameters/SortOrder'}
+        - {name: provider_type, in: query, schema: {type: string}}
+        - {name: account_scope, in: query, schema: {$ref: '#/components/schemas/AccountScope'}}
+        - {name: model_group, in: query, schema: {type: string}}
+        - {name: feature_labels, in: query, description: 逗号分隔标签。, schema: {type: string}}
+        - {name: capability_definition_ids, in: query, description: 逗号分隔能力 ID。, schema: {type: string}}
+        - {name: executable, in: query, schema: {type: boolean}}
+      responses:
+        '200':
+          description: 模型偏好列表或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/ModelPreferenceList'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+
+  /api/v1/model-preferences/models/{provider_resource_id}:
+    parameters:
+      - {$ref: '#/components/parameters/ProviderResourceId'}
+    get:
+      tags: [Model Preferences]
+      operationId: getModelPreference
+      summary: 读取单个 MODEL 当前投影与用户偏好
+      x-s1-refs: {user_stories: [US-MODELPREF-001], business_rules: [BR-MODELPREF-002, BR-MODELPREF-005]}
+      responses:
+        '200':
+          description: 模型偏好详情或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/ModelPreferenceView'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+    put:
+      tags: [Model Preferences]
+      operationId: replaceModelPreference
+      summary: 整体保存模型展示偏好
+      x-s1-refs: {user_stories: [US-MODELPREF-001], business_rules: [BR-MODELPREF-002, BR-MODELPREF-003, BR-MODELPREF-004]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ModelPreferenceReplaceRequest'}
+      responses:
+        '200':
+          description: 保存结果或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/ModelPreferenceView'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+
+  /api/v1/model-preferences/defaults/{usage}:
+    parameters:
+      - {$ref: '#/components/parameters/Usage'}
+    get:
+      tags: [Default Model Preferences]
+      operationId: getDefaultModelPreference
+      summary: 读取用途默认 MODEL
+      x-s1-refs: {user_stories: [US-MODELPREF-002, US-MODELPREF-003], business_rules: [BR-MODELPREF-006, BR-MODELPREF-008]}
+      responses:
+        '200':
+          description: 默认值或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/DefaultModelPreference'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+    put:
+      tags: [Default Model Preferences]
+      operationId: replaceDefaultModelPreference
+      summary: 整体保存用途默认 MODEL
+      x-s1-refs: {user_stories: [US-MODELPREF-002], business_rules: [BR-MODELPREF-002, BR-MODELPREF-003, BR-MODELPREF-008]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DefaultModelPreferenceReplaceRequest'}
+      responses:
+        '200':
+          description: 保存结果或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/DefaultModelPreference'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+    delete:
+      tags: [Default Model Preferences]
+      operationId: deleteDefaultModelPreference
+      summary: 删除用途默认 MODEL
+      x-s1-refs: {user_stories: [US-MODELPREF-002], business_rules: [BR-MODELPREF-007, BR-MODELPREF-008]}
+      responses:
+        '200':
+          description: 删除确认或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/DeleteDefaultResult'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+
+  /api/v1/model-preferences/options:
+    get:
+      tags: [Model Preferences]
+      operationId: listModelPreferenceOptions
+      summary: 读取用途/能力条件下的轻量模型候选
+      description: 只用于 UI 选择；executable 是 Gateway 当前派生值，不是长期授权或 Grant。
+      x-s1-refs: {user_stories: [US-MODELPREF-003], business_rules: [BR-MODELPREF-005, BR-MODELPREF-006, BR-MODELPREF-007]}
+      parameters:
+        - {$ref: '#/components/parameters/PageNum'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Keyword'}
+        - {name: usage, in: query, required: true, schema: {$ref: '#/components/schemas/ModelUsage'}}
+        - {name: capability_definition_ids, in: query, description: 逗号分隔能力 ID。, schema: {type: string}}
+        - {name: account_scope, in: query, schema: {$ref: '#/components/schemas/AccountScope'}}
+      responses:
+        '200':
+          description: 候选列表或业务错误。
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: '#/components/schemas/ModelOptionList'}, {$ref: '#/components/schemas/ErrorResponse'}]}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    PageNum: {name: page_num, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 20}}
+    Keyword: {name: keyword, in: query, schema: {type: string, default: ''}}
+    SortField: {name: sort_field, in: query, schema: {type: string, default: ''}}
+    SortOrder: {name: sort_order, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
+    ProviderResourceId: {name: provider_resource_id, in: path, required: true, schema: {type: string}}
+    Usage: {name: usage, in: path, required: true, schema: {$ref: '#/components/schemas/ModelUsage'}}
+  schemas:
+    AccountScope: {type: string, enum: [USER, PLATFORM]}
+    ModelUsage:
+      type: string
+      enum: [assistant.default, quick, translation, agent.chat, agent.coding, application.default]
+    ModelPreferenceReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name_override, model_group, feature_labels]
+      properties:
+        display_name_override: {type: string, nullable: true, maxLength: 200}
+        model_group: {type: string, nullable: true, maxLength: 100}
+        feature_labels: {type: array, items: {type: string, maxLength: 100}, maxItems: 100, uniqueItems: true}
+    ModelResourceProjection:
+      type: object
+      description: Model Gateway 当前权限裁剪的一跳投影；不在本领域持久化。
+      required: [provider_resource_id, provider_account_id, account_scope, provider_type, resource_kind, remote_resource_id, display_name, enabled, discovery_status, health_status, capability_definition_ids, resource_revision, executable]
+      properties:
+        provider_resource_id: {type: string}
+        provider_account_id: {type: string}
+        account_scope: {$ref: '#/components/schemas/AccountScope'}
+        provider_type: {type: string}
+        resource_kind: {type: string, enum: [MODEL]}
+        remote_resource_id: {type: string}
+        display_name: {type: string}
+        enabled: {type: boolean}
+        discovery_status: {type: string, enum: [MANUAL, DISCOVERED, MISSING, INVALID]}
+        health_status: {type: string, enum: [UNKNOWN, HEALTHY, DEGRADED, UNHEALTHY]}
+        capability_definition_ids: {type: array, items: {type: string}}
+        resource_revision: {type: string}
+        executable: {type: boolean}
+        unavailable_reason: {type: string, nullable: true}
+    ModelPreferenceView:
+      type: object
+      required: [provider_resource_id, display_name_override, model_group, feature_labels, resource, has_preference]
+      properties:
+        preference_id: {type: string, nullable: true}
+        provider_resource_id: {type: string}
+        display_name_override: {type: string, nullable: true}
+        model_group: {type: string, nullable: true}
+        feature_labels: {type: array, items: {type: string}}
+        has_preference: {type: boolean}
+        resource_version: {type: integer, nullable: true}
+        created_at: {type: string, format: date-time, nullable: true}
+        updated_at: {type: string, format: date-time, nullable: true}
+        resource: {$ref: '#/components/schemas/ModelResourceProjection'}
+    ModelPreferenceList:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ModelPreferenceView'}}}
+    DefaultModelPreferenceReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [provider_resource_id]
+      properties: {provider_resource_id: {type: string}}
+    DefaultModelPreference:
+      type: object
+      required: [id, usage, provider_resource_id, resource_version, created_at, updated_at]
+      properties:
+        id: {type: string}
+        usage: {$ref: '#/components/schemas/ModelUsage'}
+        provider_resource_id: {type: string}
+        resource: {$ref: '#/components/schemas/ModelResourceProjection'}
+        resource_version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ModelOption:
+      type: object
+      required: [provider_resource_id, display_name, account_scope, provider_type, executable, is_default]
+      properties:
+        provider_resource_id: {type: string}
+        display_name: {type: string}
+        account_scope: {$ref: '#/components/schemas/AccountScope'}
+        provider_type: {type: string}
+        model_group: {type: string, nullable: true}
+        feature_labels: {type: array, items: {type: string}}
+        capability_definition_ids: {type: array, items: {type: string}}
+        health_status: {type: string, enum: [UNKNOWN, HEALTHY, DEGRADED, UNHEALTHY]}
+        executable: {type: boolean}
+        unavailable_reason: {type: string, nullable: true}
+        is_default: {type: boolean}
+    ModelOptionList:
+      type: object
+      required: [total, items]
+      properties: {total: {type: integer}, items: {type: array, items: {$ref: '#/components/schemas/ModelOption'}}}
+    DeleteDefaultResult:
+      type: object
+      required: [usage, deleted]
+      properties: {usage: {$ref: '#/components/schemas/ModelUsage'}, deleted: {type: boolean}}
+    ErrorResponse:
+      type: object
+      required: [code, value, message]
+      properties:
+        code: {type: string}
+        value: {type: integer}
+        message: {type: string}
+        messages: {type: object, additionalProperties: {type: string}}
+        detail: {type: string}
+        causes: {type: array, items: {type: object, additionalProperties: true}}
+        data: {type: object, additionalProperties: true}

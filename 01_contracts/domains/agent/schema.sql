@@ -131,7 +131,7 @@ CREATE TABLE agent_model_bindings (
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0,
   agent_id TEXT NOT NULL REFERENCES agents(id),
-  source_type TEXT NOT NULL CHECK (source_type IN ('USER_DEFAULT_MODEL', 'USER_PROVIDER_MODEL', 'PLATFORM_MODEL')),
+  source_type TEXT NOT NULL CHECK (source_type IN ('PROVIDER_RESOURCE', 'MODEL_PREFERENCE_DEFAULT')),
   source_ref TEXT NOT NULL,
   purpose TEXT NOT NULL CHECK (purpose IN ('CHAT', 'CODING', 'VISION', 'EMBEDDING')),
   status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'INVALID', 'DISABLED')),

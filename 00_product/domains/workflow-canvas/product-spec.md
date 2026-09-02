@@ -302,6 +302,8 @@ expanded
 
 NodeDefinition 中的 renderer 只能是前端已注册的受控渲染能力标识；无法识别或无权使用时，前端降级为通用配置视图，不执行定义携带的任意代码。
 
+ApplicationVersion 通过 `application_version_published` 注册为普通 Application NodeDefinition。`system.llm.text-generation@1.0.0` 使用 renderer `application.llm` 呈现 LLM 专用界面，但仍是普通 ApplicationNode；画布不新增 `ModelNode`、模型专用执行类型或新的 functionRef。
+
 ### 4.1.1 系统内置节点目录
 
 系统必须幂等注册以下 SYSTEM NodeDefinition，定义版本统一为 `1.0.0`：
@@ -337,6 +339,7 @@ config
 optional controllerState
 optional literalInputs
 optional ui state
+optional target_binding for ApplicationNode
 ```
 
 节点实例只保存：
@@ -349,9 +352,24 @@ optional ui state
 结构化控制状态
 无连线时的字面量输入
 必要的 UI 状态
+ApplicationNode 的非敏感目标绑定
 ```
 
 不复制整份 `NodeDefinition`。
+
+ApplicationNode 的 `target_binding` 结构为：
+
+```yaml
+source: FIXED | DEFAULT | REQUEST
+provider_account_id: string?   # 仅 FIXED
+provider_resource_id: string?  # 仅 FIXED，是否必需由 ApplicationVersion policy 决定
+```
+
+- binding 必须被固定 ApplicationVersion 的 `execution_target_policy` 允许。
+- `PRIVATE` Canvas 可以固定创建者自己的 USER 账号，也可以固定有权使用的 PLATFORM 账号。
+- `PROJECT` Canvas 禁止固定任何 USER 账号，只能固定有权使用的 PLATFORM 账号，或使用 DEFAULT/REQUEST。
+- DEFAULT 与 REQUEST 不在 CanvasVersion 中保存用户账号 ID。
+- CanvasVersion 只冻结 target policy 快照和 binding，不冻结凭证、Grant、健康、账号配置或资源当前事实。
 
 保存草稿时允许引用当前可用定义；发布时必须重新校验定义仍存在、调用方有权使用、执行绑定受控且输入输出 schema 与连线一致。CanvasVersion 保存足以稳定解释历史节点的定义摘要，不依赖定义当前展示名称。
 
@@ -386,7 +404,7 @@ Edge 包含稳定 ID、源节点与源端口、目标节点与目标端口、连
 
 ## 4.5 Canvas
 
-Canvas 是可持续编辑的工作空间，保存名称、描述、所有者、project、namespace、可见性、当前草稿 revision、最新发布版本、节点、边、分组、显式流和视口状态。
+Canvas 是可持续编辑的工作空间，保存名称、描述、所有者、project、namespace、可见性、当前草稿 revision、最新发布版本、节点、边、分组、显式流和视口状态。目标绑定相关的可见性统一为 `PRIVATE | PROJECT`：PRIVATE 由 owner 使用，PROJECT 在 project/namespace 授权边界内共享。
 
 保存草稿必须携带期望 revision。服务端 revision 已推进时拒绝覆盖并返回当前 revision，用户可以刷新、合并或另存。保存草稿不创建任务，也不修改任何已发布版本。
 
@@ -394,7 +412,7 @@ Canvas 是可持续编辑的工作空间，保存名称、描述、所有者、p
 
 ## 4.6 CanvasVersion
 
-CanvasVersion 是发布时冻结的节点、边、端口绑定、NodeDefinition/ApplicationVersion/functionRef 引用、显式流、执行输入输出、内容摘要和编译摘要。发布必须原子完成权限、引用、类型、无环、运行能力和规模校验；任一步失败都不得形成部分可用版本。
+CanvasVersion 是发布时冻结的节点、边、端口绑定、ApplicationVersion target policy 与 target_binding、NodeDefinition/ApplicationVersion/functionRef 引用、显式流、执行输入输出、内容摘要和编译摘要。发布必须原子完成权限、引用、类型、无环、目标绑定、运行能力和规模校验；任一步失败都不得形成部分可用版本。
 
 发布时先把完整画布编译为规范化 DAGTaskGroup template，并以内容摘要形成不可变 workflow definition 名称和版本。Task Center/WorkflowRuntime 注册成功后才能保存 CanvasVersion；重复发布命中同一内容摘要时必须幂等复用定义，注册成功但 CanvasVersion 保存失败时允许后续用同一摘要恢复，不能生成漂移定义。
 
@@ -406,11 +424,24 @@ CanvasVersion 一经发布不可修改或删除。后续编辑只推进草稿 re
 
 表示用户一次点击运行产生的业务运行记录。
 
-CanvasRun 固定 canvasId、canvasVersionId、输入快照、运行范围、运行策略、执行计划摘要、幂等键和唯一 dagTaskGroupId，并保存状态、进度、结果摘要、重跑来源和时间信息。
+CanvasRun 固定 canvasId、canvasVersionId、输入快照、REQUEST 节点目标选择、运行范围、运行策略、执行计划摘要、幂等键和唯一 dagTaskGroupId，并保存状态、进度、结果摘要、重跑来源和时间信息。
 
 同一 project、namespace、用户和幂等键只能创建一个 CanvasRun；重复请求内容一致时返回原运行，内容不一致时拒绝。CanvasRun 必须先持久化固定版本、输入和请求摘要，再以稳定幂等键请求 Task Center 创建唯一 DAGTaskGroup；启动窗口失败时保留可恢复状态，不切换到本地执行。
 
 CanvasRun 状态为 `PENDING`、`RUNNING`、`SUCCESS`、`PARTIAL_SUCCESS`、`FAILED`、`CANCELED` 或 `TIMEOUT`。`PARTIAL_SUCCESS` 是 Canvas 对多个独立流或允许部分成功节点的业务聚合，不改写 Task Center 子任务事实。
+
+创建 CanvasRun 时可以提交：
+
+```yaml
+node_target_selections:
+  - node_id: llm_node_1
+    provider_account_id: user_openai_1
+    provider_resource_id: gpt_model_1
+```
+
+仅绑定为 REQUEST 且进入本次运行范围的 ApplicationNode 接受选择。相同 `node_id` 不得重复；范围外节点、非 REQUEST 节点、DEFAULT 覆盖、未知节点或多余资源 ID 必须拒绝。任何进入运行范围的 REQUEST 节点缺少选择时，必须在创建 DAGTaskGroup 前失败。
+
+运行时由 Application Platform/Gateway 重新校验 owner、project、namespace、账号作用域、ProviderType、ResourceKind、能力、enabled、健康和修订。Canvas Task 参数只携带非敏感 TargetSelection 与稳定 ID；Grant 由 Application Platform 在 Worker 创建 ApplicationRun 时申请。
 
 ---
 
@@ -860,6 +891,12 @@ execution_fingerprint =
   + normalized_config
   + normalized_controller_state
   + resolved_input_hashes
+  + target_selection_source
+  + account_scope
+  + provider_account_id
+  + provider_account_config_version
+  + provider_resource_id_and_revision
+  + provider_capability_revision
   + runtime_environment_version
   + required_output_contract
 ```
@@ -878,6 +915,10 @@ execution_fingerprint =
 正式输出摄像机变化
 执行器版本变化
 ApplicationVersion 或 functionRef binding 变化
+TargetSelection 来源变化
+ProviderAccount、账号配置版本或账号作用域变化
+ProviderResource ID 或 revision 变化
+ProviderCapability revision 变化
 必需输出契约变化
 ```
 
@@ -2287,9 +2328,18 @@ A 成功后，C 自动转为 `READY`。
     "failure_policy": "continue_independent_flows",
     "reuse_policy": "reuse_valid_outputs"
   },
-  "runtime_inputs": {}
+  "runtime_inputs": {},
+  "node_target_selections": [
+    {
+      "node_id": "llm_node_1",
+      "provider_account_id": "user_openai_1",
+      "provider_resource_id": "gpt_model_1"
+    }
+  ]
 }
 ```
+
+`node_target_selections` 只补全 REQUEST binding；它不能覆盖 FIXED 或 DEFAULT，也不能为范围外节点提前保存账号。选择校验与 runtime input 闭包校验必须在任务创建前一起完成。
 
 创建成功立即返回 CanvasRun 与 FlowRun 初始摘要；Task Center 暂时不可用时返回可恢复的 PENDING/创建失败事实，而不是偷偷本地执行。示例：
 
@@ -2564,6 +2614,10 @@ best_effort 和 min_success 容错 Join
 18. REUSED NodeRun 不创建伪造任务，必须保存来源运行和输出绑定。
 19. 不同聚合事件不保证严格顺序，AtomicTask 成功不得被推断为 Artifact ready。
 20. 所有节点引用、输出引用、取消、重跑和查询都必须遵守 project、namespace、createdBy 和资源可见性。
+21. LLM 通过 `system.llm.text-generation` 普通 ApplicationNode 执行，不新增 ModelNode。
+22. PROJECT Canvas 禁止固定 USER 账号，PRIVATE Canvas 只能固定创建者自己的 USER 账号。
+23. DEFAULT/REQUEST 不在 CanvasVersion 中保存用户账号 ID，运行请求只补全 REQUEST 节点。
+24. Provider 目标快照与 config/resource/capability revision 必须进入执行指纹；凭证和 Grant 解析结果不得进入 Canvas、Task、事件或日志。
 
 ---
 
@@ -2577,14 +2631,16 @@ sequenceDiagram
     participant GC as Graph Compiler
     participant TC as Task Center
     participant W as Worker
+    participant AP as Application Platform
+    participant MG as Model Gateway
     participant AL as Asset Library
     participant CP as Canvas Projector
     participant SSE as User Event Gateway
 
     U->>FE: 点击运行多个流
     FE->>SSE: 复用当前用户事件流
-    FE->>CS: 创建 CanvasRun(version, scope, idempotency key)
-    CS->>CS: 固定 CanvasVersion 和输入快照
+    FE->>CS: 创建 CanvasRun(version, scope, REQUEST selections, idempotency key)
+    CS->>CS: 固定 CanvasVersion、输入与目标选择快照
     CS->>GC: 编译运行范围
     GC-->>CS: 展平的 DAGTaskGroup ExecutionPlan
     CS->>TC: 幂等创建 DAGTaskGroup
@@ -2592,7 +2648,13 @@ sequenceDiagram
     CS-->>FE: canvas_run_id
 
     TC->>W: 分配 READY AtomicTask
-    W->>AL: 以 producer key 交付正式输出
+    W->>AP: EnsureCanvasApplicationRun(final inputs, TargetSelection)
+    AP->>MG: ResolveProviderTarget(principal, selection, capability, execution_ref)
+    MG-->>AP: provider-execution-grant://
+    AP->>MG: ExecuteOperation(grant_ref, input)
+    MG-->>AP: OperationExecutionResult
+    AP-->>W: output_values 或媒体输出 descriptor
+    W->>AL: 媒体结果以 producer key 交付正式输出
     AL-->>W: artifact_id
     W-->>TC: AtomicTask 结果引用
     TC-->>CP: AtomicTask/DAG 领域事件
@@ -2705,7 +2767,7 @@ A、B 并行且 C 等待汇合
 33. `BR-WORKFLOW-033`：输入解析优先级固定为当前运行绑定的上游输出、runtime inputs、节点字面量和定义默认值；运行中不得重新读取可变“最新输出”。
 34. `BR-WORKFLOW-034`：CanvasVersion、CanvasRun、Task/Attempt 和 Artifact 历史各由所属领域保留，编辑、重试、事件重放和对账不得覆盖已成立历史。
 35. `BR-WORKFLOW-035`：APPLICATION 节点只编译一个 DAG 内 `application-platform.run` AtomicTask；Conductor 解析完上游输入后，Application Platform 以 `canvas_run_id + execution_key` 幂等创建并绑定 ApplicationRun，禁止创建第二个 AtomicTask。
-36. `BR-WORKFLOW-036`：ApplicationVersion 发布事件只负责幂等登记应用节点定义；目录读取、Canvas 发布和每次运行必须通过 Application Platform 消费方接口重新校验可见性、`canvas_enabled`、`run_enabled`、schema/端口和当前 Engine/runtime 可执行性。
+36. `BR-WORKFLOW-036`：ApplicationVersion 发布事件只负责幂等登记应用节点定义；目录读取、Canvas 发布和每次运行必须通过 Application Platform 消费方接口重新校验可见性、`canvas_enabled`、`run_enabled`、schema/端口和当前目标解析能力。
 37. `BR-WORKFLOW-037`：ApplicationRun Artifact 引用必须按 `atomic_task_id + output_key + sequence` 匹配 Canvas 输出槽位，并只接受更高 Artifact resource version；READY 输出与 `canvas_node_output_available` 必须同事务形成。
 38. `BR-WORKFLOW-038`：系统必须幂等提供 `image`、`prompt`、`loop`、`group`、`promptGroup`、`output` 六个 `1.0.0` SYSTEM NodeDefinition；内置 compile-time 节点只允许已注册 compilerKey，不能生成自身 AtomicTask。
 39. `BR-WORKFLOW-039`：多个 Prompt 连接同一 prompt 输入时必须通过隐藏 `promptGroup` 按 edge order 以换行合并；直接创建、非法来源或顺序不确定的 promptGroup 必须拒绝。
@@ -2713,8 +2775,27 @@ A、B 并行且 C 等待汇合
 41. `BR-WORKFLOW-041`：loop 只展开唯一直接下游 Application 节点；serial 顺序依赖、batch 同层并行、cascade 顺序依赖并显式映射类型兼容的反馈端口，三者均使用 all_success。
 42. `BR-WORKFLOW-042`：loop iteration 使用稳定 child key、worker role 和 shard index 映射到目标 CanvasNodeRun；状态按全部 iteration 聚合，输出按 iteration 与端口稳定排序。
 43. `BR-WORKFLOW-043`：媒体输入只保存受权 Asset 引用并按实际媒体类型激活一个输出；output 节点只展示有序 Artifact/结构化输出绑定，不复制媒体正文或创建任务。
+44. `BR-WORKFLOW-044`：LLM 节点必须由 `system.llm.text-generation` 发布事件注册为普通 Application NodeDefinition，renderer 为 `application.llm`；禁止新增 ModelNode 或模型专用任务类型。
+45. `BR-WORKFLOW-045`：ApplicationNode 必须保存类型化 `target_binding`，source 只能是 FIXED、DEFAULT、REQUEST；FIXED 才能携带账号与可选资源 ID。
+46. `BR-WORKFLOW-046`：Canvas 发布必须验证 target_binding 被固定 ApplicationVersion policy 允许；CanvasVersion 只冻结 policy 和 binding，不冻结凭证、Grant 或健康。
+47. `BR-WORKFLOW-047`：PRIVATE Canvas 只能固定创建者自己的 USER 账号；PROJECT Canvas 禁止固定 USER 账号，但可固定有权使用的 PLATFORM 账号。
+48. `BR-WORKFLOW-048`：DEFAULT/REQUEST 不在 CanvasVersion 保存用户账号 ID；CanvasRun 的 node_target_selections 只接受本次运行范围内 REQUEST 节点并拒绝重复、范围外、额外或缺失选择。
+49. `BR-WORKFLOW-049`：运行时必须重新校验 owner、project、namespace、账号作用域、ProviderType、ResourceKind、能力和健康；目标不可用时不得跨 USER/PLATFORM 回退。
+50. `BR-WORKFLOW-050`：执行指纹必须包含 target_selection_source、account_scope、provider_account_id/config_version、provider_resource_id/revision 与 provider_capability_revision。
+51. `BR-WORKFLOW-051`：Canvas Task arguments 只携带非敏感 TargetSelection 与稳定 ID；Grant 由 Application Platform 创建 ApplicationRun 时向 Gateway 申请，Canvas 不解析或持久化 Grant。
+52. `BR-WORKFLOW-052`：结构化文本输出直接绑定 string/json 端口并参与复用，媒体输出继续通过 Artifact；两者都必须属于当前 CanvasNodeRun 的明确输出绑定。
 
 ### 49.2 用户故事与验收
+
+#### US-WORKFLOW-011 在全能力画布中选择 Provider 目标
+
+作为画布创作者和运行者，我希望普通 ApplicationNode 按 ApplicationVersion policy 使用 FIXED、DEFAULT 或 REQUEST Provider 目标，使 LLM、RunningHub、ComfyUI 和 SaaS 应用共享同一画布执行模型。
+
+- `AC-WORKFLOW-011-01`：`system.llm.text-generation` 以 `application.llm` renderer 出现在普通 Application 节点目录，不存在 ModelNode。
+- `AC-WORKFLOW-011-02`：发布拒绝 policy 不允许的 binding、PROJECT 固定 USER 账号以及 PRIVATE 固定他人 USER 账号。
+- `AC-WORKFLOW-011-03`：创建运行只接受 REQUEST 节点的唯一选择；缺失、重复、范围外或覆盖 DEFAULT/FIXED 的选择在 DAG 创建前失败。
+- `AC-WORKFLOW-011-04`：账号配置、资源或能力 revision 变化使旧输出失去复用资格，凭证与 Grant 解析结果从不进入指纹、Task、事件或日志。
+- `AC-WORKFLOW-011-05`：LLM 文本结果进入 string 端口且无需 Artifact，媒体结果仍使用 Artifact，二者均可被下游明确绑定和复用。
 
 #### US-WORKFLOW-001 编辑和发布任意 DAG
 
