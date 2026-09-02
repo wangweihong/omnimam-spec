@@ -1,5 +1,22 @@
 # Release Records
 
+## spec-v1.25.1
+
+- commit: bdf05de2955028f10e8fab9a63098dad623cb3f3
+- status: released
+- confirmed_by: user（2026-09-02，要求修复 `spec-v1.25.0` 的不可变 Task Center Function Registry 历史并继续实施）
+- allowed_as_formal_implementation_basis: true
+- domains:
+  - agent
+  - task-center
+- S1:
+  - 00_product/domains/agent/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+- S2:
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+- implementation_gate: `agent.runtime.ensure@1.0/@1.1` 的已发布 schema 与 digest 保持不变并标记 RETAINED；新增 `agent.runtime.ensure@1.2` ACTIVE，使用 `provider-execution-grant://` 且保留 Coding Runtime Git access 约束。不得移动或重建 `spec-v1.25.0` tag。
+
 ## spec-v1.25.0
 
 - commit: a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6

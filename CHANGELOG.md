@@ -1,8 +1,14 @@
 # Changelog
 
-## Unreleased
+## spec-v1.25.2 - 2026-09-02
+
+- Model Gateway 新增只读 ProviderCapability 详情契约，公开脱敏后的模型、Operation、Variant 与参数 schema；Agent S1 对齐已发布 S2 的 ProviderResource/Model Preferences 绑定语义；AppStudio 创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`，删除 User Model/ModelAccessSpec 残留且不提供隐式回退。
+
+## spec-v1.25.1 - 2026-09-02
 
 - 修复 `spec-v1.25.0` 对 Task Center 历史合同的原地改写：`agent.runtime.ensure@1.0/@1.1` 恢复原 `agent-model-access-grant://` schema/digest 并保留为 RETAINED；新增 `@1.2` ACTIVE，以 `provider-execution-grant://` 对接 Model Gateway，同时保留 Coding Runtime Git access 约束。
+
+## Unreleased
 
 - 继续推进方案 B：AI Chat、Agent 与 Task Center 改用 Model Gateway `ProviderAccount`/`ProviderResource`、`ResolveProviderTarget` 和不透明 `provider-execution-grant://`；Model Preferences 仅保留展示偏好与默认用途引用。
 - Workflow Canvas/Application Platform 的 TargetSelection、REQUEST 节点选择、PROJECT/PRIVATE 账号约束和 Provider 健康巡检归属同步到直接依赖域；更新 Context、架构参考与术语导航。

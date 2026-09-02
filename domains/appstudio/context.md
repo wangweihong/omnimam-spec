@@ -20,7 +20,7 @@
 ## 3. 核心规则
 
 - StudioApplication 与 application-platform.Application 不共享身份、版本、运行对象或私有数据。
-- `CreateStudioApplication` 不接受 Workspace 输入；请求携带初始需求、用户模型选择、可选 Coding Agent Profile、附件和幂等键，后端原子创建唯一默认 Repository/StudioWorkspace、Revision 0、Coding Agent、Session、WorkspaceBinding 和 ACTIVE primary ModelBinding。
+- `CreateStudioApplication` 不接受 Workspace 输入；请求携带初始需求、显式 `PROVIDER_RESOURCE` Coding 模型选择、可选 Coding Agent Profile、附件和幂等键，后端原子创建唯一默认 Repository/StudioWorkspace、Revision 0、Coding Agent、Session、WorkspaceBinding 和 ACTIVE primary ModelBinding；不使用默认偏好或隐式模型回退。
 - Coding Agent 仅通过 Agent 内部 `CreateCodingAgentForStudio` 创建，固定引用默认 StudioWorkspace，并复用 AgentSession/AgentInvocation；Coding Runtime 直接操作 `/workspace` Git working tree，Worker 把单个 fast-forward commit 投影为原有 ChangeSet/Revision，AppStudio 不建立第二套 Agent 执行记录。
 - AppStudio 只通过 application-level Agent facade 暴露当前 Agent 状态、消息、Invocation 查询/取消/SSE 和 suspend/resume/replace，并校验 owner、generation 与绑定关系；Coding Agent 不进入公共 `/api/v1/agents`。
 - 公共 API、页面、权限、错误、通知和 SSE 以 StudioApplication、源码和 Revision 表达，不投影 Workspace ID。

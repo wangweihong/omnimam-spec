@@ -2,68 +2,63 @@
 
 ## Current goal and status
 
-- Goal: 修复 `spec-v1.25.0` 对 `agent.runtime.ensure` 历史合同的改写，发布不可变兼容的 `spec-v1.25.1`。
-- Status: 规范修复与定向校验已完成；等待提交、创建 `spec-v1.25.1` annotated tag 并推送。
+- Goal: 修复 `spec-v1.25.0`/`spec-v1.25.1` 的 Capability 查询与 Agent/AppStudio 模型绑定冲突，发布 `spec-v1.25.2`。
+- Status: 规范修复和首轮定向校验已完成；等待 release commit、annotated tag、push 及 tag 后发布记录提交。
 
 ## Work completed in this session
 
-- 已确认本次为跨领域 S1/S2 破坏性重构，不兼容旧 API、表、DTO、权限、错误码和事件。
-- 已确认目标架构将账号作用域与 Provider 类型解耦，并由 Model Gateway 统一拥有账号、资源、能力绑定、健康、凭证引用、Adapter 与执行。
-- 已读取 `skills/spec-workflow/SKILL.md`、`S1.md`、`S2.md`、`GLOBAL_CONTEXT.md` 与 `CONTEXT_MAP.md`。
-- 已重建 Model Gateway S1，删除 Engine/User Model 双轨并建立 ProviderAccount、ProviderResource、Binding、健康、NetworkPolicy、TargetSelection 与 ProviderExecutionGrant。
-- 已重建 Model Gateway OpenAPI、设计态 Schema、错误、权限、事件、模块合同和 Runtime Registry；ProviderCapability 清单改为引用 `provider_type`。
-- 已将 `user-model` 的 S1/S2/Context/架构路径移动到 `model-preferences`，并重建其 S1 与完整 S2，只保留展示偏好和用途默认值。
-- 已审计并补全 Application Platform S1/S2：补齐内置 LLM Application ProviderType 约束，移除剩余 Engine DTO/错误/示例命名，并将无效 S1 追溯引用收口到现行 BR/US。
-- 已同步 AI Chat、Agent、Task Center 的 ProviderResource/ProviderExecutionGrant 依赖语义；Agent ModelBinding 改为 ProviderResource/Model Preferences 默认引用，Task Center Provider 健康巡检归 Model Gateway。
-- 已更新 Model Preferences、AI Chat、Model Gateway、Application Platform 架构参考及 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、Glossary、CHANGELOG。
+- 从 `spec-v1.25.1` tag target `bdf05de2955028f10e8fab9a63098dad623cb3f3` 创建 `codex/spec-v1.25.2`，未合并分叉的 `master`。
+- Model Gateway S1/S2 新增 ProviderCapability 按 ID 脱敏详情，列表继续返回轻量摘要；详情公开 models、operations、variants 与参数 schema。
+- Agent S1 的 ModelBinding 对齐现有 S2：`PROVIDER_RESOURCE | MODEL_PREFERENCE_DEFAULT`，分别引用 ProviderResource ID 与用途键。
+- AppStudio S1/S2/Context 删除 User Model/ModelAccessSpec 残留；创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`。
+- `CHANGELOG.md` 已明确区分 v1.25.1/v1.25.2；`RELEASE.md` 已补录 v1.25.1 的真实 tag target。
 
 ## Current in-progress work
 
-- 无规范实现工作；仅待 release commit、tag、push 和 `RELEASE.md` 发布记录。
+- 创建规范 release commit 和 `spec-v1.25.2` annotated tag，推送分支与 tag。
+- tag 后把真实 target SHA 写入 `RELEASE.md`，更新本文件并提交、推送发布元数据。
 
 ## Files added, modified, renamed, or removed
 
-- Modified: `00_product/domains/modelgateway/product-spec.md`、`01_contracts/domains/modelgateway/` 的核心合同与清单、`docs/HANDOFF.md`。
-- Renamed and rebuilt: `domains/user-model`、`00_product/domains/user-model`、`01_contracts/domains/user-model`、`02_architecture/domains/user-model.md` 到 `model-preferences`。
-- 本次修复修改：`01_contracts/domains/task-center/function-registry.yaml`、`01_contracts/domains/task-center/module-contract.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- Modified: Model Gateway、Agent、AppStudio 的目标 S1/S2，`domains/appstudio/context.md`、`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
+- No files added, renamed, or removed.
+- `01_contracts/domains/task-center/function-registry.yaml` 未修改。
 
 ## Key architectural or design decisions
 
-- `ProviderAccount.scope = USER | PLATFORM` 与 `ProviderType` 完全解耦。
-- `ApplicationVersion` 仅声明 `execution_target_policy`，不冻结账号、凭证或健康事实。
-- Canvas 不新增 `ModelNode`；LLM 继续作为带 `application.llm` renderer 的普通 `ApplicationNode`。
-- USER 与 PLATFORM 之间禁止自动回退；PROJECT Canvas 禁止固定 USER 私有账号。
-- Gateway Grant 使用不透明 `provider-execution-grant://` 引用，敏感连接信息不得传播至上层运行、Task、事件或日志。
+- Capability 详情复用既有清单事实，但禁止返回 Adapter/Executor ID、来源路径、凭证、Provider 原始响应、URL、extensions 或内部运行配置。
+- Capability 列表与详情复用 `model_gateway.provider_capability.read`；不存在、不可用或不可见统一返回 `ERR_MODEL_GATEWAY_PROVIDER_CAPABILITY_NOT_FOUND`。
+- Capability 详情从内存中的已加载清单按主键一次读取，不访问账号/资源私表，不产生 N+1 查询。
+- AppStudio 不提供 `MODEL_PREFERENCE_DEFAULT`、隐式回退或旧模型来源兼容；Agent 自身仍支持默认用途绑定。
+- `agent.runtime.ensure@1.0/@1.1` 继续 RETAINED，`@1.2` 继续 ACTIVE；已发布 schema/digest 不变。
 
 ## API, schema, dependency, or configuration changes
 
-- 已新增 `/api/v1/model-gateway/` Provider Account/Resource/Binding/Object Info/Network Policy canonical API。
-- 已将用户模型域 canonical API 改为 `/api/v1/model-preferences/`，仅保留展示偏好与用途默认值。
-- 已替换旧 Engine/User Model 设计态表，并登记两域全新错误码、权限码与事件。
-- 计划引入默认 `ALLOW_ALL` 的 Provider 网络策略；其无限制出站风险必须在 S1、架构参考与 Release gate 中明确记录。
+- 新增 `GET /api/v1/model-gateway/provider-capabilities/{provider_capability_id}` 和公开 `ProviderCapability` 详情 schema。
+- `StudioCodingModelSelection.source_type` 收紧为唯一值 `PROVIDER_RESOURCE`；替换请求复用同一结构化 schema。
+- 未新增错误码、权限码、数据库字段、依赖或运行时配置。
 
 ## Verification performed and remaining checks
 
-- 已核对工作树在任务开始时无未提交变更。
-- 已使用 `python3` 完成 13 个核心 YAML 解析、两份 OpenAPI 本地 Schema `$ref` 检查和三个 ProviderCapability 清单的 Draft 2020-12 Schema 校验。
-- Application Platform 的 OpenAPI/errors/events/permissions YAML、OpenAPI 本地 `$ref`、S1 BR/US 追溯和旧 Engine DTO 残留检查已通过；`BR-AIAPP-209` 中仅保留对删除 `engine_instance_id` 的明确历史说明。
-- 首次校验命令因环境没有 `python` 命令未运行逻辑，改用 `python3` 后通过。
-- 本次限定校验：7 个受影响领域全部 YAML 解析通过；7 份 OpenAPI 本地 `$ref` 全部通过；全局错误码扫描 178 个值无重复；`git diff --check` 通过。
-- 已核对 `agent.runtime.ensure@1.0/@1.1` 恢复为 `agent-model-access-grant://`，并保持已发布 digest 不变；新增 `@1.2` 使用 `provider-execution-grant://` 且保留 Coding Runtime Git access 约束。
-- server 现有 RFC 8785 registry 校验器计算并确认 `agent.runtime.ensure@1.2` digest 为 `sha256:c6c932f813fda29e6214130219854a62c275b886f7702b5ac08065eac3806c87`；Task Worker 定向合同测试通过。
+- 3 份目标 YAML 解析、Model Gateway/AppStudio OpenAPI 本地 `$ref`、新增 schema/trace 断言通过。
+- 3 个 ProviderCapability 清单通过 Draft 2020-12 schema 校验。
+- 目标 Agent/AppStudio S1/S2/Context 无旧 User Model 枚举、类型或 `ModelAccessSpec` 残留。
+- Function Registry 相对 `spec-v1.25.1` 无 diff，`git diff --check` 通过。
+- Remaining: 提交前复检、tag/push、tag 后 Release 记录复检。
 
 ## Outstanding tasks
 
-- 完成 `spec-v1.25.1` S2 修复、定向校验、Release 记录、提交、tag 和 push。
+- 发布并推送 `spec-v1.25.2`。
+- 更新 Web submodule pin/`SSOT_VERSION`，重新生成客户端并完成 Web 迁移与验证。
 
 ## Known issues and risks
 
-- 本次跨域改动面大，需避免用新 Context 反向补造正式事实；所有 S2 必须可追溯到已更新 S1。
-- 默认 `ALLOW_ALL` 允许访问回环、私网、链路本地、云元数据和平台控制面，属于用户明确接受但必须进入 Release gate 的高危风险。
+- `ProviderCapabilityParameterSchema` 保留清单允许的嵌套 JSON Schema 片段；公开响应必须按声明字段投影，不能直接序列化整个清单对象。
+- tag 后发布元数据提交不属于 tag target；Web 必须固定到 tag target，而不是该后续提交。
 
 ## Exact recommended next step
 
-提交当前规范修复，创建并推送 `spec-v1.25.1` annotated tag，然后把 tag target commit 写入 `RELEASE.md` 并推送发布记录。
+运行最终定向校验并创建 release commit，然后创建、推送 `spec-v1.25.2` annotated tag。
 
 Next Prompt:
 

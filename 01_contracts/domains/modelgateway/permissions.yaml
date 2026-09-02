@@ -12,9 +12,9 @@
   module: modelgateway
   resource: provider_capability
   action: read
-  description: 读取 ProviderCapability 公共目录。
-  frontend_usage: 能力浏览与目标策略配置。
-  backend_enforcement: 只返回公共能力与 availability。
+  description: 读取 ProviderCapability 公共目录与脱敏详情。
+  frontend_usage: 能力浏览、Operation/Variant 选择与目标策略配置。
+  backend_enforcement: 列表只返回公共摘要；详情只增加脱敏后的 models、operations、variants 与参数 schema。
   related_rules: [BR-MGW-004]
   related_user_stories: [US-MGW-007]
 

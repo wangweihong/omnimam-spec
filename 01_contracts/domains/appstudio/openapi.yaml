@@ -637,8 +637,8 @@ components:
       additionalProperties: false
       required: [source_type, source_ref]
       properties:
-        source_type: {type: string, enum: [USER_DEFAULT_MODEL, USER_PROVIDER_MODEL, PLATFORM_MODEL]}
-        source_ref: {type: string, minLength: 1, maxLength: 500}
+        source_type: {type: string, enum: [PROVIDER_RESOURCE]}
+        source_ref: {type: string, minLength: 1, maxLength: 500, description: modelgateway.ProviderResource.id；服务端必须校验当前主体可见、kind=MODEL 且适用于 CODING。}
     StudioApplicationUpdateRequest:
       type: object
       properties: {name: {type: string, maxLength: 200}, description: {type: string, maxLength: 2000}, resource_version: {type: integer}}
@@ -885,7 +885,7 @@ components:
       properties:
         idempotency_key: {type: string, minLength: 1, maxLength: 200}
         coding_agent_profile: {type: string, maxLength: 200}
-        coding_model_selection: {type: string, maxLength: 500}
+        coding_model_selection: {$ref: '#/components/schemas/StudioCodingModelSelection'}
     StudioSourceState:
       type: object
       required: [studio_application_id, current_revision, status, updated_at]

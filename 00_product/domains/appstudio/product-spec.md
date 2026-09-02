@@ -152,14 +152,14 @@ Coding Agent、Hermes、OpenCode 等 Runtime 通常已经实现：
 ```text
 Agent Service
     ↓
-user-model
-    决定当前用户使用哪个模型
+显式 ProviderResource
+    固定 Coding ModelBinding
     ↓
 modelgateway
-    解析为 ModelAccessSpec
+    校验并签发 provider-execution-grant
     ↓
 Infra Service
-    注入 Endpoint、Model 和 Credential
+    注入短期 grant 与 Secret
 ```
 
 运行时：
@@ -311,7 +311,6 @@ flowchart TB
     end
 
     AGENT[Agent Service]
-    MM[user-model]
     MG[modelgateway]
     TASK[Task Center]
     WORKER[Task Worker]
@@ -330,7 +329,6 @@ flowchart TB
     SNAPSHOT --> VERSION
 
     APPLICATION --> AGENT
-    AGENT --> MM
     AGENT --> MG
     AGENT --> TASK
 
@@ -496,51 +494,21 @@ AppStudio 不保存 Provider 专属信息。
 
 ---
 
-## 4.5 user-model
+## 4.5 ProviderResource 选择
 
-`user-model` 管理当前用户私有模型：
-
-```text
-UserModelProvider
-UserProviderModel
-UserDefaultModel
-```
-
-AppStudio 不直接读取用户 API Key。
-
-Coding Agent 模型由 Agent Service 根据：
-
-```text
-USER_DEFAULT_MODEL
-USER_PROVIDER_MODEL
-PLATFORM_MODEL
-```
-
-进行解析。
+AppStudio 创建或替换 Coding Agent 时必须由用户显式选择当前主体可用的 `modelgateway.ProviderResource.id`，并把它作为 `PROVIDER_RESOURCE` 类型的 Coding ModelBinding 交给 Agent Service。AppStudio 不提供默认模型回退，不接受用户 ID、Provider 凭证或内部 Adapter/Executor 标识。
 
 ---
 
 ## 4.6 modelgateway
 
-`modelgateway` 将模型引用标准化为：
+`modelgateway` 校验 ProviderResource、Capability、主体资格和当前修订后签发短期不透明引用：
 
 ```text
-ModelAccessSpec
+provider-execution-grant://
 ```
 
-包含：
-
-```text
-providerType
-protocol
-baseUrl
-model
-credentialRef
-contextWindow
-capabilities
-```
-
-Infra Service 根据 `credentialRef` 注入凭证。
+Infra Service 只根据该 grant 注入运行所需配置与 Secret；AppStudio、Task、事件和普通日志不得获得 Endpoint、Credential 或内部执行配置。
 
 Coding Agent Runtime 或 StudioApplication Runtime 自行调用模型服务。
 
@@ -1603,9 +1571,7 @@ StudioApplicationVersion 定义 ModelBinding 需求，RuntimeConfig 保存实际
 支持：
 
 ```text
-USER_DEFAULT_MODEL
-USER_PROVIDER_MODEL
-PLATFORM_MODEL
+PROVIDER_RESOURCE
 NONE
 ```
 
@@ -1614,7 +1580,8 @@ NONE
 ```json
 {
   "name": "primary-llm",
-  "sourceType": "USER_DEFAULT_MODEL",
+  "sourceType": "PROVIDER_RESOURCE",
+  "sourceRef": "provider-resource-id",
   "purpose": "CHAT",
   "required": true
 }
@@ -1625,9 +1592,7 @@ NONE
 ```text
 ModelBinding
     ↓
-user-model 校验模型
-    ↓
-modelgateway 生成 ModelAccessSpec
+modelgateway 校验 ProviderResource 并签发 provider-execution-grant
     ↓
 Infra Service 注入 Runtime
 ```
@@ -1636,14 +1601,14 @@ StudioApplication Runtime 自行调用模型。
 
 ---
 
-## 12.3 用户私有模型限制
+## 12.3 用户作用域 ProviderResource 限制
 
-当 StudioApplication 使用用户私有模型时：
+当 StudioApplication 使用 USER scope ProviderResource 时：
 
 * 必须具有当前用户授权上下文。
-* user-model 校验模型所有权。
+* modelgateway 校验 ProviderResource 所有权与使用资格。
 * 不允许客户端传入任意 userId。
-* 不向 StudioApplication 前端返回 CredentialRef。
+* 不向 StudioApplication 前端返回 Credential 或 grant 内容。
 * Infra Service 仅向 Runtime 注入运行期凭证。
 * Runtime 日志必须脱敏。
 
@@ -2523,7 +2488,7 @@ Coding Agent Runtime 自行完成 LLM 调用和 Agent Loop。
 
 ## R-STUDIO-007
 
-`modelgateway` 默认只负责生成 ModelAccessSpec，不代理每次模型请求。
+`modelgateway` 默认只负责校验并签发 provider-execution-grant，不代理每次模型请求。
 
 ## R-STUDIO-008
 
@@ -2624,11 +2589,8 @@ AppStudio
 Agent Service
     管理 Coding Agent、Session、Memory、Skills、MCP、模型绑定和 Runtime Binding
 
-user-model
-    决定用户可以使用哪个模型
-
 modelgateway
-    将模型引用解析为 ModelAccessSpec
+    校验 ProviderResource 并签发 provider-execution-grant
 
 Infra Service
     接收 Task Worker 的受控请求，创建实际 Runtime，并注入 Workspace、配置和 Secret
@@ -2659,7 +2621,6 @@ flowchart LR
     USER[User]
     STUDIO[AppStudio]
     AGENT_SERVICE[Agent Service]
-    MM[user-model]
     MG[modelgateway]
     INFRA[Infra Service]
     AGENT[Coding Agent Runtime]
@@ -2669,14 +2630,13 @@ flowchart LR
     USER --> STUDIO
     STUDIO --> AGENT_SERVICE
 
-    AGENT_SERVICE --> MM
     AGENT_SERVICE --> MG
     AGENT_SERVICE --> TASK[Task Center]
     TASK --> WORKER[Task Worker]
     WORKER --> INFRA
 
     INFRA --> AGENT
-    INFRA -->|注入模型配置与凭证| AGENT
+    INFRA -->|注入 provider-execution-grant 与 Secret| AGENT
 
     AGENT -->|直接调用| LLM
     AGENT -->|commit / push| GL

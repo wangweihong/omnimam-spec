@@ -20,7 +20,7 @@
 
 ## 3. 输入与输出
 
-- 公共 `CreateStudioApplication` 接收初始需求、附件、显式 Coding 模型选择、可选 Agent Profile 和创建幂等键，但不接受 Workspace、Blueprint 或 GitLab 参数；当前 `STATIC_WEB` 固定使用内置 `web-react@v1` 和 `agent.coding@1.0`。
+- 公共 `CreateStudioApplication` 接收初始需求、附件、显式 Coding 模型选择、可选 Agent Profile 和创建幂等键，但不接受 Workspace、Blueprint 或 GitLab 参数；Coding 模型选择固定为 `source_type=PROVIDER_RESOURCE` 与 `source_ref=modelgateway.ProviderResource.id`，不接受默认偏好、隐式回退、用户 ID、凭证或 Adapter/Executor ID；当前 `STATIC_WEB` 固定使用内置 `web-react@v1` 和 `agent.coding@1.0`。
 - 初始化先按 owner/创建幂等键在事务内持久化不可用的 `CREATING` Application/Repository/Workspace/Project 保留记录与初始化 DAG ID并提交受信 DAG，HTTP 200 返回 `application + dag_task_group_id`。DAG 固定为 `GITLAB_PROJECT`、`GITLAB_WEBHOOK`、`APPLICATION_INITIALIZATION`、`FIRST_CODING_INVOCATION` 四阶段，依次幂等确保 private Project/Starter commit、Project Hook、Revision 0/Agent/Session/Bindings 和首次 Message/Invocation reservation 与 Task 提交；全部完成并通过当前 DAG owner fence 后才切换 `READY`。
 - 初始化使用 Blueprint `system.md + initial.md` 持久化首条 Message 和 CODING Invocation；后续使用 `system.md + followup.md`，`fix.md` 随 Blueprint 发布但本阶段不路由。首次 Task 提交失败保留同一 Message/Invocation 并将 Application 投影为 `ERROR`；显式恢复复用该 reservation。进入 `READY` 后 Invocation 执行失败只影响 Invocation，不回退 Application 初始化状态。
 - `GET /api/v1/studio-applications/{id}/initialization` 只按 Application 当前 DAG 聚合固定四阶段、0..1 进度、状态、Attempt、失败时间、安全业务错误和更新时间。不得透传 Task arguments/output、Workspace、credential、authorization reference、Agent Message、Provider response、Conductor 字段或 runtime payload；`ERROR` 诊断长期保留。
@@ -29,7 +29,7 @@
 - StudioApplication 内部保存当前 `coding_agent_id/coding_session_id/coding_agent_generation`；应用级状态、消息、Invocation 查询/事件/取消、挂起、恢复和替换均通过 Agent 内部 owner-scoped 接口代理，响应不得返回 Workspace。
 - `ListStudioAgentMessages` 只能代理 Agent `ListMessages` 并限定当前 Application/generation/session，固定按 `(created_at DESC, id DESC)` 分页。AppStudio 不保存第二份 Message；Invocation 响应必须携带稳定 `user_message_id/assistant_message_id` 供发送、历史和 SSE 归并。
 - `StreamStudioAgentInvocationEvents` 只能代理 Agent 持久化的 12 类统一事件。SSE `id/event/data` 分别映射十进制 `sequence_no`、统一事件名和类型化 envelope；`Last-Event-ID` 只接受非负十进制并只重放更大序号。唯一终态事件 flush 后关闭，已终态 Invocation 补完重放后关闭，heartbeat 不占序号。
-- 替换成功后原子递增 generation 并切换新 Agent/Session；新 generation 原子创建默认平台 MCP Binding，旧 Agent 历史保留。已有当前 generation 执行一次幂等回填；用户删除后同 generation 不重建。替换失败继续使用旧引用，不得形成半切换 generation。
+- 替换请求如携带 Coding 模型选择，必须使用与创建相同的显式 `PROVIDER_RESOURCE` 结构；替换成功后原子递增 generation 并切换新 Agent/Session，新 generation 原子创建该 ACTIVE primary Coding ModelBinding 与默认平台 MCP Binding，旧 Agent 历史保留。已有当前 generation 执行一次幂等回填；用户删除后同 generation 不重建。替换失败继续使用旧引用，不得形成半切换 generation。
 - Coding Invocation 创建时固定 Application、Workspace、base Revision、base CommitSHA、Blueprint version 和 prompt kind；同一 Workspace 同时只允许一个源码写事务。Worker 在 Invocation 终态前校验默认分支从 base 到 HEAD 恰好一个普通 fast-forward commit，并按 Invocation 幂等生成一个既有 ChangeSet 和下一条 Revision。无 commit、多 commit、分叉、force 语义、base 不匹配或并发写冲突时 Invocation 失败且不推进 Revision；push 后崩溃重试必须继续同步同一 commit。
 - 应用级 Invocation 投影按 `agent_invocation_id` 聚合全部已应用 ChangeSet，`resulting_source_revision` 取最大 `target_revision`，`resulting_change_set_id` 取该 Revision 对应的最后一个 ChangeSet。恢复继续调用既有 source restore API，以当前 Revision/CommitSHA 为 base 创建新的 Git commit、Restore ChangeSet/Revision；Session、Message、Invocation、原 ChangeSet 和历史 Revision 全部保留。
 - 公共源码、Revision、ChangeSet、Snapshot 和 Preview API 只以 `studio_application_id` 寻址；公共 DTO、权限、错误、通知和 SSE 不得返回或要求 `workspace_id`。

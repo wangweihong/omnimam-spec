@@ -942,10 +942,11 @@ updatedAt
 `sourceType`：
 
 ```text
-USER_DEFAULT_MODEL
-USER_PROVIDER_MODEL
-PLATFORM_MODEL
+PROVIDER_RESOURCE
+MODEL_PREFERENCE_DEFAULT
 ```
+
+`PROVIDER_RESOURCE` 的 `sourceRef` 是 `modelgateway.ProviderResource.id`；`MODEL_PREFERENCE_DEFAULT` 的 `sourceRef` 是用途键，由 `model-preferences` 解析为当前主体可用的 ProviderResource。
 
 `purpose`：
 

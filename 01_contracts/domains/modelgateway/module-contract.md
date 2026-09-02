@@ -79,7 +79,7 @@ ExecuteOperation(grant_ref, input, execution_options)
 
 ## 5. HTTP 边界
 
-公共/管理 API 的 canonical 前缀为 `/api/v1/model-gateway/`。HTTP API 只提供 ProviderType/Capability 读取、账号/资源/Binding 管理、测试、同步、object_info 与网络策略；Grant 解析和 ExecuteOperation 是受信任内部接口，不提供客户端可直接调用的凭证解析 API。
+公共/管理 API 的 canonical 前缀为 `/api/v1/model-gateway/`。ProviderCapability 分页接口只返回轻量摘要；按 ID 详情接口从内存中的当前已加载清单按主键读取，一次返回脱敏后的 models、operations、variants 和参数 schema，不访问账号/资源私表且不产生 N+1 查询。详情不得返回 Adapter/Executor ID、来源路径、凭证、Provider 原始响应、任意运行 URL、extensions 或内部运行配置。HTTP API 还提供账号/资源/Binding 管理、测试、同步、object_info 与网络策略；Grant 解析和 ExecuteOperation 是受信任内部接口，不提供客户端可直接调用的凭证解析 API。
 
 所有业务失败使用 HTTP 200 + 稳定 `code`/`value`。业务资源 ID 响应必须返回一跳摘要或在 OpenAPI 中明确说明无需继续读取。
 
@@ -90,6 +90,7 @@ ExecuteOperation(grant_ref, input, execution_options)
 - 读取目标必须按当前 principal 裁剪；拥有资源 ID 不代表可见或可执行。
 - NetworkPolicy 只允许平台管理员修改，所有读取方均看到默认 ALLOW_ALL 的高危提示。
 - 诊断权限与普通 ProviderCapability 读取权限分离。
+- Capability 列表和详情均要求 `model_gateway.provider_capability.read`；不存在、不可用或不可见统一返回 `ERR_MODEL_GATEWAY_PROVIDER_CAPABILITY_NOT_FOUND`。
 
 ## 7. Model Preferences 协作
 

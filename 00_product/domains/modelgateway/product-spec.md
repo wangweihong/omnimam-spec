@@ -92,6 +92,8 @@ RunningHub、ComfyUI、OpenAI Compatible、DeepSeek 等当前 ProviderType 默�
 
 `ProviderCapability` 继续由只读清单提供，引用 `provider_type`，不再引用 `application_engine_type_id`。它描述 Provider 类型可提供的模型、Operation、Variant、参数边界和修订，不保存账号、凭证或健康事实。
 
+公共目录列表只返回稳定摘要。开发者或管理员可以按 Capability ID 读取当前可用修订的详情，用于选择模型、Operation、Variant 和构建参数表单；详情不得返回 Adapter/Executor ID、清单来源路径、凭证、Provider 原始响应或其他内部运行配置。
+
 清单从内置内容和 `provider_capability_directory` 第一层 `.yaml` / `.yml` 文件启动加载，不递归、不热加载。内置清单失败阻止启动；目录清单逐文件隔离失败。运行态 `availability`、失败原因、来源文件和加载时间不写回清单。
 
 ### 3.4 ProviderAccount
@@ -392,6 +394,8 @@ Task arguments 只能携带非敏感 TargetSelection ID 和必要运行引用。
 - `AC-MGW-007-01`：普通读取不返回 Adapter/Executor ID 或来源文件私密路径。
 - `AC-MGW-007-02`：只有诊断权限可读取文件级加载失败详情。
 - `AC-MGW-007-03`：目录清单失败只隔离对应能力，内置清单失败阻止启动。
+- `AC-MGW-007-04`：普通读取可先分页获取 Capability 摘要，再按 ID 获取当前可用修订的脱敏详情；详情包含模型、Operation、Variant 与参数 schema，足以支持目标选择和模板编写。
+- `AC-MGW-007-05`：Capability 不存在、不可用或当前主体不可见时统一按不存在处理，不泄露目录或可见性信息。
 
 ## 11. 非目标
 
