@@ -20,7 +20,7 @@
 ## Current in-progress work
 
 - Workflow Canvas 的 target_binding、REQUEST 运行选择、PROJECT/PRIVATE 约束与执行指纹已完成审计；当前转入直接依赖域同步。
-- 无实现工作；`spec-v1.25.0` 已登记，待远端推送完成。
+- 无进行中工作；`spec-v1.25.0` 已登记并推送到 `origin/master`。
 
 ## Files added, modified, renamed, or removed
 
@@ -53,7 +53,7 @@
 ## Outstanding tasks
 
 - 已登记 `spec-v1.25.0`，commit 为 `a78f5e0146018cea611d38ec4e0b1bdd6d1dd4d6`，允许作为正式实现依据。
-- 推送后核对远端分支与工作树清洁状态。
+- 无。
 
 ## Known issues and risks
 
