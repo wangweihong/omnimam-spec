@@ -8,13 +8,15 @@
 
 - 修复 `spec-v1.25.0` 对 Task Center 历史合同的原地改写：`agent.runtime.ensure@1.0/@1.1` 恢复原 `agent-model-access-grant://` schema/digest 并保留为 RETAINED；新增 `@1.2` ACTIVE，以 `provider-execution-grant://` 对接 Model Gateway，同时保留 Coding Runtime Git access 约束。
 
-## Unreleased
+## spec-v1.25.3 - 2026-09-04
 
 - 为 `spec-v1.25.3` 彻底重构 Model Deployment：拆分 `serving_engine`/`runtime_provider`，新增不可变 `ModelDeploymentSpecRevision` 与一等 `ModelDeploymentRollout`，支持 ENGINE_MANAGED/PROVIDER_NATIVE、LOCAL_MODEL/HOST_PATH/VOLUME、显式 Apply/手动回滚/自动回滚，并以 RUNNING + Endpoint READY + HEALTHY 作为 active Revision 切换门禁。
 - Model Deployment API 升级为 2.0，新增无副作用配置校验、Revision 创建/查询/Apply 和 Rollout 查询；Deployment PATCH 只允许名称/说明，列表、Rollout、事件、Task 和普通日志不携带完整配置、环境变量或宿主路径。
 - Task Center 删除六个 Model Deployment `1.0` 合同且不设 RETAINED，同名合同升级为 `2.0`；Task 只固定 Deployment/Rollout/Revision/digest 等稳定引用，Worker 通过内部 resolver 校验并读取完整配置，source policy 改为 `MODEL_DEPLOYMENT_SPEC_REVISION`。
 - Infrastructure CreateRuntimeRequest 改为 `runtime_provider` 判别的 DockerRuntimeSpec，支持 PROFILE/STRUCTURED/NATIVE；InfraRuntime 保存 node、Spec Revision/digest、最终 Provider Spec/digest、Provider Runtime 引用和运行身份，所有模型/额外挂载统一规范化为 RuntimeMount。
 - `spec-v1.25.3` 不迁移 `spec-v1.24.x` DTO、数据、Runtime 和 Task；发布门禁要求维护窗口内按 owner、部署 ID 和 functionRef 前缀定向清理，验证可选 InfraNode 全部为 ONLINE Docker 节点后重新开放。
+
+## Unreleased
 
 - 继续推进方案 B：AI Chat、Agent 与 Task Center 改用 Model Gateway `ProviderAccount`/`ProviderResource`、`ResolveProviderTarget` 和不透明 `provider-execution-grant://`；Model Preferences 仅保留展示偏好与默认用途引用。
 - Workflow Canvas/Application Platform 的 TargetSelection、REQUEST 节点选择、PROJECT/PRIVATE 账号约束和 Provider 健康巡检归属同步到直接依赖域；更新 Context、架构参考与术语导航。

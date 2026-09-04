@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 在已发布 `spec-v1.25.2` 基线上实现模型部署高级自定义重构计划，并以未占用版本 `spec-v1.25.3` 发布。
-- Status: 模型部署 S1/S2 重构、冲突审计与目标验证均已完成；正在创建 `spec-v1.25.3` 规格提交与发布记录。
+- Status: 模型部署 S1/S2 重构、冲突审计与目标验证均已完成；`spec-v1.25.3` annotated tag 已创建，正在提交 Release 元数据并推送。
 
 ## Work completed in this session
 
@@ -16,10 +16,11 @@
 - Model Deployment OpenAPI 升级为 2.0，新增无副作用 Validation、Revision 创建/查询/Apply、Rollout 查询；同步设计态 Schema、错误、权限说明、事件和模块合同。
 - Task Center 六个 `model-deployment.*@1.0` 条目已删除且不设 RETAINED，同名合同升级为 `2.0`；Infrastructure Runtime 合同同步为 Docker STRUCTURED/NATIVE 联合结构。
 - 已把重构新增事实中的版本标记从已占用的 `spec-v1.25.1` 统一顺延为 `spec-v1.25.3`；既有 `v1.25.1/v1.25.2` 发布记录未改写。
+- 规格 tag `spec-v1.25.3` 已创建并固定到 `09b8e11c31d3aa47198b4d518c3442848fe856c6`。
 
 ## Current in-progress work
 
-- 创建规格提交与 annotated tag，然后登记 Release 元数据并推送新分支和 tag。
+- 提交 `RELEASE.md`、正式 Changelog 与最终 handoff，然后推送新分支和 tag。
 
 ## Files added, modified, renamed, or removed
 
@@ -66,8 +67,7 @@
 
 ## Outstanding tasks
 
-- 在 `RELEASE.md` 登记 `spec-v1.25.3` 与 implementation gate。
-- 创建并推送 `spec-v1.25.3` tag、`codex/spec-v1.25.3` 分支与 tag 后发布元数据。
+- 推送 `spec-v1.25.3` tag、`codex/spec-v1.25.3` 分支与 tag 后发布元数据。
 
 ## Known issues and risks
 
@@ -78,7 +78,7 @@
 
 ## Exact recommended next step
 
-提交当前版本顺延与验证检查点，以该规格提交创建 `spec-v1.25.3` annotated tag。
+核对 tag target 与 Release commit 字段一致，提交发布元数据并推送 `codex/spec-v1.25.3` 和 `spec-v1.25.3`。
 
 Next Prompt:
 

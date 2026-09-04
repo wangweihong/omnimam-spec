@@ -1,5 +1,52 @@
 # Release Records
 
+## spec-v1.25.3
+
+- commit: 09b8e11c31d3aa47198b4d518c3442848fe856c6
+- status: released
+- confirmed_by: user（2026-09-04，要求继续实现更新版模型部署高级自定义重构计划）
+- allowed_as_formal_implementation_basis: true
+- supersedes:
+  - spec-v1.24.0
+  - spec-v1.24.1
+- domains:
+  - model-deployment
+  - task-center
+  - infrastructure
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+  - 00_product/domains/task-center/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/model-deployment/openapi.yaml
+  - 01_contracts/domains/model-deployment/schema.sql
+  - 01_contracts/domains/model-deployment/errors.yaml
+  - 01_contracts/domains/model-deployment/permissions.yaml
+  - 01_contracts/domains/model-deployment/events.yaml
+  - 01_contracts/domains/model-deployment/module-contract.md
+  - 01_contracts/domains/task-center/function-registry.schema.yaml
+  - 01_contracts/domains/task-center/function-registry.yaml
+  - 01_contracts/domains/task-center/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/errors.yaml
+  - 01_contracts/domains/infrastructure/permissions.yaml
+  - 01_contracts/domains/infrastructure/events.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+  - 01_contracts/error-code-index.md
+- architecture:
+  - 02_architecture/domains/model-deployment.md
+  - 02_architecture/domains/task-center.md
+  - 02_architecture/domains/infrastructure.md
+- context:
+  - domains/model-deployment/context.md
+  - domains/task-center/context.md
+  - domains/infrastructure/context.md
+  - GLOBAL_CONTEXT.md
+  - CONTEXT_MAP.md
+- implementation_gate: >-
+    本版本彻底替换 spec-v1.24.x 的 Model Deployment DTO、数据、Runtime、Task 和六个 Model Deployment 1.0 Function Registry 合同，不迁移旧数据；实施前必须进入维护窗口，停止旧部署写入并按 owner、deployment_id 与 function_ref 前缀定向清理旧 Runtime/Endpoint、Task/Attempt/DAG、领域表和事件投影，验证候选 InfraNode 均为 ONLINE Docker 节点后方可重新开放。agent.runtime.ensure@1.0/@1.1/@1.2 等非目标历史合同必须保持不变。
+
 ## spec-v1.25.2
 
 - commit: e0e698674f480f1c31cb9f9657eabf707b3167ef
