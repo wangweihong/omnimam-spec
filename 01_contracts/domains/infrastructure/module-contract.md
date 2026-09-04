@@ -1,6 +1,6 @@
 # Infrastructure Module Contract
 
-> S2 状态：Released（`spec-v1.25.1`）
+> S2 状态：Released（`spec-v1.25.3`）
 
 产品语义以 `00_product/domains/infrastructure/product-spec.md` 为准。本合同只覆盖当前 S1 Docker 范围；Kubernetes 仅定义未来版本事实归属，不提供 KubernetesRuntimeSpec，Edge、Local Process、自动扩缩容和跨 Provider 兼容不属于当前 S2。
 

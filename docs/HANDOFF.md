@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 在已发布 `spec-v1.25.2` 基线上实现模型部署高级自定义重构计划，并以未占用版本 `spec-v1.25.3` 发布。
-- Status: 模型部署 S1/S2 重构已重放到 `codex/spec-v1.25.3`；正在执行冲突审计和目标验证。
+- Status: 模型部署 S1/S2 重构、冲突审计与目标验证均已完成；正在创建 `spec-v1.25.3` 规格提交与发布记录。
 
 ## Work completed in this session
 
@@ -15,10 +15,11 @@
 - 固化 ENGINE_MANAGED/PROVIDER_NATIVE 组合、LOCAL_MODEL/HOST_PATH/VOLUME、RFC 8785 + SHA-256、Revision 去重/不可变、Apply/手动回滚/自动回滚和 active Revision 三重健康门禁。
 - Model Deployment OpenAPI 升级为 2.0，新增无副作用 Validation、Revision 创建/查询/Apply、Rollout 查询；同步设计态 Schema、错误、权限说明、事件和模块合同。
 - Task Center 六个 `model-deployment.*@1.0` 条目已删除且不设 RETAINED，同名合同升级为 `2.0`；Infrastructure Runtime 合同同步为 Docker STRUCTURED/NATIVE 联合结构。
+- 已把重构新增事实中的版本标记从已占用的 `spec-v1.25.1` 统一顺延为 `spec-v1.25.3`；既有 `v1.25.1/v1.25.2` 发布记录未改写。
 
 ## Current in-progress work
 
-- 审计 Task Center Function Registry 自动合并结果并运行目标验证。
+- 创建规格提交与 annotated tag，然后登记 Release 元数据并推送新分支和 tag。
 
 ## Files added, modified, renamed, or removed
 
@@ -58,11 +59,13 @@
 - 已核对远端 `spec-v1.25.1` tag target 为 `bdf05de2955028f10e8fab9a63098dad623cb3f3`。
 - 已核对远端 `spec-v1.25.2` tag target 为 `e0e698674f480f1c31cb9f9657eabf707b3167ef`。
 - 已确认自动合并保留 `agent.runtime.ensure@1.0/@1.1/@1.2`，六个 Model Deployment 合同均为唯一 `2.0` ACTIVE。
-- Remaining: YAML/OpenAPI/Function Registry/digest/错误码、版本残留与 `git diff --check` 定向验证。
+- 10 份目标 YAML 解析通过；Model Deployment/Infrastructure OpenAPI 本地 `$ref` 与 `/api/v1` 路径检查通过。
+- Function Registry 通过 Draft 2020-12 meta-schema；六个 Model Deployment `2.0` 合同摘要复算一致。
+- 21 个 Model Deployment 错误码的 code/value 文件内唯一；目标 `provider_type` 残留检查和 `git diff --check` 通过。
+- Remaining: 核对规格提交、tag、Release 记录和远端推送状态。
 
 ## Outstanding tasks
 
-- 完成重放提交并执行定向验证。
 - 在 `RELEASE.md` 登记 `spec-v1.25.3` 与 implementation gate。
 - 创建并推送 `spec-v1.25.3` tag、`codex/spec-v1.25.3` 分支与 tag 后发布元数据。
 
@@ -71,11 +74,11 @@
 - 发布实施必须先停止旧模型部署写入并清除旧 Model Deployment Runtime/Endpoint、Task/Attempt/DAG、领域表和事件投影；任何旧 `1.0` 任务都不能用 `2.0` 恢复。
 - Model Deployment 环境变量按计划为 Revision 中的管理员明文配置；虽从列表、事件、Task 与日志裁剪，持久化访问控制和审计仍是实施门禁。
 - 本地旧 `master` 与远端发布链已分叉；本任务只推送新分支，不直接推送本地 `master`。
-- `f44cb30` 基于旧基线创建；除自动合并成功的目标文件外，仍需验证未覆盖 `spec-v1.25.1/v1.25.2` 已发布事实。
+- `f44cb30` 基于旧基线创建；组合审计已确认非目标 Agent/AppStudio/Model Gateway 文件未被本次重构修改。
 
 ## Exact recommended next step
 
-标记 handoff 冲突已解决并继续 cherry-pick，然后运行目标组合验证。
+提交当前版本顺延与验证检查点，以该规格提交创建 `spec-v1.25.3` annotated tag。
 
 Next Prompt:
 

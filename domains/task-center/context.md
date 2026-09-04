@@ -68,7 +68,7 @@
 
 ## 8. 当前状态
 
-`spec-v1.0.0` 起的新任务模型已确定，Infra-backed `appstudio.build.execute@1.1` 已由 `spec-v1.17.2` 发布，`agent.invocation.execute@1.0` 及 Agent Runtime Adapter 已由后续 release 发布；Coding commit 终态同步与 Runtime Git access 由 `spec-v1.23.0` 发布。六个 Model Deployment `1.0` 合同已由 `spec-v1.25.1` 彻底删除并替换为同名 `2.0`：Task 固定 Rollout/Revision/digest，Worker 通过 resolver 获取完整配置。具体实施门禁以 `RELEASE.md` 为准。
+`spec-v1.0.0` 起的新任务模型已确定，Infra-backed `appstudio.build.execute@1.1` 已由 `spec-v1.17.2` 发布，`agent.invocation.execute@1.0` 及 Agent Runtime Adapter 已由后续 release 发布；Coding commit 终态同步与 Runtime Git access 由 `spec-v1.23.0` 发布。六个 Model Deployment `1.0` 合同已由 `spec-v1.25.3` 彻底删除并替换为同名 `2.0`：Task 固定 Rollout/Revision/digest，Worker 通过 resolver 获取完整配置。具体实施门禁以 `RELEASE.md` 为准。
 
 ## 9. 不在本领域定义的内容
 

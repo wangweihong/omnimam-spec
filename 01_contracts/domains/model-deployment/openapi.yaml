@@ -3,7 +3,7 @@ info:
   title: OmniMAM Model Deployment API
   version: 2.0.0
   description: >-
-    平台共享 vLLM/LM Studio 高级自定义部署契约。spec-v1.25.1 不兼容
+    平台共享 vLLM/LM Studio 高级自定义部署契约。spec-v1.25.3 不兼容
     spec-v1.24.x DTO；当前 runtime_provider 只支持 docker。
 servers:
   - url: /

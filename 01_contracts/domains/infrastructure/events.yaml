@@ -1,4 +1,4 @@
-# Infrastructure S2 events updated by spec-v1.25.1。事件只表达运行层事实，不携带业务正文、完整 Provider Spec、环境变量、解析地址、内容位置、宿主路径或 Provider 原始响应。
+# Infrastructure S2 events updated by spec-v1.25.3。事件只表达运行层事实，不携带业务正文、完整 Provider Spec、环境变量、解析地址、内容位置、宿主路径或 Provider 原始响应。
 infra_runtime_status_changed:
   producer: infrastructure-runtime-service
   consumers: [task-center, agent, appstudio, model-deployment, operations-monitor, audit-service]

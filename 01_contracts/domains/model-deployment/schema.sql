@@ -1,5 +1,5 @@
 -- Model Deployment S2 design schema v2.0.0. This is not a migration.
--- spec-v1.25.1 intentionally does not migrate spec-v1.24.x data.
+-- spec-v1.25.3 intentionally does not migrate spec-v1.24.x data.
 
 -- s1_refs: US-MODELDEP-001..004; BR-MODELDEP-001..020.
 CREATE TABLE model_deployments (

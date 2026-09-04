@@ -1,4 +1,4 @@
--- Infrastructure S2 design schema, v2.0.0 updated by spec-v1.25.1. This is not a migration.
+-- Infrastructure S2 design schema, v2.0.0 updated by spec-v1.25.3. This is not a migration.
 -- Infra 只保存运行层事实；Agent、AppStudio、Task Center 和 Artifact 业务事实不在本 schema 内。
 
 -- s1_refs: R-INFRA-027; source: 7.4 本地模型 Profile.

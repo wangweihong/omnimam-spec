@@ -1,6 +1,6 @@
 # Model Deployment Module Contract
 
-本文档定义 `model-deployment` 的 S2 模块边界。产品语义以 `00_product/domains/model-deployment/product-spec.md` 为准；本合同从 `spec-v1.25.1` 起不兼容 `spec-v1.24.x`。
+本文档定义 `model-deployment` 的 S2 模块边界。产品语义以 `00_product/domains/model-deployment/product-spec.md` 为准；本合同从 `spec-v1.25.3` 起不兼容 `spec-v1.24.x`。
 
 ## 1. 模块职责
 

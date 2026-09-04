@@ -2,7 +2,7 @@
 
 ## 1. 文档目的
 
-本文定义 OmniMAM 平台共享本地模型的高级自定义部署、不可变配置版本、Rollout 历史、运行状态和管理页面语义。`spec-v1.25.1` 彻底替换 `spec-v1.24.x` 的 DTO、数据与 Function Registry 合同，不兼容旧部署数据和旧任务。
+本文定义 OmniMAM 平台共享本地模型的高级自定义部署、不可变配置版本、Rollout 历史、运行状态和管理页面语义。`spec-v1.25.3` 彻底替换 `spec-v1.24.x` 的 DTO、数据与 Function Registry 合同，不兼容旧部署数据和旧任务。
 
 当前版本只通过 Task Center 和 Infrastructure 在受控 Docker 节点运行 vLLM 或 LM Studio，不定义模型调用协议或 Model Gateway Adapter。Kubernetes 仅固定未来的事实归属和映射边界，不提供可提交的 Kubernetes DTO。
 

@@ -14,20 +14,20 @@
 - Task 参数只保存 Deployment/Rollout/Revision/digest 等稳定引用，Worker 通过内部 resolver 校验并读取完整 Revision。
 - 新 Runtime 达到 RUNNING、Endpoint READY、健康成功后才切换 active Revision；Apply 失败可创建 AUTO_ROLLBACK。
 - 列表、Rollout、事件、Task 和普通日志不返回完整配置、环境变量或宿主路径。
-- `spec-v1.25.1` 不兼容 `spec-v1.24.x` DTO、数据、Runtime、Task 和 Function Registry `1.0` 合同。
+- `spec-v1.25.3` 不兼容 `spec-v1.24.x` DTO、数据、Runtime、Task 和 Function Registry `1.0` 合同。
 
 ## 3. 正式事实源
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/model-deployment/product-spec.md` | S1 Released (`spec-v1.25.1`) | Revision、Rollout、高级配置、生命周期和页面语义 |
-| `01_contracts/domains/model-deployment/openapi.yaml` | S2 Released (`spec-v1.25.1`) | 管理、校验、Revision、Apply 与 Rollout API |
-| `01_contracts/domains/model-deployment/schema.sql` | S2 Released (`spec-v1.25.1`) | Deployment、Spec Revision、Rollout 设计态结构 |
-| `01_contracts/domains/model-deployment/errors.yaml` | S2 Released (`spec-v1.25.1`) | 配置、Revision、Rollout 与 Runtime 错误 |
-| `01_contracts/domains/model-deployment/permissions.yaml` | S2 Released (`spec-v1.25.1`) | 管理权限 |
-| `01_contracts/domains/model-deployment/events.yaml` | S2 Released (`spec-v1.25.1`) | 状态、Rollout 和删除事件 |
-| `01_contracts/domains/model-deployment/module-contract.md` | S2 Released (`spec-v1.25.1`) | Task Center resolver 与 Infrastructure 边界 |
-| `02_architecture/domains/model-deployment.md` | 参考 (`spec-v1.25.1`) | Revision、Rollout、回滚和 Provider 映射 |
+| `00_product/domains/model-deployment/product-spec.md` | S1 Released (`spec-v1.25.3`) | Revision、Rollout、高级配置、生命周期和页面语义 |
+| `01_contracts/domains/model-deployment/openapi.yaml` | S2 Released (`spec-v1.25.3`) | 管理、校验、Revision、Apply 与 Rollout API |
+| `01_contracts/domains/model-deployment/schema.sql` | S2 Released (`spec-v1.25.3`) | Deployment、Spec Revision、Rollout 设计态结构 |
+| `01_contracts/domains/model-deployment/errors.yaml` | S2 Released (`spec-v1.25.3`) | 配置、Revision、Rollout 与 Runtime 错误 |
+| `01_contracts/domains/model-deployment/permissions.yaml` | S2 Released (`spec-v1.25.3`) | 管理权限 |
+| `01_contracts/domains/model-deployment/events.yaml` | S2 Released (`spec-v1.25.3`) | 状态、Rollout 和删除事件 |
+| `01_contracts/domains/model-deployment/module-contract.md` | S2 Released (`spec-v1.25.3`) | Task Center resolver 与 Infrastructure 边界 |
+| `02_architecture/domains/model-deployment.md` | 参考 (`spec-v1.25.3`) | Revision、Rollout、回滚和 Provider 映射 |
 
 ## 4. 直接依赖
 
@@ -36,4 +36,4 @@
 
 ## 5. 当前状态
 
-本领域当前 S1/S2 由 `spec-v1.25.1` 发布并彻底替换 `spec-v1.24.x`；实施必须先按 Release gate 清理旧数据和旧执行，不得兼容恢复 `1.0` 合同。
+本领域当前 S1/S2 由 `spec-v1.25.3` 发布并彻底替换 `spec-v1.24.x`；实施必须先按 Release gate 清理旧数据和旧执行，不得兼容恢复 `1.0` 合同。
