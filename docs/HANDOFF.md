@@ -2,64 +2,58 @@
 
 ## Current goal and status
 
-- Goal: 修复 `spec-v1.25.0`/`spec-v1.25.1` 的 Capability 查询与 Agent/AppStudio 模型绑定冲突，发布 `spec-v1.25.2`。
-- Status: `spec-v1.25.2` release commit、annotated tag、分支/tag 推送及 tag 后发布元数据均已完成。
+- Goal: 在已发布 `spec-v1.25.2` 基线上实现模型部署高级自定义重构计划，并以未占用版本 `spec-v1.25.3` 发布。
+- Status: 已完成远端发布链与版本冲突审计；正在把本地已完成的模型部署 S1/S2 重构重放到 `codex/spec-v1.25.3`。
 
 ## Work completed in this session
 
-- 从 `spec-v1.25.1` tag target `bdf05de2955028f10e8fab9a63098dad623cb3f3` 创建 `codex/spec-v1.25.2`，未合并分叉的 `master`。
-- Model Gateway S1/S2 新增 ProviderCapability 按 ID 脱敏详情，列表继续返回轻量摘要；详情公开 models、operations、variants 与参数 schema。
-- Agent S1 的 ModelBinding 对齐现有 S2：`PROVIDER_RESOURCE | MODEL_PREFERENCE_DEFAULT`，分别引用 ProviderResource ID 与用途键。
-- AppStudio S1/S2/Context 删除 User Model/ModelAccessSpec 残留；创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`。
-- `CHANGELOG.md` 已明确区分 v1.25.1/v1.25.2；`RELEASE.md` 已补录 v1.25.1 的真实 tag target。
-- Release commit `e0e698674f480f1c31cb9f9657eabf707b3167ef` 已创建并标记、推送为 `spec-v1.25.2`。
-- tag 后发布元数据提交 `35f65631c8c10fddc569346451ce74463236de09` 已推送到 `codex/spec-v1.25.2`，未移动 tag。
-- Web 已将 submodule 与 `SSOT_VERSION` 固定到 tag target `e0e698674f480f1c31cb9f9657eabf707b3167ef`，而不是 tag 后提交。
+- 完整读取 `skills/spec-workflow/SKILL.md`、`S1.md`、`S2.md` 和用户计划附件。
+- 确认远端 `spec-v1.25.1` 已用于 Task Center 历史合同修复，`spec-v1.25.2` 已用于 Provider Capability/Agent/AppStudio 对齐，二者均不可移动。
+- 从远端已完成发布链 `origin/codex/spec-v1.25.2` 创建 `codex/spec-v1.25.3`。
+- 确认待重放的本地规格提交为 `f44cb30f97046be7c17ddfc491542ffba7aa6fba`。
 
 ## Current in-progress work
 
-- 无 SSOT 发布工作进行中。
+- 重放 `f44cb30`，解决 Task Center Function Registry 冲突：保留 `agent.runtime.ensure@1.0/@1.1/@1.2` 历史，只替换计划明确要求删除的六个 Model Deployment `1.0` 合同。
 
 ## Files added, modified, renamed, or removed
 
-- Modified: Model Gateway、Agent、AppStudio 的目标 S1/S2，`domains/appstudio/context.md`、`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
-- No files added, renamed, or removed.
-- `01_contracts/domains/task-center/function-registry.yaml` 未修改。
+- Modified: `docs/HANDOFF.md`。
+- 待重放文件范围：Model Deployment、Task Center、Infrastructure 的目标 S1/S2/架构/Context，以及 `GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`、`01_contracts/error-code-index.md`、`CHANGELOG.md`。
+- Added/renamed/removed: 无。
 
 ## Key architectural or design decisions
 
-- Capability 详情复用既有清单事实，但禁止返回 Adapter/Executor ID、来源路径、凭证、Provider 原始响应、URL、extensions 或内部运行配置。
-- Capability 列表与详情复用 `model_gateway.provider_capability.read`；不存在、不可用或不可见统一返回 `ERR_MODEL_GATEWAY_PROVIDER_CAPABILITY_NOT_FOUND`。
-- Capability 详情从内存中的已加载清单按主键一次读取，不访问账号/资源私表，不产生 N+1 查询。
-- AppStudio 不提供 `MODEL_PREFERENCE_DEFAULT`、隐式回退或旧模型来源兼容；Agent 自身仍支持默认用途绑定。
-- `agent.runtime.ensure@1.0/@1.1` 继续 RETAINED，`@1.2` 继续 ACTIVE；已发布 schema/digest 不变。
+- 已发布 tag 不可复用或移动；原计划版本号由 `spec-v1.25.1` 顺延为 `spec-v1.25.3`，业务与契约语义不变。
+- 以远端 `spec-v1.25.2` 发布链为基线，保留其中已发布的 Agent/AppStudio/Model Gateway 合同。
+- `agent.runtime.ensure@1.0/@1.1` 必须继续 RETAINED，`@1.2` 必须继续 ACTIVE；它们不属于本计划要求定向删除的六个 Model Deployment 合同。
 
 ## API, schema, dependency, or configuration changes
 
-- 新增 `GET /api/v1/model-gateway/provider-capabilities/{provider_capability_id}` 和公开 `ProviderCapability` 详情 schema。
-- `StudioCodingModelSelection.source_type` 收紧为唯一值 `PROVIDER_RESOURCE`；替换请求复用同一结构化 schema。
-- 未新增错误码、权限码、数据库字段、依赖或运行时配置。
+- 本阶段尚未在新分支落入模型部署契约；目标 API/Schema 以用户计划与 `f44cb30` 为准。
+- 不新增运行时实现、migration、依赖或 CI/CD 配置。
 
 ## Verification performed and remaining checks
 
-- 3 份目标 YAML 解析、Model Gateway/AppStudio OpenAPI 本地 `$ref`、新增 schema/trace 断言通过。
-- 3 个 ProviderCapability 清单通过 Draft 2020-12 schema 校验。
-- 目标 Agent/AppStudio S1/S2/Context 无旧 User Model 枚举、类型或 `ModelAccessSpec` 残留。
-- Function Registry 相对 `spec-v1.25.1` 无 diff，`git diff --check` 通过。
-- Release commit、annotated tag 和 tag 后发布元数据均已推送；远端 tag target 已复核为 `e0e698674f480f1c31cb9f9657eabf707b3167ef`。
+- 已核对远端 `spec-v1.25.1` tag target 为 `bdf05de2955028f10e8fab9a63098dad623cb3f3`。
+- 已核对远端 `spec-v1.25.2` tag target 为 `e0e698674f480f1c31cb9f9657eabf707b3167ef`。
+- Remaining: 重放冲突审计、目标 YAML/OpenAPI/Function Registry/digest/错误码与 diff 校验。
 
 ## Outstanding tasks
 
-- 无 SSOT outstanding task；后续 Web 实现与验证在 `omnimam-web/docs/HANDOFF.md` 跟踪。
+- 重放模型部署重构并解决目标冲突。
+- 完成定向验证，登记并发布 `spec-v1.25.3`。
+- 推送 `codex/spec-v1.25.3` 与 `spec-v1.25.3` tag，并刷新最终 handoff。
 
 ## Known issues and risks
 
-- `ProviderCapabilityParameterSchema` 保留清单允许的嵌套 JSON Schema 片段；公开响应必须按声明字段投影，不能直接序列化整个清单对象。
-- tag 后发布元数据提交不属于 tag target；Web 必须固定到 tag target，而不是该后续提交。
+- 本地旧 `master` 与远端发布链已分叉；不得直接推送本地 `master`。
+- `f44cb30` 基于 `spec-v1.25.0` 后状态创建，重放时可能覆盖 `spec-v1.25.1/v1.25.2` 的已发布合同，必须逐个冲突核对。
+- 模型部署重构不兼容旧 DTO、数据、Runtime、Task 和六个 Model Deployment `1.0` 合同，实施仍需维护窗口定向清理。
 
 ## Exact recommended next step
 
-保持 `spec-v1.25.2` tag 不变；后续规范修改使用新的小版本发布。
+执行 `git cherry-pick f44cb30f97046be7c17ddfc491542ffba7aa6fba`，逐项解决冲突并首先复核 `01_contracts/domains/task-center/function-registry.yaml`。
 
 Next Prompt:
 
