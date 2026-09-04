@@ -65,8 +65,8 @@
 - 10 份目标 YAML 解析通过；Model Deployment/Infrastructure OpenAPI 本地 `$ref` 与 `/api/v1` 路径检查通过。
 - Function Registry 通过 Draft 2020-12 meta-schema；六个 Model Deployment `2.0` 合同摘要复算一致。
 - 21 个 Model Deployment 错误码的 code/value 文件内唯一；目标 `provider_type` 残留检查和 `git diff --check` 通过。
-- Release commit 字段与本地 tag target 已核对一致；新分支与 tag 推送成功。
-- 远端 `spec-v1.25.3` target 仍需在最终 handoff 提交推送后做一次只读复核。
+- Release commit 字段与本地/远端 tag target 均核对一致；远端 annotated tag 解引用后精确指向 `09b8e11c31d3aa47198b4d518c3442848fe856c6`。
+- 新分支、tag、Release 元数据与最终 handoff 均已推送。
 
 ## Outstanding tasks
 
@@ -81,7 +81,7 @@
 
 ## Exact recommended next step
 
-提交并推送本最终 handoff；后续实现方固定使用 `spec-v1.25.3` tag target，不使用 tag 后 handoff 提交作为 SSOT 版本。
+后续实现方固定使用 `spec-v1.25.3` tag target，不使用 tag 后 handoff 提交作为 SSOT 版本；不要重复本次规格工作。
 
 Next Prompt:
 
