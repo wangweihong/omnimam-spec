@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 在已发布 `spec-v1.25.2` 基线上实现模型部署高级自定义重构计划，并以未占用版本 `spec-v1.25.3` 发布。
-- Status: 模型部署 S1/S2 重构、冲突审计与目标验证均已完成；`spec-v1.25.3` annotated tag 已创建，正在提交 Release 元数据并推送。
+- Status: `spec-v1.25.3` 规格提交、annotated tag、Release 元数据、新分支与 tag 推送均已完成。
 
 ## Work completed in this session
 
@@ -17,10 +17,12 @@
 - Task Center 六个 `model-deployment.*@1.0` 条目已删除且不设 RETAINED，同名合同升级为 `2.0`；Infrastructure Runtime 合同同步为 Docker STRUCTURED/NATIVE 联合结构。
 - 已把重构新增事实中的版本标记从已占用的 `spec-v1.25.1` 统一顺延为 `spec-v1.25.3`；既有 `v1.25.1/v1.25.2` 发布记录未改写。
 - 规格 tag `spec-v1.25.3` 已创建并固定到 `09b8e11c31d3aa47198b4d518c3442848fe856c6`。
+- Release 元数据提交 `35c338d` 已创建；`codex/spec-v1.25.3` 与 `spec-v1.25.3` 已推送到 `origin`。
+- 本地误指向模型部署提交的 `spec-v1.25.1` tag ref 已同步到远端权威 target `bdf05de2955028f10e8fab9a63098dad623cb3f3`，未改动远端 tag。
 
 ## Current in-progress work
 
-- 提交 `RELEASE.md`、正式 Changelog 与最终 handoff，然后推送新分支和 tag。
+- 无进行中的 SSOT 工作。
 
 ## Files added, modified, renamed, or removed
 
@@ -30,7 +32,7 @@
 - Modified: `00_product/domains/infrastructure/product-spec.md`、`01_contracts/domains/infrastructure/openapi.yaml`、`schema.sql`、`errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md`。
 - Modified: `02_architecture/domains/model-deployment.md`、`02_architecture/domains/task-center.md`、`02_architecture/domains/infrastructure.md`。
 - Modified: `domains/model-deployment/context.md`、`domains/task-center/context.md`、`domains/infrastructure/context.md`、`GLOBAL_CONTEXT.md`、`CONTEXT_MAP.md`。
-- Modified: `01_contracts/error-code-index.md`、`CHANGELOG.md`、`docs/HANDOFF.md`。
+- Modified: `01_contracts/error-code-index.md`、`CHANGELOG.md`、`RELEASE.md`、`docs/HANDOFF.md`。
 - Added/renamed/removed: 无。
 
 ## Key architectural or design decisions
@@ -63,22 +65,23 @@
 - 10 份目标 YAML 解析通过；Model Deployment/Infrastructure OpenAPI 本地 `$ref` 与 `/api/v1` 路径检查通过。
 - Function Registry 通过 Draft 2020-12 meta-schema；六个 Model Deployment `2.0` 合同摘要复算一致。
 - 21 个 Model Deployment 错误码的 code/value 文件内唯一；目标 `provider_type` 残留检查和 `git diff --check` 通过。
-- Remaining: 核对规格提交、tag、Release 记录和远端推送状态。
+- Release commit 字段与本地 tag target 已核对一致；新分支与 tag 推送成功。
+- 远端 `spec-v1.25.3` target 仍需在最终 handoff 提交推送后做一次只读复核。
 
 ## Outstanding tasks
 
-- 推送 `spec-v1.25.3` tag、`codex/spec-v1.25.3` 分支与 tag 后发布元数据。
+- 无 SSOT outstanding task。
 
 ## Known issues and risks
 
 - 发布实施必须先停止旧模型部署写入并清除旧 Model Deployment Runtime/Endpoint、Task/Attempt/DAG、领域表和事件投影；任何旧 `1.0` 任务都不能用 `2.0` 恢复。
 - Model Deployment 环境变量按计划为 Revision 中的管理员明文配置；虽从列表、事件、Task 与日志裁剪，持久化访问控制和审计仍是实施门禁。
-- 本地旧 `master` 与远端发布链已分叉；本任务只推送新分支，不直接推送本地 `master`。
+- 本地旧 `master` 与远端发布链仍分叉；本任务没有推送或重写本地 `master`，后续不得将其直接推送覆盖远端。
 - `f44cb30` 基于旧基线创建；组合审计已确认非目标 Agent/AppStudio/Model Gateway 文件未被本次重构修改。
 
 ## Exact recommended next step
 
-核对 tag target 与 Release commit 字段一致，提交发布元数据并推送 `codex/spec-v1.25.3` 和 `spec-v1.25.3`。
+提交并推送本最终 handoff；后续实现方固定使用 `spec-v1.25.3` tag target，不使用 tag 后 handoff 提交作为 SSOT 版本。
 
 Next Prompt:
 
