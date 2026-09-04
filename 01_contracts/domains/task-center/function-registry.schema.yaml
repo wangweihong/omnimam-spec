@@ -135,7 +135,20 @@ $defs:
       runtime_profile_id_path: {type: string, pattern: '^arguments\.[a-z][a-z0-9_]*$'}
       runtime_profile_revision_path: {type: string, pattern: '^arguments\.[a-z][a-z0-9_]*$'}
       source_ref_path: {type: string, pattern: '^arguments\.[a-z][a-z0-9_]*$'}
-      source_policy: {enum: [NONE, AGENT_KIND_CONDITIONAL, STUDIO_WORKSPACE_REVISION_READ_ONLY, STUDIO_SNAPSHOT_READ_ONLY, ARTIFACT_DIGEST_READ_ONLY, LOCAL_MODEL_NAME]}
+      source_policy: {enum: [NONE, AGENT_KIND_CONDITIONAL, STUDIO_WORKSPACE_REVISION_READ_ONLY, STUDIO_SNAPSHOT_READ_ONLY, ARTIFACT_DIGEST_READ_ONLY, LOCAL_MODEL_NAME, MODEL_DEPLOYMENT_SPEC_REVISION]}
+      runtime_spec_source: {enum: [RESOLVED_MODEL_DEPLOYMENT_SPEC_REVISION]}
+      runtime_provider_source: {enum: [RESOLVED_MODEL_DEPLOYMENT_SPEC_REVISION]}
+      spec_resolver:
+        type: object
+        additionalProperties: false
+        required: [resolver, deployment_id_path, rollout_id_path, revision_id_path, spec_digest_path, expected_resource_version_path]
+        properties:
+          resolver: {const: model-deployment.ResolveModelDeploymentSpecRevision}
+          deployment_id_path: {const: arguments.deployment_id}
+          rollout_id_path: {const: arguments.rollout_id}
+          revision_id_path: {const: arguments.revision_id}
+          spec_digest_path: {const: arguments.spec_digest}
+          expected_resource_version_path: {const: arguments.expected_resource_version}
       output_declarations:
         type: array
         minItems: 1
@@ -187,7 +200,7 @@ $defs:
     required: [consumer_domain, aggregate_type, aggregate_id_path, update_mode, field_mappings]
     properties:
       consumer_domain: {enum: [agent, appstudio, model-deployment]}
-      aggregate_type: {enum: [AgentInvocation, AgentRuntime, StudioPreviewRuntime, StudioBuild, StudioRuntimeInstance, ModelDeployment]}
+      aggregate_type: {enum: [AgentInvocation, AgentRuntime, StudioPreviewRuntime, StudioBuild, StudioRuntimeInstance, ModelDeployment, ModelDeploymentRollout]}
       aggregate_id_path: {type: string, pattern: '^arguments\.[a-z][a-z0-9_]*$'}
       update_mode: {const: SOURCE_DOMAIN_CONSUMES_TASK_RESULT}
       field_mappings:

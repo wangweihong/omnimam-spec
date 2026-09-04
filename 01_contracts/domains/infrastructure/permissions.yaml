@@ -1,4 +1,4 @@
-# Infrastructure S2 permissions released by spec-v1.17.2。Runtime 写操作只接受 Task Center；Endpoint resolve 另按受控服务身份授权。
+# Infrastructure S2 permissions updated by spec-v1.25.1。Runtime 写操作只接受 Task Center；Endpoint resolve 另按受控服务身份授权。
 infra.runtime.read:
   domain: infrastructure
   module: runtime
@@ -19,10 +19,10 @@ infra.runtime.create:
   subject: task_center_worker
   description: 创建受控 Docker Job/Service。
   frontend_usage: 无直接前端入口。
-  backend_enforcement: 只接受 requestingService=task-center、受控 RuntimeProfile、source_ref 和 requestId；拒绝任意命令/宿主路径。
+  backend_enforcement: 只接受 requestingService=task-center、runtime_provider 判别的 DockerRuntimeSpec、owner 和 requestId；PROFILE 模式校验 RuntimeProfile，Model Deployment STRUCTURED/NATIVE 必须来自不可变 Revision resolver 并固定 revision/digest/node。拒绝客户端或 Task 参数中的任意命令/宿主路径。
   default_roles: [SERVICE_TASK_CENTER]
-  related_rules: [BR-INFRA-001, R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-010, R-INFRA-011, R-INFRA-015, R-INFRA-016]
-  related_user_stories: [US-INFRA-001]
+  related_rules: [BR-INFRA-001, BR-INFRA-002, R-INFRA-001, R-INFRA-002, R-INFRA-003, R-INFRA-004, R-INFRA-010, R-INFRA-011, R-INFRA-015, R-INFRA-016, R-INFRA-026, R-INFRA-029]
+  related_user_stories: [US-INFRA-001, US-INFRA-002]
 infra.runtime.operate:
   domain: infrastructure
   module: runtime

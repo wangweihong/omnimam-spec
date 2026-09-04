@@ -56,8 +56,8 @@ flowchart LR
 - AssetVersion 首次派生使用 `asset-library.representation.build` DAG，周期缺口由 `asset-library.representation-backfill` RECONCILE 发现并创建单项 generate AtomicTask；Task Center 不决定媒体策略。
 - ComfyUI WorkflowTestRun 使用 `submit -> poll -> collect_preview`；Worker 返回 `IN_PROGRESS + callbackAfterSeconds` 后由 Conductor 延迟重投同一 task，期间释放 Worker。
 - AgentRuntime、AppStudio Preview、Build 和 Production 的 Infra 操作均通过 `Task Center -> Task Worker -> Infra Adapter -> Infra Service`；来源领域不得直接调用 Infra Service。
-- 第一阶段七个 canonical Infra-backed functionRef 由 `function-registry.yaml` 定义；调用方 arguments 在创建任务前校验，Worker 结果在成功投影前校验。Registry 升级不改写 AtomicTask 固定的合同版本与摘要。
-- Task Worker 的 Infra Adapter 只接受 Task Center 已校验的业务授权引用，并生成 Infra `source_ref`。首阶段只调用 Docker Job/Service；不透传镜像、任意命令、宿主机路径、凭证或 Provider 私有字段。
+- canonical Infra-backed functionRef 由 `function-registry.yaml` 定义；调用方 arguments 在创建任务前校验，Worker 结果在成功投影前校验。Model Deployment 六个旧 `1.0` 合同经维护窗口清理后由同名 `2.0` 合同彻底替换；其他 Registry 升级不改写 AtomicTask 固定的合同版本与摘要。
+- Task Worker 的 Infra Adapter 只接受 Task Center 已校验的业务授权引用，并生成 Infra `source_ref`。Model Deployment `2.0` Task 只携带稳定 Revision/Rollout 引用与 digest，Worker 通过内部 resolver 读取完整配置并校验 fence；解析结果仅在当前 Attempt 内转换为 Docker STRUCTURED/NATIVE 请求。其他 Task 不透传镜像、任意命令、宿主机路径、凭证或 Provider 私有字段。
 
 ## 4. 调度模型
 

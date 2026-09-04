@@ -13,7 +13,7 @@
 | runtime | WorkflowRuntime 接口、Conductor 适配、运行时 binding、事件投影和对账 | 对外业务 API、Conductor 数据库所有权 |
 | function-registry | 可用 functionRef、输入输出 schema、能力要求、执行模式和 handler 路由 | 用户代码上传、HTTP/INLINE/脚本节点 |
 | task-worker | 消费 AtomicTask、执行已注册 handler、管理 Attempt 级恢复、RuntimeOutput 字节交付和受控结果映射 | Agent/AppStudio/Infra 业务状态、Artifact ready 事实、业务数据库、Docker Provider 私有实现 |
-| infra-adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求与输出声明，映射取消/超时/重试、稳定运行引用和受控输出读取 | 任意用户命令、宿主机路径、Docker Socket、Provider 私有 API |
+| infra-adapter | 将 Infra-backed functionRef 转换为受控 Infra 请求与输出声明，映射取消/超时/重试、稳定运行引用和受控输出读取 | 任意用户命令、未经 Model Deployment Revision resolver 授权的宿主机路径、Docker Socket、Provider 私有 API |
 | agent-executor | 执行 `agent.invocation.execute@1.0`，调用 profile-specific adapter 并单调投影事件 | 创建第二套 Task 状态机、直接写 Agent 私表、将 Hermes/OpenCode 原始协议暴露给 API |
 | name-catalog | 系统任务名称 key、受控参数校验和 BCP 47 多语言投影 | 翻译用户自定义名称、按请求语言改写持久化 name |
 | access | project、namespace、createdBy 和服务身份访问控制 | identity 主体生命周期 |
@@ -50,7 +50,7 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - Worker handler 获得始终非空的 TaskLogger，只能写 INFO、WARN、ERROR 生命周期或受控业务进度。失败生命周期日志必须包含经统一脱敏、单行化和长度限制的具体错误摘要；日志写入仍为 best-effort，失败不得改变 handler 结果。运行时日志统一写入 envelope v2，可携带 `event_key`、固定 `stage`、安全 `error_code` 和封闭 `context`；Task Center 只读取 v2，按时间与原始顺序稳定排序，并按生命周期 event key 去重。
 - Task Worker 只能接收 Task Center 已校验的不可变 `arguments` 和 `function_ref`，不得从 Agent、AppStudio 或客户端直接接收 Infra 请求。
 - Infra-backed `function_ref` 必须由 function-registry 声明 `execution_mode=JOB|SERVICE`、输入/输出 schema、required capabilities、幂等键、取消方式、超时边界和结果映射；首阶段只可路由到 DockerRuntimeProvider。
-- Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、宿主机路径、容器 ID、Host Port 或内部地址。
+- Task Worker 对 Infra-backed handler 统一调用 `infra-adapter`。业务 handler 不得直接操作 Docker Socket、Provider 私有 API、容器 ID、Host Port 或内部地址；Model Deployment HOST_PATH 只能由 resolver 的不可变 Revision 结果在 Adapter 内转换，不能来自 Task arguments。
 - `infra-adapter` 使用 Task Center 服务身份调用 Infra Service，并将结果限制为 `infra_runtime_id`、`endpoint_ref`、外部作业引用、Artifact/Workspace 受控引用和脱敏错误；原始日志、凭证、Provider 响应和大型正文不得进入 Task 输出。
 - 对声明输出，Task Worker 必须调用 Infra 受控内容读取并流式传输，不得把 `infra-output://` 当作 bearer、文件路径或任意 URL。读取前后分别校验 RuntimeOutput/HTTP/实际流的 `size_bytes` 和 SHA-256；缺失、目录、符号链接逃逸、读取中断或摘要不一致均不得完成 ready Artifact。
 - Task Worker 以原任务 producer context 和 `authorization_ref` 调用 Asset Library 既有 `create -> content upload -> complete`，再调用 Infra `attach-artifact`。只有 Asset Library 内容完成且 size/digest 一致时才能投影成功；Task 结果只保存 Artifact ID/digest，不保存 `content_ref`、`base_url` 或 staging 引用。
@@ -86,13 +86,14 @@ Task Center 定义并消费 `WorkflowRuntime`，至少提供：
 - 结果投影只能由 registry 的 `result_projection` 执行字段选择和状态 transform，再由来源领域消费 Task 结果更新自己的聚合；Task Worker、Task Center 和 Infra Adapter 都不得直接写 Agent/AppStudio 私表。
 - Registry 没有公开 CRUD API、权限码或领域事件。修改 functionRef、I/O schema、能力、策略、映射或 transform 必须提升 `contract_version` 并重新生成规范化摘要；禁止原地改变同版本合同。
 
-### 3.3 Model Deployment Provider DAG
+### 3.3 Model Deployment Spec Revision Rollout
 
-- vLLM 和 LM Studio 各自拥有 `model.validate`、`runtime.ensure`、`runtime.stop` 三个独立 ACTIVE functionRef；不得新增一个通过 `provider_type` 分支的共享 Model Deployment handler。
-- Model Deployment 来源领域提交固定 SERIAL DAG：DEPLOY/START 为 `validate -> ensure`，RESTART 为 `stop -> validate -> ensure`。DAG 节点、依赖和 function contract version 在创建前固定。
-- `model.validate` 使用对应 Provider 的验证 Job Profile；`runtime.ensure` 使用对应 Provider 的 Service Profile；`runtime.stop` 只操作对应 Provider 的 Runtime 引用。三者的输入、输出、能力和结果映射分别声明。
-- Task Center 在 DAG 创建前校验来源领域、资源版本、当前动作和精确输入 schema；DAG 运行中不得追加节点、改变 Provider、替换 model_name 或注入 capability_definition_ids。
-- Model Deployment DAG 结果只由 `model-deployment` 消费并投影到 `ModelDeployment`；Task Worker 不写部署表，旧 DAG/Task 事件不得覆盖当前执行 fence。
+- vLLM 和 LM Studio 各自拥有 `model.validate`、`runtime.ensure`、`runtime.stop` 三个独立 ACTIVE `2.0` functionRef；六个旧 `1.0` 合同不设 RETAINED，维护窗口必须清除旧任务后再加载 registry。
+- INITIAL/APPLY/MANUAL_ROLLBACK/START/RESTART/AUTO_ROLLBACK 使用来源领域已创建 Rollout 的固定 `validate -> ensure` SERIAL DAG；STOP/DELETE 只创建 stop AtomicTask。
+- Task arguments 只含 deployment/rollout/revision ID、spec digest、既有 Runtime、授权引用和资源版本，不含完整配置、环境变量、模型路径或 Provider Native JSON。
+- Task Worker 在调用 Infra 前通过 `ResolveModelDeploymentSpecRevision` 读取最终有效配置，同时校验 Revision ID、digest、Rollout 与部署资源版本；解析结果仅存在于当前 Attempt 内存。
+- Infra Adapter 使用 `MODEL_DEPLOYMENT_SPEC_REVISION` source policy，并从解析结果获得 runtime_provider、node、RuntimeProfile Revision 与 Docker STRUCTURED/NATIVE 配置。
+- Task 结果只由 `model-deployment` 消费并投影到当前 Rollout/Deployment；Task Worker 不写来源领域私表，旧 DAG/Task 事件不得越过 current rollout/task fence。
 
 ### 3.2 GitLab 外部 handler
 

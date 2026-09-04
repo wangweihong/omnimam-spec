@@ -1,4 +1,4 @@
--- Infrastructure S2 design schema, v1.2.0 released by spec-v1.17.2. This is not a migration.
+-- Infrastructure S2 design schema, v2.0.0 updated by spec-v1.25.1. This is not a migration.
 -- Infra 只保存运行层事实；Agent、AppStudio、Task Center 和 Artifact 业务事实不在本 schema 内。
 
 -- s1_refs: R-INFRA-027; source: 7.4 本地模型 Profile.
@@ -23,7 +23,7 @@ CREATE TABLE infra_runtime_profiles (
   resource_version INTEGER NOT NULL DEFAULT 0,
   revision TEXT NOT NULL,
   runtime_mode TEXT NOT NULL CHECK (runtime_mode IN ('JOB', 'SERVICE')),
-  provider_type TEXT NOT NULL CHECK (provider_type IN ('docker')),
+  runtime_provider TEXT NOT NULL CHECK (runtime_provider IN ('docker')),
   capabilities_json TEXT NOT NULL DEFAULT '[]',
   policy_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'DISABLED')),
@@ -39,7 +39,7 @@ CREATE TABLE infra_nodes (
   description TEXT NOT NULL DEFAULT '',
   extend_shadow TEXT NOT NULL DEFAULT '',
   resource_version INTEGER NOT NULL DEFAULT 0,
-  provider_type TEXT NOT NULL CHECK (provider_type IN ('docker')),
+  runtime_provider TEXT NOT NULL CHECK (runtime_provider IN ('docker')),
   status TEXT NOT NULL CHECK (status IN ('ONLINE', 'DRAINING', 'OFFLINE', 'DISABLED')),
   cpu_cores NUMERIC NOT NULL DEFAULT 0,
   memory_mb BIGINT NOT NULL DEFAULT 0,
@@ -67,16 +67,22 @@ CREATE TABLE infra_runtimes (
   request_user_id TEXT,
   request_id TEXT NOT NULL,
   request_fingerprint TEXT NOT NULL,
-  runtime_profile_id TEXT NOT NULL,
-  runtime_profile_revision TEXT NOT NULL,
-  provider_type TEXT NOT NULL CHECK (provider_type IN ('docker')),
+  runtime_profile_id TEXT,
+  runtime_profile_revision TEXT,
+  runtime_provider TEXT NOT NULL CHECK (runtime_provider IN ('docker')),
   provider_runtime_ref TEXT,
-  selected_node_id TEXT REFERENCES infra_nodes(id),
+  node_id TEXT REFERENCES infra_nodes(id),
+  spec_revision_id TEXT,
+  spec_digest TEXT CHECK (spec_digest IS NULL OR spec_digest ~ '^sha256:[0-9a-f]{64}$'),
+  effective_provider_spec_json JSONB NOT NULL,
+  effective_provider_spec_digest TEXT NOT NULL CHECK (effective_provider_spec_digest ~ '^sha256:[0-9a-f]{64}$'),
+  runtime_identity_json JSONB NOT NULL DEFAULT '{}',
   endpoint_ref TEXT,
   source_ref TEXT,
   failure_code TEXT,
   timeout_policy_json TEXT NOT NULL DEFAULT '{}',
-  UNIQUE (requesting_service, request_id)
+  UNIQUE (requesting_service, request_id),
+  CHECK ((owner_domain = 'model-deployment') = (spec_revision_id IS NOT NULL AND spec_digest IS NOT NULL))
 );
 CREATE INDEX idx_infra_runtimes_owner ON infra_runtimes(owner_domain, owner_reference, status);
 CREATE INDEX idx_infra_runtimes_status ON infra_runtimes(status, updated_at);
@@ -118,7 +124,7 @@ CREATE TABLE infra_runtime_mounts (
   resource_version INTEGER NOT NULL DEFAULT 0,
   runtime_id TEXT NOT NULL REFERENCES infra_runtimes(id),
   source_ref TEXT NOT NULL,
-  mount_kind TEXT NOT NULL CHECK (mount_kind IN ('AGENT_WORKSPACE', 'STUDIO_WORKSPACE_REVISION', 'STUDIO_SNAPSHOT', 'ARTIFACT', 'MODEL_FILES', 'TEMPORARY')),
+  mount_kind TEXT NOT NULL CHECK (mount_kind IN ('AGENT_WORKSPACE', 'STUDIO_WORKSPACE_REVISION', 'STUDIO_SNAPSHOT', 'ARTIFACT', 'MODEL_FILES', 'HOST_PATH', 'DOCKER_VOLUME', 'TEMPORARY')),
   target_path TEXT NOT NULL,
   read_only BOOLEAN NOT NULL,
   authorization_ref TEXT,

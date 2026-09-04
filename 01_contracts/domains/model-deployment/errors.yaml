@@ -1,21 +1,21 @@
 - code: ERR_MODELDEP_DEPLOYMENT_NOT_FOUND
   value: 260200
   http: 200
-  cn: 本地模型部署不存在或当前用户不可见。
-  en: The local model deployment does not exist or is not visible.
+  cn: 模型部署不存在或当前用户不可见。
+  en: The model deployment does not exist or is not visible.
   owning_domain: model-deployment
   owning_module: deployment
   range: 260200-260399
   retryable: false
   deprecated: false
   related_rules: [BR-MODELDEP-001]
-  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
 
 - code: ERR_MODELDEP_NAME_DUPLICATED
   value: 260201
   http: 200
-  cn: 本地模型部署名称已存在。
-  en: The local model deployment name already exists.
+  cn: 模型部署名称已存在。
+  en: The model deployment name already exists.
   owning_domain: model-deployment
   owning_module: deployment
   range: 260200-260399
@@ -24,94 +24,249 @@
   related_rules: [BR-MODELDEP-001]
   related_user_stories: [US-MODELDEP-001]
 
-- code: ERR_MODELDEP_PROVIDER_UNSUPPORTED
+- code: ERR_MODELDEP_SERVING_ENGINE_UNSUPPORTED
   value: 260202
   http: 200
-  cn: 本地模型部署 Provider 不受支持。
-  en: The local model deployment provider is not supported.
+  cn: 模型服务引擎不受支持。
+  en: The serving engine is not supported.
   owning_domain: model-deployment
   owning_module: deployment
   range: 260200-260399
   retryable: false
   deprecated: false
-  related_rules: [BR-MODELDEP-002, BR-MODELDEP-005]
+  related_rules: [BR-MODELDEP-002]
   related_user_stories: [US-MODELDEP-001]
 
-- code: ERR_MODELDEP_MODEL_NAME_INVALID
+- code: ERR_MODELDEP_RUNTIME_PROVIDER_UNSUPPORTED
   value: 260203
   http: 200
-  cn: 模型名格式无效。
-  en: The model name format is invalid.
+  cn: Runtime Provider 不受支持。
+  en: The runtime provider is not supported.
   owning_domain: model-deployment
   owning_module: deployment
   range: 260200-260399
   retryable: false
   deprecated: false
-  related_rules: [BR-MODELDEP-002, BR-MODELDEP-003]
+  related_rules: [BR-MODELDEP-002, BR-MODELDEP-016]
   related_user_stories: [US-MODELDEP-001]
-
-- code: ERR_MODELDEP_STATE_CONFLICT
-  value: 260204
-  http: 200
-  cn: 当前部署状态不允许执行该操作。
-  en: The current deployment state does not allow this operation.
-  owning_domain: model-deployment
-  owning_module: deployment
-  range: 260200-260399
-  retryable: false
-  deprecated: false
-  related_rules: [BR-MODELDEP-006, BR-MODELDEP-008]
-  related_user_stories: [US-MODELDEP-002]
 
 - code: ERR_MODELDEP_RESOURCE_VERSION_CONFLICT
-  value: 260205
+  value: 260204
   http: 200
-  cn: 本地模型部署已被其他操作更新，请刷新后重试。
-  en: The local model deployment was updated by another operation; refresh and retry.
+  cn: 模型部署已被其他操作更新，请刷新后重试。
+  en: The model deployment was updated by another operation; refresh and retry.
   owning_domain: model-deployment
   owning_module: deployment
   range: 260200-260399
   retryable: true
   deprecated: false
-  related_rules: [BR-MODELDEP-006]
-  related_user_stories: [US-MODELDEP-002]
+  related_rules: [BR-MODELDEP-010]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
 
-- code: ERR_MODELDEP_LIFECYCLE_TASK_UNAVAILABLE
+- code: ERR_MODELDEP_STATE_CONFLICT
+  value: 260205
+  http: 200
+  cn: 当前部署状态或活动执行不允许该操作。
+  en: The current deployment state or active execution does not allow this operation.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-010, BR-MODELDEP-018]
+  related_user_stories: [US-MODELDEP-002, US-MODELDEP-003]
+
+- code: ERR_MODELDEP_IDEMPOTENCY_CONFLICT
+  value: 260206
+  http: 200
+  cn: 同一幂等键对应的请求内容不一致。
+  en: The request content differs for the same idempotency key.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-010]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
+
+- code: ERR_MODELDEP_SPEC_INVALID
   value: 260400
   http: 200
-  cn: 本地模型生命周期任务当前不可用。
-  en: The local model lifecycle task is currently unavailable.
+  cn: 模型部署配置未通过校验。
+  en: The model deployment specification is invalid.
   owning_domain: model-deployment
-  owning_module: runtime
-  range: 260400-260599
-  retryable: true
-  deprecated: false
-  related_rules: [BR-MODELDEP-004, BR-MODELDEP-006]
-  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
-
-- code: ERR_MODELDEP_LOCAL_MODEL_UNAVAILABLE
-  value: 260401
-  http: 200
-  cn: 配置根目录下不存在可用的指定模型。
-  en: The specified model is not available under the configured local model root.
-  owning_domain: model-deployment
-  owning_module: runtime
+  owning_module: revision
   range: 260400-260599
   retryable: false
   deprecated: false
-  related_rules: [BR-MODELDEP-003]
+  related_rules: [BR-MODELDEP-005, BR-MODELDEP-006, BR-MODELDEP-007]
   related_user_stories: [US-MODELDEP-001]
 
-- code: ERR_MODELDEP_RUNTIME_OPERATION_FAILED
+- code: ERR_MODELDEP_CONFIGURATION_MODE_CONFLICT
+  value: 260401
+  http: 200
+  cn: 配置模式与 Serving/Runtime Spec 模式组合不一致。
+  en: The configuration mode conflicts with the serving or runtime specification mode.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-006]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_MODEL_SOURCE_INVALID
   value: 260402
   http: 200
-  cn: 本地模型 Runtime 操作失败。
-  en: The local model runtime operation failed.
+  cn: 模型来源不存在、不可读、格式无效或逃逸受控边界。
+  en: The model source is missing, unreadable, invalid, or escapes the controlled boundary.
   owning_domain: model-deployment
-  owning_module: runtime
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-007]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_MOUNT_CONFLICT
+  value: 260403
+  http: 200
+  cn: 模型主挂载与额外挂载的目标路径冲突。
+  en: The model mount target conflicts with an additional mount target.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-007]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_INFRA_NODE_UNAVAILABLE
+  value: 260404
+  http: 200
+  cn: 指定 InfraNode 不存在、不是 ONLINE Docker 节点或不满足配置要求。
+  en: The selected InfraNode is unavailable, is not an ONLINE Docker node, or does not satisfy the specification.
+  owning_domain: model-deployment
+  owning_module: revision
   range: 260400-260599
   retryable: true
   deprecated: false
-  related_rules: [BR-MODELDEP-004, BR-MODELDEP-007, BR-MODELDEP-008]
-  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+  related_rules: [BR-MODELDEP-002, BR-MODELDEP-007, BR-MODELDEP-016]
+  related_user_stories: [US-MODELDEP-001]
 
+- code: ERR_MODELDEP_NATIVE_SPEC_INVALID
+  value: 260405
+  http: 200
+  cn: Provider Native JSON 不能被目标 Docker Engine 接受。
+  en: The provider-native JSON cannot be accepted by the target Docker engine.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-006, BR-MODELDEP-016]
+  related_user_stories: [US-MODELDEP-001]
+
+- code: ERR_MODELDEP_REVISION_NOT_FOUND
+  value: 260406
+  http: 200
+  cn: 模型部署 Spec Revision 不存在或不属于该部署。
+  en: The model deployment specification revision does not exist or does not belong to the deployment.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-004]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_REVISION_ALREADY_ACTIVE
+  value: 260407
+  http: 200
+  cn: 指定 Revision 已是当前 active 配置；重新物化请使用 Restart。
+  en: The revision is already active; use Restart to materialize it again.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-012]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_SPEC_DIGEST_MISMATCH
+  value: 260408
+  http: 200
+  cn: Revision 摘要与任务固定摘要不一致。
+  en: The revision digest does not match the digest fixed by the task.
+  owning_domain: model-deployment
+  owning_module: revision
+  range: 260400-260599
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-005, BR-MODELDEP-014]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_ROLLOUT_NOT_FOUND
+  value: 260600
+  http: 200
+  cn: 模型部署 Rollout 不存在或不属于该部署。
+  en: The model deployment rollout does not exist or does not belong to the deployment.
+  owning_domain: model-deployment
+  owning_module: rollout
+  range: 260600-260799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-010]
+  related_user_stories: [US-MODELDEP-002]
+
+- code: ERR_MODELDEP_ROLLOUT_BINDING_MISMATCH
+  value: 260601
+  http: 200
+  cn: Task 固定的 Deployment、Rollout、Revision 或资源版本绑定不一致。
+  en: The deployment, rollout, revision, or resource version fixed by the task does not match.
+  owning_domain: model-deployment
+  owning_module: rollout
+  range: 260600-260799
+  retryable: false
+  deprecated: false
+  related_rules: [BR-MODELDEP-014]
+  related_user_stories: [US-MODELDEP-002, US-MODELDEP-003]
+
+- code: ERR_MODELDEP_LIFECYCLE_TASK_UNAVAILABLE
+  value: 260602
+  http: 200
+  cn: 模型部署生命周期任务当前不可用。
+  en: The model deployment lifecycle task is currently unavailable.
+  owning_domain: model-deployment
+  owning_module: rollout
+  range: 260600-260799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-010, BR-MODELDEP-014, BR-MODELDEP-015]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
+
+- code: ERR_MODELDEP_RUNTIME_OPERATION_FAILED
+  value: 260603
+  http: 200
+  cn: 模型部署 Runtime 操作失败。
+  en: The model deployment runtime operation failed.
+  owning_domain: model-deployment
+  owning_module: rollout
+  range: 260600-260799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-011, BR-MODELDEP-013, BR-MODELDEP-018]
+  related_user_stories: [US-MODELDEP-002, US-MODELDEP-003]
+
+- code: ERR_MODELDEP_AUTO_ROLLBACK_FAILED
+  value: 260604
+  http: 200
+  cn: 应用失败后的自动回滚也失败，部署已进入 FAILED。
+  en: Automatic rollback after apply failure also failed, and the deployment is FAILED.
+  owning_domain: model-deployment
+  owning_module: rollout
+  range: 260600-260799
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-013]
+  related_user_stories: [US-MODELDEP-002]

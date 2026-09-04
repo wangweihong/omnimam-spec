@@ -1,24 +1,52 @@
 model_deployment_status_changed:
   producer: model-deployment.lifecycle
   consumers: [model-deployment.admin-projection, sse-event-projector]
-  trigger_condition: ModelDeployment status、desired_state 或 health_status 相对已保存事实发生变化。
+  trigger_condition: ModelDeployment status、desired_state、health_status、Revision 或当前执行引用相对已保存事实发生变化。
   payload:
     model_deployment_id: string
-    provider_type: string
-    model_name: string
+    active_spec_revision_id: string|null
+    pending_spec_revision_id: string|null
+    spec_revision_id: string|null
+    rollout_id: string|null
+    spec_digest: string|null
+    serving_engine: string|null
+    runtime_provider: string|null
     desired_state: string
     status: string
     health_status: string
-    current_dag_task_group_id: string|null
     current_atomic_task_id: string|null
     failure_code: string
     resource_version: integer
     changed_at: string(date-time)
+  forbidden_payload_fields: [model_source, serving_spec, runtime_spec, environment_variables, host_path, provider_payload]
   idempotency_key: model_deployment_id:resource_version
   retry_policy: 通过事务 outbox 重试，消费者按 resource_version 单调投影。
-  failure_policy: 事件失败不得回滚已经提交的部署状态；消费者重新查询最新资源。
-  related_rules: [BR-MODELDEP-006, BR-MODELDEP-007, BR-MODELDEP-008, BR-MODELDEP-009]
-  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002]
+  failure_policy: 事件失败不得回滚部署状态；消费者重新查询最新 REST 事实。
+  related_rules: [BR-MODELDEP-008, BR-MODELDEP-010, BR-MODELDEP-011, BR-MODELDEP-017]
+  related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003, US-MODELDEP-004]
+
+model_deployment_rollout_changed:
+  producer: model-deployment.rollout
+  consumers: [model-deployment.admin-projection, sse-event-projector]
+  trigger_condition: Rollout status 或 phase 单调变化。
+  payload:
+    model_deployment_id: string
+    rollout_id: string
+    spec_revision_id: string
+    spec_digest: string
+    serving_engine: string
+    runtime_provider: string
+    kind: string
+    status: string
+    phase: string
+    failure_code: string
+    changed_at: string(date-time)
+  forbidden_payload_fields: [model_source, serving_spec, runtime_spec, environment_variables, host_path, provider_payload]
+  idempotency_key: rollout_id:status:phase
+  retry_policy: 通过事务 outbox 重试，消费者按 Rollout 单调阶段幂等。
+  failure_policy: 事件失败不回滚 Rollout；消费者按稳定 ID 重新查询。
+  related_rules: [BR-MODELDEP-010, BR-MODELDEP-013, BR-MODELDEP-017]
+  related_user_stories: [US-MODELDEP-002, US-MODELDEP-004]
 
 model_deployment_deleted:
   producer: model-deployment.lifecycle
@@ -26,11 +54,14 @@ model_deployment_deleted:
   trigger_condition: DELETE Task 已确认 Runtime 和 Endpoint 清理完成，ModelDeployment 即将删除。
   payload:
     model_deployment_id: string
-    provider_type: string
-    model_name: string
+    active_spec_revision_id: string|null
+    spec_digest: string|null
+    serving_engine: string|null
+    runtime_provider: string|null
     deleted_at: string(date-time)
+  forbidden_payload_fields: [model_source, serving_spec, runtime_spec, environment_variables, host_path, provider_payload]
   idempotency_key: model_deployment_id:deleted
   retry_policy: 通过事务 outbox 重试。
   failure_policy: 删除事实保持成立，消费者按 deployment ID 幂等移除投影。
-  related_rules: [BR-MODELDEP-008, BR-MODELDEP-009]
-  related_user_stories: [US-MODELDEP-002]
+  related_rules: [BR-MODELDEP-017, BR-MODELDEP-018]
+  related_user_stories: [US-MODELDEP-003, US-MODELDEP-004]

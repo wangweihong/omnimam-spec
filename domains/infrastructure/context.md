@@ -7,13 +7,13 @@
 ## 2. 核心规则
 
 - Runtime 创建、停止、删除和其他生命周期写操作必须由 Task Center 的 Task Worker 通过受控 Infra Adapter 发起；唯一例外是 AgentRuntimeAdapter 在完整业务绑定校验后，以 Agent 工作负载身份调用只读 Endpoint resolve。
-- 第一阶段只支持 `DockerRuntimeProvider`，Kubernetes、Edge、Local Process 和多节点调度属于后续版本规划。
+- 当前只支持 `DockerRuntimeProvider`；CreateRuntimeRequest 按 `runtime_provider` 判别 DockerRuntimeSpec。Kubernetes 只固定未来版本归属，不提供 DTO。
 - RuntimeProfile Revision 定义命名 Endpoint；Docker Service 只向平台内部接口发布声明的容器端口，并在映射建立和健康检查通过后把 Endpoint 标记为 `READY`。
 - `AgentWorkspace` 只能按 Agent 授权挂载；Coding Runtime 不挂载 StudioWorkspace，而是接收 Git clone 非敏感配置、tmpfs credential helper 和可丢弃 `/workspace`；Preview/Build 源码按 AppStudio Revision/Snapshot 固定 commit 受控注入。
 - Preview 只能挂载当前 Workspace Revision；Build 只能只读挂载固定 Snapshot；Production 只能只读使用固定 Artifact digest，禁止可写 Workspace。
 - `appstudio.preview.web-backend` 是现有 Preview profile；它与静态 Web Preview 一样只接收固定 Revision CommitSHA archive，但当前 AppStudio 不开放 `WEB_WITH_LIGHT_BACKEND` 创建。
-- Infra 只保存稳定运行引用和基础设施状态；业务状态由来源领域和 Task Center 分别拥有。`model-deployment` 作为平台本地模型部署的 Runtime owner。
-- 本地模型使用 `MODEL_FILES` 挂载。节点配置提供 `local_model_root`，`local-model://{model_name}` 在 Infrastructure 内部解析为该根目录下的模型目录；调用方只提交逻辑模型名。
+- Infra 保存稳定运行引用、node、最终 Provider Spec/digest、Provider Runtime 引用和运行身份；业务 Revision/Rollout 仍归 `model-deployment`。
+- Model Deployment 模型来源支持 LOCAL_MODEL、HOST_PATH、VOLUME；所有主/额外挂载规范化为 RuntimeMount。完整配置只能由 Task Worker 从不可变 Revision resolver 获得。
 - Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
 - Task Worker 从 Infra 鉴权流式读取字节，双重校验大小和 digest，完成 Asset Library Artifact 内容后幂等回链；Infra 不生成 Artifact ready 事实。
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
@@ -25,14 +25,14 @@
 
 | 文件 | 层级 | 用途 |
 | --- | --- | --- |
-| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.24.0`) | Docker 运行层、Job/Service、Runtime、挂载和安全语义 |
+| `00_product/domains/infrastructure/product-spec.md` | S1 Released (`spec-v1.25.1`) | Docker 运行层、Provider Spec、Job/Service、Runtime、挂载和安全语义 |
 | `02_architecture/domains/infrastructure.md` | 参考（`spec-v1.17.2`） | Task Worker、Infra Adapter、Docker Provider 和挂载边界 |
-| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.24.0`) | InfraRuntime、Endpoint、Node、Profile 和输出 API |
-| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.24.0`) | Infrastructure 设计态 Schema |
-| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.24.0`) | 错误、权限、事件和模块边界 |
+| `01_contracts/domains/infrastructure/openapi.yaml` | S2 Released (`spec-v1.25.1`) | runtime_provider 联合、InfraRuntime、Endpoint、Node、Profile 和输出 API |
+| `01_contracts/domains/infrastructure/schema.sql` | S2 Released (`spec-v1.25.1`) | Infrastructure 设计态 Schema |
+| `01_contracts/domains/infrastructure/errors.yaml`、`permissions.yaml`、`events.yaml`、`module-contract.md` | S2 Released (`spec-v1.25.1`) | 错误、权限、事件和模块边界 |
 
 Infrastructure 当前 S1/S2、Endpoint resolve 与 RuntimeOutput 内容交付闭环已由 `spec-v1.17.2` 完成用户确认并发布，使用 `US-INFRA-001`、`BR-INFRA-001`、`R-INFRA-*` 和源章节追溯，可作为正式实现、合并和验收依据。
-本地模型 `local_model_root`、`MODEL_FILES`、`model.vllm`/`model.lmstudio` Profile 和 `model-deployment` owner 增量由 `spec-v1.24.0` 发布。
+Model Deployment 的 `serving_engine/runtime_provider` 拆分、Docker STRUCTURED/NATIVE、三种模型来源、RuntimeMount 规范化与完整运行身份由 `spec-v1.25.1` 发布，并替换 `spec-v1.24.x` 对应合同。
 Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` 发布后作为新增实现依据。
 
 ## 4. 直接依赖

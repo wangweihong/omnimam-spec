@@ -1,4 +1,4 @@
-# Infrastructure S2 error codes, v1.2.0 released by spec-v1.17.2.
+# Infrastructure S2 error codes, v2.0.0 updated by spec-v1.25.1.
 # 当前 S1 通过 US-INFRA-001/BR-INFRA-001 锚点映射既有 R-INFRA-* 规则。
 - code: ERR_INFRA_REQUEST_INVALID
   value: 240200
@@ -48,6 +48,42 @@
   deprecated: false
   related_rules: [BR-INFRA-001, R-INFRA-016]
   related_user_stories: [US-INFRA-001]
+- code: ERR_INFRA_RUNTIME_PROVIDER_UNSUPPORTED
+  value: 240204
+  http: 200
+  cn: Runtime Provider 不受支持；当前只允许 Docker。
+  en: The runtime provider is unsupported; only Docker is currently allowed.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-001, BR-INFRA-002, R-INFRA-026, R-INFRA-029]
+  related_user_stories: [US-INFRA-001, US-INFRA-002]
+- code: ERR_INFRA_PROVIDER_SPEC_INVALID
+  value: 240205
+  http: 200
+  cn: Docker STRUCTURED/NATIVE Provider Spec 无效或目标 Engine 不接受。
+  en: The Docker structured or native provider specification is invalid or rejected by the target engine.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-026, R-INFRA-029]
+  related_user_stories: [US-INFRA-002]
+- code: ERR_INFRA_SPEC_DIGEST_MISMATCH
+  value: 240206
+  http: 200
+  cn: Model Deployment Spec Revision、摘要或最终 Provider Spec 摘要不一致。
+  en: The model deployment specification revision, digest, or effective provider specification digest does not match.
+  owning_domain: infrastructure
+  owning_module: request
+  range: 240200-240399
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-029]
+  related_user_stories: [US-INFRA-002]
 - code: ERR_INFRA_NO_ELIGIBLE_NODE
   value: 240400
   http: 200
@@ -219,8 +255,8 @@
 - code: ERR_INFRA_LOCAL_MODEL_NOT_FOUND
   value: 241001
   http: 200
-  cn: 指定本地模型在根目录下不可用。
-  en: The requested local model is unavailable under the configured root.
+  cn: LOCAL_MODEL 指定的模型在目标节点根目录下不可用。
+  en: The LOCAL_MODEL source is unavailable under the target node model root.
   owning_domain: infrastructure
   owning_module: mount-config
   range: 241000-241199
@@ -231,12 +267,24 @@
 - code: ERR_INFRA_MODEL_PROFILE_INVALID
   value: 241002
   http: 200
-  cn: 本地模型 RuntimeProfile 校验失败。
-  en: The local model RuntimeProfile validation failed.
+  cn: 模型部署固定的 RuntimeProfile Revision 无效或与最终配置不一致。
+  en: The runtime profile revision fixed by the model deployment is invalid or inconsistent with the effective specification.
   owning_domain: infrastructure
   owning_module: request
   range: 241000-241199
   retryable: false
   deprecated: false
-  related_rules: [BR-INFRA-002, R-INFRA-026]
+  related_rules: [BR-INFRA-002, R-INFRA-026, R-INFRA-029]
+  related_user_stories: [US-INFRA-002]
+- code: ERR_INFRA_MODEL_SOURCE_INVALID
+  value: 241003
+  http: 200
+  cn: HOST_PATH、VOLUME 或模型主挂载来源无效、不可读或逃逸受控边界。
+  en: The host path, volume, or primary model mount source is invalid, unreadable, or escapes the controlled boundary.
+  owning_domain: infrastructure
+  owning_module: mount-config
+  range: 241000-241199
+  retryable: false
+  deprecated: false
+  related_rules: [BR-INFRA-002, R-INFRA-027, R-INFRA-029]
   related_user_stories: [US-INFRA-002]

@@ -520,7 +520,7 @@ flowchart LR
 
 `RuntimeProfile` 是平台维护的运行模板。
 
-上层服务不提交 Docker Image、宿主机命令或 Docker 专属运行参数，而是引用 RuntimeProfile。
+默认情况下，上层服务不提交 Docker Image、宿主机命令或 Docker 专属运行参数，而是引用 RuntimeProfile。唯一例外是 `model-deployment` 的管理员高级配置：Task Worker 必须从不可变 `ModelDeploymentSpecRevision` resolver 获得已经校验和规范化的完整 Docker Spec；客户端与 AtomicTask 不得直接向 Infrastructure 透传该配置。
 
 示例：
 
@@ -619,13 +619,19 @@ S1 中：
 * Service 只能请求该 Revision 已声明的命名 Endpoint，上层不得提交任意容器端口、Host Port 或绑定地址。
 * Job 只能声明该 Revision 允许的输出名称、相对路径和媒体类型，不得扩大受控输出根。
 
-## 7.4 本地模型 Profile
+## 7.4 模型部署 Spec Revision
 
-平台本地模型部署使用两个独立的内置 Profile：`model.vllm` 和 `model.lmstudio`。二者均为 Docker `SERVICE`，但分别维护镜像、Entrypoint、启动参数、模型格式校验、命名 Endpoint 和健康检查，不通过共享 Provider 分支表达专用语义。
+平台模型部署仍按 `serving_engine=vllm|lmstudio` 使用独立验证和运行适配器，但 Runtime 介质由独立 `runtime_provider=docker` 判别。可选 RuntimeProfile 只作为 Revision 创建时的默认模板；Model Deployment 必须将模板解析到固定 Profile Revision，把合并后的最终有效配置完整保存并计算摘要。Infrastructure 在 Apply 时接收这一固定结果，不重新读取当前 Profile。
 
-Infrastructure 节点配置提供 `local_model_root`。Task Worker 只提交 `source_ref=local-model://{model_name}` 与 `MODEL_FILES` 挂载声明，Infrastructure 在节点边界将其解析为 `<local_model_root>/<model_name>`，以只读方式挂载到对应 Profile 的模型目录。`local_model_root` 不属于 Model Deployment 创建请求字段。
+Task Worker 的 AtomicTask arguments 只保存 Deployment、Rollout、Revision、digest、既有 Runtime、授权和资源版本。Worker 通过 `ResolveModelDeploymentSpecRevision` 在当前 Attempt 内取得完整配置，再构造按 `runtime_provider` 判别的 `CreateRuntimeRequest`。Infrastructure 必须校验 `spec_revision_id`、`spec_digest`、owner 与请求指纹，并把最终 Docker Provider Spec/digest、节点和 Provider Runtime 身份保存到 InfraRuntime。
 
-`model.vllm.validate` 与 `model.lmstudio.validate` 是 Provider 专属的 `JOB` 校验 Profile；校验成功后由对应 `model.vllm` 或 `model.lmstudio` `SERVICE` Profile 启动模型。模型部署 Runtime 的 owner 为 `model-deployment`，业务生命周期仍由 Model Deployment 与 Task Center 管理。
+模型来源统一物化为只读 `MODEL_FILES` 主挂载：
+
+- `LOCAL_MODEL`：在 Revision 固定的 ONLINE Docker 节点使用 `local_model_root/model_name` 解析。
+- `HOST_PATH`：使用管理员在 Revision 中指定的该节点绝对目录；只允许 `model-deployment` owner 的受信 resolver 路径。
+- `VOLUME`：使用指定 Docker Volume 与可选安全 subpath。
+
+主挂载和 STRUCTURED/NATIVE 额外挂载都必须规范化为 `RuntimeMount`，并拒绝重复 target、路径逃逸、非法 Volume/subpath 或不可读来源。Docker STRUCTURED 接收平台结构化配置；Docker NATIVE 接收目标 Docker Engine 可解析的 `container_config`、`host_config` 与 `networking_config`。两种模式都不得把完整配置、环境变量、宿主路径或 Provider 响应写入普通响应、事件和日志。
 
 建议引用方式：
 
@@ -712,6 +718,11 @@ runtimeProfileRevision
 providerType
 providerRuntimeRef
 nodeId
+specRevisionId
+specDigest
+effectiveProviderSpec
+effectiveProviderSpecDigest
+runtimeIdentity
 requestingService
 ownerDomain
 ownerReference
@@ -827,7 +838,7 @@ PERSISTENT_VOLUME
 SECRET_VOLUME
 ```
 
-上层不得直接传递任意宿主机路径。
+一般上层不得直接传递任意宿主机路径。`model-deployment` 的 `HOST_PATH` 例外只能来自管理员已保存的不可变 Revision，并经内部 resolver、固定 node、owner 与摘要校验后转换为 `RuntimeMount`；公共 Infra API 调用方不能借此提交任意路径。
 
 ---
 
@@ -1111,7 +1122,7 @@ Docker 细节不能泄漏到上层领域接口。
 * 健康探针。
 * 日志采集。
 
-上层不会感知 Pod、Deployment、Job 或 Namespace。
+上层不会感知 Pod、Deployment、Job 或 Namespace。未来接入时，ModelDeploymentSpecRevision 继续作为业务配置 SSOT；Kubernetes `resourceVersion`、`generation/observedGeneration` 和 Deployment rollout revision 只保存为 Provider 观测事实。一个 Spec Revision 可以映射多个 Kubernetes 对象或多个 Provider rollout，不建立一一对应关系。生成对象携带 deployment/spec revision/spec digest/infra runtime 标记，业务回滚重新 Apply 完整 Spec Revision，不直接暴露 `kubectl rollout undo`。
 
 ---
 
@@ -1279,7 +1290,7 @@ INFRA_DISK_INSUFFICIENT
 
 ## 12.1 Workspace
 
-Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sourceRef`。Infra 不解析业务私有表，不接受宿主机路径，也不允许调用方通过通用 `WORKSPACE` 类型绕过源领域权限。
+Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sourceRef`。Infra 不解析业务私有表，不接受客户端或普通业务 Task 提交的宿主机路径，也不允许调用方通过通用 `WORKSPACE` 类型绕过源领域权限。Model Deployment HOST_PATH 只适用第 7.4 节的不可变 Revision resolver 例外。
 
 | 运行场景 | 允许输入 | 挂载规则 | 业务事实 owner |
 | --- | --- | --- | --- |
@@ -1289,7 +1300,7 @@ Workspace 挂载必须由 Task Worker 根据源领域授权转换为受控 `sour
 | Build Runtime | 固定 `StudioSourceSnapshot` | 只读挂载固定 Snapshot digest；Build 不得读取持续变化的 Workspace 或后续 Revision | `appstudio` |
 | Production Runtime | 固定 `Artifact` 和 digest | 只读挂载固定 Artifact；禁止挂载可写 Workspace、Workspace Revision 或 Snapshot | `appstudio` |
 
-所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把它解释为宿主机路径。`StudioWorkspace`、Workspace Revision、StudioSourceSnapshot 与 Artifact 的物理存储位置不得进入 Infra 普通查询、事件或日志。
+所有挂载都必须记录来源领域、稳定引用、目标路径、只读标志和授权上下文。`sourceRef` 只能是来源领域授权生成的受控引用，例如 `agent-workspace://...`、`studio-workspace-revision://...`、`studio-snapshot://...` 或 `artifact://...`；不得把普通 sourceRef 解释为宿主机路径。Model Deployment HOST_PATH/VOLUME 必须显式标记对应 mount kind，并绑定 owner、node、Revision 与 digest。物理存储位置不得进入 Infra 普通查询、事件或日志。
 
 源码策略的优先级为：`Production Artifact` > `Build StudioSourceSnapshot commit` > `Preview Workspace Revision commit` > `Coding Runtime Git clone` > `AgentWorkspace` 授权。Coding Agent Git clone 不是 StudioWorkspace 文件系统挂载。任何低层请求不得通过更换 `bindingType` 绕过上层授权；生产任务即使收到 Workspace 或 Git 引用也必须拒绝。
 
@@ -2199,7 +2210,7 @@ http://<host-ip>:<allocated-port>
 
 ## R-INFRA-001
 
-第一阶段任何上层服务不得直接操作 Docker Engine、宿主机进程、GPU、端口、Volume 或运行节点文件系统。
+任何上层服务不得直接操作 Docker Engine、宿主机进程、GPU、端口、Volume 或运行节点文件系统。Model Deployment 高级配置只声明不可变期望 Spec；实际 Docker/Host/Volume 操作仍由 Infrastructure Provider 执行。
 
 ## R-INFRA-002
 
@@ -2299,15 +2310,27 @@ Infrastructure 允许 AppStudio API Server 以 `APPSTUDIO_PREVIEW_PROXY` purpose
 
 ## R-INFRA-026
 
-本地模型 Runtime 只能使用内置 `model.vllm` 或 `model.lmstudio` Profile，且两个 Profile 的模型校验、启动和健康检查语义分别维护。
+模型 Runtime 必须拆分 `serving_engine=vllm|lmstudio` 与 `runtime_provider=docker`；两种引擎的校验和结果解释分别维护，Runtime 创建使用按 runtime_provider 判别的 DockerRuntimeSpec。
 
 ## R-INFRA-027
 
-`MODEL_FILES` 挂载的 sourceRef 使用 `local-model://{model_name}`；Infrastructure 使用节点 `local_model_root` 与逻辑模型名拼接本地模型目录，调用方不提交宿主机模型路径。
+`MODEL_FILES` 主挂载支持 `LOCAL_MODEL`、`HOST_PATH` 与 `VOLUME`。LOCAL_MODEL 使用固定节点的 `local_model_root/model_name`；HOST_PATH 和 VOLUME 只能来自管理员不可变 ModelDeploymentSpecRevision。所有来源和额外挂载必须规范化为 RuntimeMount，主挂载 target 不得重复。
 
 ## R-INFRA-028
 
 本地模型 Runtime 的 ownerDomain 固定为 `model-deployment`，生命周期写操作仍必须由 Task Center Task Worker 通过 Infra Adapter 发起。
+
+## R-INFRA-029
+
+Model Deployment CreateRuntimeRequest 必须携带 `spec_revision_id`、`spec_digest` 与按 `runtime_provider` 判别的完整 Docker Spec；InfraRuntime 保存 node、最终 Provider Spec/digest、Provider Runtime 引用与完整运行身份，并按请求指纹幂等恢复。
+
+## R-INFRA-030
+
+模型部署完整配置、环境变量、宿主路径和 Provider Native 响应不得进入 Infra 普通响应、可靠事件或日志；仅受权 Model Deployment Revision 详情可读取来源领域保存的完整配置。
+
+## R-INFRA-031
+
+未来 Kubernetes 对象版本、generation 和 rollout revision 只属于 Infra Provider 观测事实，不能替代 ModelDeploymentSpecRevision；Provider 历史清理不得删除业务 Revision/Rollout。
 
 ---
 
@@ -2371,8 +2394,8 @@ Infra Service 的最终边界是：
 
 - `US-INFRA-001`：受信 Task Worker 可以创建、管理、对账第一阶段 Docker Job/Service 及其受控挂载和输出。
 - `BR-INFRA-001`：Infrastructure 的调用身份、Docker-only Provider、资源、挂载、Secret、状态、诊断和对账边界必须遵守本 S1 第 3、6、7、8、9、10、11、12、13、14、15、16、17、18、19、20、21、23、27、28、29、30 节及 `R-INFRA-001..024`。
-- `US-INFRA-002`：Task Worker 可以通过固定 Profile 和逻辑模型名创建本地 vLLM 或 LM Studio Docker Service。
-- `BR-INFRA-002`：本地模型 Profile、MODEL_FILES 挂载、local_model_root 派生和 model-deployment owner 必须遵守 `R-INFRA-026..028`。
+- `US-INFRA-002`：Task Worker 可以从不可变 ModelDeploymentSpecRevision 解析 vLLM/LM Studio 与 Docker STRUCTURED/NATIVE 配置，创建并恢复模型 Service。
+- `BR-INFRA-002`：模型部署的 Engine/Provider 拆分、三种模型来源、RuntimeMount 规范化、完整运行身份与敏感配置裁剪必须遵守 `R-INFRA-026..031`。
 
 验收标准：
 
@@ -2389,6 +2412,8 @@ Infra Service 的最终边界是：
 - `AC-INFRA-001-11`：Agent Runtime 启动只接受短期 grant 引用；Infrastructure 以服务身份校验 owner/Agent/usage/config version/有效期后解析并注入，普通响应、事件、日志和持久化不得包含 grant、ModelAccessSpec 或明文凭证。
 - `AC-INFRA-001-12`：OpenCode MCP 只接受 `MCP_SERVER_REF`，通过 `authorizationRef` 解析固定 revision，并以 Docker Archive/Exec 写入 tmpfs `opencode.json`、设为 `0600` 后释放启动门闩；未授权目标和所有 inspect 可见凭证传递方式必须拒绝。
 - `AC-INFRA-001-13`：Agent Runtime 日志和实时健康必须校验 Runtime 与 ownerReference/Agent Runtime 范围；日志在最近 5000 行快照内分页且脱敏。实时探测将停止、服务不可达和非 2xx 映射为 `UNHEALTHY`，Infra/Provider 不可用或无法判断映射为 `UNKNOWN`，并且不修改 Runtime 生命周期。
-- `AC-INFRA-002-01`：`model.vllm` 与 `model.lmstudio` 均可被 Task Worker 以 SERVICE 模式创建，且使用各自固定的 Profile Revision。
-- `AC-INFRA-002-02`：`local-model://{model_name}` 能在已配置 `local_model_root` 的节点上解析为模型目录并形成 `MODEL_FILES` 只读挂载；缺少配置或模型不可用时 Runtime 不进入 RUNNING。
-- `AC-INFRA-002-03`：本地模型 Runtime 记录 `owner_domain=model-deployment`，并遵守既有 Task Worker、幂等和 Runtime 状态规则。
+- `AC-INFRA-002-01`：CreateRuntimeRequest 按 runtime_provider 选择 DockerRuntimeSpec；STRUCTURED 与 NATIVE 均能创建 Service，且 vLLM/LM Studio 分别执行引擎校验。
+- `AC-INFRA-002-02`：LOCAL_MODEL、HOST_PATH 与 VOLUME 都形成只读 MODEL_FILES 主挂载；额外挂载统一写为 RuntimeMount，重复 target、节点不可用或来源非法时不启动 Runtime。
+- `AC-INFRA-002-03`：模型 Runtime 记录 owner、spec Revision/digest、node、最终 Provider Spec/digest、Provider Runtime 引用和运行身份，并按相同请求指纹幂等恢复。
+- `AC-INFRA-002-04`：普通响应、事件和日志不返回完整 Docker Spec、环境变量、宿主路径、Container ID 或 Provider 原始响应。
+- `AC-INFRA-002-05`：未来 Kubernetes Provider 元数据不能替代业务 Spec Revision/Rollout，且不在当前 DTO 中出现 KubernetesRuntimeSpec。

@@ -25,7 +25,7 @@ Agent、AppStudio 及其内部 StudioDeploymentProvider 的 Runtime 生命周期
 | --- | --- | --- |
 | Task Center | AtomicTask、Attempt、重试、取消、超时、状态和结果投影 | Docker 状态、Agent/AppStudio 业务状态 |
 | Task Worker | 消费已注册 `functionRef`，执行 Attempt，流式交付声明输出并回写小型结果 | 业务聚合、Artifact ready 事实、Docker Socket、Provider 私有 API |
-| Infra Adapter | 校验并转换业务授权引用，映射 Job/Service、输出声明、幂等、取消和恢复 | 用户命令、宿主机路径、业务数据库 |
+| Infra Adapter | 校验并转换业务授权引用，映射 Job/Service、输出声明、幂等、取消和恢复；为 Model Deployment 解析不可变 Spec Revision | 客户端命令、未经 Revision 授权的宿主机路径、业务数据库 |
 | AgentRuntimeAdapter | 校验 Agent 业务绑定后解析 READY Endpoint 并同步调用 Hermes/OpenCode | Runtime 生命周期写入、Endpoint 地址持久化、Docker 私有实现 |
 | Infra Service | Runtime、Endpoint、RuntimeOutput、staging、挂载、资源、Secret 注入、日志和 Docker 对账 | Agent、StudioWorkspace、Artifact 业务事实 |
 | DockerRuntimeProvider | 第一阶段创建和管理单机 Docker Job/Service，发布命名端口并收集声明输出实际字节 | Task Center、来源领域或 Artifact 状态 |
@@ -40,7 +40,7 @@ Build          -> 固定 StudioSourceSnapshot（只读）
 Production     -> 固定 Artifact digest（只读）
 ```
 
-Task Worker 只能使用来源领域生成的 `source_ref`，Infra 不解析业务私有表和宿主机路径。用户和公共 API 不传递 Workspace ID；AppStudio 在后端把应用级源码 Revision 解析为受控 `source_ref`。Production 请求即使携带内部 Workspace、Revision 或 Snapshot，也必须拒绝；它只能使用固定 Artifact。
+Task Worker 只能使用来源领域生成的 `source_ref`，Infra 不解析业务私有表。用户和公共 API 不传递 Workspace ID；AppStudio 在后端把应用级源码 Revision 解析为受控 `source_ref`。Production 请求即使携带内部 Workspace、Revision 或 Snapshot，也必须拒绝；它只能使用固定 Artifact。Model Deployment 的 HOST_PATH/VOLUME 例外必须来自管理员不可变 Spec Revision resolver，固定 node/revision/digest 后再进入 Infra，不能由 Task 参数或其他 owner 提交。
 
 Docker Job 只能从 RuntimeProfile 约束的受控输出根收集已声明普通文件，拒绝目录、符号链接逃逸和根目录外路径。Provider 读取实际字节、计算 `size_bytes` 与 `sha256:<64 hex>`、复制到 Infra staging 后，RuntimeOutput 才能进入 `COLLECTED`，并只暴露非 bearer 的 `infra-output://<output_id>`。
 
@@ -54,7 +54,7 @@ RuntimeProfile Revision 定义命名 Endpoint 的协议和容器端口，上层�
 
 ## 5. 状态与恢复
 
-`InfraRuntime` 记录 `requestingService=task-center`、`ownerDomain`、`ownerReference` 和 `requestUserId`。`ownerDomain` 只用于稳定关联，不授权 Infra 修改来源领域业务状态。
+`InfraRuntime` 记录 `requestingService=task-center`、`ownerDomain`、`ownerReference`、`requestUserId`、`runtimeProvider` 和 node。Model Deployment Runtime 额外保存 `specRevisionId/specDigest`、最终 Provider Spec/digest、Provider Runtime 引用与完整运行身份。`ownerDomain` 只用于稳定关联，不授权 Infra 修改来源领域业务状态；普通查询和事件裁剪完整 Provider Spec、环境变量、宿主路径与 Provider 原始响应。
 
 Task Worker/Infra Adapter 必须使用 AtomicTask 幂等键和已有 `infra_runtime_id` 恢复取消、超时、重试及进程重启，避免重复创建 Docker Job/Service。Infra 原始日志、凭证、容器 ID、Host Port、宿主机路径和 Provider 响应不得进入普通任务结果。
 
@@ -62,4 +62,4 @@ Task Worker/Infra Adapter 必须使用 AtomicTask 幂等键和已有 `infra_runt
 
 ## 6. 第一阶段范围
 
-当前仅实现单机 Docker、Job/Service、基础资源匹配、受控挂载、Endpoint、Secret 注入和运行状态对账。Kubernetes、Edge、Local Process、多节点调度、自动扩缩容和跨 Provider 兼容属于下一版本规划，不得从当前草稿推导实现契约。
+当前仅实现 Docker、Job/Service、基础资源匹配、受控挂载、Endpoint、Secret 注入和运行状态对账；CreateRuntimeRequest 通过 `runtime_provider=docker` 选择 DockerRuntimeSpec，支持 Profile、STRUCTURED 与 NATIVE。Kubernetes 仅固定其对象版本/控制器进度/Provider rollout 归 Infrastructure 观测的边界，不提供 DTO；Edge、Local Process、自动扩缩容和跨 Provider 兼容属于后续规划。

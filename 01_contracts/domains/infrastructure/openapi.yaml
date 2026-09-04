@@ -1,12 +1,13 @@
-# Infrastructure S2 API contract released by spec-v1.19.0.
+# Infrastructure S2 API contract updated by spec-v1.25.1.
 openapi: 3.0.3
 info:
   title: OmniMAM Infrastructure API
-  version: 1.2.0
+  version: 2.0.0
   description: >-
     第一阶段单机 Docker 运行层契约。所有 Runtime 生命周期写操作只允许
     Task Center Task Worker 的受信服务身份调用；AgentRuntimeAdapter 仅可调用受控只读 Endpoint resolve。
-    Provider、宿主机路径、容器 ID、解析地址和明文 Secret 不进入普通响应。
+    CreateRuntimeRequest 按 runtime_provider 判别；当前只有 DockerRuntimeSpec。
+    Provider Spec、宿主机路径、容器 ID、解析地址和明文 Secret 不进入普通响应。
 servers: [{url: /}]
 security: [{serviceBearerAuth: []}]
 tags: [{name: runtimes}, {name: endpoints}, {name: nodes}, {name: profiles}, {name: outputs}]
@@ -242,24 +243,96 @@ components:
   responses: {UnexpectedError: {description: 未预期服务异常。, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}}
   schemas:
     CreateRuntimeRequest:
+      oneOf:
+        - $ref: '#/components/schemas/DockerCreateRuntimeRequest'
+      discriminator:
+        propertyName: runtime_provider
+        mapping:
+          docker: '#/components/schemas/DockerCreateRuntimeRequest'
+    DockerCreateRuntimeRequest:
       type: object
-      required: [request_id, requesting_service, owner_domain, owner_reference, runtime_mode, runtime_profile_id, runtime_profile_revision]
+      additionalProperties: false
+      required: [request_id, requesting_service, owner_domain, owner_reference, runtime_mode, runtime_provider, runtime_spec]
       properties:
-        request_id: {type: string}
+        request_id: {type: string, minLength: 1}
         requesting_service: {type: string, enum: [task-center]}
         owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library, model-deployment]}
-        owner_reference: {type: string}
-        request_user_id: {type: string}
+        owner_reference: {type: string, minLength: 1}
+        request_user_id: {type: string, nullable: true}
         runtime_mode: {type: string, enum: [JOB, SERVICE]}
-        runtime_profile_id: {type: string}
-        runtime_profile_revision: {type: string}
-        source_ref: {type: string, description: 来源领域生成的受控引用，不是宿主机路径。}
-        mounts: {type: array, items: {$ref: '#/components/schemas/RuntimeMountInput'}}
+        runtime_provider: {type: string, enum: [docker]}
+        runtime_spec: {$ref: '#/components/schemas/DockerRuntimeSpec'}
+        runtime_profile_id: {type: string, nullable: true}
+        runtime_profile_revision: {type: string, nullable: true}
+        spec_revision_id: {type: string, nullable: true, description: owner_domain=model-deployment 时必填。}
+        spec_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$', nullable: true, description: owner_domain=model-deployment 时必填。}
+        source_ref: {type: string, description: 来源领域生成的受控引用；仅受信 Model Deployment Revision resolver 可表达 HOST_PATH/VOLUME。}
+        mounts: {type: array, items: {$ref: '#/components/schemas/RuntimeMountInput'}, description: Profile/STRUCTURED/NATIVE 输入最终都规范化为 RuntimeMount。}
         configuration_bindings: {type: array, items: {$ref: '#/components/schemas/RuntimeConfigBindingInput'}}
-        endpoint_request: {$ref: '#/components/schemas/RuntimeEndpointRequest', nullable: true, description: 仅 SERVICE 可用，且 endpoint_name 必须由固定 RuntimeProfile Revision 声明。}
-        output_declarations: {type: array, items: {$ref: '#/components/schemas/RuntimeOutputDeclaration'}, description: 仅 JOB 可用；每项必须匹配固定 RuntimeProfile Revision，路径相对于受控输出根。}
+        endpoint_request: {$ref: '#/components/schemas/RuntimeEndpointRequest', nullable: true, description: 仅 SERVICE 可用。模型部署 Endpoint 由已解析 Spec Revision 固定。}
+        output_declarations: {type: array, items: {$ref: '#/components/schemas/RuntimeOutputDeclaration'}}
         resource_requirement: {$ref: '#/components/schemas/ResourceRequirement'}
         timeout_policy: {$ref: '#/components/schemas/TimeoutPolicy'}
+    DockerRuntimeSpec:
+      oneOf:
+        - $ref: '#/components/schemas/DockerProfileRuntimeSpec'
+        - $ref: '#/components/schemas/DockerStructuredRuntimeSpec'
+        - $ref: '#/components/schemas/DockerNativeRuntimeSpec'
+      discriminator: {propertyName: mode}
+    DockerProfileRuntimeSpec:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: {type: string, enum: [PROFILE]}
+    DockerStructuredRuntimeSpec:
+      type: object
+      additionalProperties: false
+      required: [mode, node_id, image]
+      properties:
+        mode: {type: string, enum: [STRUCTURED]}
+        node_id: {type: string, minLength: 1}
+        image: {type: string, minLength: 1, maxLength: 500}
+        entrypoint: {type: array, items: {type: string}}
+        command: {type: array, items: {type: string}, description: 已由 Serving Adapter 从最终 Revision 生成的完整有序 Cmd。}
+        environment_variables: {type: object, additionalProperties: {type: string}, description: 明文值；不得进入普通响应、事件或日志。}
+        mounts: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/DockerProviderMount'}}
+        ports: {type: array, maxItems: 32, items: {$ref: '#/components/schemas/DockerProviderPort'}}
+        network: {type: object, additionalProperties: true}
+        devices: {type: array, maxItems: 32, items: {type: object, additionalProperties: true}}
+        resources: {type: object, additionalProperties: true}
+        healthcheck: {type: object, additionalProperties: true}
+        restart_policy: {type: object, additionalProperties: true}
+        security: {type: object, additionalProperties: true}
+        logging: {type: object, additionalProperties: true}
+    DockerNativeRuntimeSpec:
+      type: object
+      additionalProperties: false
+      required: [mode, node_id, container_config, host_config, networking_config]
+      properties:
+        mode: {type: string, enum: [NATIVE]}
+        node_id: {type: string, minLength: 1}
+        container_config: {type: object, additionalProperties: true, description: 目标 Docker Engine 接受的完整配置，Entrypoint/Cmd 是启动命令唯一事实。}
+        host_config: {type: object, additionalProperties: true}
+        networking_config: {type: object, additionalProperties: true}
+    DockerProviderMount:
+      type: object
+      additionalProperties: false
+      required: [type, target, read_only]
+      properties:
+        type: {type: string, enum: [BIND, VOLUME, TMPFS]}
+        source: {type: string, nullable: true}
+        target: {type: string, pattern: '^/'}
+        read_only: {type: boolean}
+        options: {type: object, additionalProperties: true}
+    DockerProviderPort:
+      type: object
+      additionalProperties: false
+      required: [name, container_port, protocol]
+      properties:
+        name: {type: string, pattern: '^[a-z][a-z0-9_-]{0,63}$'}
+        container_port: {type: integer, minimum: 1, maximum: 65535}
+        protocol: {type: string, enum: [tcp, udp]}
     RuntimeEndpointRequest:
       type: object
       additionalProperties: false
@@ -281,7 +354,7 @@ components:
         source_ref: {type: string}
         target_path: {type: string}
         read_only: {type: boolean}
-        mount_kind: {type: string, enum: [AGENT_WORKSPACE, STUDIO_WORKSPACE_REVISION, STUDIO_SNAPSHOT, ARTIFACT, MODEL_FILES, TEMPORARY]}
+        mount_kind: {type: string, enum: [AGENT_WORKSPACE, STUDIO_WORKSPACE_REVISION, STUDIO_SNAPSHOT, ARTIFACT, MODEL_FILES, HOST_PATH, DOCKER_VOLUME, TEMPORARY]}
     RuntimeConfigBindingInput:
       type: object
       required: [name, binding_type, reference]
@@ -297,7 +370,7 @@ components:
       properties: {startup_timeout_seconds: {type: integer, minimum: 1}, execution_timeout_seconds: {type: integer, minimum: 1}, idle_timeout_seconds: {type: integer, minimum: 1}, maximum_lifetime_seconds: {type: integer, minimum: 1}, expires_at: {type: string, format: date-time, nullable: true}}
     InfraRuntime:
       type: object
-      required: [id, runtime_mode, status, requesting_service, owner_domain, owner_reference, runtime_profile_id, runtime_profile_revision, provider_type, request_id, created_at, updated_at]
+      required: [id, runtime_mode, status, requesting_service, owner_domain, owner_reference, runtime_provider, effective_provider_spec_digest, request_id, created_at, updated_at]
       properties:
         id: {type: string}
         runtime_mode: {type: string, enum: [JOB, SERVICE]}
@@ -306,9 +379,13 @@ components:
         owner_domain: {type: string, enum: [agent, appstudio, task-center, asset-library, model-deployment]}
         owner_reference: {type: string}
         request_user_id: {type: string, nullable: true}
-        runtime_profile_id: {type: string}
-        runtime_profile_revision: {type: string}
-        provider_type: {type: string, enum: [docker]}
+        runtime_profile_id: {type: string, nullable: true}
+        runtime_profile_revision: {type: string, nullable: true}
+        runtime_provider: {type: string, enum: [docker]}
+        node_id: {type: string, nullable: true, description: 调度选中节点后固定；Model Deployment 已在 Spec Revision 中选定。}
+        spec_revision_id: {type: string, nullable: true}
+        spec_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$', nullable: true}
+        effective_provider_spec_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
         endpoint_ref: {type: string, nullable: true}
         request_id: {type: string}
         failure_code: {type: string, nullable: true}
@@ -340,12 +417,12 @@ components:
         valid_until: {type: string, format: date-time}
     InfraNode:
       type: object
-      required: [id, status, cpu_cores, memory_mb, provider_type]
-      properties: {id: {type: string}, status: {type: string, enum: [ONLINE, DRAINING, OFFLINE, DISABLED]}, cpu_cores: {type: number}, memory_mb: {type: integer}, gpu_count: {type: integer}, provider_type: {type: string, enum: [docker]}}
+      required: [id, status, cpu_cores, memory_mb, runtime_provider]
+      properties: {id: {type: string}, status: {type: string, enum: [ONLINE, DRAINING, OFFLINE, DISABLED]}, cpu_cores: {type: number}, memory_mb: {type: integer}, gpu_count: {type: integer}, runtime_provider: {type: string, enum: [docker]}}
     RuntimeProfile:
       type: object
-      required: [id, revision, status, runtime_mode, provider_type]
-      properties: {id: {type: string}, revision: {type: string}, status: {type: string, enum: [ACTIVE, DISABLED]}, runtime_mode: {type: string, enum: [JOB, SERVICE]}, provider_type: {type: string, enum: [docker]}, capabilities: {type: array, items: {type: string}}}
+      required: [id, revision, status, runtime_mode, runtime_provider]
+      properties: {id: {type: string}, revision: {type: string}, status: {type: string, enum: [ACTIVE, DISABLED]}, runtime_mode: {type: string, enum: [JOB, SERVICE]}, runtime_provider: {type: string, enum: [docker]}, capabilities: {type: array, items: {type: string}}}
     RuntimeOutput:
       type: object
       required: [id, runtime_id, output_key, status]

@@ -1,8 +1,8 @@
 # Infrastructure Module Contract
 
-> S2 状态：Released（`spec-v1.19.0`）
+> S2 状态：Released（`spec-v1.25.1`）
 
-产品语义以 `00_product/domains/infrastructure/product-spec.md` 为准。本合同只覆盖当前 S1 第一阶段单机 Docker 范围；Kubernetes、Edge、Local Process、多节点调度、自动扩缩容和跨 Provider 兼容不属于当前 S2。
+产品语义以 `00_product/domains/infrastructure/product-spec.md` 为准。本合同只覆盖当前 S1 Docker 范围；Kubernetes 仅定义未来版本事实归属，不提供 KubernetesRuntimeSpec，Edge、Local Process、自动扩缩容和跨 Provider 兼容不属于当前 S2。
 
 ## 1. 追溯状态
 
@@ -12,9 +12,9 @@
 
 | 模块 | 拥有 | 不拥有 |
 | --- | --- | --- |
-| request | RuntimeProfile、请求校验、requestId 幂等边界 | 用户自定义 Profile、业务任务状态 |
+| request | RuntimeProfile、runtime_provider 判别联合、Provider Spec 校验、requestId 幂等边界 | 业务任务状态、客户端直接透传 Model Deployment 完整配置 |
 | placement | Docker 单机节点、资源匹配、节点状态 | 多节点调度、业务配额、Task 调度 |
-| runtime | InfraRuntime、Job/Service 状态、Provider 运行引用、超时和 owner-scoped 诊断读取 | AgentRuntime、StudioPreviewRuntime、StudioBuild、StudioRelease |
+| runtime | InfraRuntime、Job/Service 状态、node、最终 Provider Spec/digest、Provider 运行引用、运行身份、超时和 owner-scoped 诊断读取 | AgentRuntime、StudioPreviewRuntime、StudioBuild、StudioRelease、ModelDeploymentSpecRevision |
 | mount-config | RuntimeMount、ConfigBinding、SECRET_REF/ModelAccessSpec/MCP_SERVER_REF/MODEL_FILES 注入状态、Git workspace/source archive 注入、Endpoint 发布事实、摘要与受控解析 | Secret 明文、Agent/AppStudio 私表、业务 Workspace/Artifact 内容、解析地址的跨域持久化 |
 | output | RuntimeOutput descriptor、实际字节收集、隔离 staging、受控内容流和 Artifact 回链 | Artifact/Asset 身份与 ready 事实、Blob 生命周期 |
 | provider-adapter | DockerRuntimeProvider 的 Provider 调用和对账 | 上层业务数据库、任意 Docker API 暴露 |
@@ -25,7 +25,7 @@
 - Runtime 创建、启动、停止、取消、删除和对账的唯一受信调用链为 `Agent/AppStudio -> Task Center -> Task Worker -> Infra Adapter -> Infra Service -> DockerRuntimeProvider`。
 - 只读例外为 `AgentRuntimeAdapter -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Hermes/OpenCode`，以及 `AppStudio API Server -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Preview Proxy`。两者必须先完成各自 owner/资源授权校验并使用受信服务身份；其他 Infra API 仍禁止直调。
 - 第二个只读例外为 Agent Service 的 `RuntimeDiagnosticsReader` 调用 Runtime logs/health。两者必须确认 Runtime 存在、`owner_reference` 与 AgentRuntimeBinding ID 匹配且 `owner_domain=agent`；共享 bearer token 本身不构成资源授权。
-- Infra 写 API 必须验证 `requesting_service=task-center`、`owner_domain`、`owner_reference`、`request_id` 和有效 RuntimeProfile；`owner_domain=model-deployment` 用于平台本地模型部署。
+- Infra 写 API 必须验证 `requesting_service=task-center`、`owner_domain`、`owner_reference`、`request_id` 和按 `runtime_provider` 判别的 Runtime Spec；PROFILE 模式还必须验证 RuntimeProfile。`owner_domain=model-deployment` 时必须额外验证 `spec_revision_id/spec_digest`，只接受 resolver 生成的 STRUCTURED/NATIVE Docker Spec。
 - 业务域只提交已注册 functionRef 的业务参数和授权引用；Task Worker/Infra Adapter 负责生成受控 Infra 请求。Infra 不解析 Agent、StudioWorkspace、Snapshot 或 Artifact 私表。
 - `source_ref` 只能是来源领域签发的受控引用；不得把它解释为宿主机路径。Coding Runtime 使用可丢弃 `/workspace` tmpfs 和 Runtime Git access，不挂载 StudioWorkspace 本地目录；Preview/Build 使用固定 Revision/Snapshot CommitSHA 对应的 archive 流；Production 只允许固定 Artifact digest，携带 Workspace/Revision/Snapshot 的请求必须拒绝。
 
@@ -37,14 +37,14 @@
 | Preview | 当前 Workspace Revision 的 CommitSHA archive | 校验后注入只读 tmpfs；不产生正式 Artifact/Release |
 | Build | 固定 StudioSourceSnapshot 对应 CommitSHA archive | 校验后注入只读 tmpfs |
 | Production | 固定 Artifact ID/digest | 只读；禁止 Workspace、Revision、Snapshot |
-| Local model service | `local-model://{model_name}` 与节点 `local_model_root` | `MODEL_FILES` 只读；由 `model.vllm` 或 `model.lmstudio` Profile 固定目标目录 |
+| Model Deployment | Revision 中的 LOCAL_MODEL、HOST_PATH 或 VOLUME 与 Docker STRUCTURED/NATIVE 挂载 | 主模型挂载只读；所有挂载规范化为 RuntimeMount，target 唯一 |
 
 ## 5. 运行、恢复与安全
 
 - Job/Service 使用 `ACCEPTED -> VALIDATING -> SCHEDULING -> PREPARING -> RUNNING -> terminal` 状态；Infra 不生成 Agent、Build、Task 或模型业务状态。
 - 取消、停止、超时、重试和进程重启必须依据 requestId、已有 `infra_runtime_id` 和 Provider 引用恢复，不得重复创建运行单元。
 - `request_fingerprint` 是 Infra 根据规范化创建请求计算并持久化的内部摘要，不由调用方提交；同一 `requesting_service + request_id` 只有摘要一致时才能重放原结果。
-- Secret 只接受 SecretRef，由 Infra 在运行阶段解析并注入；普通 API、事件、日志和输出不得包含凭证、Provider 原始响应、容器 ID、Host Port、宿主路径或私网地址。
+- Secret 只接受 SecretRef，由 Infra 在运行阶段解析并注入；Model Deployment 环境变量例外仅接受 Revision resolver 提供的明文值。普通 API、事件、日志和输出不得包含这些值、完整 Provider Spec、Provider 原始响应、容器 ID、Host Port、宿主路径或私网地址。
 - Agent Runtime 创建只接受 `agent-model-access-grant://` 引用。Infrastructure 必须从自身服务身份解析 grant，校验 owner/Agent/usage/model/config version/expiry/revocation，并仅在启动内存中形成和注入 ModelAccessSpec；请求方提交的模型地址、凭证或已解析 spec 必须拒绝。Task Worker agent-executor 对 Invocation grant 的 Attempt 级解析属于 Agent 执行协议边界，不授予其调用其他 Infra 写 API、持久化 ModelAccessSpec 或覆盖 Runtime 启动注入事实的权限。
 - `MCP_SERVER_REF` 只包含 Binding ID/revision；Infrastructure 使用请求的 `authorization_ref` 调用注入的 Agent resolver，禁止 Worker、Infrastructure Service 或 Docker Adapter 读取 Agent 数据表。resolver 结果只在当前创建调用内存中使用，再由受信 Secret/Identity resolver 解析凭证。
 - OpenCode MCP 配置通过 Docker Archive/Exec 写入 `/root/.config/opencode/opencode.json` 所在 tmpfs，权限 `0600`；容器入口在写入和校验完成前等待门闩。凭证不得进入 Env、Cmd、Provider 请求持久化、日志、Task 结果或 inspect。
@@ -54,8 +54,10 @@
 - `appstudio.preview.web-backend` 必须像静态 Web Preview 一样执行固定 Revision SourceArchive 注入，并由 profile 固定启动命令、容器端口、健康检查和隔离临时目录；它不授权 AppStudio 开放新的 ApplicationType 或 Blueprint。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
 - RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
-- `model.vllm` 与 `model.lmstudio` 是两个独立的 Docker SERVICE Profile。Task Worker 通过 `source_ref=local-model://{model_name}` 请求 `MODEL_FILES` 只读挂载，Infrastructure 使用节点配置的 `local_model_root` 将其解析为对应模型目录；模型部署请求不提交宿主机路径。
-- 两个模型 Profile 分别固定镜像、启动参数、容器端口、模型格式校验和健康检查；Infrastructure 不以共享 Provider 分支替代 Profile 语义。
+- 模型部署把 `serving_engine=vllm|lmstudio` 与 `runtime_provider=docker` 分开；引擎校验独立，CreateRuntimeRequest 只按 runtime_provider 选择 DockerRuntimeSpec。
+- Model Deployment 可选 Profile 只在 Revision 创建时提供默认值并固定 Revision；Apply 时 Infrastructure 使用已解析的最终配置，不重新读取当前 Profile。
+- LOCAL_MODEL 使用固定 ONLINE Docker node 的 `local_model_root/model_name`；HOST_PATH 与 VOLUME 只接受管理员不可变 Revision resolver。STRUCTURED/NATIVE 所有挂载都转换为 RuntimeMount，并拒绝重复 target、逃逸和不可读来源。
+- InfraRuntime 保存 `node_id`、`spec_revision_id/spec_digest`、最终 Provider Spec/digest、Provider Runtime 引用和完整运行身份；普通 API、事件与日志只返回裁剪摘要。
 - Endpoint resolve 从服务身份解析调用服务，只允许 agent、AppStudio API Server 和必要的 task-center；purpose 固定为 `AGENT_RUNTIME_ADAPTER` 或 `APPSTUDIO_PREVIEW_PROXY`。校验 owner、Endpoint READY、Runtime RUNNING/健康、未过期和未撤销，返回短时地址。解析请求自报的服务身份不参与授权，解析结果不得持久化。
 - RuntimeOutput 的声明相对路径必须匹配固定 RuntimeProfile Revision。Docker Provider 拒绝目录、符号链接和输出根逃逸，读取实际字节、计算 `size_bytes` 与 `sha256:<64 hex>`，复制到隔离 staging 后才设置 `COLLECTED` 和 `infra-output://<output_id>`。
 - `infra-output://` 不携带授权。只有原执行链路 Task Worker 可流式读取 staging；读取响应必须使用实际 Content-Length、Content-Type 和 digest。读取失败、中断或校验不一致不得完成 Artifact。
@@ -67,4 +69,4 @@
 
 ## 6. S1 追溯
 
-主要规则：`R-INFRA-001..018`、`R-INFRA-020..024`；主要来源章节：运行模型（6）、Profile（7）、对象（8）、请求/Provider（9-10）、资源（11）、挂载（12）、配置（13）、网络/健康/日志（14-16）、状态与恢复（17-24）、第一阶段部署（29）。
+主要规则：`R-INFRA-001..018`、`R-INFRA-020..031`；主要来源章节：运行模型（6）、Profile（7）、对象（8）、请求/Provider（9-10）、资源（11）、挂载（12）、配置（13）、网络/健康/日志（14-16）、状态与恢复（17-24）、第一阶段部署（29）。
