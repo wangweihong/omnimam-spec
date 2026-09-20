@@ -1,5 +1,26 @@
 # Release Records
 
+## spec-v1.25.4
+
+- commit: 7ae868e68080254422749527085ee93c0a2c2b72
+- status: released
+- confirmed_by: user（2026-09-20，明确要求实施 TCP Endpoint 修复计划并发布、推送 v1.25.4）
+- allowed_as_formal_implementation_basis: true
+- domains: [model-deployment, infrastructure]
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/model-deployment/openapi.yaml
+  - 01_contracts/domains/model-deployment/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/schema.sql
+  - 01_contracts/domains/infrastructure/module-contract.md
+- implementation_gate: >-
+    继承 spec-v1.25.3 的 Model Deployment v2 契约与旧执行定向清理门禁。
+    完整传递固定 Revision 的 Endpoint/探活配置，http/https/tcp 存储与解析一致；
+    端口映射和探活成功前不得 READY，恢复不得重新读取漂移模板。保持现有授权与摘要裁剪。
+
 ## spec-v1.25.3
 
 - commit: 09b8e11c31d3aa47198b4d518c3442848fe856c6

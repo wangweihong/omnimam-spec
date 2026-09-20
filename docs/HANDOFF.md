@@ -3,7 +3,7 @@
 ## Current goal and status
 
 - Goal: 发布 spec-v1.25.4，修复 TCP Endpoint 跨域冲突，供 server 完成 Model Deployment v2。
-- Status: 规格修复完成；待创建 annotated tag、Release 元数据并推送。
+- Status: 规格提交 7ae868e68080254422749527085ee93c0a2c2b72 和 annotated tag spec-v1.25.4 已创建；Release 元数据已记录，待推送并验证远端。
 
 ## Work completed in this session
 
@@ -17,7 +17,7 @@
 
 ## Outstanding tasks and exact next step
 
-- 提交规格并创建 spec-v1.25.4 annotated tag，提交 RELEASE.md 的准确 commit 和用户确认记录，推送分支与 tag，核对远端解引用结果。
+- 推送 codex/spec-v1.25.4 与 spec-v1.25.4，核对远端 tag 的 commit 为 7ae868e68080254422749527085ee93c0a2c2b72。
 - server 必须从远端获取已发布 tag，更新 ssot/ 与 SSOT_VERSION 后才实施。
 - 风险：server 的完整生命周期、配置物化、旧数据清理及 make compose 验收尚未完成。
 
