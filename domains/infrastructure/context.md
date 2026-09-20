@@ -42,3 +42,7 @@ Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` �
 - `appstudio` 拥有 StudioWorkspace、Revision、Snapshot、Preview、Build、Release 和 Production 业务投影。
 - `asset-library` 拥有 Artifact 内容、digest 和存储事实。
 - `modelgateway` 提供 ModelAccessSpec；Infra 负责运行期受控注入，不代理每次模型请求。
+
+## spec-v1.25.4 Endpoint 对齐
+
+Model Deployment 的固定 Revision 拥有 Endpoint 协议、容器端口和探活；Infrastructure 完整保存并恢复执行快照，支持 http/https/tcp，TCP 地址使用 tcp://host:port。PROFILE 既有声明与授权边界不变。正式依据见本版本 RELEASE.md 记录及两域 S1/S2。

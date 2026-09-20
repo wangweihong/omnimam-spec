@@ -424,6 +424,11 @@ components:
         container_port: {type: integer, minimum: 1, maximum: 65535}
         protocol: {type: string, enum: [HTTP, HTTPS, TCP]}
     ServingHealthcheckSpec:
+      description: >-
+        TCP Endpoint 仅允许 TCP 探活；HTTP/HTTPS Endpoint 允许 HTTP 或 TCP 探活。
+        HTTP 探活按 Endpoint 协议访问以 / 开头的 path；TCP 不使用 path。
+        TCP 连接成功或 HTTP 2xx 即成功；连续失败达到 failure_threshold 判为不健康。
+        探活配置与 Endpoint 一起固定于 Revision，并按 interval_seconds、timeout_seconds 执行。
       type: object
       additionalProperties: false
       required: [type, interval_seconds, timeout_seconds, failure_threshold]

@@ -337,8 +337,30 @@ components:
       type: object
       additionalProperties: false
       required: [endpoint_name]
+      description: >-
+        model-deployment 的 SERVICE 请求必须提供 protocol、container_port 和 healthcheck，取自受信 resolver 解析的固定 Spec Revision。
+        PROFILE 请求由固定 RuntimeProfile Revision 提供这些值，不允许调用方覆盖。端口只绑定平台内部接口。
       properties:
         endpoint_name: {type: string, minLength: 1, maxLength: 128}
+        protocol: {type: string, enum: [http, https, tcp]}
+        container_port: {type: integer, minimum: 1, maximum: 65535}
+        healthcheck: {$ref: '#/components/schemas/RuntimeEndpointHealthcheck'}
+    RuntimeEndpointHealthcheck:
+      type: object
+      additionalProperties: false
+      required: [type, interval_seconds, timeout_seconds, failure_threshold]
+      description: >-
+        TCP Endpoint 仅允许 TCP 探活；HTTP/HTTPS Endpoint 允许 HTTP 或 TCP 探活。
+        HTTP 探活使用 Endpoint 协议，path 必须以 / 开头；TCP 探活不使用 path。
+        TCP 连接成功或 HTTP 2xx 即本次成功；连续失败达到 failure_threshold 判为不健康。
+        按 interval_seconds 重试，每次受 timeout_seconds 和调用上下文限制。
+        发布映射和探活成功前 Endpoint 不得 READY；运行快照固定全部探活参数，重启不得重新读取当前模板。
+      properties:
+        type: {type: string, enum: [HTTP, TCP]}
+        path: {type: string, nullable: true}
+        interval_seconds: {type: integer, minimum: 1, maximum: 300}
+        timeout_seconds: {type: integer, minimum: 1, maximum: 60}
+        failure_threshold: {type: integer, minimum: 1, maximum: 20}
     RuntimeOutputDeclaration:
       type: object
       additionalProperties: false
@@ -411,8 +433,8 @@ components:
       properties:
         endpoint_ref: {type: string}
         runtime_id: {type: string}
-        protocol: {type: string, enum: [http, https]}
-        base_url: {type: string, format: uri, description: 平台内部短时调用地址；不得持久化或传播。}
+        protocol: {type: string, enum: [http, https, tcp]}
+        base_url: {type: string, format: uri, description: 平台内部短时调用地址；TCP 使用 tcp://host:port，不含路径、查询或片段；不得持久化或传播。}
         resolved_at: {type: string, format: date-time}
         valid_until: {type: string, format: date-time}
     InfraNode:

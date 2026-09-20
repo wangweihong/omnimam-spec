@@ -53,7 +53,7 @@
 - Preview/Build 在授权后从 AppStudio source resolver 按固定 CommitSHA 获取 GitLab archive 流。Infrastructure 必须拒绝绝对路径、`..` 逃逸、符号/硬链接逃逸、重复冲突路径、超出文件/总大小限制和 digest 不一致；验证完成后通过 Docker archive/stdin 注入只读 tmpfs，archive 字节、GitLab URL 或凭证不落 Task 和数据库。
 - `appstudio.preview.web-backend` 必须像静态 Web Preview 一样执行固定 Revision SourceArchive 注入，并由 profile 固定启动命令、容器端口、健康检查和隔离临时目录；它不授权 AppStudio 开放新的 ApplicationType 或 Blueprint。
 - Runtime 事件必须带稳定 Runtime ID、ownerDomain/ownerReference、资源版本和脱敏失败分类；来源领域通过 Task Center/受控 API 对账自己的业务投影。
-- RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
+- PROFILE 模式由 RuntimeProfile Revision 拥有命名 Endpoint 的协议和容器端口声明；模型部署由已解析的最终 Spec Revision 拥有这些声明。Docker Provider 只能动态发布这些端口并绑定平台内部接口，完成健康检查后才把 Endpoint 标记 READY；普通摘要、Task 结果、事件和日志不得包含 `published_host`、`published_port` 或 `base_url`。
 - 模型部署把 `serving_engine=vllm|lmstudio` 与 `runtime_provider=docker` 分开；引擎校验独立，CreateRuntimeRequest 只按 runtime_provider 选择 DockerRuntimeSpec。
 - Model Deployment 可选 Profile 只在 Revision 创建时提供默认值并固定 Revision；Apply 时 Infrastructure 使用已解析的最终配置，不重新读取当前 Profile。
 - LOCAL_MODEL 使用固定 ONLINE Docker node 的 `local_model_root/model_name`；HOST_PATH 与 VOLUME 只接受管理员不可变 Revision resolver。STRUCTURED/NATIVE 所有挂载都转换为 RuntimeMount，并拒绝重复 target、逃逸和不可读来源。
@@ -64,9 +64,13 @@
 - Infra 不创建 Artifact。Task Worker 通过 Asset Library 既有 `create -> content upload -> complete` 完成内容后，调用幂等 attach-artifact；Infra 校验 Artifact 完成状态、大小和 digest 后回写 `artifact_id`，此后才允许清理 staging。
 - `requesting_service + request_id` 是创建幂等作用域；请求摘要不同必须冲突，原失败重试必须使用新的 request_id。
 - `USER_ACCESSIBLE` Endpoint 必须校验 owner 与当前授权；`PUBLIC` 第一阶段默认禁用，只有 RuntimeProfile 明确允许、来源领域显式请求并通过审计后才能创建。普通响应不返回 Host Port、私网地址或 Provider Endpoint 原文。
-- Runtime Provider 的只读健康能力只返回通用 `HEALTHY/UNHEALTHY/UNKNOWN`、检查时间和稳定原因。Docker adapter 复用 Runtime Service `/global/health` 探测，不向 Service 层暴露 inspect、容器、网络或原始响应。
+- Runtime Provider 的只读健康能力只返回通用 `HEALTHY/UNHEALTHY/UNKNOWN`、检查时间和稳定原因。Docker adapter 使用运行快照固定的 HTTP/TCP 探活（PROFILE 的既有路径保持不变），不向 Service 层暴露 inspect、容器、网络或原始响应。
 - Agent Runtime 日志仅在最近 5000 行快照内分页并返回 `occurred_at/level/message`；实时探测失败形成通用诊断结果且保持 HTTP 200，不修改 Runtime 生命周期。
 
 ## 6. S1 追溯
 
 主要规则：`R-INFRA-001..018`、`R-INFRA-020..031`；主要来源章节：运行模型（6）、Profile（7）、对象（8）、请求/Provider（9-10）、资源（11）、挂载（12）、配置（13）、网络/健康/日志（14-16）、状态与恢复（17-24）、第一阶段部署（29）。
+
+## spec-v1.25.4 Endpoint 传递与恢复
+
+Model Deployment Worker 必须将固定 Revision 的 Endpoint 映射到 `endpoint_request.endpoint_name/protocol/container_port/healthcheck`，协议显式转换为 `http/https/tcp`。Infrastructure 将完整请求纳入请求指纹和现有运行快照；Provider 按快照发布内部端口和执行 HTTP/TCP 探活，只有映射和探活成功才 READY。恢复、Health 和 resolve 都读取同一快照。TCP 使用 `tcp://host:port`；现有授权和摘要裁剪不变。PROFILE 请求继续使用固定 Profile 声明，不允许覆盖。探活组合、时序、失败阈值遵守 `RuntimeEndpointHealthcheck` 与两域 S1 的 spec-v1.25.4 Endpoint 规则。

@@ -37,3 +37,7 @@
 ## 5. 当前状态
 
 本领域当前 S1/S2 由 `spec-v1.25.3` 发布并彻底替换 `spec-v1.24.x`；实施必须先按 Release gate 清理旧数据和旧执行，不得兼容恢复 `1.0` 合同。
+
+## spec-v1.25.4 Endpoint 对齐
+
+Model Deployment 的固定 Revision 拥有 Endpoint 协议、容器端口和探活；Infrastructure 完整保存并恢复执行快照，支持 http/https/tcp，TCP 地址使用 tcp://host:port。PROFILE 既有声明与授权边界不变。正式依据见本版本 RELEASE.md 记录及两域 S1/S2。

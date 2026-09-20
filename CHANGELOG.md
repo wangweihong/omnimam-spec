@@ -1,5 +1,9 @@
 # Changelog
 
+## spec-v1.25.4 - 2026-09-20
+
+- 修复 Model Deployment TCP Endpoint 与 Infrastructure 存储/解析冲突，补齐固定 Revision 的 Endpoint/探活传递、协议组合、READY 门禁及恢复语义。
+
 ## spec-v1.25.2 - 2026-09-02
 
 - Model Gateway 新增只读 ProviderCapability 详情契约，公开脱敏后的模型、Operation、Variant 与参数 schema；Agent S1 对齐已发布 S2 的 ProviderResource/Model Preferences 绑定语义；AppStudio 创建和替换 Coding Agent 只接受显式 `PROVIDER_RESOURCE`，删除 User Model/ModelAccessSpec 残留且不提供隐式回退。

@@ -72,3 +72,7 @@ ResolveModelDeploymentSpecRevision(
 
 - 用户故事：`US-MODELDEP-001` 至 `US-MODELDEP-004`
 - 业务规则：`BR-MODELDEP-001` 至 `BR-MODELDEP-020`
+
+## spec-v1.25.4 Endpoint 传递与恢复
+
+Model Deployment Worker 必须将固定 Revision 的 Endpoint 映射到 `endpoint_request.endpoint_name/protocol/container_port/healthcheck`，协议显式转换为 `http/https/tcp`。Infrastructure 将完整请求纳入请求指纹和现有运行快照；Provider 按快照发布内部端口和执行 HTTP/TCP 探活，只有映射和探活成功才 READY。恢复、Health 和 resolve 都读取同一快照。TCP 使用 `tcp://host:port`；现有授权和摘要裁剪不变。PROFILE 请求继续使用固定 Profile 声明，不允许覆盖。探活组合、时序、失败阈值遵守 `RuntimeEndpointHealthcheck` 与两域 S1 的 spec-v1.25.4 Endpoint 规则。

@@ -98,7 +98,7 @@ CREATE TABLE infra_runtime_endpoints (
   resource_version INTEGER NOT NULL DEFAULT 0,
   runtime_id TEXT NOT NULL REFERENCES infra_runtimes(id),
   endpoint_name TEXT NOT NULL,
-  protocol TEXT NOT NULL CHECK (protocol IN ('http', 'https')),
+  protocol TEXT NOT NULL CHECK (protocol IN ('http', 'https', 'tcp')),
   container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
   published_host TEXT,
   published_port INTEGER CHECK (published_port BETWEEN 1 AND 65535),

@@ -168,6 +168,16 @@ Apply 请求携带 `resource_version`、`idempotency_key` 和默认值为 `true`
 
 Apply 失败且存在旧 active Revision、`rollback_on_failure=true` 时，服务必须创建关联的 `AUTO_ROLLBACK` Rollout，按旧 Revision 的完整快照重新物化，而不是继续使用旧 Runtime 的未验证状态。自动回滚成功后继续运行旧 Revision；自动回滚失败时 Deployment 进入 `FAILED`，保留两个 Rollout 的失败摘要以供诊断。
 
+
+### spec-v1.25.4 Endpoint 协议与探活
+
+- Endpoint 支持 HTTP、HTTPS、TCP；Infrastructure 持久化和受控解析使用 http、https、tcp。Docker 端口映射的 tcp 是传输层协议，不得据此把应用层 HTTPS/TCP 改写为 HTTP。
+- 模型部署的命名 Endpoint、容器端口、协议和探活配置来自固定的最终 Spec Revision，由受信 Worker 传递；PROFILE 模式仍使用固定 RuntimeProfile Revision，不接受任意覆盖。
+- TCP Endpoint 仅允许 TCP 连接探活；HTTP/HTTPS Endpoint 可使用 HTTP 或 TCP 探活。HTTP 使用 Endpoint 协议和以 / 开头的 path，响应 2xx 成功；TCP 连接成功即本次成功且不使用 path。探活按 interval_seconds 执行，单次受 timeout_seconds 限制，连续失败达到 failure_threshold 后判为不健康。
+- 发布端口映射和探活均成功后 Endpoint 才 READY；RUNNING、READY、HEALTHY 三重门禁不变。运行快照保存完整 Endpoint/探活配置，重启恢复不得读取可漂移模板。
+- TCP 的受控短时地址为 tcp://host:port；现有服务身份、owner、purpose、过期和撤销校验不变，不新增调用权限。普通摘要、Task 结果、日志和事件仍只返回稳定 Endpoint 引用。
+- 验收必须覆盖三种协议、非法探活组合、连接失败、HTTP 非 2xx、超时、恢复和快照重放；合法 TCP Endpoint 必须能够持久化、发布、探活并受控解析。
+
 ## 4. 生命周期
 
 `desired_state`：`RUNNING | STOPPED`。

@@ -616,8 +616,18 @@ S1 中：
 * RuntimeProfile 修改后不影响已启动 Runtime。
 * RuntimeProfile 必须进行版本化。
 * Infra Runtime 必须记录实际使用的 Profile Revision。
-* Service 只能请求该 Revision 已声明的命名 Endpoint，上层不得提交任意容器端口、Host Port 或绑定地址。
+* PROFILE Service 只能请求该 Profile Revision 已声明的命名 Endpoint；模型部署使用受信 resolver 解析的固定 Spec Revision（见 7.4）。所有调用均不得指定 Host Port 或绑定地址。
 * Job 只能声明该 Revision 允许的输出名称、相对路径和媒体类型，不得扩大受控输出根。
+
+
+### spec-v1.25.4 Endpoint 协议与探活
+
+- Endpoint 支持 HTTP、HTTPS、TCP；Infrastructure 持久化和受控解析使用 http、https、tcp。Docker 端口映射的 tcp 是传输层协议，不得据此把应用层 HTTPS/TCP 改写为 HTTP。
+- 模型部署的命名 Endpoint、容器端口、协议和探活配置来自固定的最终 Spec Revision，由受信 Worker 传递；PROFILE 模式仍使用固定 RuntimeProfile Revision，不接受任意覆盖。
+- TCP Endpoint 仅允许 TCP 连接探活；HTTP/HTTPS Endpoint 可使用 HTTP 或 TCP 探活。HTTP 使用 Endpoint 协议和以 / 开头的 path，响应 2xx 成功；TCP 连接成功即本次成功且不使用 path。探活按 interval_seconds 执行，单次受 timeout_seconds 限制，连续失败达到 failure_threshold 后判为不健康。
+- 发布端口映射和探活均成功后 Endpoint 才 READY；RUNNING、READY、HEALTHY 三重门禁不变。运行快照保存完整 Endpoint/探活配置，重启恢复不得读取可漂移模板。
+- TCP 的受控短时地址为 tcp://host:port；现有服务身份、owner、purpose、过期和撤销校验不变，不新增调用权限。普通摘要、Task 结果、日志和事件仍只返回稳定 Endpoint 引用。
+- 验收必须覆盖三种协议、非法探活组合、连接失败、HTTP 非 2xx、超时、恢复和快照重放；合法 TCP Endpoint 必须能够持久化、发布、探活并受控解析。
 
 ## 7.4 模型部署 Spec Revision
 
