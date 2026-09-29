@@ -2,7 +2,7 @@
 
 ## 当前目标和状态
 
-- 目标：补齐 Model Deployment 创建 Spec Revision 的幂等契约并发布 `spec-v1.25.5`。状态：规格 commit `9ef27f528f37fae02bec998c1375e5cdae61cdcd` 与本地 annotated tag 已创建并核对；`RELEASE.md` 记录已写入但尚未提交，远端推送尚待完成。
+- 目标：补齐 Model Deployment 创建 Spec Revision 的幂等契约并发布 `spec-v1.25.5`。状态：已发布；远端 annotated tag `931d1d6a0f25323da1a6a21d7870a36caaa888e0` 解引用为规格 commit `9ef27f528f37fae02bec998c1375e5cdae61cdcd`，`RELEASE.md` 记录提交 `17678260d80ea7bf94047fa1a7edd49b3f2e100c` 已推送。
 - 当前分支 `codex/spec-v1.25.5` 从干净的 `4e338cc28398b3fccc08e2fb7f364b278db5fbf3` 建立。已有正式 tag `spec-v1.25.4` 指向 `7ae868e68080254422749527085ee93c0a2c2b72`；server 仍固定 v1.25.4，本任务不修改 server。
 
 ## 本次已完成
@@ -13,7 +13,7 @@
 - 同步 `domains/model-deployment/context.md`、`CHANGELOG.md` 和本文件。未改实际 migration、后端代码、依赖、其他领域或 `RELEASE.md`。
 - 用户已确认按该草稿发布 `spec-v1.25.5`，CHANGELOG 条目已从 Unreleased 提升为正式版本标题；提交前仍须做最终 diff 检查。
 - 目标 S1/S2、Context 与 CHANGELOG 已独立提交为 `9ef27f528f37fae02bec998c1375e5cdae61cdcd`；本地 `spec-v1.25.5^{}` 指向该 commit，tag 类型为 annotated。交接与 RELEASE 记录将在后续提交，不写入 tag commit。
-- 已在 `RELEASE.md` 草拟正式版本记录：用户确认、目标 S1/S2 文件、tag commit、空表向前生效与 server pin 门禁。下一步先校验并提交该记录与本文件，再推送 tag 和分支。
+- `RELEASE.md` 正式版本记录包含用户确认、目标 S1/S2 文件、tag commit、空表向前生效与 server pin 门禁；提交 `17678260d80ea7bf94047fa1a7edd49b3f2e100c` 已推送。远端 tag 和分支均已验证。
 
 ## 关键决定与兼容性
 
@@ -25,16 +25,16 @@
 
 - 目标 OpenAPI YAML 解析通过，135 个本地 `$ref` 均可解析；新增规则、验收项、错误码和 operation 追溯检查通过；`git diff --check` 通过。
 - 隔离 PostgreSQL 16 验证了同部署不同键共享 Revision、跨部署同键、同键唯一约束、错误目标 Revision 的复合外键、非法请求摘要 CHECK、Deployment 删除级联；新增索引创建检查通过。测试容器已自动移除。
-- `spec-v1.25.5` tag 在提交前再次核对为 origin 尚不存在；用户最终确认已收到。下一步在 `RELEASE.md` 记录 tag commit、用户确认、涉及文件和正式实现门禁，再推送记录提交及 tag。
+- 用户最终确认已收到；`git diff --check`、tag 类型和目标提交核对通过。远端 `spec-v1.25.5` tag 解引用为 `9ef27f528f37fae02bec998c1375e5cdae61cdcd`，远端 `codex/spec-v1.25.5` 已指向发布记录提交 `17678260d80ea7bf94047fa1a7edd49b3f2e100c`。
 
 ## 待办与已知风险
 
-- 发布完成前不得把草稿当作 server 正式实现依据；发布后 server 仍需独立更新 submodule pin、migration 与实现。
+- server 仍需独立更新 submodule pin、migration 与实现；未 pin 本 tag 前不得把 v1.25.5 作为正式实现依据。
 - 旧请求键不可恢复的限制必须保留在 release 门禁。server 的新关系表 migration、CreateRevision 实现和 submodule pin 均不在本次范围。
 
 ## 精确下一步
 
-校验 `RELEASE.md` 与 tag/规格文件一致，提交该记录及本文件；先推送 tag、后推送分支。核对远端 tag 解引用和记录 commit 后刷新交接、提交并再次推送分支。不要改 server。
+提交并推送本交接更新，再核对远端分支与本地一致。本次发布完成后，下一任务在 server 仓库将 `ssot` 与 `SSOT_VERSION` 同步 pin 到 `spec-v1.25.5`，再实现新关联表和 `CreateRevision` 行为。
 
 Next Prompt:
 
