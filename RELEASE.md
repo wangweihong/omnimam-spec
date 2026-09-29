@@ -1,5 +1,25 @@
 # Release Records
 
+## spec-v1.25.5
+
+- commit: 9ef27f528f37fae02bec998c1375e5cdae61cdcd
+- status: released
+- confirmed_by: user（2026-09-29，确认 Model Deployment Revision 创建幂等契约草稿并要求发布 spec-v1.25.5）
+- allowed_as_formal_implementation_basis: true
+- domains: [model-deployment]
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+- S2:
+  - 01_contracts/domains/model-deployment/openapi.yaml
+  - 01_contracts/domains/model-deployment/schema.sql
+  - 01_contracts/domains/model-deployment/errors.yaml
+  - 01_contracts/domains/model-deployment/module-contract.md
+- implementation_gate: >-
+    server 必须先 pin 到本 tag，才可正式实现 Revision 创建请求的独立幂等映射。
+    新关联表从空表开始，不推断或清理旧 Revision 的未记录请求键；精确冲突保证从升级后首次记录该键起生效。
+    请求摘要对提交的 spec 与 resource_version 按 RFC 8785 规范化计算，先按键查重再解析 Profile；
+    新键且相同最终配置沿用已有 Revision，并与键映射同事务提交。保持现有 Rollout 键规则与公开 API 形状。
+
 ## spec-v1.25.4
 
 - commit: 7ae868e68080254422749527085ee93c0a2c2b72
