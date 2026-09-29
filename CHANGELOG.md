@@ -1,5 +1,9 @@
 # Changelog
 
+## spec-v1.25.5 - 2026-09-29
+
+- Model Deployment 补齐 Revision 创建请求的独立幂等键映射契约：提交 spec 与 resource_version 形成请求摘要，同键异请求冲突，不同键相同最终配置共用 Revision；旧键不回填，保证向前生效。
+
 ## spec-v1.25.4 - 2026-09-20
 
 - 修复 Model Deployment TCP Endpoint 与 Infrastructure 存储/解析冲突，补齐固定 Revision 的 Endpoint/探活传递、协议组合、READY 门禁及恢复语义。

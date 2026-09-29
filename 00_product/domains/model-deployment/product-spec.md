@@ -71,6 +71,10 @@ created_at
 
 Revision 创建后不可修改或删除；`revision_no` 在单个部署内从 1 严格递增。同一部署内 `spec_digest` 唯一；重复提交经规范化后相同的最终有效配置时返回既有 Revision，不创建重复版本。
 
+创建 Revision 的 `idempotency_key` 在同一 Deployment 的该操作内独立生效，可以与 Apply、Start 等其他操作复用。请求摘要对管理员提交的 `spec` 和 `resource_version` 整体执行 RFC 8785 JSON 规范化并计算 SHA-256，不包含 `idempotency_key`，且必须在解析可能变化的 RuntimeProfile 前计算。同一键与同一请求摘要重放时，即使当前 Profile 或 Deployment 资源版本已变化，也返回首次绑定的 Revision；同一键对应不同请求摘要时返回幂等冲突。不同键提交相同最终有效配置可以绑定同一 Revision；新键且最终配置已存在时沿用返回既有 Revision 的语义，新键且最终配置不存在时仍须通过资源版本检查。成功创建或复用 Revision 与键绑定必须在同一业务事务提交。
+
+旧版本未保存 Revision 创建请求的幂等键，不推断或清理历史 Revision。精确的同键请求比较从升级后首次记录该键开始保证；升级前处理过但未记录的键不能追溯。
+
 `spec_digest` 对以下最终有效配置整体执行 RFC 8785 JSON 规范化，再计算 `sha256:<64 lowercase hex>`：
 
 ```text
@@ -267,6 +271,7 @@ Deployment 详情和 Revision 详情可返回完整配置；部署列表、Revis
 18. `BR-MODELDEP-018`：停止保留 Deployment 与 active Revision；删除必须先完成 Runtime 和 Endpoint 清理。
 19. `BR-MODELDEP-019`：Kubernetes 的版本、generation 和 rollout revision 仅为 Provider 事实，不得替代或删除业务 Spec Revision/Rollout。
 20. `BR-MODELDEP-020`：本版本不新增或修改 Model Gateway Adapter、Binding、ProviderResource 或调用路由。
+21. `BR-MODELDEP-021`：创建 Revision 的幂等键只在该操作内绑定提交请求摘要；同键异请求冲突，不同键可指向同一最终配置 Revision，旧键不追溯回填。
 
 ## 9. 用户故事与验收标准
 
@@ -287,6 +292,8 @@ Deployment 详情和 Revision 详情可返回完整配置；部署列表、Revis
 - `AC-MODELDEP-002-02`：Apply 到 STOPPED 部署会设置期望状态为 RUNNING 并启动候选 Runtime。
 - `AC-MODELDEP-002-03`：新 Runtime 通过运行、Endpoint 和健康三重门禁后才切换 active Revision。
 - `AC-MODELDEP-002-04`：Apply 失败可自动创建关联 AUTO_ROLLBACK，成功恢复旧 Revision，双重失败进入 FAILED。
+- `AC-MODELDEP-002-05`：创建 Revision 时同键同请求返回首次绑定的 Revision，不重新解析已变化的 Profile，也不受当前资源版本变化影响；同键改变配置或提交的资源版本返回幂等冲突。
+- `AC-MODELDEP-002-06`：不同键提交相同最终配置返回同一 Revision 并分别保存键绑定；旧 Revision 保留，升级前未记录的键不做追溯或回填。
 
 ### US-MODELDEP-003 管理运行生命周期
 

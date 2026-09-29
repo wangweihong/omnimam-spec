@@ -1,7 +1,7 @@
 -- Model Deployment S2 design schema v2.0.0. This is not a migration.
 -- spec-v1.25.3 intentionally does not migrate spec-v1.24.x data.
 
--- s1_refs: US-MODELDEP-001..004; BR-MODELDEP-001..020.
+-- s1_refs: US-MODELDEP-001..004; BR-MODELDEP-001..021.
 CREATE TABLE model_deployments (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -56,6 +56,21 @@ CREATE TABLE model_deployment_spec_revisions (
   )
 );
 
+-- s1_refs: US-MODELDEP-002; BR-MODELDEP-004, BR-MODELDEP-021.
+-- 不可变的内部请求到 Revision 关联，非公共资源；用户于 2026-09-29 确认无需通用资源元数据。
+CREATE TABLE model_deployment_revision_requests (
+  model_deployment_id TEXT NOT NULL REFERENCES model_deployments(id) ON DELETE CASCADE,
+  idempotency_key TEXT NOT NULL CHECK (char_length(idempotency_key) BETWEEN 1 AND 128),
+  request_digest TEXT NOT NULL CHECK (request_digest ~ '^sha256:[0-9a-f]{64}$'),
+  spec_digest TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (model_deployment_id, idempotency_key),
+  FOREIGN KEY (model_deployment_id, spec_digest)
+    REFERENCES model_deployment_spec_revisions(model_deployment_id, spec_digest) ON DELETE CASCADE
+);
+CREATE INDEX idx_model_deployment_revision_requests_spec
+  ON model_deployment_revision_requests(model_deployment_id, spec_digest);
+
 -- s1_refs: US-MODELDEP-002..004; BR-MODELDEP-009..017.
 CREATE TABLE model_deployment_rollouts (
   id TEXT PRIMARY KEY,
@@ -97,5 +112,7 @@ CREATE UNIQUE INDEX idx_model_deployment_one_active_rollout ON model_deployment_
 
 COMMENT ON TABLE model_deployment_spec_revisions IS 'Immutable S1 expected configuration; application roles must not receive UPDATE or DELETE privileges.';
 COMMENT ON COLUMN model_deployment_spec_revisions.spec_digest IS 'RFC 8785 canonical JSON SHA-256 over the final effective configuration.';
+COMMENT ON COLUMN model_deployment_revision_requests.request_digest IS '提交的 spec 与 resource_version 在 Profile 解析前按 RFC 8785 规范化并计算 SHA-256，不包含 idempotency_key。';
+COMMENT ON COLUMN model_deployment_revision_requests.spec_digest IS '指向同一 Deployment 内最终有效配置唯一的 Revision；多个请求键可以共用。';
 COMMENT ON COLUMN model_deployments.active_spec_revision_id IS 'Last revision that reached RUNNING, READY endpoint, and HEALTHY.';
 COMMENT ON COLUMN model_deployments.pending_spec_revision_id IS 'Candidate revision only while current_rollout_id is non-terminal.';

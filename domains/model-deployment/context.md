@@ -8,6 +8,7 @@
 
 - `ModelDeployment` 只保存稳定身份、active/pending Spec Revision 和生命周期投影；PATCH 只改名称/说明。
 - `ModelDeploymentSpecRevision` 是完整期望配置 SSOT，创建后不可变；最终有效配置经 RFC 8785 + SHA-256 摘要，同部署重复 digest 去重。
+- 创建 Revision 的幂等键在该操作内绑定提交请求摘要与目标 Revision；不同键可指向同一最终配置，旧键不做追溯回填。
 - `ModelDeploymentRollout` 记录 INITIAL/APPLY/MANUAL_ROLLBACK/START/RESTART/AUTO_ROLLBACK；同部署只允许一个未终态 Rollout。
 - `serving_engine=vllm|lmstudio` 与 `runtime_provider=docker` 分离；配置模式只允许 ENGINE_MANAGED 或 PROVIDER_NATIVE 的固定组合。
 - 模型来源支持 LOCAL_MODEL、HOST_PATH、VOLUME；模型主挂载与额外挂载 target 不得冲突。

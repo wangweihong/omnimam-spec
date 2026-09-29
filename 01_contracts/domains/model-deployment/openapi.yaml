@@ -155,10 +155,15 @@ paths:
       tags: [model-deployment-revisions]
       operationId: create_model_deployment_spec_revision
       summary: 创建不可变 Spec Revision
+      description: >-
+        idempotency_key 仅在同一 Deployment 的创建 Revision 操作内防重复，可与其他动作复用。
+        对提交的 spec 和 resource_version 计算请求摘要；同键同摘要返回首次绑定的 Revision，
+        不重新解析 Profile 或检查当前资源版本；同键不同摘要返回 ERR_MODELDEP_IDEMPOTENCY_CONFLICT。
+        不同键提交相同最终配置返回同一 Revision 并分别记录键绑定。
       x-permission: modeldeployment.deployment.manage
       x-s1-refs:
         user_stories: [US-MODELDEP-001, US-MODELDEP-002]
-        business_rules: [BR-MODELDEP-004, BR-MODELDEP-005, BR-MODELDEP-006, BR-MODELDEP-007]
+        business_rules: [BR-MODELDEP-004, BR-MODELDEP-005, BR-MODELDEP-006, BR-MODELDEP-007, BR-MODELDEP-021]
       parameters: [{$ref: '#/components/parameters/model_deployment_id'}]
       requestBody:
         required: true
@@ -167,7 +172,7 @@ paths:
             schema: {$ref: '#/components/schemas/ModelDeploymentSpecRevisionCreateRequest'}
       responses:
         '200':
-          description: 新 Revision 或相同 digest 的既有 Revision。
+          description: 新 Revision、相同最终配置或同键重放的既有 Revision，或包含业务码的错误响应。
           content:
             application/json:
               schema:
@@ -687,8 +692,8 @@ components:
       required: [spec, resource_version, idempotency_key]
       properties:
         spec: {$ref: '#/components/schemas/ModelDeploymentSpecInput'}
-        resource_version: {type: integer, minimum: 0}
-        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+        resource_version: {type: integer, minimum: 0, description: 与提交的 spec 一同进入请求摘要；同键改变此值属于不同请求。}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128, description: 同一 Deployment 的创建 Revision 操作内唯一；不进入请求摘要，不与 Rollout 动作共用键空间。}
     ModelDeploymentApplyRequest:
       type: object
       additionalProperties: false

@@ -86,7 +86,7 @@
   range: 260200-260399
   retryable: false
   deprecated: false
-  related_rules: [BR-MODELDEP-010]
+  related_rules: [BR-MODELDEP-010, BR-MODELDEP-021]
   related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
 
 - code: ERR_MODELDEP_SPEC_INVALID

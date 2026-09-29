@@ -16,6 +16,8 @@
 
 - `ModelDeploymentSpecRevision` 是期望配置 SSOT，应用角色不得获得 UPDATE/DELETE 权限。
 - 同一 Deployment 内 `revision_no` 通过事务锁或等效串行化机制严格递增；`spec_digest` 唯一，重复配置返回既有 Revision。
+- `CreateRevision` 的幂等键只在同一 Deployment 的创建 Revision 操作内唯一，不占用 Rollout 动作的键。`request_digest` 是对提交对象 `{"spec": <请求中的 spec>, "resource_version": <请求中的 resource_version>}` 执行 RFC 8785 JSON 规范化后的 SHA-256；不包含键或 Profile 解析后的配置。同键先查询不可变请求映射：摘要相同直接返回所指 Revision，不重新解析 Profile 或检查当前资源版本；摘要不同返回 `ERR_MODELDEP_IDEMPOTENCY_CONFLICT`。
+- 新键经配置校验后若 `spec_digest` 已存在，返回既有 Revision 并在同一事务保存新键映射，沿用既有的配置去重优先于资源版本检查的语义；新键且配置摘要不存在时，须通过资源版本检查再原子创建 Revision 与映射。映射仅保存键、两个摘要、时间及同部署目标关系，不保存配置正文，不作为公开资源更新或删除。升级时映射为空，不回填无法还原的旧键；精确冲突保证从首次记录该键起生效。
 - 摘要输入是 Profile 已解析后的最终有效配置，使用 RFC 8785 + SHA-256；`serving_engine` 和 `runtime_provider` 不得在 JSON 子对象重复。
 - `ENGINE_MANAGED` 只接受 Docker STRUCTURED 与 Serving STRUCTURED/ARGUMENTS；`PROVIDER_NATIVE` 只接受 Docker NATIVE 与 Serving METADATA_ONLY。
 - 环境变量为 Revision 详情中的明文管理员配置，不支持 Secret/Config 引用，并从所有摘要、事件、Task 参数、日志与普通错误中裁剪。
@@ -71,7 +73,7 @@ ResolveModelDeploymentSpecRevision(
 ## 7. S1 追溯
 
 - 用户故事：`US-MODELDEP-001` 至 `US-MODELDEP-004`
-- 业务规则：`BR-MODELDEP-001` 至 `BR-MODELDEP-020`
+- 业务规则：`BR-MODELDEP-001` 至 `BR-MODELDEP-021`
 
 ## spec-v1.25.4 Endpoint 传递与恢复
 
