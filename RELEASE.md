@@ -1,5 +1,28 @@
 # Release Records
 
+## spec-v1.25.6
+
+- commit: 069dd41771ab31950d2c8c4cd35b4d8191b804cc
+- status: released
+- confirmed_by: user（2026-09-30，批准完整 SSOT、后端与 Web 修复方案并要求实施）
+- allowed_as_formal_implementation_basis: true
+- domains: [model-deployment, infrastructure]
+- S1:
+  - 00_product/domains/model-deployment/product-spec.md
+  - 00_product/domains/infrastructure/product-spec.md
+- S2:
+  - 01_contracts/domains/model-deployment/openapi.yaml
+  - 01_contracts/domains/model-deployment/errors.yaml
+  - 01_contracts/domains/model-deployment/permissions.yaml
+  - 01_contracts/domains/model-deployment/module-contract.md
+  - 01_contracts/domains/infrastructure/openapi.yaml
+  - 01_contracts/domains/infrastructure/module-contract.md
+- implementation_gate: >-
+    Server 与 Web 必须先 pin 到本 tag，再实现管理员配置候选发现。
+    浏览器仅请求 Model Deployment 管理 API；API Server 使用受信服务凭证只读获取 Infrastructure 节点/Profile，
+    仅投影当前有资格的脱敏候选与非空可读名称。Runtime 生命周期写入继续只经 Task Center。
+    目录读取不创建 Deployment、Revision、Rollout、Task 或 Runtime；提交时重新校验节点/Profile 资格。
+
 ## spec-v1.25.5
 
 - commit: 9ef27f528f37fae02bec998c1375e5cdae61cdcd
