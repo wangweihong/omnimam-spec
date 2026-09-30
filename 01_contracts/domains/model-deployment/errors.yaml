@@ -89,6 +89,19 @@
   related_rules: [BR-MODELDEP-010, BR-MODELDEP-021]
   related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]
 
+- code: ERR_MODELDEP_CONFIGURATION_OPTIONS_UNAVAILABLE
+  value: 260207
+  http: 200
+  cn: 模型部署配置候选当前不可用，请稍后重试。
+  en: Model deployment configuration options are unavailable; retry later.
+  owning_domain: model-deployment
+  owning_module: deployment
+  range: 260200-260399
+  retryable: true
+  deprecated: false
+  related_rules: [BR-MODELDEP-022]
+  related_user_stories: [US-MODELDEP-001]
+
 - code: ERR_MODELDEP_SPEC_INVALID
   value: 260400
   http: 200

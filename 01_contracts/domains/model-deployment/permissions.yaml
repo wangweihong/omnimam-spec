@@ -13,9 +13,9 @@ modeldeployment.deployment.manage:
   module: deployment
   resource: model_deployment
   action: manage
-  description: 校验配置，创建、更新、应用、回滚、启动、停止、重启和删除平台共享模型部署。
-  frontend_usage: 控制高级配置、Revision 和生命周期动作。
+  description: 查询脱敏配置候选、校验配置，创建、更新、应用、回滚、启动、停止、重启和删除平台共享模型部署。
+  frontend_usage: 控制节点/Profile 候选、高级配置、Revision 和生命周期动作。
   backend_enforcement: 只允许 vLLM/LM Studio 与 Docker；配置必须固化为不可变 Revision，生命周期写操作必须通过 Task Center。
   default_roles: [ADMIN, SUPER_ADMIN]
-  related_rules: [BR-MODELDEP-001, BR-MODELDEP-002, BR-MODELDEP-004, BR-MODELDEP-009, BR-MODELDEP-010, BR-MODELDEP-018]
+  related_rules: [BR-MODELDEP-001, BR-MODELDEP-002, BR-MODELDEP-004, BR-MODELDEP-009, BR-MODELDEP-010, BR-MODELDEP-018, BR-MODELDEP-022]
   related_user_stories: [US-MODELDEP-001, US-MODELDEP-002, US-MODELDEP-003]

@@ -57,7 +57,7 @@ ResolveModelDeploymentSpecRevision(
 
 ## 5. Infrastructure 边界
 
-- Model Deployment 不直接调用 Infrastructure；Task Worker 使用唯一 Infra Adapter。
+- Model Deployment 的 Runtime 生命周期写入不直接调用 Infrastructure；Task Worker 使用唯一 Infra Adapter。管理员配置候选与提交前校验是只读例外：Model Deployment API 以受信 apiserver 服务身份读取 Infrastructure 的节点/Profile 列表与详情，只向持有 `modeldeployment.deployment.manage` 的用户返回当前有资格的脱敏投影，且在创建 Deployment/Revision 时重新校验资格。不得将服务凭证或 Infrastructure 原始响应透传浏览器。
 - `CreateRuntimeRequest.runtime_provider` 当前固定 `docker`，并选择 `DockerRuntimeSpec` STRUCTURED/NATIVE 分支。
 - Runtime owner 固定 `owner_domain=model-deployment`、`owner_reference=ModelDeployment.id`；请求同时携带 `spec_revision_id` 与 `spec_digest` 作为运行身份。
 - Infrastructure 持久化 `node_id`、最终 Provider Spec/digest、Provider Runtime 引用和运行身份；所有模型与额外挂载规范化为 `RuntimeMount`。

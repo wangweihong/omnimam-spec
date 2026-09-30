@@ -23,7 +23,7 @@
 ## 3. 调用边界
 
 - Runtime 创建、启动、停止、取消、删除和对账的唯一受信调用链为 `Agent/AppStudio -> Task Center -> Task Worker -> Infra Adapter -> Infra Service -> DockerRuntimeProvider`。
-- 只读例外为 `AgentRuntimeAdapter -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Hermes/OpenCode`，以及 `AppStudio API Server -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Preview Proxy`。两者必须先完成各自 owner/资源授权校验并使用受信服务身份；其他 Infra API 仍禁止直调。
+- 只读例外为 `AgentRuntimeAdapter -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Hermes/OpenCode`，以及 `AppStudio API Server -> POST /api/v1/infra/endpoints/{endpoint_id}/resolve -> Preview Proxy`。两者必须先完成各自 owner/资源授权校验并使用受信服务身份。另允许 Model Deployment API Server 以受信服务身份只读查询 InfraNode 与 RuntimeProfile 列表/详情，形成管理员配置候选与提交前校验；浏览器不得直连 Infra，普通响应不得暴露节点地址、宿主路径或 Provider 原始配置。除此之外的 Infra API 仍禁止直调。
 - 第二个只读例外为 Agent Service 的 `RuntimeDiagnosticsReader` 调用 Runtime logs/health。两者必须确认 Runtime 存在、`owner_reference` 与 AgentRuntimeBinding ID 匹配且 `owner_domain=agent`；共享 bearer token 本身不构成资源授权。
 - Infra 写 API 必须验证 `requesting_service=task-center`、`owner_domain`、`owner_reference`、`request_id` 和按 `runtime_provider` 判别的 Runtime Spec；PROFILE 模式还必须验证 RuntimeProfile。`owner_domain=model-deployment` 时必须额外验证 `spec_revision_id/spec_digest`，只接受 resolver 生成的 STRUCTURED/NATIVE Docker Spec。
 - 业务域只提交已注册 functionRef 的业务参数和授权引用；Task Worker/Infra Adapter 负责生成受控 Infra 请求。Infra 不解析 Agent、StudioWorkspace、Snapshot 或 Artifact 私表。

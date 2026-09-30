@@ -147,7 +147,7 @@ paths:
       operationId: list_infra_nodes
       summary: 查询受管节点摘要
       x-permission: infra.node.read
-      x-service-auth: task-center
+      x-service-auth: [task-center, apiserver]
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['11 节点与资源管理']}
       parameters: [{$ref: '#/components/parameters/page_num'}, {$ref: '#/components/parameters/page_size'}, {name: status, in: query, schema: {type: string}}]
       responses: {'200': {description: 节点列表。, content: {application/json: {schema: {$ref: '#/components/schemas/NodeListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -157,7 +157,7 @@ paths:
       operationId: get_infra_node
       summary: 获取节点摘要
       x-permission: infra.node.read
-      x-service-auth: task-center
+      x-service-auth: [task-center, apiserver]
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-003, R-INFRA-018], source_sections: ['8.1 InfraNode', '11 节点与资源管理']}
       parameters: [{$ref: '#/components/parameters/node_id'}]
       responses: {'200': {description: 节点摘要。, content: {application/json: {schema: {$ref: '#/components/schemas/InfraNode'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -167,7 +167,7 @@ paths:
       operationId: list_infra_runtime_profiles
       summary: 查询只读 RuntimeProfile
       x-permission: infra.profile.read
-      x-service-auth: task-center
+      x-service-auth: [task-center, apiserver]
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
       responses: {'200': {description: RuntimeProfile 列表。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfileListResponse'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
   /api/v1/infra/runtime-profiles/{profile_id}:
@@ -176,7 +176,7 @@ paths:
       operationId: get_infra_runtime_profile
       summary: 获取 RuntimeProfile
       x-permission: infra.profile.read
-      x-service-auth: task-center
+      x-service-auth: [task-center, apiserver]
       x-s1-refs: {user_stories: [US-INFRA-001], business_rules: [R-INFRA-004, R-INFRA-005, R-INFRA-020], source_sections: ['7 RuntimeProfile']}
       parameters: [{$ref: '#/components/parameters/profile_id'}]
       responses: {'200': {description: RuntimeProfile。, content: {application/json: {schema: {$ref: '#/components/schemas/RuntimeProfile'}}}}, '500': {$ref: '#/components/responses/UnexpectedError'}}
@@ -439,12 +439,12 @@ components:
         valid_until: {type: string, format: date-time}
     InfraNode:
       type: object
-      required: [id, status, cpu_cores, memory_mb, runtime_provider]
-      properties: {id: {type: string}, status: {type: string, enum: [ONLINE, DRAINING, OFFLINE, DISABLED]}, cpu_cores: {type: number}, memory_mb: {type: integer}, gpu_count: {type: integer}, runtime_provider: {type: string, enum: [docker]}}
+      required: [id, name, status, cpu_cores, memory_mb, runtime_provider]
+      properties: {id: {type: string}, name: {type: string, minLength: 1}, status: {type: string, enum: [ONLINE, DRAINING, OFFLINE, DISABLED]}, cpu_cores: {type: number}, memory_mb: {type: integer}, gpu_count: {type: integer}, runtime_provider: {type: string, enum: [docker]}}
     RuntimeProfile:
       type: object
-      required: [id, revision, status, runtime_mode, runtime_provider]
-      properties: {id: {type: string}, revision: {type: string}, status: {type: string, enum: [ACTIVE, DISABLED]}, runtime_mode: {type: string, enum: [JOB, SERVICE]}, runtime_provider: {type: string, enum: [docker]}, capabilities: {type: array, items: {type: string}}}
+      required: [id, name, revision, status, runtime_mode, runtime_provider]
+      properties: {id: {type: string}, name: {type: string, minLength: 1}, revision: {type: string}, status: {type: string, enum: [ACTIVE, DISABLED]}, runtime_mode: {type: string, enum: [JOB, SERVICE]}, runtime_provider: {type: string, enum: [docker]}, capabilities: {type: array, items: {type: string}}}
     RuntimeOutput:
       type: object
       required: [id, runtime_id, output_key, status]

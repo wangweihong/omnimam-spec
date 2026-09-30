@@ -162,6 +162,8 @@ AUTO_ROLLBACK
 
 ## 3. 校验、创建与应用
 
+管理员高级表单按 `serving_engine` 读取可选配置目录：只展示 ONLINE Docker 节点和该引擎可用的 ACTIVE、SERVICE、Docker RuntimeProfile。目录项提供非空可读名称和选择所需的脱敏资源摘要，资源 ID 仅作为提交引用；不返回节点地址、宿主路径、环境变量或完整 Provider 配置。目录读取不创建 Deployment、Revision、Rollout、Task 或 Runtime；目录不可用时返回稳定错误，空目录返回空列表。选择结果只是填写辅助，提交时仍由配置校验重新核对节点/Profile 的当前资格。Model Deployment 管理 API 以受信服务身份执行上述只读目录查询，浏览器不直接调用 Infrastructure。
+
 配置校验入口无副作用。它解析 RuntimeProfile、规范化最终有效配置、检查模式组合、Serving Engine、Runtime Provider、模型来源、目标节点状态、Native JSON 与挂载冲突，并返回规范化配置、`spec_digest`、错误和警告；不创建 Deployment、Revision、Rollout、Task 或 Runtime。
 
 创建 Deployment 时必须在一个业务事务中保存 Deployment、Revision 1、`INITIAL` Rollout 和 outbox，然后异步提交 Rollout DAG。创建 Revision 请求携带部署 `resource_version` 和 `idempotency_key`，只保存通过相同校验的最终有效配置。
@@ -235,6 +237,7 @@ Infrastructure source policy 固定为 `MODEL_DEPLOYMENT_SPEC_REVISION`。`Creat
 
 - 按名称搜索，并按 `serving_engine`、`runtime_provider`、状态和健康筛选的部署列表。
 - 配置校验、创建 Deployment、创建 Revision 和应用 Revision 的高级表单。
+- 按服务引擎选择脱敏节点/Profile 候选的资源选择器；列表摘要只用可读名称、容量与能力辅助识别，不显示完整配置或宿主路径。
 - Deployment 详情、Revision 完整配置、Rollout 历史、当前任务与运行日志。
 - 根据当前状态启用或禁用 Start、Stop、Restart、Apply、Rollback 和 Delete。
 
@@ -272,6 +275,7 @@ Deployment 详情和 Revision 详情可返回完整配置；部署列表、Revis
 19. `BR-MODELDEP-019`：Kubernetes 的版本、generation 和 rollout revision 仅为 Provider 事实，不得替代或删除业务 Spec Revision/Rollout。
 20. `BR-MODELDEP-020`：本版本不新增或修改 Model Gateway Adapter、Binding、ProviderResource 或调用路由。
 21. `BR-MODELDEP-021`：创建 Revision 的幂等键只在该操作内绑定提交请求摘要；同键异请求冲突，不同键可指向同一最终配置 Revision，旧键不追溯回填。
+22. `BR-MODELDEP-022`：管理员配置目录只投影当前有资格的节点/Profile；读取失败返回稳定错误，提交时重新校验资格，浏览器不得直连 Infrastructure 服务接口。
 
 ## 9. 用户故事与验收标准
 
@@ -283,6 +287,7 @@ Deployment 详情和 Revision 详情可返回完整配置；部署列表、Revis
 - `AC-MODELDEP-001-02`：创建成功原子产生 Deployment、Revision 1 和 INITIAL Rollout；非法模式、来源、节点、Native JSON 或挂载冲突不创建任何对象。
 - `AC-MODELDEP-001-03`：相同最终有效配置得到相同 digest；同部署重复配置返回既有 Revision。
 - `AC-MODELDEP-001-04`：Revision 创建后不可更新或删除，并发创建得到唯一且严格递增的 revision_no。
+- `AC-MODELDEP-001-05`：管理员可按引擎读取带可读名称的脱敏节点/Profile 候选；无候选返回空列表，上游不可用返回稳定错误，目录读取与配置校验均不产生持久化或运行副作用。
 
 ### US-MODELDEP-002 管理配置版本与 Rollout
 

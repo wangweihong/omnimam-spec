@@ -14,6 +14,7 @@
 - `appstudio.preview.web-backend` 是现有 Preview profile；它与静态 Web Preview 一样只接收固定 Revision CommitSHA archive，但当前 AppStudio 不开放 `WEB_WITH_LIGHT_BACKEND` 创建。
 - Infra 保存稳定运行引用、node、最终 Provider Spec/digest、Provider Runtime 引用和运行身份；业务 Revision/Rollout 仍归 `model-deployment`。
 - Model Deployment 模型来源支持 LOCAL_MODEL、HOST_PATH、VOLUME；所有主/额外挂载规范化为 RuntimeMount。完整配置只能由 Task Worker 从不可变 Revision resolver 获得。
+- Model Deployment API Server 可凭受信服务身份只读查询节点/Profile 目录，用于管理员配置候选与提交前校验；浏览器不直连 Infrastructure，生命周期写入仍只经 Task Worker。
 - Docker Job 从受控输出根读取声明文件的实际字节，计算大小和 SHA-256 并复制到 Infra staging；RuntimeOutput 只使用非 bearer `infra-output://` 引用。
 - Task Worker 从 Infra 鉴权流式读取字节，双重校验大小和 digest，完成 Asset Library Artifact 内容后幂等回链；Infra 不生成 Artifact ready 事实。
 - `requestingService + requestId` 是创建幂等作用域；同摘要重放原结果、不同摘要冲突、失败重试使用新 requestId。
@@ -46,3 +47,7 @@ Agent Invocation Attempt-scoped Endpoint 授权解析边界待 `spec-v1.18.0` �
 ## spec-v1.25.4 Endpoint 对齐
 
 Model Deployment 的固定 Revision 拥有 Endpoint 协议、容器端口和探活；Infrastructure 完整保存并恢复执行快照，支持 http/https/tcp，TCP 地址使用 tcp://host:port。PROFILE 既有声明与授权边界不变。正式依据见本版本 RELEASE.md 记录及两域 S1/S2。
+
+## spec-v1.25.6 配置候选只读边界
+
+InfraNode 与 RuntimeProfile 列表/详情新增受信 apiserver 只读调用方，Model Deployment 管理 API 只向有管理权限的用户返回脱敏候选。Infrastructure 服务接口继续使用服务凭证，不向浏览器开放。

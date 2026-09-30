@@ -1,5 +1,10 @@
 # Changelog
 
+## spec-v1.25.6 - 2026-09-30
+
+- Model Deployment 新增管理员脱敏节点/Profile 配置候选读取；只返回有资格的 ONLINE Docker 节点与对应引擎的 ACTIVE SERVICE Profile，目录不可用返回稳定错误，提交时仍重新校验。
+- Infrastructure 为受信 apiserver 增加节点/Profile 只读例外与可读名称字段，浏览器不直连服务接口；修正第一阶段固定模型部署节点与通用放置规则的文字冲突。
+
 ## spec-v1.25.5 - 2026-09-29
 
 - Model Deployment 补齐 Revision 创建请求的独立幂等键映射契约：提交 spec 与 resource_version 形成请求摘要，同键异请求冲突，不同键相同最终配置共用 Revision；旧键不回填，保证向前生效。

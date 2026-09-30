@@ -633,6 +633,8 @@ S1 中：
 
 平台模型部署仍按 `serving_engine=vllm|lmstudio` 使用独立验证和运行适配器，但 Runtime 介质由独立 `runtime_provider=docker` 判别。可选 RuntimeProfile 只作为 Revision 创建时的默认模板；Model Deployment 必须将模板解析到固定 Profile Revision，把合并后的最终有效配置完整保存并计算摘要。Infrastructure 在 Apply 时接收这一固定结果，不重新读取当前 Profile。
 
+Model Deployment 管理 API 可以凭受信服务身份只读查询节点和 RuntimeProfile 目录，形成供管理员配置表单使用的脱敏候选；浏览器不得直接访问 Infrastructure 服务 API。目录查询不授予 Runtime 生命周期写权限，也不返回节点地址、宿主路径或 Provider 原始配置。
+
 Task Worker 的 AtomicTask arguments 只保存 Deployment、Rollout、Revision、digest、既有 Runtime、授权和资源版本。Worker 通过 `ResolveModelDeploymentSpecRevision` 在当前 Attempt 内取得完整配置，再构造按 `runtime_provider` 判别的 `CreateRuntimeRequest`。Infrastructure 必须校验 `spec_revision_id`、`spec_digest`、owner 与请求指纹，并把最终 Docker Provider Spec/digest、节点和 Provider Runtime 身份保存到 InfraRuntime。
 
 模型来源统一物化为只读 `MODEL_FILES` 主挂载：
@@ -1253,7 +1255,7 @@ MANAGED
 
 Infra Service 负责选择具体节点。
 
-第一阶段部署只有一个受控 Docker 节点；`MANAGED` 只表达平台节点类型，不引入跨节点调度。多节点、指定节点和 Edge 放置约束迁移到下一版本。
+第一阶段部署只有一个受控 Docker 节点；`MANAGED` 只表达平台节点类型，不引入跨节点调度。Model Deployment 高级配置按不可变 Spec Revision 固定该 ONLINE Docker 节点的 `node_id`，不构成通用多节点调度能力；其他业务的多节点、指定节点和 Edge 放置约束迁移到下一版本。
 
 ---
 

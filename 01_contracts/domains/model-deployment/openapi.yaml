@@ -15,6 +15,30 @@ tags:
   - name: model-deployment-rollouts
 
 paths:
+  /api/v1/model-deployment-configuration-options:
+    get:
+      tags: [model-deployment-revisions]
+      operationId: get_model_deployment_configuration_options
+      summary: 查询管理员高级配置的脱敏节点和 RuntimeProfile 候选
+      x-permission: modeldeployment.deployment.manage
+      x-s1-refs:
+        user_stories: [US-MODELDEP-001]
+        business_rules: [BR-MODELDEP-002, BR-MODELDEP-007, BR-MODELDEP-022]
+      parameters:
+        - name: serving_engine
+          in: query
+          required: true
+          schema: {$ref: '#/components/schemas/ServingEngine'}
+      responses:
+        '200':
+          description: 当前有资格的脱敏候选，或稳定业务错误；空候选返回空数组。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ModelDeploymentConfigurationOptions'
+                  - $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/model-deployment-spec-validations:
     post:
       tags: [model-deployment-revisions]
@@ -353,6 +377,33 @@ components:
     ModelDeploymentRolloutStatus: {type: string, enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELED]}
     ModelDeploymentRolloutPhase: {type: string, enum: [PENDING, VALIDATING, CREATING_RUNTIME, WAITING_RUNTIME, WAITING_ENDPOINT, HEALTH_CHECKING, SWITCHING_ACTIVE, CLEANING_PREVIOUS_RUNTIME, ROLLING_BACK, COMPLETED]}
     Sha256Digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+
+    ModelDeploymentNodeOption:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, cpu_cores, memory_mb, gpu_count]
+      properties:
+        id: {type: string, minLength: 1}
+        display_name: {type: string, minLength: 1}
+        cpu_cores: {type: number, minimum: 0}
+        memory_mb: {type: integer, minimum: 0}
+        gpu_count: {type: integer, minimum: 0}
+    ModelDeploymentRuntimeProfileOption:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, revision, capabilities]
+      properties:
+        id: {type: string, minLength: 1}
+        display_name: {type: string, minLength: 1}
+        revision: {type: string, minLength: 1}
+        capabilities: {type: array, items: {type: string}}
+    ModelDeploymentConfigurationOptions:
+      type: object
+      additionalProperties: false
+      required: [nodes, runtime_profiles]
+      properties:
+        nodes: {type: array, items: {$ref: '#/components/schemas/ModelDeploymentNodeOption'}}
+        runtime_profiles: {type: array, items: {$ref: '#/components/schemas/ModelDeploymentRuntimeProfileOption'}}
 
     ModelSource:
       oneOf:

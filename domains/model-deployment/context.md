@@ -12,6 +12,7 @@
 - `ModelDeploymentRollout` 记录 INITIAL/APPLY/MANUAL_ROLLBACK/START/RESTART/AUTO_ROLLBACK；同部署只允许一个未终态 Rollout。
 - `serving_engine=vllm|lmstudio` 与 `runtime_provider=docker` 分离；配置模式只允许 ENGINE_MANAGED 或 PROVIDER_NATIVE 的固定组合。
 - 模型来源支持 LOCAL_MODEL、HOST_PATH、VOLUME；模型主挂载与额外挂载 target 不得冲突。
+- 管理员配置候选由 Model Deployment API 提供脱敏投影；API Server 受信读取 Infrastructure 节点/Profile 目录，浏览器不直连 Infrastructure。
 - Task 参数只保存 Deployment/Rollout/Revision/digest 等稳定引用，Worker 通过内部 resolver 校验并读取完整 Revision。
 - 新 Runtime 达到 RUNNING、Endpoint READY、健康成功后才切换 active Revision；Apply 失败可创建 AUTO_ROLLBACK。
 - 列表、Rollout、事件、Task 和普通日志不返回完整配置、环境变量或宿主路径。
@@ -37,7 +38,7 @@
 
 ## 5. 当前状态
 
-本领域当前 S1/S2 由 `spec-v1.25.3` 发布并彻底替换 `spec-v1.24.x`；实施必须先按 Release gate 清理旧数据和旧执行，不得兼容恢复 `1.0` 合同。
+本领域核心 S1/S2 由 `spec-v1.25.3` 发布并彻底替换 `spec-v1.24.x`；`spec-v1.25.6` 补齐管理员节点/Profile 发现闭环。实施必须先按 Release gate 清理旧数据和旧执行，不得兼容恢复 `1.0` 合同。
 
 ## spec-v1.25.4 Endpoint 对齐
 
